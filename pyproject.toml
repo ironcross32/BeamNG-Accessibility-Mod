@@ -1,0 +1,16 @@
+[project]
+name = "beam"
+version = "0.1.0"
+description = "A screen reader mod for BeamNG.drive"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "aiohttp>=3.12.15",
+    "asyncio>=4.0.0",
+    "comtypes>=1.4.15",
+    "h5py>=3.8.0",
+    "keyboard>=0.13.5",
+    "numpy>=2.3.3",
+    "sounddevice>=0.5.2",
+    "wxpython>=4.2.3",
+]

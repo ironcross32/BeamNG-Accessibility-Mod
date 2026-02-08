@@ -1,0 +1,1155 @@
+# audio.py
+
+import threading
+import math
+import time
+import logging
+
+try:
+    import numpy as np
+except ImportError:
+    np = None
+    logging.warning("numpy module not found. Audio generation will be disabled.")
+
+try:
+    import sounddevice as sd
+    AUDIO_OK = True
+except ImportError:
+    AUDIO_OK = False
+    logging.warning("sounddevice unavailable – 'pip install sounddevice' to enable audio cues.")
+
+DEFAULT_SR = 48000
+
+# =========================
+#  Audio Constants
+# =========================
+# Compass Click
+CLICK_DUR_MS = 20
+
+# Attitude Cues
+ATT_START_DEG, ATT_STOP_DEG = 8.0, 5.0
+ROLL_CAP_DEG, PITCH_CAP_DEG = 60.0, 30.0
+ATT_MAX_DBFS, ATT_MIN_DBFS = -24.0, -36.0
+ATT_BASE_ROLL_HZ, ATT_BASE_PITCH_HZ = 220.0, 300.0
+ATT_SMOOTH_MS = 80.0
+
+# Attitude Fade Constants (Stability Check)
+ATT_FADE_MIN_GAIN = 0.04       # Target gain when stable (approx -28dB drop)
+ATT_FADE_SENSITIVITY = 50.0    # Sensitivity to variation (Higher = easier to trigger max vol)
+ATT_FADE_ATTACK_MS = 20.0      # Time to reach full volume on instability
+ATT_FADE_DECAY_MS = 1250.0     # Time to fade out when stable
+ATT_HRTF_FAR_DB = -10.0       # dB attenuation at maximum roll (farthest perceived distance)
+
+# Pedal Tones
+PEDAL_BASE_FREQ = 300.0
+PEDAL_MAX_MULT = 4.0
+PEDAL_SMOOTH_MS = 60.0
+
+# Steering Tone
+STEER_BASE_FREQ = 100.0
+STEER_MAX_FREQ = 400.0
+STEER_AMP_DB = -20.0
+
+# NEW: Drift Detection Constants
+DRIFT_FREQ_HZ = 180.0
+DRIFT_AMP_DB = -15.0
+
+# NEW: Vehicle Scanner Constants
+SCANNER_BEEP_DUR_MS = 60       # Duration of a single beep
+SCANNER_MAX_RATE_HZ = 10.0     # Beeps per second at close range
+SCANNER_MIN_RATE_HZ = 0.5      # Beeps per second at long range
+SCANNER_HALF_DIST_M = 40.0     # The distance at which the beep rate is halfway between min and max
+SCANNER_PITCH_BASE = 0.8       # Pitch multiplier for a target directly behind (-180 deg)
+SCANNER_PITCH_RANGE = 1.2      # Pitch variation (Base + Range = max pitch at 0 deg)
+SCANNER_BEEP_FREQ_HZ = 1000.0  # Base frequency of the beep sound
+
+# NEW: Low Speed Detection Constants
+LS_CLICK_DUR_MS = 80
+LS_CARRIER_HZ = 250.0
+LS_MOD_HZ = 375.0
+LS_MOD_INDEX_PEAK = 4.0
+LS_AMP_DB = -14.0
+LS_MIN_RATE_HZ = 1.0
+LS_MAX_RATE_HZ = 8.0
+LS_DECEL_FOR_MAX_RATE = 5.0
+LS_PITCH_AT_0MPH = 0.7
+LS_PITCH_AT_25MPH = 1.8
+LS_FADE_ATTACK_S = 0.05
+LS_FADE_DECAY_S = 0.30
+LS_HRTF_AZIMUTH = 0.0
+
+# NEW: Heading Guidance Constants
+GUIDANCE_FREQ_HZ = 440.0       # Steady tone frequency
+GUIDANCE_DEADZONE_DEG = 0.5    # No sound if error is within +/- this amount
+GUIDANCE_FULL_SCALE_DEG = 5.0  # Error amount for max volume/pan
+GUIDANCE_MIN_DBFS = -40.0      # Volume just outside deadzone
+GUIDANCE_MAX_DBFS = -12.0      # Volume at full scale error
+
+class AudioController:
+    def __init__(self, logger):
+        self.logger = logger
+        if not AUDIO_OK or np is None:
+            self.logger.error("Audio disabled due to missing numpy or sounddevice.")
+            self._is_enabled = False
+            return
+        self._is_enabled = True
+
+        # Internal State
+        self.lock = threading.Lock()
+        self._stop_event = threading.Event()
+        
+        self.samplerate = DEFAULT_SR
+
+        # Waveforms are now initialized to None.
+        self.CLICK_WAVEFORM = None
+        self.TC_TONE_WAVEFORM = None
+        self.CHECK_ENGINE_BUZZER_WAVEFORM = None
+        self.OIL_CHIME_WAVEFORM = None
+        self.SCANNER_BEEP_WAVEFORM = None # NEW: Scanner beep waveform
+
+        # HRTF State
+        self._hrtf = None
+        self._click_conv_L = None
+        self._click_conv_R = None
+        self._hclick_conv_L = None
+        self._hclick_conv_R = None
+        self._click_use_hrtf = False
+        self._hclick_use_hrtf = False
+        self._hrtf_front_emphasis_db = -6.0  # dB attenuation at 180° (behind)
+        self._hrtf_user_enabled = True
+        self._hrtf_distance_gain = 1.0  # linear gain from hrtf_distance_gain_db
+        self._roll_hrtf_overlap_L = None  # overlap-add tail for HRTF roll tone
+        self._roll_hrtf_overlap_R = None
+        self._pitch_hrtf_overlap_L = None  # overlap-add tail for HRTF pitch tone
+        self._pitch_hrtf_overlap_R = None
+
+        # Configurable enable flags
+        self._tc_clicks_enabled = True
+        self._pitch_roll_enabled = True
+
+        # Configurable volume params
+        self._att_max_dbfs = ATT_MAX_DBFS
+        self._att_min_dbfs = ATT_MIN_DBFS
+        self._compass_click_amp = 0.5  # linear, approx -6 dBFS
+        self._ls_click_amp_db = LS_AMP_DB
+
+        # Playback State
+        self._click_playback_pos = -1.0
+        self._click_pan_pos = 0.0
+        self._click_pitch_mult = 1.0
+        self._highlight_click_playback_pos = -1.0
+        self._highlight_click_pan_pos = 0.0
+        self._highlight_click_pitch_mult = 1.0
+        self._tc_playback_pos = -1.0
+        self._buzzer_playback_pos = -1.0
+        self._chime_playback_pos = -1.0
+        self._click_request = threading.Event()
+        self._highlight_click_request = threading.Event() 
+        self._scanner_playback_pos = -1.0 
+
+        # Shared state from main telemetry loop
+        self.shift_active = False
+        self.pedal_tones_active = False
+        self.tc_active = False
+        self.last_clutch = 0.0
+        self.last_brake = 0.0
+        self.last_throttle = 0.0
+        self.last_steering = 0.0 # NEW
+        self.inverted = False
+        self.last_roll_rad = 0.0
+        self.last_pitch_rad = 0.0
+        
+        # NEW: Vehicle Scanner State
+        self._scan_mode_active = False
+        self._scanner_target_bearing = 0.0
+        self._scanner_target_distance = float('inf')
+        self._scanner_beep_timer = 0.0
+
+        # NEW: Heading Guidance State
+        self._guidance_active = False
+        self._guidance_error_deg = 0.0
+        self._phase_guidance = 0.0
+        self._sm_guidance_error = 0.0 # Smoothed error
+        
+        # NEW: Drift Detection State
+        self._drift_alert_active = False
+        self._drift_pan = 0.0
+        self._phase_drift = 0.0
+        self._drift_rate = 0.0
+
+        # NEW: Low Speed Detection State
+        self._ls_clicks_active = False
+        self._ls_speed_mph = 0.0
+        self._ls_decel = 0.0
+        self._ls_click_timer = 0.0
+        self._ls_playback_pos = -1.0
+        self._ls_fade_gain = 0.0
+        self._ls_conv_L = None
+        self._ls_conv_R = None
+        self._ls_use_hrtf = False
+        self._ls_pitch_mult = 1.0
+
+        # Audio Stream and Device Management
+        self._audio_stream = None
+        self._device_watcher_thread = None
+        self._current_device_index = None
+        self._current_device_name = None
+        self._preferred_hostapi_name = "wasapi"
+        self._follow_default_enabled = True
+        self._audio_poll_interval = 2.0
+        
+        # Synthesis state (phases, smoothers)
+        self._phase_shift = 0.0
+        self._sm_roll_int, self._sm_pitch_int = 0.0, 0.0
+        self._phase_roll, self._phase_pitch = 0.0, 0.0
+        self._roll_fade_mult, self._pitch_fade_mult = 1.0, 1.0
+        self._sm_c, self._sm_b, self._sm_t = 0.0, 0.0, 0.0
+        _rng = np.random.default_rng()
+        self._detune_c, self._detune_b, self._detune_t = _rng.uniform(-3.0, 3.0, 3)
+        self._phase_c, self._phase_b, self._phase_t = 0.0, 0.0, 0.0
+        self._phase_steer = 0.0 # NEW
+        
+        # Configurable params
+        self.shift_freq = 880.0
+        self.shift_amp = 10.0 ** (-12.0 / 20.0)
+        self._phase_inc_shift = self.shift_freq / self.samplerate
+        self.buzzer_amp = 1.0 ** (-12.0 / 20.0)
+        self.chime_amp = 1.0 ** (-12.0 / 20.0)
+
+    # NEW: Control methods for the vehicle scanner
+    def set_scan_mode(self, is_active):
+        with self.lock:
+            self._scan_mode_active = bool(is_active)
+            if not self._scan_mode_active:
+                # Reset distance when turned off so it doesn't beep once on reactivation
+                self._scanner_target_distance = float('inf')
+    
+    def update_scanner_target(self, bearing, distance):
+        with self.lock:
+            self._scanner_target_bearing = float(bearing)
+            self._scanner_target_distance = float(distance)
+
+    def apply_config(self, cfg):
+        if not self._is_enabled: return
+
+        db = float(cfg.get("shift_tone_level_dbfs", -12.0))
+        db = min(0.0, max(-120.0, db))
+        self.shift_freq = max(20.0, min(20000.0, float(cfg.get("shift_tone_frequency_hz", 880.0))))
+        self.shift_amp = float(10.0 ** (db / 20.0))
+        self._phase_inc_shift = self.shift_freq / self.samplerate
+
+        buzzer_db = float(cfg.get("check_engine_buzzer_level_dbfs", -12.0))
+        self.buzzer_amp = float(10.0 ** (buzzer_db / 20.0))
+
+        chime_db = float(cfg.get("oil_chime_level_dbfs", -12.0))
+        self.chime_amp = float(10.0 ** (chime_db / 20.0))
+
+        self.CHECK_ENGINE_BUZZER_WAVEFORM = self._generate_check_engine_buzzer(self.buzzer_amp)
+        self.OIL_CHIME_WAVEFORM = self._generate_oil_chime(self.chime_amp)
+
+        self._hrtf_front_emphasis_db = min(0.0, float(cfg.get("hrtf_front_emphasis_db", -6.0)))
+        self._hrtf_user_enabled = bool(cfg.get("hrtf_enabled", True))
+        dist_db = float(cfg.get("hrtf_distance_gain_db", 0.0))
+        self._hrtf_distance_gain = float(10.0 ** (dist_db / 20.0))
+
+        # Enable flags
+        self._tc_clicks_enabled = bool(cfg.get("tc_clicks_enabled", True))
+        self._pitch_roll_enabled = bool(cfg.get("pitch_roll_tones_enabled", True))
+
+        # Attitude tone volume range
+        self._att_max_dbfs = float(cfg.get("pitch_roll_max_dbfs", -24.0))
+        self._att_min_dbfs = float(cfg.get("pitch_roll_min_dbfs", -36.0))
+
+        # Compass click amplitude
+        cc_db = float(cfg.get("compass_click_level_dbfs", -6.0))
+        self._compass_click_amp = float(10.0 ** (cc_db / 20.0))
+
+        # Low speed click amplitude
+        self._ls_click_amp_db = float(cfg.get("lowspeed_click_level_dbfs", -14.0))
+
+        # Regenerate volume-dependent waveforms
+        self.CLICK_WAVEFORM = self._generate_click()
+        self.HIGHLIGHT_CLICK_WAVEFORM = self._generate_highlight_click()
+        self.LS_CLICK_WAVEFORM = self._generate_lowspeed_click()
+
+        self._preferred_hostapi_name = str(cfg.get("preferred_hostapi", "wasapi")).strip().lower()
+        self._follow_default_enabled = bool(cfg.get("follow_default_audio_device", True))
+        self._audio_poll_interval = float(cfg.get("audio_poll_interval_sec", 2.0))
+
+    def load_hrtf(self, sofa_path):
+        """Load HRTF data from a SOFA file for binaural compass clicks."""
+        if not self._is_enabled:
+            return
+        try:
+            from hrtf import HRTFSet
+            hrtf = HRTFSet(sofa_path, self.logger)
+            if hrtf.is_loaded:
+                hrtf.resample(self.samplerate)
+                self._hrtf = hrtf
+            else:
+                self.logger.warning("HRTF file could not be loaded — falling back to stereo panning.")
+        except Exception as e:
+            self.logger.warning(f"HRTF initialization failed: {e} — falling back to stereo panning.")
+
+    def update_telemetry_state(self, state):
+        with self.lock:
+            self.shift_active = state.get('shift_active', self.shift_active)
+            self.pedal_tones_active = state.get('pedal_tones_active', self.pedal_tones_active)
+            if state.get('tc_active') and not self.tc_active and self._tc_clicks_enabled:
+                self._tc_playback_pos = 0.0 # Trigger TC tone on rising edge
+            self.tc_active = state.get('tc_active', self.tc_active)
+            self.last_clutch = state.get('last_clutch', self.last_clutch)
+            self.last_brake = state.get('last_brake', self.last_throttle)
+            self.last_throttle = state.get('last_throttle', self.last_throttle)
+            self.last_steering = state.get('last_steering', self.last_steering) # NEW
+            self.inverted = state.get('inverted', self.inverted)
+            self.last_roll_rad = state.get('last_roll_rad', self.last_roll_rad)
+            self.last_pitch_rad = state.get('last_pitch_rad', self.last_pitch_rad)
+            
+            # NEW: Heading Guidance
+            self._guidance_active = state.get('guidance_active', self._guidance_active)
+            self._guidance_error_deg = state.get('guidance_error_deg', self._guidance_error_deg)
+
+            # NEW: Drift Detection
+            self._drift_alert_active = state.get('drift_alert_active', self._drift_alert_active)
+            self._drift_pan = state.get('drift_pan', self._drift_pan)
+            self._drift_rate = state.get('drift_rate', self._drift_rate)
+
+            # NEW: Low Speed Detection
+            self._ls_clicks_active = state.get('ls_clicks_active', self._ls_clicks_active)
+            self._ls_speed_mph = state.get('ls_speed_mph', self._ls_speed_mph)
+            self._ls_decel = state.get('ls_decel', self._ls_decel)
+
+    def _hrtf_emphasis_gain(self, hrtf_az_deg):
+        """Compute front-back emphasis gain. 0 dB at front (0°), emphasis_db at back (180°)."""
+        if self._hrtf_front_emphasis_db >= 0.0:
+            return 1.0
+        # Cosine curve: (1 - cos(az)) / 2 gives 0 at 0°, 1 at 180°
+        behind_norm = (1.0 - math.cos(math.radians(hrtf_az_deg))) * 0.5
+        db = self._hrtf_front_emphasis_db * behind_norm
+        return float(10.0 ** (db / 20.0))
+
+    def trigger_compass_click(self, azimuth_deg, pitch_mult):
+        with self.lock:
+            self._click_request_pitch_mult = pitch_mult
+            if self._hrtf is not None and self._hrtf_user_enabled and self.CLICK_WAVEFORM is not None:
+                hrtf_az = (360.0 - azimuth_deg) % 360.0
+                ir_l, ir_r = self._hrtf.get_hrir(hrtf_az)
+                if ir_l is not None:
+                    gain = self._hrtf_emphasis_gain(hrtf_az) * self._hrtf_distance_gain
+                    self._click_conv_L = (np.convolve(self.CLICK_WAVEFORM, ir_l, mode='full') * gain).astype(np.float32)
+                    self._click_conv_R = (np.convolve(self.CLICK_WAVEFORM, ir_r, mode='full') * gain).astype(np.float32)
+                    self._click_use_hrtf = True
+                else:
+                    self._click_use_hrtf = False
+                    self._click_request_pan = math.sin(math.radians(azimuth_deg))
+            else:
+                self._click_use_hrtf = False
+                self._click_request_pan = math.sin(math.radians(azimuth_deg))
+        self._click_request.set()
+
+    def trigger_compass_highlight(self, azimuth_deg, pitch_mult):
+        with self.lock:
+            self._highlight_request_pitch_mult = pitch_mult
+            if self._hrtf is not None and self._hrtf_user_enabled and self.HIGHLIGHT_CLICK_WAVEFORM is not None:
+                hrtf_az = (360.0 - azimuth_deg) % 360.0
+                ir_l, ir_r = self._hrtf.get_hrir(hrtf_az)
+                if ir_l is not None:
+                    gain = self._hrtf_emphasis_gain(hrtf_az) * self._hrtf_distance_gain
+                    self._hclick_conv_L = (np.convolve(self.HIGHLIGHT_CLICK_WAVEFORM, ir_l, mode='full') * gain).astype(np.float32)
+                    self._hclick_conv_R = (np.convolve(self.HIGHLIGHT_CLICK_WAVEFORM, ir_r, mode='full') * gain).astype(np.float32)
+                    self._hclick_use_hrtf = True
+                else:
+                    self._hclick_use_hrtf = False
+                    self._highlight_request_pan = math.sin(math.radians(azimuth_deg))
+            else:
+                self._hclick_use_hrtf = False
+                self._highlight_request_pan = math.sin(math.radians(azimuth_deg))
+        self._highlight_click_request.set()
+
+    def trigger_check_engine_buzzer(self):
+        if self._is_enabled:
+            self._buzzer_playback_pos = 0.0
+
+    def trigger_oil_chime(self):
+        if self._is_enabled:
+            self._chime_playback_pos = 0.0
+
+
+    # --- Private Methods ---
+    
+    def _clamp(self, v, a=0.0, b=1.0): return a if v < a else b if v > b else v
+    def _pan_gains(self, p):
+        ang = (self._clamp(p, -1.0, 1.0) + 1.0) * (math.pi / 4.0)
+        return math.cos(ang), math.sin(ang)
+        
+    def _norm_from_angle_deg(self, deg, start=ATT_START_DEG, stop=ATT_STOP_DEG, cap=90.0):
+        d = abs(float(deg))
+        if d < stop: return 0.0
+        if d <= start:
+            n = (d - stop) / max(1e-6, (start - stop))
+            return max(1e-6, n * 1e-3)
+        return self._clamp((d - start) / max(1e-6, (cap - start)), 0.0, 1.0)
+
+    def _amp_att_from_norm(self, n):
+        n = self._clamp(n)
+        if n <= 0.0: return 0.0
+        db = self._att_min_dbfs + (self._att_max_dbfs - self._att_min_dbfs) * (n**0.6)
+        return float(10.0 ** (db / 20.0))
+
+    def _amp_from_val(self, v):
+        if v <= 0.0: return 0.0
+        dB = -30.0 + 12.0 * (v**0.5)
+        return float(10.0 ** (dB / 20.0))
+
+    def _regenerate_waveforms(self):
+        self.logger.info(f"Generating audio waveforms for {self.samplerate} Hz sample rate.")
+        self.CLICK_WAVEFORM = self._generate_click()
+        self.HIGHLIGHT_CLICK_WAVEFORM = self._generate_highlight_click()
+        self.TC_TONE_WAVEFORM = self._generate_tc_tone()
+        self.CHECK_ENGINE_BUZZER_WAVEFORM = self._generate_check_engine_buzzer(self.buzzer_amp)
+        self.OIL_CHIME_WAVEFORM = self._generate_oil_chime(self.chime_amp)
+        self.SCANNER_BEEP_WAVEFORM = self._generate_scanner_beep() # NEW
+        self.GUIDANCE_WAVEFORM = self._generate_guidance_tone() # NEW
+        self.LS_CLICK_WAVEFORM = self._generate_lowspeed_click()
+        if self._hrtf is not None:
+            self._hrtf.resample(self.samplerate)
+
+    def _generate_click(self):
+        dur_samples = int(self.samplerate * CLICK_DUR_MS / 1000.0)
+        t = np.linspace(0, CLICK_DUR_MS / 1000.0, dur_samples, endpoint=False)
+        decay = np.exp(-t * (1.0 / (CLICK_DUR_MS / 2000.0)))
+        wave = np.sin(2.0 * np.pi * 1200.0 * t) * decay
+        fade_len = int(dur_samples * 0.1)
+        if fade_len > 0: wave[-fade_len:] *= np.linspace(1, 0, fade_len)
+        return (wave * self._compass_click_amp).astype(np.float32)
+
+    def _generate_highlight_click(self):
+        dur_samples = int(self.samplerate * CLICK_DUR_MS / 1000.0)
+        t = np.linspace(0, CLICK_DUR_MS / 1000.0, dur_samples, endpoint=False)
+        decay = np.exp(-t * (1.0 / (CLICK_DUR_MS / 2000.0)))
+        
+        # Waveform with fundamental, 3rd, and 5th harmonics
+        f0 = 1200.0
+        wave = (0.6 * np.sin(2.0 * np.pi * f0 * t) +
+                0.3 * np.sin(2.0 * np.pi * f0 * 3 * t) +
+                0.1 * np.sin(2.0 * np.pi * f0 * 5 * t))
+        
+        wave /= np.max(np.abs(wave)) # Normalize
+        wave *= decay
+
+        fade_len = int(dur_samples * 0.1)
+        if fade_len > 0: wave[-fade_len:] *= np.linspace(1, 0, fade_len)
+        return (wave * self._compass_click_amp).astype(np.float32)
+
+    def _generate_tc_tone(self):
+        DUR_SEC, FC, CM_RATIO = 0.032, 500.0, 3.075
+        FM, num_samples = FC / CM_RATIO, int(self.samplerate * DUR_SEC)
+        t = np.linspace(0, DUR_SEC, num_samples, endpoint=False)
+        mod_index_env = 4.0 * np.exp(-t / (DUR_SEC / 3.0))
+        amp_env = 0.4 * np.sin(np.pi * t / DUR_SEC)
+        modulator = mod_index_env * np.sin(2 * np.pi * FM * t)
+        carrier = np.sin(2 * np.pi * FC * t + modulator)
+        return (amp_env * carrier).astype(np.float32)
+
+    def _generate_check_engine_buzzer(self, amplitude):
+        DUR_SEC, FC, FM = 0.5, 400.0, 150.0
+        num_samples = int(self.samplerate * DUR_SEC)
+        t = np.linspace(0, DUR_SEC, num_samples, endpoint=False)
+        mod_index_env = 8.0 * np.exp(-t / (DUR_SEC / 3.0))
+        modulator = mod_index_env * np.sin(2 * np.pi * FM * t)
+        carrier = np.sin(2 * np.pi * FC * t + modulator)
+        amp_env = np.ones(num_samples)
+        fade_start_sample = int(self.samplerate * 0.4)
+        fade_samples = num_samples - fade_start_sample
+        if fade_samples > 0:
+            amp_env[fade_start_sample:] = np.linspace(1, 0, fade_samples) ** 2
+        return (amplitude * amp_env * carrier).astype(np.float32)
+
+    def _generate_oil_chime(self, amplitude):
+        DUR_SEC, FC = 1.0, 523.25
+        num_samples = int(self.samplerate * DUR_SEC)
+        t = np.linspace(0, DUR_SEC, num_samples, endpoint=False)
+        wave = (np.sin(2*np.pi*FC*t) + 0.5*np.sin(2*np.pi*FC*2*t) + 0.2*np.sin(2*np.pi*FC*3*t))
+        wave /= np.max(np.abs(wave))
+        amp_env = np.exp(-t * 5.0) * (1 - np.exp(-t * 30))
+        amp_env /= np.max(amp_env)
+        return (amplitude * amp_env * wave).astype(np.float32)
+
+    # NEW: Function to generate the scanner beep waveform
+    def _generate_scanner_beep(self):
+        dur_samples = int(self.samplerate * SCANNER_BEEP_DUR_MS / 1000.0)
+        t = np.linspace(0, SCANNER_BEEP_DUR_MS / 1000.0, dur_samples, endpoint=False)
+        # Simple sine wave with a decay envelope to make it a "beep"
+        envelope = np.exp(-t * (1.0 / (SCANNER_BEEP_DUR_MS / 4000.0)))
+        wave = np.sin(2.0 * np.pi * SCANNER_BEEP_FREQ_HZ * t) * envelope
+        return (wave * 0.25).astype(np.float32) # Lower amplitude by default
+        
+    def _generate_guidance_tone(self):
+        # A simple, clean sine wave. Amplitude modulation happens in the callback.
+        # We'll just return a single period or a small buffer, but since we synthesize continuously
+        # in the callback using a phase, we technically don't need a buffer here unless we want
+        # complex wavetable synthesis.
+        # However, for consistency with other methods, let's keep the logic in the callback for continuous tones.
+        # This method is here just to satisfy the pattern if we needed pre-calc buffers.
+        return None # Not used, we synthesize on the fly
+
+    def _generate_lowspeed_click(self):
+        dur_samples = int(self.samplerate * LS_CLICK_DUR_MS / 1000.0)
+        t = np.linspace(0, LS_CLICK_DUR_MS / 1000.0, dur_samples, endpoint=False)
+        # FM synthesis: carrier = sin(2π·250·t + mod_env·sin(2π·375·t))
+        mod_env = LS_MOD_INDEX_PEAK * np.exp(-30.0 * t)
+        carrier = np.sin(2.0 * np.pi * LS_CARRIER_HZ * t + mod_env * np.sin(2.0 * np.pi * LS_MOD_HZ * t))
+        # Envelope: fast attack (~2ms), moderate decay
+        attack = 1.0 - np.exp(-500.0 * t)
+        decay = np.exp(-15.0 * t)
+        envelope = attack * decay
+        amp = float(10.0 ** (self._ls_click_amp_db / 20.0))
+        return (amp * envelope * carrier).astype(np.float32)
+
+    def _audio_callback(self, outdata, frames, time_info, status):
+        if self._click_request.is_set():
+            with self.lock:
+                self._click_playback_pos = 0.0
+                self._click_pitch_mult = self._click_request_pitch_mult
+                if not self._click_use_hrtf:
+                    self._click_pan_pos = self._click_request_pan
+            self._click_request.clear()
+
+        if self._highlight_click_request.is_set():
+            with self.lock:
+                self._highlight_click_playback_pos = 0.0
+                self._highlight_click_pitch_mult = self._highlight_request_pitch_mult
+                if not self._hclick_use_hrtf:
+                    self._highlight_click_pan_pos = self._highlight_request_pan
+            self._highlight_click_request.clear()
+
+        with self.lock:
+            # Copy all necessary state variables to local scope to minimize time holding the lock
+            shift_on, pt_on = self.shift_active, self.pedal_tones_active
+            v_clutch, v_brake, v_throt = self.last_clutch, self.last_brake, self.last_throttle
+            v_steer = self.last_steering # NEW
+            inv, roll_rad, pitch_rad = self.inverted, self.last_roll_rad, self.last_pitch_rad
+            scan_active = self._scan_mode_active
+            scan_bearing = self._scanner_target_bearing
+            scan_dist = self._scanner_target_distance
+            # NEW: Guidance state
+            guide_active = self._guidance_active
+            guide_error = self._guidance_error_deg
+            # NEW: Low speed state
+            ls_active = self._ls_clicks_active
+            ls_speed_mph = self._ls_speed_mph
+            ls_decel = self._ls_decel
+
+        bufL, bufR = np.zeros(frames, dtype=np.float32), np.zeros(frames, dtype=np.float32)
+
+        playback_states = [
+            ('_tc_playback_pos', self.TC_TONE_WAVEFORM),
+            ('_buzzer_playback_pos', self.CHECK_ENGINE_BUZZER_WAVEFORM),
+            ('_chime_playback_pos', self.OIL_CHIME_WAVEFORM),
+        ]
+        for pos_attr, waveform in playback_states:
+            pos = getattr(self, pos_attr)
+            if pos >= 0 and waveform is not None:
+                start, wav_len = int(pos), len(waveform)
+                num_to_mix = min(frames, wav_len - start)
+                if num_to_mix > 0:
+                    segment = waveform[start : start + num_to_mix]
+                    bufL[:num_to_mix] += segment; bufR[:num_to_mix] += segment
+                next_pos = pos + frames
+                setattr(self, pos_attr, next_pos if next_pos < wav_len else -1.0)
+        
+        if self._click_playback_pos >= 0:
+            if self._click_use_hrtf and self._click_conv_L is not None:
+                click_len = len(self._click_conv_L)
+                indices = self._click_playback_pos + np.arange(frames) * self._click_pitch_mult
+                valid_mask = indices < (click_len - 1)
+                if np.any(valid_mask):
+                    valid_indices = indices[valid_mask]
+                    idx_floor, fract = np.floor(valid_indices).astype(int), valid_indices - np.floor(valid_indices)
+                    bufL[valid_mask] += self._click_conv_L[idx_floor] + (self._click_conv_L[idx_floor + 1] - self._click_conv_L[idx_floor]) * fract
+                    bufR[valid_mask] += self._click_conv_R[idx_floor] + (self._click_conv_R[idx_floor + 1] - self._click_conv_R[idx_floor]) * fract
+                next_pos = self._click_playback_pos + frames * self._click_pitch_mult
+                self._click_playback_pos = next_pos if next_pos < (click_len - 1) else -1.0
+            elif self.CLICK_WAVEFORM is not None:
+                click_len = len(self.CLICK_WAVEFORM)
+                indices = self._click_playback_pos + np.arange(frames) * self._click_pitch_mult
+                valid_mask = indices < (click_len - 1)
+                if np.any(valid_mask):
+                    valid_indices = indices[valid_mask]
+                    idx_floor, fract = np.floor(valid_indices).astype(int), valid_indices - np.floor(valid_indices)
+                    sample1, sample2 = self.CLICK_WAVEFORM[idx_floor], self.CLICK_WAVEFORM[idx_floor + 1]
+                    click_segment = sample1 + (sample2 - sample1) * fract
+                    Lg, Rg = self._pan_gains(self._click_pan_pos)
+                    bufL[valid_mask] += click_segment * Lg
+                    bufR[valid_mask] += click_segment * Rg
+                next_pos = self._click_playback_pos + frames * self._click_pitch_mult
+                self._click_playback_pos = next_pos if next_pos < (click_len - 1) else -1.0
+
+        if self._highlight_click_playback_pos >= 0:
+            if self._hclick_use_hrtf and self._hclick_conv_L is not None:
+                click_len = len(self._hclick_conv_L)
+                indices = self._highlight_click_playback_pos + np.arange(frames) * self._highlight_click_pitch_mult
+                valid_mask = indices < (click_len - 1)
+                if np.any(valid_mask):
+                    valid_indices = indices[valid_mask]
+                    idx_floor, fract = np.floor(valid_indices).astype(int), valid_indices - np.floor(valid_indices)
+                    bufL[valid_mask] += self._hclick_conv_L[idx_floor] + (self._hclick_conv_L[idx_floor + 1] - self._hclick_conv_L[idx_floor]) * fract
+                    bufR[valid_mask] += self._hclick_conv_R[idx_floor] + (self._hclick_conv_R[idx_floor + 1] - self._hclick_conv_R[idx_floor]) * fract
+                next_pos = self._highlight_click_playback_pos + frames * self._highlight_click_pitch_mult
+                self._highlight_click_playback_pos = next_pos if next_pos < (click_len - 1) else -1.0
+            elif self.HIGHLIGHT_CLICK_WAVEFORM is not None:
+                click_len = len(self.HIGHLIGHT_CLICK_WAVEFORM)
+                indices = self._highlight_click_playback_pos + np.arange(frames) * self._highlight_click_pitch_mult
+                valid_mask = indices < (click_len - 1)
+                if np.any(valid_mask):
+                    valid_indices = indices[valid_mask]
+                    idx_floor, fract = np.floor(valid_indices).astype(int), valid_indices - np.floor(valid_indices)
+                    sample1, sample2 = self.HIGHLIGHT_CLICK_WAVEFORM[idx_floor], self.HIGHLIGHT_CLICK_WAVEFORM[idx_floor + 1]
+                    click_segment = sample1 + (sample2 - sample1) * fract
+                    Lg, Rg = self._pan_gains(self._highlight_click_pan_pos)
+                    bufL[valid_mask] += click_segment * Lg
+                    bufR[valid_mask] += click_segment * Rg
+                next_pos = self._highlight_click_playback_pos + frames * self._highlight_click_pitch_mult
+                self._highlight_click_playback_pos = next_pos if next_pos < (click_len - 1) else -1.0
+
+        if shift_on:
+            t = (np.arange(frames) * self._phase_inc_shift + self._phase_shift) % 1.0
+            s = self.shift_amp * (2.0 * np.abs(2.0 * t - 1.0) - 1.0)
+            bufL += s; bufR += s
+            if frames > 0: self._phase_shift = (t[-1] + self._phase_inc_shift) % 1.0
+
+        if pt_on:
+            tau, dt = PEDAL_SMOOTH_MS/1000.0, frames/self.samplerate
+            beta = 1.0 - math.exp(-dt / max(1e-6, tau))
+            self._sm_c += beta * (v_clutch - self._sm_c)
+            self._sm_b += beta * (v_brake - self._sm_b)
+            self._sm_t += beta * (v_throt - self._sm_t)
+            
+            pans = {'c': -1/3, 'b': 0, 't': 1/3}
+            gains = {k: self._pan_gains(p) for k, p in pans.items()}
+            
+            for k, sm, detune in [('c', self._sm_c, self._detune_c), ('b', self._sm_b, self._detune_b), ('t', self._sm_t, self._detune_t)]:
+                f = (PEDAL_BASE_FREQ + detune) * (1.0 + (PEDAL_MAX_MULT - 1.0) * sm)
+                inc = f / self.samplerate
+                phase_attr = f'_phase_{k}'
+                phase = getattr(self, phase_attr)
+                t = (np.arange(frames) * inc + phase) % 1.0
+                s = np.sin(2.0 * np.pi * t)
+                a = self._amp_from_val(sm)
+                bufL += (a * s * gains[k][0]).astype(np.float32)
+                bufR += (a * s * gains[k][1]).astype(np.float32)
+                if frames > 0: setattr(self, phase_attr, (t[-1] + inc) % 1.0)
+            
+            # Steering Tone (Square Wave)
+            # Clamp input to +/- 100
+            s_clamped = self._clamp(v_steer, -100.0, 100.0)
+            if abs(s_clamped) > 0.05: # Minimal deadzone
+                s_norm = abs(s_clamped) / 100.0
+                freq = STEER_BASE_FREQ + (STEER_MAX_FREQ - STEER_BASE_FREQ) * s_norm
+                inc = freq / self.samplerate
+                t = (np.arange(frames) * inc + self._phase_steer) % 1.0
+                
+                # Simple Band-Limited Square Approximation (Fundamental + odd harmonics)
+                # or just raw sign(sin) for a "true" harsh square
+                # Using sign(sin) for requested "square wave"
+                sq = np.sign(np.sin(2.0 * np.pi * t))
+                
+                amp = float(10.0 ** (STEER_AMP_DB / 20.0))
+                
+                # Pan: FLIPPED per user request
+                # Previous: Left if < 0. New: Right if < 0.
+                # Previous: Right if > 0. New: Left if > 0.
+                pan_left = 1.0 if s_clamped > 0 else 0.0
+                pan_right = 1.0 if s_clamped < 0 else 0.0
+                
+                bufL += (amp * sq * pan_left).astype(np.float32)
+                bufR += (amp * sq * pan_right).astype(np.float32)
+                
+                if frames > 0: self._phase_steer = (t[-1] + inc) % 1.0
+
+        if not inv and self._pitch_roll_enabled:
+            r_norm = self._norm_from_angle_deg(math.degrees(roll_rad), cap=ROLL_CAP_DEG)
+            p_norm = self._norm_from_angle_deg(math.degrees(pitch_rad), cap=PITCH_CAP_DEG)
+            tau, dt = ATT_SMOOTH_MS / 1000.0, frames / self.samplerate
+            beta = 1.0 - math.exp(-dt / max(1e-6, tau))
+            self._sm_roll_int += beta * (r_norm - self._sm_roll_int)
+            self._sm_pitch_int += beta * (p_norm - self._sm_pitch_int)
+
+            # --- Stability Fade Logic ---
+            # Calculate instability (lag between instantaneous target and smoothed value)
+            roll_instability = abs(r_norm - self._sm_roll_int)
+            pitch_instability = abs(p_norm - self._sm_pitch_int)
+
+            # Roll Fade
+            target_r_gain = self._clamp(roll_instability * ATT_FADE_SENSITIVITY + ATT_FADE_MIN_GAIN, 0.0, 1.0)
+            if target_r_gain > self._roll_fade_mult:
+                tau_f = ATT_FADE_ATTACK_MS / 1000.0
+            else:
+                tau_f = ATT_FADE_DECAY_MS / 1000.0
+            beta_f = 1.0 - math.exp(-dt / max(1e-6, tau_f))
+            self._roll_fade_mult += beta_f * (target_r_gain - self._roll_fade_mult)
+
+            # Pitch Fade
+            target_p_gain = self._clamp(pitch_instability * ATT_FADE_SENSITIVITY + ATT_FADE_MIN_GAIN, 0.0, 1.0)
+            if target_p_gain > self._pitch_fade_mult:
+                tau_f = ATT_FADE_ATTACK_MS / 1000.0
+            else:
+                tau_f = ATT_FADE_DECAY_MS / 1000.0
+            beta_f = 1.0 - math.exp(-dt / max(1e-6, tau_f))
+            self._pitch_fade_mult += beta_f * (target_p_gain - self._pitch_fade_mult)
+            # ----------------------------
+
+            if self._sm_roll_int > 1e-3:
+                f_roll = ATT_BASE_ROLL_HZ * (1.0 + 3.0 * self._clamp(self._sm_roll_int))
+                inc_r = f_roll / self.samplerate
+                t_r = (np.arange(frames) * inc_r + self._phase_roll) % 1.0
+                pulse = np.where(t_r < 0.35, 1.0, -1.0)
+                a_r = self._amp_att_from_norm(self._sm_roll_int) * self._roll_fade_mult
+                mono_roll = (a_r * pulse).astype(np.float32)
+
+                if self._hrtf is not None and self._hrtf_user_enabled:
+                    # Map roll direction to HRTF azimuth: left roll→90°, right roll→270°
+                    pan_pos = self._clamp(math.copysign(1.0, roll_rad) * self._sm_roll_int, -1.0, 1.0)
+                    hrtf_az = (-pan_pos * 90.0) % 360.0
+                    ir_l, ir_r = self._hrtf.get_hrir(hrtf_az)
+                    if ir_l is not None:
+                        # Distance: shallow roll=close (0dB), steep roll=far
+                        dist_db = ATT_HRTF_FAR_DB * self._clamp(self._sm_roll_int)
+                        dist_gain = float(10.0 ** (dist_db / 20.0))
+                        # Overlap-add convolution
+                        conv_l = np.convolve(mono_roll, ir_l, mode='full') * dist_gain
+                        conv_r = np.convolve(mono_roll, ir_r, mode='full') * dist_gain
+                        if self._roll_hrtf_overlap_L is not None:
+                            ol = min(len(self._roll_hrtf_overlap_L), len(conv_l))
+                            conv_l[:ol] += self._roll_hrtf_overlap_L[:ol]
+                            conv_r[:ol] += self._roll_hrtf_overlap_R[:ol]
+                        bufL += conv_l[:frames].astype(np.float32)
+                        bufR += conv_r[:frames].astype(np.float32)
+                        self._roll_hrtf_overlap_L = conv_l[frames:].copy()
+                        self._roll_hrtf_overlap_R = conv_r[frames:].copy()
+                    else:
+                        Lg, Rg = self._pan_gains(pan_pos)
+                        bufL += (mono_roll * Lg); bufR += (mono_roll * Rg)
+                        self._roll_hrtf_overlap_L = None
+                        self._roll_hrtf_overlap_R = None
+                else:
+                    pan_pos = self._clamp(math.copysign(1.0, roll_rad) * self._sm_roll_int, -1.0, 1.0)
+                    Lg, Rg = self._pan_gains(pan_pos)
+                    bufL += (mono_roll * Lg); bufR += (mono_roll * Rg)
+                    self._roll_hrtf_overlap_L = None
+                    self._roll_hrtf_overlap_R = None
+
+                if frames > 0: self._phase_roll = (t_r[-1] + inc_r) % 1.0
+            else:
+                # Drain any residual HRTF overlap when roll tone stops
+                if self._roll_hrtf_overlap_L is not None and len(self._roll_hrtf_overlap_L) > 0:
+                    ol = min(len(self._roll_hrtf_overlap_L), frames)
+                    bufL[:ol] += self._roll_hrtf_overlap_L[:ol].astype(np.float32)
+                    bufR[:ol] += self._roll_hrtf_overlap_R[:ol].astype(np.float32)
+                    self._roll_hrtf_overlap_L = None
+                    self._roll_hrtf_overlap_R = None
+
+            if self._sm_pitch_int > 1e-3:
+                f_pitch = ATT_BASE_PITCH_HZ * (1.0 + 3.0 * self._clamp(self._sm_pitch_int))
+                inc_p = f_pitch / self.samplerate
+                t_p = (np.arange(frames) * inc_p + self._phase_pitch) % 1.0
+                tri = 2.0 * np.abs(2.0 * t_p - 1.0) - 1.0
+                shape = tri
+                if pitch_rad >= 0.0:
+                    ang = 2.0 * np.pi * t_p
+                    amt = float(self._clamp(self._sm_pitch_int))
+                    h3, h5 = 0.35 * amt, 0.15 * amt
+                    shape = (tri + h3 * np.sin(3.0 * ang) + h5 * np.sin(5.0 * ang)) / (1.0 + abs(h3) + abs(h5))
+                a_p = self._amp_att_from_norm(self._sm_pitch_int) * self._pitch_fade_mult
+                mono_pitch = (a_p * shape).astype(np.float32)
+
+                if self._hrtf is not None and self._hrtf_user_enabled:
+                    # Nose down (pitch_rad<0) → front (0°), nose up (pitch_rad>=0) → back (180°)
+                    hrtf_az = 180.0 if pitch_rad >= 0.0 else 0.0
+                    ir_l, ir_r = self._hrtf.get_hrir(hrtf_az)
+                    if ir_l is not None:
+                        dist_db = ATT_HRTF_FAR_DB * self._clamp(self._sm_pitch_int)
+                        dist_gain = float(10.0 ** (dist_db / 20.0))
+                        conv_l = np.convolve(mono_pitch, ir_l, mode='full') * dist_gain
+                        conv_r = np.convolve(mono_pitch, ir_r, mode='full') * dist_gain
+                        if self._pitch_hrtf_overlap_L is not None:
+                            ol = min(len(self._pitch_hrtf_overlap_L), len(conv_l))
+                            conv_l[:ol] += self._pitch_hrtf_overlap_L[:ol]
+                            conv_r[:ol] += self._pitch_hrtf_overlap_R[:ol]
+                        bufL += conv_l[:frames].astype(np.float32)
+                        bufR += conv_r[:frames].astype(np.float32)
+                        self._pitch_hrtf_overlap_L = conv_l[frames:].copy()
+                        self._pitch_hrtf_overlap_R = conv_r[frames:].copy()
+                    else:
+                        Lg, Rg = self._pan_gains(0.0)
+                        bufL += (mono_pitch * Lg); bufR += (mono_pitch * Rg)
+                        self._pitch_hrtf_overlap_L = None
+                        self._pitch_hrtf_overlap_R = None
+                else:
+                    Lg, Rg = self._pan_gains(0.0)
+                    bufL += (mono_pitch * Lg); bufR += (mono_pitch * Rg)
+                    self._pitch_hrtf_overlap_L = None
+                    self._pitch_hrtf_overlap_R = None
+
+                if frames > 0: self._phase_pitch = (t_p[-1] + inc_p) % 1.0
+            else:
+                # Drain any residual HRTF overlap when pitch tone stops
+                if self._pitch_hrtf_overlap_L is not None and len(self._pitch_hrtf_overlap_L) > 0:
+                    ol = min(len(self._pitch_hrtf_overlap_L), frames)
+                    bufL[:ol] += self._pitch_hrtf_overlap_L[:ol].astype(np.float32)
+                    bufR[:ol] += self._pitch_hrtf_overlap_R[:ol].astype(np.float32)
+                    self._pitch_hrtf_overlap_L = None
+                    self._pitch_hrtf_overlap_R = None
+        else:
+            self._sm_roll_int *= 0.5
+            self._sm_pitch_int *= 0.5
+        
+        # NEW: Drift Detection Logic
+        # Sine with 7th and 11th harmonics
+        if self._drift_alert_active:
+            # Calculate pitch multiplier based on drift rate severity
+            # Map 0.5 (threshold) -> 1.0x
+            # Map 10.0 (max severity) -> 4.0x
+            rate = max(0.5, self._drift_rate)
+            norm = self._clamp((rate - 0.5) / (10.0 - 0.5), 0.0, 1.0)
+            pitch_mult = 1.0 + 3.0 * norm
+            
+            inc = (DRIFT_FREQ_HZ * pitch_mult) / self.samplerate
+            t = (np.arange(frames) * inc + self._phase_drift) % 1.0
+            
+            # Base + 7th + 11th
+            tone = (1.0 * np.sin(2.0 * np.pi * t) + 
+                    0.5 * np.sin(2.0 * np.pi * 7.0 * t) + 
+                    0.3 * np.sin(2.0 * np.pi * 11.0 * t))
+            
+            # Normalize peak roughly
+            tone *= 0.55
+            
+            amp = float(10.0 ** (DRIFT_AMP_DB / 20.0))
+            tone *= amp
+            
+            # Hard Pan based on drift direction (-1 Left, 1 Right)
+            # Drift Left -> Left Ear, Drift Right -> Right Ear
+            # _drift_pan is -1.0 or 1.0
+            Lg = 1.0 if self._drift_pan < 0 else 0.0
+            Rg = 1.0 if self._drift_pan > 0 else 0.0
+            
+            bufL += (tone * Lg).astype(np.float32)
+            bufR += (tone * Rg).astype(np.float32)
+
+            if frames > 0: self._phase_drift = (t[-1] + inc) % 1.0
+
+
+        # NEW: Vehicle Scanner audio logic
+        if scan_active and scan_dist != float('inf'):
+            # Calculate beep repetition rate based on distance (exponentially)
+            rate_norm = math.exp(-scan_dist / SCANNER_HALF_DIST_M)
+            rate_hz = SCANNER_MIN_RATE_HZ + (SCANNER_MAX_RATE_HZ - SCANNER_MIN_RATE_HZ) * rate_norm
+            interval_sec = 1.0 / rate_hz
+
+            # Check if it's time to trigger a new beep
+            self._scanner_beep_timer += frames / self.samplerate
+            if self._scanner_beep_timer >= interval_sec:
+                self._scanner_beep_timer = 0
+                self._scanner_playback_pos = 0.0
+
+            # Mix the beep if it's currently playing
+            if self._scanner_playback_pos >= 0 and self.SCANNER_BEEP_WAVEFORM is not None:
+                beep_len = len(self.SCANNER_BEEP_WAVEFORM)
+                # Calculate pitch based on bearing
+                pitch_norm = 1.0 - (abs(scan_bearing) / 180.0) # 1.0 front, 0.0 back
+                pitch_mult = SCANNER_PITCH_BASE + SCANNER_PITCH_RANGE * pitch_norm
+                
+                indices = self._scanner_playback_pos + np.arange(frames) * pitch_mult
+                valid_mask = indices < (beep_len - 1)
+                
+                if np.any(valid_mask):
+                    valid_indices = indices[valid_mask]
+                    idx_floor = valid_indices.astype(int)
+                    fract = valid_indices - idx_floor
+                    sample1, sample2 = self.SCANNER_BEEP_WAVEFORM[idx_floor], self.SCANNER_BEEP_WAVEFORM[idx_floor + 1]
+                    beep_segment = sample1 + (sample2 - sample1) * fract
+                    
+                    # Pan the sound left/right based on bearing
+                    pan_pos = scan_bearing / 90.0 # Map +/- 90 degrees to full left/right pan
+                    Lg, Rg = self._pan_gains(pan_pos)
+                    
+                    bufL[valid_mask] += beep_segment * Lg
+                    bufR[valid_mask] += beep_segment * Rg
+
+                next_pos = self._scanner_playback_pos + frames * pitch_mult
+                self._scanner_playback_pos = next_pos if next_pos < (beep_len - 1) else -1.0
+
+
+        # NEW: Low Speed Detection Logic
+        dt_ls = frames / self.samplerate
+        if ls_active:
+            # Fade envelope: attack toward 1.0
+            alpha_att = 1.0 - math.exp(-dt_ls / max(1e-6, LS_FADE_ATTACK_S))
+            self._ls_fade_gain += alpha_att * (1.0 - self._ls_fade_gain)
+        else:
+            # Fade envelope: decay toward 0.0 (rapid at 0 mph — within one click duration)
+            decay_s = (LS_CLICK_DUR_MS / 1000.0 / 3.0) if ls_speed_mph < 0.5 else LS_FADE_DECAY_S
+            alpha_dec = 1.0 - math.exp(-dt_ls / max(1e-6, decay_s))
+            self._ls_fade_gain += alpha_dec * (0.0 - self._ls_fade_gain)
+
+        if self._ls_fade_gain > 0.001:
+            # Click rate from deceleration
+            decel_norm = self._clamp(ls_decel / LS_DECEL_FOR_MAX_RATE, 0.0, 1.0)
+            rate_hz = LS_MIN_RATE_HZ + (LS_MAX_RATE_HZ - LS_MIN_RATE_HZ) * decel_norm
+            interval_sec = 1.0 / rate_hz
+
+            # Pitch from speed
+            speed_norm = self._clamp(ls_speed_mph / 25.0, 0.0, 1.0)
+            pitch = LS_PITCH_AT_0MPH + (LS_PITCH_AT_25MPH - LS_PITCH_AT_0MPH) * speed_norm
+
+            # Timer-based triggering
+            self._ls_click_timer += dt_ls
+            if self._ls_click_timer >= interval_sec:
+                self._ls_click_timer = 0.0
+                self._ls_playback_pos = 0.0
+                self._ls_pitch_mult = pitch
+
+                # HRTF convolution at azimuth 0° (front)
+                if self._hrtf is not None and self._hrtf_user_enabled and self.LS_CLICK_WAVEFORM is not None:
+                    ir_l, ir_r = self._hrtf.get_hrir(LS_HRTF_AZIMUTH)
+                    if ir_l is not None:
+                        gain = self._hrtf_emphasis_gain(LS_HRTF_AZIMUTH) * self._hrtf_distance_gain
+                        self._ls_conv_L = (np.convolve(self.LS_CLICK_WAVEFORM, ir_l, mode='full') * gain).astype(np.float32)
+                        self._ls_conv_R = (np.convolve(self.LS_CLICK_WAVEFORM, ir_r, mode='full') * gain).astype(np.float32)
+                        self._ls_use_hrtf = True
+                    else:
+                        self._ls_use_hrtf = False
+                else:
+                    self._ls_use_hrtf = False
+
+            # Playback with pitch shifting
+            if self._ls_playback_pos >= 0 and self.LS_CLICK_WAVEFORM is not None:
+                if self._ls_use_hrtf and self._ls_conv_L is not None:
+                    click_len = len(self._ls_conv_L)
+                    indices = self._ls_playback_pos + np.arange(frames) * self._ls_pitch_mult
+                    valid_mask = indices < (click_len - 1)
+                    if np.any(valid_mask):
+                        valid_indices = indices[valid_mask]
+                        idx_floor = np.floor(valid_indices).astype(int)
+                        fract = valid_indices - idx_floor
+                        bufL[valid_mask] += (self._ls_conv_L[idx_floor] + (self._ls_conv_L[idx_floor + 1] - self._ls_conv_L[idx_floor]) * fract) * self._ls_fade_gain
+                        bufR[valid_mask] += (self._ls_conv_R[idx_floor] + (self._ls_conv_R[idx_floor + 1] - self._ls_conv_R[idx_floor]) * fract) * self._ls_fade_gain
+                    next_pos = self._ls_playback_pos + frames * self._ls_pitch_mult
+                    self._ls_playback_pos = next_pos if next_pos < (click_len - 1) else -1.0
+                else:
+                    click_len = len(self.LS_CLICK_WAVEFORM)
+                    indices = self._ls_playback_pos + np.arange(frames) * self._ls_pitch_mult
+                    valid_mask = indices < (click_len - 1)
+                    if np.any(valid_mask):
+                        valid_indices = indices[valid_mask]
+                        idx_floor = np.floor(valid_indices).astype(int)
+                        fract = valid_indices - idx_floor
+                        sample1 = self.LS_CLICK_WAVEFORM[idx_floor]
+                        sample2 = self.LS_CLICK_WAVEFORM[idx_floor + 1]
+                        click_segment = (sample1 + (sample2 - sample1) * fract) * self._ls_fade_gain
+                        # Center-pan (front)
+                        bufL[valid_mask] += click_segment
+                        bufR[valid_mask] += click_segment
+                    next_pos = self._ls_playback_pos + frames * self._ls_pitch_mult
+                    self._ls_playback_pos = next_pos if next_pos < (click_len - 1) else -1.0
+        else:
+            # Reset when fully faded
+            self._ls_click_timer = 0.0
+            self._ls_playback_pos = -1.0
+
+        # NEW: Heading Guidance Logic
+        if guide_active:
+            # Smooth the error to avoid zippers
+            tau, dt = 0.1, frames / self.samplerate # 100ms smoothing
+            beta = 1.0 - math.exp(-dt / max(1e-6, tau))
+            self._sm_guidance_error += beta * (guide_error - self._sm_guidance_error)
+            
+            abs_err = abs(self._sm_guidance_error)
+            
+            if abs_err > GUIDANCE_DEADZONE_DEG:
+                # Calculate amplitude
+                # Map error from [DEADZONE, FULL_SCALE] to [MIN_DB, MAX_DB]
+                # If error > FULL_SCALE, clamp to MAX_DB
+                excess_err = min(abs_err, GUIDANCE_FULL_SCALE_DEG) - GUIDANCE_DEADZONE_DEG
+                range_deg = GUIDANCE_FULL_SCALE_DEG - GUIDANCE_DEADZONE_DEG
+                # Use cubic curve for steeper fade-in
+                norm_linear = max(0.0, excess_err / range_deg) # 0.0 to 1.0
+                norm_amp = norm_linear ** 3
+                
+                # dB conversion
+                db = GUIDANCE_MIN_DBFS + (GUIDANCE_MAX_DBFS - GUIDANCE_MIN_DBFS) * norm_amp
+                amp = float(10.0 ** (db / 20.0))
+                
+                # Synthesize Tone with odd harmonics
+                inc = GUIDANCE_FREQ_HZ / self.samplerate
+                t = (np.arange(frames) * inc + self._phase_guidance) % 1.0
+                
+                # Fundamental + 3rd (1/3 amp) + 5th (1/5 amp) harmonics
+                tone = (1.0 * np.sin(2.0 * np.pi * t) + 
+                        0.33 * np.sin(2.0 * np.pi * 3.0 * t) + 
+                        0.2 * np.sin(2.0 * np.pi * 5.0 * t))
+                
+                # Normalize peak roughly to 1.0 to preserve amp
+                tone *= 0.7 
+                
+                tone *= amp
+                
+                # Pan
+                # Error positive -> Right (pan 1.0)
+                # Error negative -> Left (pan -1.0)
+                # Map error to pan: 0 at 0 error, +/- 1.0 at +/- FULL_SCALE
+                pan_val = self._clamp(self._sm_guidance_error / GUIDANCE_FULL_SCALE_DEG, -1.0, 1.0)
+                Lg, Rg = self._pan_gains(pan_val)
+                
+                bufL += (tone * Lg).astype(np.float32)
+                bufR += (tone * Rg).astype(np.float32)
+                
+                if frames > 0: self._phase_guidance = (t[-1] + inc) % 1.0
+            else:
+                # Keep phase running or reset? Continuous phase is better usually, 
+                # but if silence is long, it doesn't matter.
+                # Just reset smoother if we want instant response? No, keep smoother.
+                pass
+        else:
+             self._sm_guidance_error = 0.0 # Reset when off
+
+
+        out = np.stack([bufL, bufR], axis=1).astype(np.float32)
+        np.clip(out, -0.999, 0.999, out=out)
+        outdata[:] = out
+
+    # --- Stream Management ---
+    
+    def _find_hostapi_index(self, substr):
+        try:
+            apis = sd.query_hostapis()
+            target = str(substr or "").lower()
+            for idx, info in enumerate(apis):
+                if target in str(info.get("name", "")).lower(): return idx
+        except Exception as e: self.logger.warning(f"query_hostapis failed: {e}")
+        return None
+
+    def _find_target_device(self, verbose=False):
+        try:
+            system_default_idx = sd.default.device[1]
+            if system_default_idx == -1:
+                self.logger.warning("No default output device found in the system.")
+                return None
+            
+            default_info = sd.query_devices(system_default_idx)
+            default_name = default_info.get("name", "")
+            if verbose:
+                self.logger.info(f"System default output device is: '{default_name}' (Index: {system_default_idx})")
+
+            wasapi_hostapi_idx = self._find_hostapi_index(self._preferred_hostapi_name)
+            if wasapi_hostapi_idx is None:
+                self.logger.warning(f"Host API '{self._preferred_hostapi_name}' not found. Using system default device.")
+                return system_default_idx
+
+            all_devices = sd.query_devices()
+            for idx, device in enumerate(all_devices):
+                if (device['hostapi'] == wasapi_hostapi_idx and
+                    device['max_output_channels'] > 0 and
+                    default_name in device.get("name", "")):
+                    if verbose:
+                        self.logger.info(f"Found matching WASAPI device: '{device['name']}' (Index: {idx})")
+                    return idx
+            
+            self.logger.warning(f"Could not find a WASAPI equivalent for '{default_name}'. Falling back to system default.")
+            return system_default_idx
+
+        except Exception as e:
+            self.logger.error(f"Error while searching for audio device: {e}. Falling back to system default.")
+            try:
+                return sd.default.device[1]
+            except Exception:
+                return None
+
+    def _device_name(self, idx):
+        try: return sd.query_devices(idx)["name"]
+        except Exception: return "Unknown Device"
+
+    def _restart_audio_stream(self, new_device_index):
+        with self.lock:
+            if self._current_device_index == new_device_index and self._audio_stream:
+                return
+            if self._audio_stream:
+                try:
+                    self._audio_stream.stop()
+                    self._audio_stream.close()
+                except Exception as e:
+                    self.logger.warning(f"Error closing old audio stream: {e}")
+            self._audio_stream = None
+
+            try:
+                device_info = sd.query_devices(new_device_index)
+                new_samplerate = device_info.get("default_samplerate", DEFAULT_SR)
+
+                if self.samplerate != new_samplerate:
+                    self.samplerate = new_samplerate
+                    self._regenerate_waveforms()
+                    self._phase_inc_shift = self.shift_freq / self.samplerate
+
+                stream = sd.OutputStream(
+                    samplerate=self.samplerate,
+                    channels=2,
+                    dtype="float32",
+                    device=new_device_index,
+                    callback=self._audio_callback
+                )
+                stream.start()
+                self._audio_stream = stream
+                self._current_device_index = new_device_index
+                self._current_device_name = device_info.get("name", "Unknown")
+                self.logger.info(f"Audio stream started on device: '{self._current_device_name}' at {int(self.samplerate)} Hz.")
+            except Exception as e:
+                self.logger.error(f"Failed to start audio stream on device index {new_device_index}: {e}")
+                self._audio_stream, self._current_device_index = None, None
+
+    def _device_watcher_loop(self):
+        while not self._stop_event.is_set():
+            self._stop_event.wait(self._audio_poll_interval)
+            if self._stop_event.is_set(): break
+            
+            target_idx = self._find_target_device(verbose=False)
+            
+            if target_idx is not None and target_idx != self._current_device_index:
+                new_name = self._device_name(target_idx)
+                self.logger.info(f"Default audio device appears to have changed to: '{new_name}'. Restarting stream.")
+                self._find_target_device(verbose=True)
+                self._restart_audio_stream(target_idx)
+
+    def start(self):
+        if not self._is_enabled: return
+        self._stop_event.clear()
+        
+        initial_device_index = self._find_target_device(verbose=True)
+
+        if initial_device_index is None:
+            self.logger.error("No suitable output audio device found. Audio will be disabled.")
+            self._is_enabled = False
+            return
+        
+        self._regenerate_waveforms()
+        self._restart_audio_stream(initial_device_index)
+
+        if self._follow_default_enabled:
+            self._device_watcher_thread = threading.Thread(target=self._device_watcher_loop, daemon=True)
+            self._device_watcher_thread.start()
+            self.logger.info(f"Following OS default output device, preferring Host API '{self._preferred_hostapi_name}'.")
+
+    def stop(self):
+        if not self._is_enabled: return
+        self._stop_event.set()
+        if self._device_watcher_thread:
+            self._device_watcher_thread.join(timeout=self._audio_poll_interval)
+        with self.lock:
+            if self._audio_stream:
+                try:
+                    self._audio_stream.stop()
+                    self._audio_stream.close()
+                except Exception: pass
+            self._audio_stream = None
+        self.logger.info("Audio system stopped.")

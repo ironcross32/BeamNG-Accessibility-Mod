@@ -1,0 +1,35 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.env
+
+# UV
+.uv/
+
+# executables
+*.exe
+
+# libraries
+*.dll
+
+# logs
+*.log*
+*.txt
+
+# HRTF
+*.sofa
+
+# Diagnostic tools
+diagnostic/
+
+# misc
+*.zip
+backup/
+beamtel_config.json
