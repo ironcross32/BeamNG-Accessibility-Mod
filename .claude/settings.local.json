@@ -2,10 +2,31 @@
   "permissions": {
     "allow": [
       "WebSearch",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:wiki.beamng.com)",
+      "WebFetch(domain:documentation.beamng.com)",
+      "WebFetch(domain:www.beamng.com)",
+      "WebFetch(domain:projects.beamng.com)",
+      "WebFetch(domain:torque3d.readthedocs.io)",
+      "Bash(python3:*)",
+      "Bash(xargs grep:*)",
+      "mcp__plugin_context-mode_context-mode__fetch_and_index",
+      "mcp__plugin_context-mode_context-mode__search",
+      "mcp__plugin_context-mode_context-mode__execute_file",
+      "mcp__plugin_context-mode_context-mode__batch_execute",
+      "mcp__plugin_context-mode_context-mode__execute",
+      "Bash(gh api:*)",
+      "Bash(python:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(xargs:*)",
+      "Bash(node:*)",
+      "Bash(cmd:*)",
+      "Bash(cmd.exe:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\bcros\\AppData\\Local\\BeamNG\\BeamNG.drive\\current\\mods\\unpacked\\bng_screenreader_mod"
     ]
-  }
+  },
+  "spinnerTipsEnabled": false
 }

@@ -62,6 +62,25 @@ SCANNER_HALF_DIST_M = 40.0     # The distance at which the beep rate is halfway 
 SCANNER_PITCH_BASE = 0.8       # Pitch multiplier for a target directly behind (-180 deg)
 SCANNER_PITCH_RANGE = 1.2      # Pitch variation (Base + Range = max pitch at 0 deg)
 SCANNER_BEEP_FREQ_HZ = 1000.0  # Base frequency of the beep sound
+SCANNER_ALIGN_THRESHOLD_DEG = 0.5  # Bearing threshold for alignment tone
+
+# NEW: Obstacle Detection Constants
+OBSTACLE_BUZZ_FREQ_HZ = 440.0     # Base frequency of the square wave buzzer
+OBSTACLE_BUZZ_DUR_MS = 80         # Duration of each buzz pulse
+OBSTACLE_MAX_RATE_HZ = 15.0       # Buzzes/sec at very close range
+OBSTACLE_MIN_RATE_HZ = 1.0        # Buzzes/sec at max detection range
+OBSTACLE_HALF_DIST_M = 8.0        # Distance for half-rate (exponential curve)
+OBSTACLE_AMP_DB = -12.0           # Volume level
+OBSTACLE_CONTINUOUS_DIST = 1.0    # Below this distance, play continuous tone
+NUM_OBSTACLE_QUADRANTS = 4        # Front-right, rear-right, rear-left, front-left
+
+# Terrain Warning Constants
+TERRAIN_SWEEP_DUR_MS = 200        # Duration of terrain warning sweep
+TERRAIN_SWEEP_AMP_DB = -14.0      # Volume level for terrain sweeps
+DROPOFF_FREQ_START = 500.0        # Descending sweep start freq
+DROPOFF_FREQ_END = 200.0          # Descending sweep end freq
+HILL_FREQ_START = 200.0           # Ascending sweep start freq
+HILL_FREQ_END = 500.0             # Ascending sweep end freq
 
 # NEW: Low Speed Detection Constants
 LS_CLICK_DUR_MS = 80
@@ -85,6 +104,29 @@ GUIDANCE_FULL_SCALE_DEG = 5.0  # Error amount for max volume/pan
 GUIDANCE_MIN_DBFS = -40.0      # Volume just outside deadzone
 GUIDANCE_MAX_DBFS = -12.0      # Volume at full scale error
 
+# Hydraulic steering misalignment tone
+# Plays when wheels are off-centre (actual_steering ≠ 0) and driver is not actively steering.
+# actual_steering = 0.0 for all non-hydraulic vehicles → auto-detects hydraulic vehicles.
+HYDRO_STEER_TONE_HZ    = 330.0   # pure sine, low but audible
+HYDRO_STEER_AMP_DB     = -18.0   # peak dBFS
+HYDRO_STEER_DEADZONE   = 0.05    # |actual_steering| below this = silent (wheels nearly straight)
+HYDRO_STEER_FULL       = 0.35    # |actual_steering| at which full amplitude is reached
+HYDRO_STEER_INPUT_DEAD = 0.08    # |steering_input| below this = "driver not actively steering"
+
+# Vehicle Details "info available" tone
+DETAILS_TONE_FREQ_HZ = 261.63
+DETAILS_TONE_DUR_MS = 100
+DETAILS_TONE_AMP_DB = -14.0
+
+# Coordinate Guidance FM tone
+COORD_GUIDE_FC_ONCOURSE_HZ  = 440.0   # Carrier Hz when on course (amp is ~0 anyway)
+COORD_GUIDE_FC_OFFCOURSE_HZ = 220.0   # Carrier Hz when 180° off course
+COORD_GUIDE_FM_RATIO_MIN    = 0.25    # fm/fc ratio when on course (quasi-harmonic)
+COORD_GUIDE_FM_RATIO_MAX    = 1.618   # fm/fc ratio when 180° off (golden ratio → inharmonic)
+COORD_GUIDE_MOD_INDEX_MAX   = 3.0     # FM β (modulation index) at 180° off course
+COORD_GUIDE_AMP_DB          = -12.0   # Peak amplitude at 180° off course
+COORD_GUIDE_DEADZONE_DEG    = 5.0     # Silent within this bearing error
+
 class AudioController:
     def __init__(self, logger):
         self.logger = logger
@@ -106,6 +148,13 @@ class AudioController:
         self.CHECK_ENGINE_BUZZER_WAVEFORM = None
         self.OIL_CHIME_WAVEFORM = None
         self.SCANNER_BEEP_WAVEFORM = None # NEW: Scanner beep waveform
+        self.SCANNER_ALIGNED_WAVEFORM = None  # Bright variant for good alignment
+        self.OBSTACLE_BUZZ_WAVEFORM = None  # Obstacle detection square wave
+        self.DROPOFF_SWEEP_WAVEFORM = None  # Terrain drop-off warning
+        self.HILL_SWEEP_WAVEFORM = None     # Steep hill warning
+        self.CAM_CLICK_WAVEFORM = None
+        self.CAM_HIGHLIGHT_CLICK_WAVEFORM = None
+        self.DETAILS_TONE_WAVEFORM = None
 
         # HRTF State
         self._hrtf = None
@@ -132,6 +181,7 @@ class AudioController:
         self._att_min_dbfs = ATT_MIN_DBFS
         self._compass_click_amp = 0.5  # linear, approx -6 dBFS
         self._ls_click_amp_db = LS_AMP_DB
+        self._obstacle_amp = 10.0 ** (OBSTACLE_AMP_DB / 20.0)
 
         # Playback State
         self._click_playback_pos = -1.0
@@ -144,8 +194,25 @@ class AudioController:
         self._buzzer_playback_pos = -1.0
         self._chime_playback_pos = -1.0
         self._click_request = threading.Event()
-        self._highlight_click_request = threading.Event() 
-        self._scanner_playback_pos = -1.0 
+        self._highlight_click_request = threading.Event()
+        self._scanner_playback_pos = -1.0
+        self._details_tone_playback_pos = -1.0
+
+        # Camera compass click state
+        self._cam_click_playback_pos = -1.0
+        self._cam_click_pan_pos = 0.0
+        self._cam_click_pitch_mult = 1.0
+        self._cam_highlight_click_playback_pos = -1.0
+        self._cam_highlight_click_pan_pos = 0.0
+        self._cam_highlight_click_pitch_mult = 1.0
+        self._cam_click_request = threading.Event()
+        self._cam_highlight_click_request = threading.Event()
+        self._cam_click_conv_L = None
+        self._cam_click_conv_R = None
+        self._cam_hclick_conv_L = None
+        self._cam_hclick_conv_R = None
+        self._cam_click_use_hrtf = False
+        self._cam_hclick_use_hrtf = False
 
         # Shared state from main telemetry loop
         self.shift_active = False
@@ -164,12 +231,41 @@ class AudioController:
         self._scanner_target_bearing = 0.0
         self._scanner_target_distance = float('inf')
         self._scanner_beep_timer = 0.0
+        self._scanner_overlap_L = None
+        self._scanner_overlap_R = None
+
+        # NEW: Obstacle Detection State
+        self._obstacle_mode_active = False
+        # Per-quadrant state: [front-right, rear-right, rear-left, front-left]
+        self._obstacle_bearings = [0.0] * NUM_OBSTACLE_QUADRANTS
+        self._obstacle_distances = [float('inf')] * NUM_OBSTACLE_QUADRANTS
+        self._obstacle_types = [0] * NUM_OBSTACLE_QUADRANTS  # 0=none, 1=static, 2=dropoff, 3=hill
+        self._obstacle_buzz_timers = [0.0] * NUM_OBSTACLE_QUADRANTS
+        self._obstacle_playback_pos = [-1.0] * NUM_OBSTACLE_QUADRANTS
+        self._terrain_playback_pos = -1.0
+        self._terrain_type = 0  # 0=none, 2=dropoff, 3=hill
 
         # NEW: Heading Guidance State
         self._guidance_active = False
         self._guidance_error_deg = 0.0
         self._phase_guidance = 0.0
         self._sm_guidance_error = 0.0 # Smoothed error
+
+        # Hydraulic steering misalignment tone state
+        self._hydro_actual_steer    = 0.0
+        self._hydro_steer_input     = 0.0
+        self._hydro_steer_phase     = 0.0
+        self._hydro_steer_overlap_L = None
+        self._hydro_steer_overlap_R = None
+
+        # Coordinate Guidance FM state
+        self._coord_guidance_active = False
+        self._coord_guidance_error = 0.0
+        self._sm_coord_error = 0.0
+        self._coord_phase_carrier = 0.0
+        self._coord_phase_mod = 0.0
+        self._coord_hrtf_overlap_L = None
+        self._coord_hrtf_overlap_R = None
         
         # NEW: Drift Detection State
         self._drift_alert_active = False
@@ -229,6 +325,47 @@ class AudioController:
             self._scanner_target_bearing = float(bearing)
             self._scanner_target_distance = float(distance)
 
+    # NEW: Control methods for obstacle detection
+    def set_obstacle_mode(self, is_active):
+        with self.lock:
+            self._obstacle_mode_active = bool(is_active)
+            if not self._obstacle_mode_active:
+                for i in range(NUM_OBSTACLE_QUADRANTS):
+                    self._obstacle_distances[i] = float('inf')
+                    self._obstacle_types[i] = 0
+                    self._obstacle_playback_pos[i] = -1.0
+                self._terrain_playback_pos = -1.0
+                self._terrain_type = 0
+
+    def update_obstacle(self, obstacle_type, bearing, urgency, distance):
+        """Update obstacle data for the appropriate quadrant."""
+        with self.lock:
+            # Determine quadrant: 0=front-right(0..90), 1=rear-right(90..180),
+            #                     2=rear-left(-180..-90), 3=front-left(-90..0)
+            if obstacle_type in (2, 3):
+                # Terrain warnings go to a separate slot
+                self._terrain_type = obstacle_type
+                self._terrain_playback_pos = 0.0  # trigger playback
+                return
+            if bearing >= 0 and bearing < 90:
+                quad = 0
+            elif bearing >= 90:
+                quad = 1
+            elif bearing < -90:
+                quad = 2
+            else:
+                quad = 3
+            self._obstacle_bearings[quad] = float(bearing)
+            self._obstacle_distances[quad] = float(distance)
+            self._obstacle_types[quad] = int(obstacle_type)
+
+    def clear_obstacles(self):
+        """Clear all obstacle data (no obstacles detected)."""
+        with self.lock:
+            for i in range(NUM_OBSTACLE_QUADRANTS):
+                self._obstacle_distances[i] = float('inf')
+                self._obstacle_types[i] = 0
+
     def apply_config(self, cfg):
         if not self._is_enabled: return
 
@@ -267,10 +404,19 @@ class AudioController:
         # Low speed click amplitude
         self._ls_click_amp_db = float(cfg.get("lowspeed_click_level_dbfs", -14.0))
 
+        # Obstacle detection volume
+        obs_db = float(cfg.get("obstacle_buzz_volume_db", -12.0))
+        self._obstacle_amp = float(10.0 ** (obs_db / 20.0))
+        self.OBSTACLE_BUZZ_WAVEFORM = self._generate_obstacle_buzz()
+        self.DROPOFF_SWEEP_WAVEFORM = self._generate_dropoff_sweep()
+        self.HILL_SWEEP_WAVEFORM = self._generate_hill_sweep()
+
         # Regenerate volume-dependent waveforms
         self.CLICK_WAVEFORM = self._generate_click()
         self.HIGHLIGHT_CLICK_WAVEFORM = self._generate_highlight_click()
         self.LS_CLICK_WAVEFORM = self._generate_lowspeed_click()
+        self.CAM_CLICK_WAVEFORM = self._generate_cam_click()
+        self.CAM_HIGHLIGHT_CLICK_WAVEFORM = self._generate_cam_highlight_click()
 
         self._preferred_hostapi_name = str(cfg.get("preferred_hostapi", "wasapi")).strip().lower()
         self._follow_default_enabled = bool(cfg.get("follow_default_audio_device", True))
@@ -309,6 +455,14 @@ class AudioController:
             # NEW: Heading Guidance
             self._guidance_active = state.get('guidance_active', self._guidance_active)
             self._guidance_error_deg = state.get('guidance_error_deg', self._guidance_error_deg)
+
+            # Hydraulic steering
+            self._hydro_actual_steer = state.get('last_actual_steering', self._hydro_actual_steer)
+            self._hydro_steer_input  = state.get('last_steering_input',  self._hydro_steer_input)
+
+            # Coordinate Guidance
+            self._coord_guidance_active = state.get('coord_guidance_active', self._coord_guidance_active)
+            self._coord_guidance_error = state.get('coord_guidance_error_deg', self._coord_guidance_error)
 
             # NEW: Drift Detection
             self._drift_alert_active = state.get('drift_alert_active', self._drift_alert_active)
@@ -367,6 +521,44 @@ class AudioController:
                 self._highlight_request_pan = math.sin(math.radians(azimuth_deg))
         self._highlight_click_request.set()
 
+    def trigger_cam_compass_click(self, azimuth_deg, pitch_mult):
+        with self.lock:
+            self._cam_click_request_pitch_mult = pitch_mult
+            if self._hrtf is not None and self._hrtf_user_enabled and self.CAM_CLICK_WAVEFORM is not None:
+                hrtf_az = (360.0 - azimuth_deg) % 360.0
+                ir_l, ir_r = self._hrtf.get_hrir(hrtf_az)
+                if ir_l is not None:
+                    gain = self._hrtf_emphasis_gain(hrtf_az) * self._hrtf_distance_gain
+                    self._cam_click_conv_L = (np.convolve(self.CAM_CLICK_WAVEFORM, ir_l, mode='full') * gain).astype(np.float32)
+                    self._cam_click_conv_R = (np.convolve(self.CAM_CLICK_WAVEFORM, ir_r, mode='full') * gain).astype(np.float32)
+                    self._cam_click_use_hrtf = True
+                else:
+                    self._cam_click_use_hrtf = False
+                    self._cam_click_request_pan = math.sin(math.radians(azimuth_deg))
+            else:
+                self._cam_click_use_hrtf = False
+                self._cam_click_request_pan = math.sin(math.radians(azimuth_deg))
+        self._cam_click_request.set()
+
+    def trigger_cam_compass_highlight(self, azimuth_deg, pitch_mult):
+        with self.lock:
+            self._cam_highlight_request_pitch_mult = pitch_mult
+            if self._hrtf is not None and self._hrtf_user_enabled and self.CAM_HIGHLIGHT_CLICK_WAVEFORM is not None:
+                hrtf_az = (360.0 - azimuth_deg) % 360.0
+                ir_l, ir_r = self._hrtf.get_hrir(hrtf_az)
+                if ir_l is not None:
+                    gain = self._hrtf_emphasis_gain(hrtf_az) * self._hrtf_distance_gain
+                    self._cam_hclick_conv_L = (np.convolve(self.CAM_HIGHLIGHT_CLICK_WAVEFORM, ir_l, mode='full') * gain).astype(np.float32)
+                    self._cam_hclick_conv_R = (np.convolve(self.CAM_HIGHLIGHT_CLICK_WAVEFORM, ir_r, mode='full') * gain).astype(np.float32)
+                    self._cam_hclick_use_hrtf = True
+                else:
+                    self._cam_hclick_use_hrtf = False
+                    self._cam_highlight_request_pan = math.sin(math.radians(azimuth_deg))
+            else:
+                self._cam_hclick_use_hrtf = False
+                self._cam_highlight_request_pan = math.sin(math.radians(azimuth_deg))
+        self._cam_highlight_click_request.set()
+
     def trigger_check_engine_buzzer(self):
         if self._is_enabled:
             self._buzzer_playback_pos = 0.0
@@ -375,6 +567,9 @@ class AudioController:
         if self._is_enabled:
             self._chime_playback_pos = 0.0
 
+    def trigger_details_tone(self):
+        if self._is_enabled:
+            self._details_tone_playback_pos = 0.0
 
     # --- Private Methods ---
     
@@ -410,8 +605,15 @@ class AudioController:
         self.CHECK_ENGINE_BUZZER_WAVEFORM = self._generate_check_engine_buzzer(self.buzzer_amp)
         self.OIL_CHIME_WAVEFORM = self._generate_oil_chime(self.chime_amp)
         self.SCANNER_BEEP_WAVEFORM = self._generate_scanner_beep() # NEW
+        self.SCANNER_ALIGNED_WAVEFORM = self._generate_scanner_aligned_beep()
+        self.OBSTACLE_BUZZ_WAVEFORM = self._generate_obstacle_buzz()
+        self.DROPOFF_SWEEP_WAVEFORM = self._generate_dropoff_sweep()
+        self.HILL_SWEEP_WAVEFORM = self._generate_hill_sweep()
         self.GUIDANCE_WAVEFORM = self._generate_guidance_tone() # NEW
         self.LS_CLICK_WAVEFORM = self._generate_lowspeed_click()
+        self.CAM_CLICK_WAVEFORM = self._generate_cam_click()
+        self.CAM_HIGHLIGHT_CLICK_WAVEFORM = self._generate_cam_highlight_click()
+        self.DETAILS_TONE_WAVEFORM = self._generate_details_tone()
         if self._hrtf is not None:
             self._hrtf.resample(self.samplerate)
 
@@ -438,6 +640,31 @@ class AudioController:
         wave /= np.max(np.abs(wave)) # Normalize
         wave *= decay
 
+        fade_len = int(dur_samples * 0.1)
+        if fade_len > 0: wave[-fade_len:] *= np.linspace(1, 0, fade_len)
+        return (wave * self._compass_click_amp).astype(np.float32)
+
+    def _generate_cam_click(self):
+        dur_samples = int(self.samplerate * CLICK_DUR_MS / 1000.0)
+        t = np.linspace(0, CLICK_DUR_MS / 1000.0, dur_samples, endpoint=False)
+        decay = np.exp(-t * (1.0 / (CLICK_DUR_MS / 2000.0)))
+        # FM synthesis: carrier 900 Hz, modulator 450 Hz (CM ratio 2.0), mod index 1.5
+        fc, fm, beta = 900.0, 450.0, 1.5
+        wave = np.sin(2.0 * np.pi * fc * t + beta * np.sin(2.0 * np.pi * fm * t)) * decay
+        fade_len = int(dur_samples * 0.1)
+        if fade_len > 0: wave[-fade_len:] *= np.linspace(1, 0, fade_len)
+        return (wave * self._compass_click_amp).astype(np.float32)
+
+    def _generate_cam_highlight_click(self):
+        dur_samples = int(self.samplerate * CLICK_DUR_MS / 1000.0)
+        t = np.linspace(0, CLICK_DUR_MS / 1000.0, dur_samples, endpoint=False)
+        decay = np.exp(-t * (1.0 / (CLICK_DUR_MS / 2000.0)))
+        # FM synthesis base + 3rd harmonic on carrier for richer accent
+        fc, fm, beta = 900.0, 450.0, 1.5
+        wave = (0.7 * np.sin(2.0 * np.pi * fc * t + beta * np.sin(2.0 * np.pi * fm * t)) +
+                0.3 * np.sin(2.0 * np.pi * fc * 3 * t + beta * np.sin(2.0 * np.pi * fm * t)))
+        wave /= np.max(np.abs(wave))
+        wave *= decay
         fade_len = int(dur_samples * 0.1)
         if fade_len > 0: wave[-fade_len:] *= np.linspace(1, 0, fade_len)
         return (wave * self._compass_click_amp).astype(np.float32)
@@ -476,15 +703,74 @@ class AudioController:
         amp_env /= np.max(amp_env)
         return (amplitude * amp_env * wave).astype(np.float32)
 
-    # NEW: Function to generate the scanner beep waveform
+    # Vehicle scanner beep: triangle wave carrier FM-modulated by a sine
+    # Modulator:carrier ratio 2:1, modulation index 1.0
     def _generate_scanner_beep(self):
         dur_samples = int(self.samplerate * SCANNER_BEEP_DUR_MS / 1000.0)
         t = np.linspace(0, SCANNER_BEEP_DUR_MS / 1000.0, dur_samples, endpoint=False)
-        # Simple sine wave with a decay envelope to make it a "beep"
         envelope = np.exp(-t * (1.0 / (SCANNER_BEEP_DUR_MS / 4000.0)))
-        wave = np.sin(2.0 * np.pi * SCANNER_BEEP_FREQ_HZ * t) * envelope
-        return (wave * 0.25).astype(np.float32) # Lower amplitude by default
+        fc = SCANNER_BEEP_FREQ_HZ            # carrier frequency
+        fm = 2.0 * fc                         # modulator frequency (2:1 ratio)
+        beta = 1.0                            # modulation index
+        # FM instantaneous phase: carrier phase + index * sin(modulator)
+        phase = 2.0 * np.pi * fc * t + beta * np.sin(2.0 * np.pi * fm * t)
+        # Triangle wave from phase via arcsine of sine
+        wave = (2.0 / np.pi) * np.arcsin(np.sin(phase))
+        return (wave * envelope * 0.25).astype(np.float32)
         
+    # Vehicle scanner aligned beep: same base but with added odd harmonics for brightness
+    def _generate_scanner_aligned_beep(self):
+        dur_samples = int(self.samplerate * SCANNER_BEEP_DUR_MS / 1000.0)
+        t = np.linspace(0, SCANNER_BEEP_DUR_MS / 1000.0, dur_samples, endpoint=False)
+        envelope = np.exp(-t * (1.0 / (SCANNER_BEEP_DUR_MS / 4000.0)))
+        fc = SCANNER_BEEP_FREQ_HZ
+        phase = 2.0 * np.pi * fc * t
+        # Base sine + odd harmonics (3rd, 5th, 7th) for bright, distinctive tone
+        wave = (np.sin(phase)
+                + 0.4 * np.sin(3.0 * phase)
+                + 0.25 * np.sin(5.0 * phase)
+                + 0.15 * np.sin(7.0 * phase))
+        wave /= np.max(np.abs(wave))
+        return (wave * envelope * 0.25).astype(np.float32)
+
+    # Obstacle detection: harsh square wave buzzer
+    def _generate_obstacle_buzz(self):
+        dur_samples = int(self.samplerate * OBSTACLE_BUZZ_DUR_MS / 1000.0)
+        t = np.linspace(0, OBSTACLE_BUZZ_DUR_MS / 1000.0, dur_samples, endpoint=False)
+        amplitude = self._obstacle_amp
+        # Square wave via sign(sin)
+        wave = np.sign(np.sin(2.0 * np.pi * OBSTACLE_BUZZ_FREQ_HZ * t))
+        # Sharp attack, short decay envelope
+        envelope = np.ones(dur_samples, dtype=np.float32)
+        fade_start = int(dur_samples * 0.7)
+        fade_len = dur_samples - fade_start
+        if fade_len > 0:
+            envelope[fade_start:] = np.linspace(1, 0, fade_len)
+        return (wave * envelope * amplitude).astype(np.float32)
+
+    # Terrain drop-off warning: descending pitch sweep
+    def _generate_dropoff_sweep(self):
+        dur_samples = int(self.samplerate * TERRAIN_SWEEP_DUR_MS / 1000.0)
+        t = np.linspace(0, TERRAIN_SWEEP_DUR_MS / 1000.0, dur_samples, endpoint=False)
+        amplitude = 10.0 ** (TERRAIN_SWEEP_AMP_DB / 20.0)
+        # Exponential frequency sweep from high to low
+        freq = DROPOFF_FREQ_START * (DROPOFF_FREQ_END / DROPOFF_FREQ_START) ** (t / (TERRAIN_SWEEP_DUR_MS / 1000.0))
+        phase = 2.0 * np.pi * np.cumsum(freq) / self.samplerate
+        wave = np.sign(np.sin(phase))  # square wave sweep
+        envelope = np.exp(-t * 3.0 / (TERRAIN_SWEEP_DUR_MS / 1000.0))
+        return (wave * envelope * amplitude).astype(np.float32)
+
+    # Steep hill warning: ascending pitch sweep
+    def _generate_hill_sweep(self):
+        dur_samples = int(self.samplerate * TERRAIN_SWEEP_DUR_MS / 1000.0)
+        t = np.linspace(0, TERRAIN_SWEEP_DUR_MS / 1000.0, dur_samples, endpoint=False)
+        amplitude = 10.0 ** (TERRAIN_SWEEP_AMP_DB / 20.0)
+        freq = HILL_FREQ_START * (HILL_FREQ_END / HILL_FREQ_START) ** (t / (TERRAIN_SWEEP_DUR_MS / 1000.0))
+        phase = 2.0 * np.pi * np.cumsum(freq) / self.samplerate
+        wave = np.sign(np.sin(phase))
+        envelope = np.exp(-t * 3.0 / (TERRAIN_SWEEP_DUR_MS / 1000.0))
+        return (wave * envelope * amplitude).astype(np.float32)
+
     def _generate_guidance_tone(self):
         # A simple, clean sine wave. Amplitude modulation happens in the callback.
         # We'll just return a single period or a small buffer, but since we synthesize continuously
@@ -507,6 +793,23 @@ class AudioController:
         amp = float(10.0 ** (self._ls_click_amp_db / 20.0))
         return (amp * envelope * carrier).astype(np.float32)
 
+    def _generate_details_tone(self):
+        dur_samples = int(self.samplerate * DETAILS_TONE_DUR_MS / 1000.0)
+        t = np.linspace(0, DETAILS_TONE_DUR_MS / 1000.0, dur_samples, endpoint=False)
+        phase = (DETAILS_TONE_FREQ_HZ * t) % 1.0
+        wave = 2.0 * np.abs(2.0 * phase - 1.0) - 1.0
+        # ~2ms linear attack ramp
+        attack_samples = int(self.samplerate * 0.002)
+        if attack_samples > 0:
+            wave[:attack_samples] *= np.linspace(0, 1, attack_samples)
+        # Sharp cubic fade out starting at 30ms
+        fade_start = int(self.samplerate * 0.030)
+        fade_len = dur_samples - fade_start
+        if fade_len > 0:
+            wave[fade_start:] *= np.linspace(1, 0, fade_len) ** 3
+        amp = float(10.0 ** (DETAILS_TONE_AMP_DB / 20.0))
+        return (wave * amp).astype(np.float32)
+
     def _audio_callback(self, outdata, frames, time_info, status):
         if self._click_request.is_set():
             with self.lock:
@@ -524,6 +827,22 @@ class AudioController:
                     self._highlight_click_pan_pos = self._highlight_request_pan
             self._highlight_click_request.clear()
 
+        if self._cam_click_request.is_set():
+            with self.lock:
+                self._cam_click_playback_pos = 0.0
+                self._cam_click_pitch_mult = self._cam_click_request_pitch_mult
+                if not self._cam_click_use_hrtf:
+                    self._cam_click_pan_pos = self._cam_click_request_pan
+            self._cam_click_request.clear()
+
+        if self._cam_highlight_click_request.is_set():
+            with self.lock:
+                self._cam_highlight_click_playback_pos = 0.0
+                self._cam_highlight_click_pitch_mult = self._cam_highlight_request_pitch_mult
+                if not self._cam_hclick_use_hrtf:
+                    self._cam_highlight_click_pan_pos = self._cam_highlight_request_pan
+            self._cam_highlight_click_request.clear()
+
         with self.lock:
             # Copy all necessary state variables to local scope to minimize time holding the lock
             shift_on, pt_on = self.shift_active, self.pedal_tones_active
@@ -533,9 +852,22 @@ class AudioController:
             scan_active = self._scan_mode_active
             scan_bearing = self._scanner_target_bearing
             scan_dist = self._scanner_target_distance
+            # Obstacle detection snapshot
+            obs_active = self._obstacle_mode_active
+            obs_bearings = list(self._obstacle_bearings)
+            obs_distances = list(self._obstacle_distances)
+            obs_types = list(self._obstacle_types)
+            terrain_type = self._terrain_type
             # NEW: Guidance state
             guide_active = self._guidance_active
             guide_error = self._guidance_error_deg
+            # Hydraulic steering
+            hydro_actual = self._hydro_actual_steer
+            hydro_input  = self._hydro_steer_input
+
+            # Coordinate Guidance
+            coord_guide_active = self._coord_guidance_active
+            coord_guide_error = self._coord_guidance_error
             # NEW: Low speed state
             ls_active = self._ls_clicks_active
             ls_speed_mph = self._ls_speed_mph
@@ -547,6 +879,7 @@ class AudioController:
             ('_tc_playback_pos', self.TC_TONE_WAVEFORM),
             ('_buzzer_playback_pos', self.CHECK_ENGINE_BUZZER_WAVEFORM),
             ('_chime_playback_pos', self.OIL_CHIME_WAVEFORM),
+            ('_details_tone_playback_pos', self.DETAILS_TONE_WAVEFORM),
         ]
         for pos_attr, waveform in playback_states:
             pos = getattr(self, pos_attr)
@@ -612,6 +945,62 @@ class AudioController:
                     bufR[valid_mask] += click_segment * Rg
                 next_pos = self._highlight_click_playback_pos + frames * self._highlight_click_pitch_mult
                 self._highlight_click_playback_pos = next_pos if next_pos < (click_len - 1) else -1.0
+
+        # Camera compass click playback
+        if self._cam_click_playback_pos >= 0:
+            if self._cam_click_use_hrtf and self._cam_click_conv_L is not None:
+                click_len = len(self._cam_click_conv_L)
+                indices = self._cam_click_playback_pos + np.arange(frames) * self._cam_click_pitch_mult
+                valid_mask = indices < (click_len - 1)
+                if np.any(valid_mask):
+                    valid_indices = indices[valid_mask]
+                    idx_floor, fract = np.floor(valid_indices).astype(int), valid_indices - np.floor(valid_indices)
+                    bufL[valid_mask] += self._cam_click_conv_L[idx_floor] + (self._cam_click_conv_L[idx_floor + 1] - self._cam_click_conv_L[idx_floor]) * fract
+                    bufR[valid_mask] += self._cam_click_conv_R[idx_floor] + (self._cam_click_conv_R[idx_floor + 1] - self._cam_click_conv_R[idx_floor]) * fract
+                next_pos = self._cam_click_playback_pos + frames * self._cam_click_pitch_mult
+                self._cam_click_playback_pos = next_pos if next_pos < (click_len - 1) else -1.0
+            elif self.CAM_CLICK_WAVEFORM is not None:
+                click_len = len(self.CAM_CLICK_WAVEFORM)
+                indices = self._cam_click_playback_pos + np.arange(frames) * self._cam_click_pitch_mult
+                valid_mask = indices < (click_len - 1)
+                if np.any(valid_mask):
+                    valid_indices = indices[valid_mask]
+                    idx_floor, fract = np.floor(valid_indices).astype(int), valid_indices - np.floor(valid_indices)
+                    sample1, sample2 = self.CAM_CLICK_WAVEFORM[idx_floor], self.CAM_CLICK_WAVEFORM[idx_floor + 1]
+                    click_segment = sample1 + (sample2 - sample1) * fract
+                    Lg, Rg = self._pan_gains(self._cam_click_pan_pos)
+                    bufL[valid_mask] += click_segment * Lg
+                    bufR[valid_mask] += click_segment * Rg
+                next_pos = self._cam_click_playback_pos + frames * self._cam_click_pitch_mult
+                self._cam_click_playback_pos = next_pos if next_pos < (click_len - 1) else -1.0
+
+        # Camera compass highlight click playback
+        if self._cam_highlight_click_playback_pos >= 0:
+            if self._cam_hclick_use_hrtf and self._cam_hclick_conv_L is not None:
+                click_len = len(self._cam_hclick_conv_L)
+                indices = self._cam_highlight_click_playback_pos + np.arange(frames) * self._cam_highlight_click_pitch_mult
+                valid_mask = indices < (click_len - 1)
+                if np.any(valid_mask):
+                    valid_indices = indices[valid_mask]
+                    idx_floor, fract = np.floor(valid_indices).astype(int), valid_indices - np.floor(valid_indices)
+                    bufL[valid_mask] += self._cam_hclick_conv_L[idx_floor] + (self._cam_hclick_conv_L[idx_floor + 1] - self._cam_hclick_conv_L[idx_floor]) * fract
+                    bufR[valid_mask] += self._cam_hclick_conv_R[idx_floor] + (self._cam_hclick_conv_R[idx_floor + 1] - self._cam_hclick_conv_R[idx_floor]) * fract
+                next_pos = self._cam_highlight_click_playback_pos + frames * self._cam_highlight_click_pitch_mult
+                self._cam_highlight_click_playback_pos = next_pos if next_pos < (click_len - 1) else -1.0
+            elif self.CAM_HIGHLIGHT_CLICK_WAVEFORM is not None:
+                click_len = len(self.CAM_HIGHLIGHT_CLICK_WAVEFORM)
+                indices = self._cam_highlight_click_playback_pos + np.arange(frames) * self._cam_highlight_click_pitch_mult
+                valid_mask = indices < (click_len - 1)
+                if np.any(valid_mask):
+                    valid_indices = indices[valid_mask]
+                    idx_floor, fract = np.floor(valid_indices).astype(int), valid_indices - np.floor(valid_indices)
+                    sample1, sample2 = self.CAM_HIGHLIGHT_CLICK_WAVEFORM[idx_floor], self.CAM_HIGHLIGHT_CLICK_WAVEFORM[idx_floor + 1]
+                    click_segment = sample1 + (sample2 - sample1) * fract
+                    Lg, Rg = self._pan_gains(self._cam_highlight_click_pan_pos)
+                    bufL[valid_mask] += click_segment * Lg
+                    bufR[valid_mask] += click_segment * Rg
+                next_pos = self._cam_highlight_click_playback_pos + frames * self._cam_highlight_click_pitch_mult
+                self._cam_highlight_click_playback_pos = next_pos if next_pos < (click_len - 1) else -1.0
 
         if shift_on:
             t = (np.arange(frames) * self._phase_inc_shift + self._phase_shift) % 1.0
@@ -842,6 +1231,7 @@ class AudioController:
 
 
         # NEW: Vehicle Scanner audio logic
+        scanner_produced_audio = False
         if scan_active and scan_dist != float('inf'):
             # Calculate beep repetition rate based on distance (exponentially)
             rate_norm = math.exp(-scan_dist / SCANNER_HALF_DIST_M)
@@ -856,31 +1246,132 @@ class AudioController:
 
             # Mix the beep if it's currently playing
             if self._scanner_playback_pos >= 0 and self.SCANNER_BEEP_WAVEFORM is not None:
-                beep_len = len(self.SCANNER_BEEP_WAVEFORM)
+                # Select waveform: bright aligned variant when within threshold
+                aligned = abs(scan_bearing) <= SCANNER_ALIGN_THRESHOLD_DEG
+                active_wf = self.SCANNER_ALIGNED_WAVEFORM if (aligned and self.SCANNER_ALIGNED_WAVEFORM is not None) else self.SCANNER_BEEP_WAVEFORM
+                beep_len = len(active_wf)
                 # Calculate pitch based on bearing
                 pitch_norm = 1.0 - (abs(scan_bearing) / 180.0) # 1.0 front, 0.0 back
                 pitch_mult = SCANNER_PITCH_BASE + SCANNER_PITCH_RANGE * pitch_norm
-                
+
                 indices = self._scanner_playback_pos + np.arange(frames) * pitch_mult
                 valid_mask = indices < (beep_len - 1)
-                
+
                 if np.any(valid_mask):
                     valid_indices = indices[valid_mask]
                     idx_floor = valid_indices.astype(int)
                     fract = valid_indices - idx_floor
-                    sample1, sample2 = self.SCANNER_BEEP_WAVEFORM[idx_floor], self.SCANNER_BEEP_WAVEFORM[idx_floor + 1]
+                    sample1, sample2 = active_wf[idx_floor], active_wf[idx_floor + 1]
                     beep_segment = sample1 + (sample2 - sample1) * fract
-                    
-                    # Pan the sound left/right based on bearing
-                    pan_pos = scan_bearing / 90.0 # Map +/- 90 degrees to full left/right pan
-                    Lg, Rg = self._pan_gains(pan_pos)
-                    
-                    bufL[valid_mask] += beep_segment * Lg
-                    bufR[valid_mask] += beep_segment * Rg
+
+                    # Build a full-frame mono buffer for this beep (needed for HRTF convolution)
+                    mono_scan = np.zeros(frames, dtype=np.float32)
+                    mono_scan[valid_mask] = beep_segment
+
+                    # HRTF azimuth from bearing (negate bearing to fix direction)
+                    # Convention: scan_bearing > 0 from Lua = target to the left
+                    # HRTF: 90° = left, 270° = right
+                    hrtf_az_scan = scan_bearing % 360.0
+
+                    if self._hrtf is not None and self._hrtf_user_enabled:
+                        ir_l, ir_r = self._hrtf.get_hrir(hrtf_az_scan)
+                        if ir_l is not None:
+                            conv_l = np.convolve(mono_scan, ir_l, mode='full')
+                            conv_r = np.convolve(mono_scan, ir_r, mode='full')
+                            if self._scanner_overlap_L is not None:
+                                ol = min(len(self._scanner_overlap_L), len(conv_l))
+                                conv_l[:ol] += self._scanner_overlap_L[:ol]
+                                conv_r[:ol] += self._scanner_overlap_R[:ol]
+                            bufL += conv_l[:frames].astype(np.float32)
+                            bufR += conv_r[:frames].astype(np.float32)
+                            self._scanner_overlap_L = conv_l[frames:].copy()
+                            self._scanner_overlap_R = conv_r[frames:].copy()
+                            scanner_produced_audio = True
+                        else:
+                            # HRTF IR unavailable: proportional stereo pan (negated for correct direction)
+                            pan_pos = -scan_bearing / 90.0
+                            Lg, Rg = self._pan_gains(pan_pos)
+                            bufL[valid_mask] += beep_segment * Lg
+                            bufR[valid_mask] += beep_segment * Rg
+                    else:
+                        # No HRTF: proportional stereo pan (negated for correct direction)
+                        pan_pos = -scan_bearing / 90.0
+                        Lg, Rg = self._pan_gains(pan_pos)
+                        bufL[valid_mask] += beep_segment * Lg
+                        bufR[valid_mask] += beep_segment * Rg
 
                 next_pos = self._scanner_playback_pos + frames * pitch_mult
                 self._scanner_playback_pos = next_pos if next_pos < (beep_len - 1) else -1.0
 
+        # Drain scanner HRTF tail when no beep audio was produced this frame
+        if not scanner_produced_audio:
+            if self._scanner_overlap_L is not None and len(self._scanner_overlap_L) > 0:
+                ol = min(len(self._scanner_overlap_L), frames)
+                bufL[:ol] += self._scanner_overlap_L[:ol].astype(np.float32)
+                bufR[:ol] += self._scanner_overlap_R[:ol].astype(np.float32)
+            self._scanner_overlap_L = None
+            self._scanner_overlap_R = None
+
+
+        # NEW: Obstacle Detection audio logic
+        if obs_active and self.OBSTACLE_BUZZ_WAVEFORM is not None:
+            buzz_len = len(self.OBSTACLE_BUZZ_WAVEFORM)
+            dt_obs = frames / self.samplerate
+
+            for q in range(NUM_OBSTACLE_QUADRANTS):
+                if obs_types[q] == 0 or obs_distances[q] == float('inf'):
+                    self._obstacle_playback_pos[q] = -1.0
+                    continue
+
+                dist = obs_distances[q]
+                bearing = obs_bearings[q]
+
+                if dist <= OBSTACLE_CONTINUOUS_DIST:
+                    # Continuous tone for imminent collision
+                    if self._obstacle_playback_pos[q] < 0:
+                        self._obstacle_playback_pos[q] = 0.0
+                else:
+                    # Rate-based buzzing
+                    rate_norm = math.exp(-dist / OBSTACLE_HALF_DIST_M)
+                    rate_hz = OBSTACLE_MIN_RATE_HZ + (OBSTACLE_MAX_RATE_HZ - OBSTACLE_MIN_RATE_HZ) * rate_norm
+                    interval_sec = 1.0 / rate_hz
+
+                    self._obstacle_buzz_timers[q] += dt_obs
+                    if self._obstacle_buzz_timers[q] >= interval_sec:
+                        self._obstacle_buzz_timers[q] = 0
+                        self._obstacle_playback_pos[q] = 0.0
+
+                # Mix the buzz if currently playing
+                if self._obstacle_playback_pos[q] >= 0:
+                    pos = self._obstacle_playback_pos[q]
+                    end_pos = pos + frames
+                    start_i = int(pos)
+                    num_to_mix = min(frames, buzz_len - start_i)
+
+                    if num_to_mix > 0:
+                        segment = self.OBSTACLE_BUZZ_WAVEFORM[start_i:start_i + num_to_mix]
+                        # Stereo pan based on bearing (negate for correct direction)
+                        pan_pos = -bearing / 90.0
+                        Lg, Rg = self._pan_gains(pan_pos)
+                        bufL[:num_to_mix] += segment * Lg
+                        bufR[:num_to_mix] += segment * Rg
+
+                    self._obstacle_playback_pos[q] = end_pos if end_pos < buzz_len else -1.0
+
+            # Terrain warning sweep playback
+            if self._terrain_playback_pos >= 0:
+                sweep_wf = self.DROPOFF_SWEEP_WAVEFORM if terrain_type == 2 else self.HILL_SWEEP_WAVEFORM
+                if sweep_wf is not None:
+                    sweep_len = len(sweep_wf)
+                    pos = int(self._terrain_playback_pos)
+                    num_to_mix = min(frames, sweep_len - pos)
+                    if num_to_mix > 0:
+                        segment = sweep_wf[pos:pos + num_to_mix]
+                        # Center-panned (ahead of vehicle)
+                        bufL[:num_to_mix] += segment
+                        bufR[:num_to_mix] += segment
+                    next_pos = pos + frames
+                    self._terrain_playback_pos = float(next_pos) if next_pos < sweep_len else -1.0
 
         # NEW: Low Speed Detection Logic
         dt_ls = frames / self.samplerate
@@ -1015,6 +1506,143 @@ class AudioController:
         else:
              self._sm_guidance_error = 0.0 # Reset when off
 
+        # Hydraulic steering misalignment tone
+        # Active when: driver not steering (|input| < DEAD) AND wheels off-centre (|actual| > DEAD).
+        # actual_steering is 0.0 for all non-hydraulic vehicles, so this never fires on normal cars.
+        # Plays continuously while steering is off-centre; HRTF azimuth is proportional to offset
+        # so the tone smoothly moves from the ear towards centre as the vehicle straightens.
+        abs_hydro = abs(hydro_actual)
+        if abs_hydro > HYDRO_STEER_DEADZONE:
+            norm = self._clamp(
+                (abs_hydro - HYDRO_STEER_DEADZONE) / (HYDRO_STEER_FULL - HYDRO_STEER_DEADZONE)
+            )
+            amp = float(10.0 ** (HYDRO_STEER_AMP_DB / 20.0)) * norm
+            n = np.arange(frames, dtype=np.float64)
+            phase_arr = self._hydro_steer_phase + n * (HYDRO_STEER_TONE_HZ / self.samplerate)
+            mono_hs = (amp * np.sin(2.0 * np.pi * phase_arr)).astype(np.float32)
+            if frames > 0:
+                self._hydro_steer_phase = (phase_arr[-1] + HYDRO_STEER_TONE_HZ / self.samplerate) % 1.0
+            # HRTF azimuth proportional to steering: 90° = full left, 270° = full right, 0° = centre
+            hrtf_az_hs = (90.0 * hydro_actual) % 360.0
+            if self._hrtf is not None and self._hrtf_user_enabled:
+                ir_l, ir_r = self._hrtf.get_hrir(hrtf_az_hs)
+                if ir_l is not None:
+                    conv_l = np.convolve(mono_hs, ir_l, mode='full')
+                    conv_r = np.convolve(mono_hs, ir_r, mode='full')
+                    if self._hydro_steer_overlap_L is not None:
+                        ol = min(len(self._hydro_steer_overlap_L), len(conv_l))
+                        conv_l[:ol] += self._hydro_steer_overlap_L[:ol]
+                        conv_r[:ol] += self._hydro_steer_overlap_R[:ol]
+                    bufL += conv_l[:frames].astype(np.float32)
+                    bufR += conv_r[:frames].astype(np.float32)
+                    self._hydro_steer_overlap_L = conv_l[frames:].copy()
+                    self._hydro_steer_overlap_R = conv_r[frames:].copy()
+                else:
+                    # HRTF unavailable: proportional stereo pan
+                    pan = self._clamp(hydro_actual)  # -1 = right, +1 = left
+                    bufL += mono_hs * max(0.0, pan)
+                    bufR += mono_hs * max(0.0, -pan)
+                    self._hydro_steer_overlap_L = None
+                    self._hydro_steer_overlap_R = None
+            else:
+                pan = self._clamp(hydro_actual)
+                bufL += mono_hs * max(0.0, pan)
+                bufR += mono_hs * max(0.0, -pan)
+                self._hydro_steer_overlap_L = None
+                self._hydro_steer_overlap_R = None
+        else:
+            # Not active: drain any remaining HRTF tail
+            if self._hydro_steer_overlap_L is not None and len(self._hydro_steer_overlap_L) > 0:
+                ol = min(len(self._hydro_steer_overlap_L), frames)
+                bufL[:ol] += self._hydro_steer_overlap_L[:ol].astype(np.float32)
+                bufR[:ol] += self._hydro_steer_overlap_R[:ol].astype(np.float32)
+            self._hydro_steer_overlap_L = None
+            self._hydro_steer_overlap_R = None
+
+        # Coordinate Guidance FM tone
+        if coord_guide_active:
+            dt_cg = frames / self.samplerate
+            beta_cg = 1.0 - math.exp(-dt_cg / 0.15)  # 150 ms smoothing
+            self._sm_coord_error += beta_cg * (coord_guide_error - self._sm_coord_error)
+
+            abs_err = abs(self._sm_coord_error)
+
+            if abs_err > COORD_GUIDE_DEADZONE_DEG:
+                # error_norm: 0 = just outside deadzone, 1 = 180° off course
+                error_norm = self._clamp(
+                    (abs_err - COORD_GUIDE_DEADZONE_DEG) / (180.0 - COORD_GUIDE_DEADZONE_DEG)
+                )
+
+                amp = float(10.0 ** (COORD_GUIDE_AMP_DB / 20.0)) * error_norm
+
+                fc = COORD_GUIDE_FC_OFFCOURSE_HZ + (
+                    COORD_GUIDE_FC_ONCOURSE_HZ - COORD_GUIDE_FC_OFFCOURSE_HZ
+                ) * (1.0 - error_norm)
+
+                fm_ratio = COORD_GUIDE_FM_RATIO_MIN + (
+                    COORD_GUIDE_FM_RATIO_MAX - COORD_GUIDE_FM_RATIO_MIN
+                ) * error_norm
+                fm = fc * fm_ratio
+
+                mod_index = COORD_GUIDE_MOD_INDEX_MAX * error_norm
+
+                n = np.arange(frames, dtype=np.float64)
+                mod_phase_arr = self._coord_phase_mod + n * (fm / self.samplerate)
+                mod_sig = mod_index * np.sin(2.0 * np.pi * mod_phase_arr)
+                car_phase_arr = self._coord_phase_carrier + n * (fc / self.samplerate)
+                mono_tone = (amp * np.sin(2.0 * np.pi * car_phase_arr + mod_sig)).astype(np.float32)
+
+                if frames > 0:
+                    self._coord_phase_carrier = (car_phase_arr[-1] + fc / self.samplerate) % 1.0
+                    self._coord_phase_mod = (mod_phase_arr[-1] + fm / self.samplerate) % 1.0
+
+                # Spatialize: bearing error maps to HRTF azimuth.
+                # 0° error = target ahead (az 0°), positive error = target left (az 90°),
+                # negative error = target right (az 270°), ±180° = target behind (az 180°).
+                hrtf_az = self._sm_coord_error % 360.0
+                if self._hrtf is not None and self._hrtf_user_enabled:
+                    ir_l, ir_r = self._hrtf.get_hrir(hrtf_az)
+                    if ir_l is not None:
+                        conv_l = np.convolve(mono_tone, ir_l, mode='full')
+                        conv_r = np.convolve(mono_tone, ir_r, mode='full')
+                        if self._coord_hrtf_overlap_L is not None:
+                            ol = min(len(self._coord_hrtf_overlap_L), len(conv_l))
+                            conv_l[:ol] += self._coord_hrtf_overlap_L[:ol]
+                            conv_r[:ol] += self._coord_hrtf_overlap_R[:ol]
+                        bufL += conv_l[:frames].astype(np.float32)
+                        bufR += conv_r[:frames].astype(np.float32)
+                        self._coord_hrtf_overlap_L = conv_l[frames:].copy()
+                        self._coord_hrtf_overlap_R = conv_r[frames:].copy()
+                    else:
+                        pan_val = self._clamp(-self._sm_coord_error / 180.0, -1.0, 1.0)
+                        Lg, Rg = self._pan_gains(pan_val)
+                        bufL += mono_tone * Lg
+                        bufR += mono_tone * Rg
+                        self._coord_hrtf_overlap_L = None
+                        self._coord_hrtf_overlap_R = None
+                else:
+                    pan_val = self._clamp(-self._sm_coord_error / 180.0, -1.0, 1.0)
+                    Lg, Rg = self._pan_gains(pan_val)
+                    bufL += mono_tone * Lg
+                    bufR += mono_tone * Rg
+                    self._coord_hrtf_overlap_L = None
+                    self._coord_hrtf_overlap_R = None
+            else:
+                # In deadzone: drain HRTF tail
+                if self._coord_hrtf_overlap_L is not None and len(self._coord_hrtf_overlap_L) > 0:
+                    ol = min(len(self._coord_hrtf_overlap_L), frames)
+                    bufL[:ol] += self._coord_hrtf_overlap_L[:ol].astype(np.float32)
+                    bufR[:ol] += self._coord_hrtf_overlap_R[:ol].astype(np.float32)
+                    self._coord_hrtf_overlap_L = None
+                    self._coord_hrtf_overlap_R = None
+        else:
+            self._sm_coord_error = 0.0
+            if self._coord_hrtf_overlap_L is not None and len(self._coord_hrtf_overlap_L) > 0:
+                ol = min(len(self._coord_hrtf_overlap_L), frames)
+                bufL[:ol] += self._coord_hrtf_overlap_L[:ol].astype(np.float32)
+                bufR[:ol] += self._coord_hrtf_overlap_R[:ol].astype(np.float32)
+            self._coord_hrtf_overlap_L = None
+            self._coord_hrtf_overlap_R = None
 
         out = np.stack([bufL, bufR], axis=1).astype(np.float32)
         np.clip(out, -0.999, 0.999, out=out)

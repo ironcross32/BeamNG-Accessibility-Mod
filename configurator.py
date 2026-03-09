@@ -69,6 +69,7 @@ DEFAULT_CONFIG = {
     "follow_default_audio_device": True,
     "preferred_hostapi": "wasapi",
     "audio_poll_interval_sec": 2.0,
+    "launch_beamng": False,
 }
 
 
@@ -210,6 +211,7 @@ def load_config():
         _coerce("hrtf_enabled", bool, True)
         _coerce("hrtf_front_emphasis_db", float, -6.0)
         _coerce("hrtf_distance_gain_db", float, 0.0)
+        _coerce("launch_beamng", bool, False)
         _coerce("follow_default_audio_device", bool, True)
         _coerce("preferred_hostapi", str, "wasapi")
         _coerce("audio_poll_interval_sec", float, 2.0)
@@ -327,6 +329,10 @@ class ConfigFrame(wx.Frame):
         self.rb_proto.SetName("Telemetry Protocol")
         self.rb_proto.SetToolTip("Must match the protocol selected in the BeamNG.drive UI app.")
         gen.Add(self.rb_proto, 0, wx.LEFT|wx.RIGHT|wx.BOTTOM| wx.EXPAND, 6)
+        self.chk_launch_beamng = wx.CheckBox(self.panel, label="&Launch BeamNG.drive on startup")
+        self.chk_launch_beamng.SetToolTip("Automatically launch BeamNG.drive via Steam when BeamTel starts.")
+        self.chk_launch_beamng.SetName("Launch BeamNG.drive on startup")
+        gen.Add(self.chk_launch_beamng, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
         lbl_dwell = wx.StaticText(self.panel, label="&Neutral dwell (ms):")
         self.spin_dwell = wx.SpinCtrl(self.panel, min=0, max=5000)
         self.spin_dwell.SetToolTip("How long to remain in neutral before speaking 'neutral' (debounce).")
@@ -630,6 +636,7 @@ class ConfigFrame(wx.Frame):
         self.spin_pitch_roll_min.SetValue(cfg.get("pitch_roll_min_dbfs", -36.0))
         self.chk_oil_chime_enabled.SetValue(cfg.get("oil_chime_enabled", True))
         self.chk_tc_clicks_enabled.SetValue(cfg.get("tc_clicks_enabled", True))
+        self.chk_launch_beamng.SetValue(cfg.get("launch_beamng", False))
         self.chk_follow_device.SetValue(cfg.get("follow_default_audio_device", True))
         self.txt_hostapi.SetValue(cfg.get("preferred_hostapi", "wasapi"))
         self.spin_poll.SetValue(cfg.get("audio_poll_interval_sec", 2.0))
@@ -659,6 +666,7 @@ class ConfigFrame(wx.Frame):
         cfg["pitch_roll_min_dbfs"] = self.spin_pitch_roll_min.GetValue()
         cfg["oil_chime_enabled"] = self.chk_oil_chime_enabled.GetValue()
         cfg["tc_clicks_enabled"] = self.chk_tc_clicks_enabled.GetValue()
+        cfg["launch_beamng"] = self.chk_launch_beamng.GetValue()
         cfg["follow_default_audio_device"] = self.chk_follow_device.GetValue()
         cfg["preferred_hostapi"] = self.txt_hostapi.GetValue().strip()
         cfg["audio_poll_interval_sec"] = self.spin_poll.GetValue()

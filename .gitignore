@@ -31,5 +31,16 @@ diagnostic/
 
 # misc
 *.zip
+*.PNG
+*.png
 backup/
 beamtel_config.json
+
+# Build artifacts
+configurator.dist/
+configurator.build/
+configurator.onefile-build/
+
+# Third-party BeamNG mods (not part of this project)
+boxutility/
+log_trailer/

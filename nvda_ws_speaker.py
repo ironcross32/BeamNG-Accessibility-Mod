@@ -18,6 +18,15 @@ _SPEAK_FUNC = None
 _SPEAK_LAST = ""
 _HOVER_TASK: asyncio.Task | None = None
 _HOVER_TOKEN = None
+_DETAILS_CALLBACK = None
+_VEHICLE_SELECTOR_CALLBACK = None
+_CLIENTS: set = set()  # connected WebSocket instances
+
+
+def register_details_callbacks(on_details, on_selector_state):
+    global _DETAILS_CALLBACK, _VEHICLE_SELECTOR_CALLBACK
+    _DETAILS_CALLBACK = on_details
+    _VEHICLE_SELECTOR_CALLBACK = on_selector_state
 
 
 # ---------- Core helpers ----------
@@ -70,8 +79,11 @@ def handle_ws_message(data):
         return
     msg_type = data.get("type")
     if msg_type == "speak":
-        # Speech logging is now handled by the 'say' function in beamtel.py
-        engine_offer(data.get("text", ""))
+        text_val = data.get("text", "")
+        if not isinstance(text_val, str):
+            logger.warning(f"[UNSPEAKABLE] speak text is {type(text_val).__name__}, not str: {text_val!r}")
+            text_val = str(text_val) if text_val is not None else ""
+        engine_offer(text_val)
     elif msg_type == "log":
         level = str(data.get("level", "INFO")).lower()
         msg = str(data.get("msg", ""))
@@ -82,12 +94,25 @@ def handle_ws_message(data):
         )
     elif msg_type == "hover_cancel":
         hover_cancel()
+    elif msg_type == "vehicle_details":
+        if _DETAILS_CALLBACK:
+            try:
+                _DETAILS_CALLBACK(data.get("lines", []))
+            except Exception as e:
+                logger.error(f"vehicle_details callback error: {e}")
+    elif msg_type == "vehicle_selector_state":
+        if _VEHICLE_SELECTOR_CALLBACK:
+            try:
+                _VEHICLE_SELECTOR_CALLBACK(data.get("open", False))
+            except Exception as e:
+                logger.error(f"vehicle_selector_state callback error: {e}")
 
 
 # ---------- WebSocket Server Logic ----------
 async def ws_handler(request: web.Request):
     ws = web.WebSocketResponse(heartbeat=30)
     await ws.prepare(request)
+    _CLIENTS.add(ws)
     logger.info("WebSocket client connected.")
     try:
         async for msg in ws:
@@ -101,12 +126,28 @@ async def ws_handler(request: web.Request):
     except Exception as e:
         logger.error(f"ws exception: {e}")
     finally:
+        _CLIENTS.discard(ws)
         logger.info("WebSocket client disconnected.")
         try:
             await ws.close()
         except Exception:
             pass
     return ws
+
+
+# ---------- Broadcast to connected clients ----------
+def broadcast(msg_dict: dict):
+    """Send a JSON message to all connected WebSocket clients (thread-safe)."""
+    if not _LOOP or not _CLIENTS:
+        return
+    payload = json.dumps(msg_dict)
+    async def _send_all():
+        for ws in list(_CLIENTS):
+            try:
+                await ws.send_str(payload)
+            except Exception:
+                pass
+    _LOOP.call_soon_threadsafe(asyncio.ensure_future, _send_all())
 
 
 # ---------- Boot / Thread ----------

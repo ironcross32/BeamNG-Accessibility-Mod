@@ -13,4 +13,10 @@ dependencies = [
     "numpy>=2.3.3",
     "sounddevice>=0.5.2",
     "wxpython>=4.2.3",
+    "zstandard>=0.25.0",
+]
+
+[dependency-groups]
+dev = [
+    "nuitka>=4.0",
 ]
