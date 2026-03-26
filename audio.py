@@ -62,7 +62,19 @@ SCANNER_HALF_DIST_M = 40.0     # The distance at which the beep rate is halfway 
 SCANNER_PITCH_BASE = 0.8       # Pitch multiplier for a target directly behind (-180 deg)
 SCANNER_PITCH_RANGE = 1.2      # Pitch variation (Base + Range = max pitch at 0 deg)
 SCANNER_BEEP_FREQ_HZ = 1000.0  # Base frequency of the beep sound
-SCANNER_ALIGN_THRESHOLD_DEG = 0.5  # Bearing threshold for alignment tone
+SCANNER_ALIGN_THRESHOLD_DEG = 1.5  # Bearing threshold for alignment tone
+
+# Coupler Tracking Constants
+COUPLER_TONE_FREQ_HZ = 660.0      # Base frequency (E5, distinct from scanner/obstacle)
+COUPLER_TONE_AMP_DB = -18.0       # Volume level
+COUPLER_MIN_PITCH = 0.8           # Pitch multiplier at max distance
+COUPLER_MAX_PITCH = 2.0           # Pitch multiplier at close range
+COUPLER_BEEP_PITCH = 2.5          # Pitch multiplier in coupling range
+COUPLER_HALF_DIST_M = 10.0        # Distance for half pitch scaling
+COUPLER_RANGE_M = 1.5             # Coupling range threshold
+COUPLER_BEEP_DUR_MS = 40          # Beep duration when in range
+COUPLER_BEEP_MAX_RATE = 20.0      # Max beeps/sec at very close range
+COUPLER_BEEP_MIN_RATE = 4.0       # Min beeps/sec at edge of range
 
 # NEW: Obstacle Detection Constants
 OBSTACLE_BUZZ_FREQ_HZ = 440.0     # Base frequency of the square wave buzzer
@@ -118,6 +130,20 @@ DETAILS_TONE_FREQ_HZ = 261.63
 DETAILS_TONE_DUR_MS = 100
 DETAILS_TONE_AMP_DB = -14.0
 
+# Node Grabber Hover Beep
+NODE_BEEP_BASE_FREQ_HZ = 800.0   # Base frequency at height 0.5
+NODE_BEEP_LOW_FREQ_HZ = 600.0    # Frequency at underside (height 0.0)
+NODE_BEEP_HIGH_FREQ_HZ = 1400.0  # Frequency at top (height 1.0)
+NODE_BEEP_DUR_MS = 40             # Duration of the beep
+NODE_BEEP_AMP_DB = -14.0          # Volume level
+
+# Clickspot Hover Beep (FM click sound)
+CLICKSPOT_BEEP_FREQ_HZ = 770.0    # Carrier frequency
+CLICKSPOT_BEEP_MOD_HZ = 1540.0    # Modulator frequency (2x carrier for metallic click)
+CLICKSPOT_BEEP_MOD_INDEX = 4.0    # FM modulation index (higher = more harmonics)
+CLICKSPOT_BEEP_DUR_MS = 18        # Duration
+CLICKSPOT_BEEP_AMP_DB = -12.0     # Volume
+
 # Coordinate Guidance FM tone
 COORD_GUIDE_FC_ONCOURSE_HZ  = 440.0   # Carrier Hz when on course (amp is ~0 anyway)
 COORD_GUIDE_FC_OFFCOURSE_HZ = 220.0   # Carrier Hz when 180° off course
@@ -155,6 +181,9 @@ class AudioController:
         self.CAM_CLICK_WAVEFORM = None
         self.CAM_HIGHLIGHT_CLICK_WAVEFORM = None
         self.DETAILS_TONE_WAVEFORM = None
+        self.NODE_BEEP_WAVEFORM = None  # Node grabber hover beep
+        self.CLICKSPOT_BEEP_WAVEFORM = None      # Clickspot hover beep (forward)
+        self.CLICKSPOT_BEEP_REV_WAVEFORM = None  # Clickspot hover beep (reverse/leaving)
 
         # HRTF State
         self._hrtf = None
@@ -197,6 +226,11 @@ class AudioController:
         self._highlight_click_request = threading.Event()
         self._scanner_playback_pos = -1.0
         self._details_tone_playback_pos = -1.0
+        self._node_beep_playback_pos = -1.0
+        self._node_beep_freq = NODE_BEEP_BASE_FREQ_HZ
+        self._node_beep_reverse = False
+        self._clickspot_beep_playback_pos = -1.0
+        self._clickspot_beep_reverse = False  # True = play waveform in reverse
 
         # Camera compass click state
         self._cam_click_playback_pos = -1.0
@@ -233,6 +267,16 @@ class AudioController:
         self._scanner_beep_timer = 0.0
         self._scanner_overlap_L = None
         self._scanner_overlap_R = None
+
+        # Coupler Tracking State
+        self._coupler_active = False
+        self._coupler_bearing = 0.0
+        self._coupler_distance = float('inf')
+        self._coupler_in_range = False
+        self._coupler_phase = 0.0
+        self._coupler_beep_timer = 0.0
+        self._coupler_overlap_L = None
+        self._coupler_overlap_R = None
 
         # NEW: Obstacle Detection State
         self._obstacle_mode_active = False
@@ -324,6 +368,24 @@ class AudioController:
         with self.lock:
             self._scanner_target_bearing = float(bearing)
             self._scanner_target_distance = float(distance)
+
+    # Coupler tracking control methods
+    def set_coupler_tracking(self, active):
+        with self.lock:
+            self._coupler_active = bool(active)
+            if not active:
+                self._coupler_distance = float('inf')
+                self._coupler_in_range = False
+                self._coupler_phase = 0.0
+                self._coupler_beep_timer = 0.0
+                self._coupler_overlap_L = None
+                self._coupler_overlap_R = None
+
+    def update_coupler_target(self, bearing, distance, in_range):
+        with self.lock:
+            self._coupler_bearing = float(bearing)
+            self._coupler_distance = float(distance)
+            self._coupler_in_range = bool(in_range)
 
     # NEW: Control methods for obstacle detection
     def set_obstacle_mode(self, is_active):
@@ -571,6 +633,21 @@ class AudioController:
         if self._is_enabled:
             self._details_tone_playback_pos = 0.0
 
+    def trigger_node_hover_beep(self, height_normalized, reverse=False):
+        """Trigger a short beep with pitch varying by node height on the vehicle.
+        height_normalized: 0.0 (underside) to 1.0 (top). reverse=True plays backwards."""
+        if self._is_enabled:
+            h = max(0.0, min(1.0, height_normalized))
+            self._node_beep_freq = NODE_BEEP_LOW_FREQ_HZ + (NODE_BEEP_HIGH_FREQ_HZ - NODE_BEEP_LOW_FREQ_HZ) * h
+            self._node_beep_reverse = reverse
+            self._node_beep_playback_pos = 0.0
+
+    def trigger_clickspot_beep(self, reverse=False):
+        """Trigger FM click beep. reverse=True plays the waveform backwards (mouse leaving)."""
+        if self._is_enabled:
+            self._clickspot_beep_reverse = reverse
+            self._clickspot_beep_playback_pos = 0.0
+
     # --- Private Methods ---
     
     def _clamp(self, v, a=0.0, b=1.0): return a if v < a else b if v > b else v
@@ -614,6 +691,10 @@ class AudioController:
         self.CAM_CLICK_WAVEFORM = self._generate_cam_click()
         self.CAM_HIGHLIGHT_CLICK_WAVEFORM = self._generate_cam_highlight_click()
         self.DETAILS_TONE_WAVEFORM = self._generate_details_tone()
+        self.NODE_BEEP_WAVEFORM = self._generate_node_beep()
+        self.NODE_BEEP_REV_WAVEFORM = self._generate_node_beep_reverse()
+        self.CLICKSPOT_BEEP_WAVEFORM = self._generate_clickspot_beep()
+        self.CLICKSPOT_BEEP_REV_WAVEFORM = self._generate_clickspot_beep_reverse()
         if self._hrtf is not None:
             self._hrtf.resample(self.samplerate)
 
@@ -793,6 +874,69 @@ class AudioController:
         amp = float(10.0 ** (self._ls_click_amp_db / 20.0))
         return (amp * envelope * carrier).astype(np.float32)
 
+    def _generate_clickspot_beep(self):
+        """Generate an FM synthesis click sound. Stored forward; reversed at playback time."""
+        dur_samples = int(self.samplerate * CLICKSPOT_BEEP_DUR_MS / 1000.0)
+        t = np.linspace(0, CLICKSPOT_BEEP_DUR_MS / 1000.0, dur_samples, endpoint=False)
+        # FM synthesis: carrier modulated by a sine modulator
+        # Modulation index decays over time for a "click" attack character
+        mod_env = np.exp(-60.0 * t)  # fast decay on modulator intensity
+        modulator = CLICKSPOT_BEEP_MOD_INDEX * mod_env * np.sin(2.0 * np.pi * CLICKSPOT_BEEP_MOD_HZ * t)
+        wave = np.sin(2.0 * np.pi * CLICKSPOT_BEEP_FREQ_HZ * t + modulator)
+        # Amplitude envelope: sharp attack, exponential decay
+        envelope = np.exp(-40.0 * t)
+        wave *= envelope
+        amp = float(10.0 ** (CLICKSPOT_BEEP_AMP_DB / 20.0))
+        return (wave * amp).astype(np.float32)
+
+    def _generate_clickspot_beep_reverse(self):
+        """Generate the reverse/leaving variant — FM click with rising modulation and attack envelope."""
+        dur_samples = int(self.samplerate * CLICKSPOT_BEEP_DUR_MS / 1000.0)
+        t = np.linspace(0, CLICKSPOT_BEEP_DUR_MS / 1000.0, dur_samples, endpoint=False)
+        t_rev = t[-1] - t  # reversed time
+        # FM synthesis with modulation rising (inverse of forward decay)
+        mod_env = np.exp(-60.0 * t_rev)
+        modulator = CLICKSPOT_BEEP_MOD_INDEX * mod_env * np.sin(2.0 * np.pi * CLICKSPOT_BEEP_MOD_HZ * t)
+        wave = np.sin(2.0 * np.pi * CLICKSPOT_BEEP_FREQ_HZ * t + modulator)
+        # Amplitude envelope: ramp up then sharp cutoff
+        envelope = 1.0 - np.exp(-40.0 * t)  # inverse of forward decay
+        # Apply a short fade-out at the very end to avoid click
+        fade_samples = int(self.samplerate * 0.003)
+        if fade_samples > 0 and fade_samples < dur_samples:
+            envelope[-fade_samples:] *= np.linspace(1, 0, fade_samples)
+        wave *= envelope
+        amp = float(10.0 ** (CLICKSPOT_BEEP_AMP_DB / 20.0))
+        return (wave * amp).astype(np.float32)
+
+    def _generate_node_beep(self):
+        """Generate a sine beep template at base frequency. Pitch is applied at playback time."""
+        dur_samples = int(self.samplerate * NODE_BEEP_DUR_MS / 1000.0)
+        t = np.linspace(0, NODE_BEEP_DUR_MS / 1000.0, dur_samples, endpoint=False)
+        # Sine wave at 1 Hz — we scale by actual freq at playback using pitch mult
+        wave = np.sin(2.0 * np.pi * NODE_BEEP_BASE_FREQ_HZ * t)
+        # Exponential decay envelope
+        decay_rate = 5.0 / (NODE_BEEP_DUR_MS / 1000.0)
+        envelope = np.exp(-decay_rate * t)
+        wave *= envelope
+        amp = float(10.0 ** (NODE_BEEP_AMP_DB / 20.0))
+        return (wave * amp).astype(np.float32)
+
+    def _generate_node_beep_reverse(self):
+        """Generate the reverse/leaving variant of the node beep — rising envelope."""
+        dur_samples = int(self.samplerate * NODE_BEEP_DUR_MS / 1000.0)
+        t = np.linspace(0, NODE_BEEP_DUR_MS / 1000.0, dur_samples, endpoint=False)
+        wave = np.sin(2.0 * np.pi * NODE_BEEP_BASE_FREQ_HZ * t)
+        # Rising envelope (inverse of forward decay)
+        decay_rate = 5.0 / (NODE_BEEP_DUR_MS / 1000.0)
+        envelope = 1.0 - np.exp(-decay_rate * t)
+        # Short fade-out at end to avoid click
+        fade_samples = int(self.samplerate * 0.003)
+        if fade_samples > 0 and fade_samples < dur_samples:
+            envelope[-fade_samples:] *= np.linspace(1, 0, fade_samples)
+        wave *= envelope
+        amp = float(10.0 ** (NODE_BEEP_AMP_DB / 20.0))
+        return (wave * amp).astype(np.float32)
+
     def _generate_details_tone(self):
         dur_samples = int(self.samplerate * DETAILS_TONE_DUR_MS / 1000.0)
         t = np.linspace(0, DETAILS_TONE_DUR_MS / 1000.0, dur_samples, endpoint=False)
@@ -852,6 +996,11 @@ class AudioController:
             scan_active = self._scan_mode_active
             scan_bearing = self._scanner_target_bearing
             scan_dist = self._scanner_target_distance
+            # Coupler tracking snapshot
+            coupler_active = self._coupler_active
+            coupler_bearing = self._coupler_bearing
+            coupler_dist = self._coupler_distance
+            coupler_in_range = self._coupler_in_range
             # Obstacle detection snapshot
             obs_active = self._obstacle_mode_active
             obs_bearings = list(self._obstacle_bearings)
@@ -1230,9 +1379,9 @@ class AudioController:
             if frames > 0: self._phase_drift = (t[-1] + inc) % 1.0
 
 
-        # NEW: Vehicle Scanner audio logic
+        # NEW: Vehicle Scanner audio logic (suppressed when coupler tracking is active)
         scanner_produced_audio = False
-        if scan_active and scan_dist != float('inf'):
+        if scan_active and scan_dist != float('inf') and not coupler_active:
             # Calculate beep repetition rate based on distance (exponentially)
             rate_norm = math.exp(-scan_dist / SCANNER_HALF_DIST_M)
             rate_hz = SCANNER_MIN_RATE_HZ + (SCANNER_MAX_RATE_HZ - SCANNER_MIN_RATE_HZ) * rate_norm
@@ -1253,6 +1402,9 @@ class AudioController:
                 # Calculate pitch based on bearing
                 pitch_norm = 1.0 - (abs(scan_bearing) / 180.0) # 1.0 front, 0.0 back
                 pitch_mult = SCANNER_PITCH_BASE + SCANNER_PITCH_RANGE * pitch_norm
+                # Sharp half-octave boost when dead-on aligned (within 0.5 deg)
+                if aligned:
+                    pitch_mult *= 1.5
 
                 indices = self._scanner_playback_pos + np.arange(frames) * pitch_mult
                 valid_mask = indices < (beep_len - 1)
@@ -1312,6 +1464,110 @@ class AudioController:
             self._scanner_overlap_L = None
             self._scanner_overlap_R = None
 
+        # Node grabber hover beep (pitch varies by node height, forward on enter, reverse on leave)
+        if self._node_beep_playback_pos >= 0 and self.NODE_BEEP_WAVEFORM is not None:
+            beep_wav = self.NODE_BEEP_REV_WAVEFORM if self._node_beep_reverse else self.NODE_BEEP_WAVEFORM
+            beep_len = len(beep_wav)
+            pitch_mult = self._node_beep_freq / NODE_BEEP_BASE_FREQ_HZ
+            indices = self._node_beep_playback_pos + np.arange(frames) * pitch_mult
+            valid_mask = indices < (beep_len - 1)
+            if np.any(valid_mask):
+                valid_indices = indices[valid_mask]
+                idx_floor = np.floor(valid_indices).astype(int)
+                fract = valid_indices - idx_floor
+                segment = beep_wav[idx_floor] + (beep_wav[idx_floor + 1] - beep_wav[idx_floor]) * fract
+                bufL[valid_mask] += segment
+                bufR[valid_mask] += segment
+            next_pos = self._node_beep_playback_pos + frames * pitch_mult
+            self._node_beep_playback_pos = next_pos if next_pos < (beep_len - 1) else -1.0
+
+        # Clickspot hover beep (FM click — forward on enter, reverse waveform on leave)
+        if self._clickspot_beep_playback_pos >= 0:
+            beep_wav = self.CLICKSPOT_BEEP_REV_WAVEFORM if self._clickspot_beep_reverse else self.CLICKSPOT_BEEP_WAVEFORM
+            if beep_wav is not None:
+                beep_len = len(beep_wav)
+                start = int(self._clickspot_beep_playback_pos)
+                num_to_mix = min(frames, beep_len - start)
+                if num_to_mix > 0:
+                    segment = beep_wav[start : start + num_to_mix]
+                    bufL[:num_to_mix] += segment
+                    bufR[:num_to_mix] += segment
+                next_pos = self._clickspot_beep_playback_pos + frames
+                self._clickspot_beep_playback_pos = next_pos if next_pos < beep_len else -1.0
+
+        # Coupler tracking audio (continuous sine with HRTF, beeping when in range)
+        coupler_produced_audio = False
+        if coupler_active and coupler_dist != float('inf'):
+            amp = 10.0 ** (COUPLER_TONE_AMP_DB / 20.0)
+
+            if coupler_in_range:
+                # Rapid beeping mode - pitch higher, rate increases as distance decreases
+                pitch_mult = COUPLER_BEEP_PITCH
+                range_frac = max(0.0, 1.0 - (coupler_dist / COUPLER_RANGE_M))
+                beep_rate = COUPLER_BEEP_MIN_RATE + (COUPLER_BEEP_MAX_RATE - COUPLER_BEEP_MIN_RATE) * range_frac
+                beep_period = 1.0 / beep_rate
+                beep_on = COUPLER_BEEP_DUR_MS / 1000.0
+
+                freq = COUPLER_TONE_FREQ_HZ * pitch_mult
+                inc = freq / self.samplerate
+                t_phase = self._coupler_phase + np.arange(frames) * inc
+                tone = np.sin(2.0 * np.pi * t_phase).astype(np.float32) * amp
+
+                # Beep gate envelope
+                t_env = self._coupler_beep_timer + np.arange(frames) / self.samplerate
+                gate = np.where((t_env % beep_period) < beep_on, 1.0, 0.0).astype(np.float32)
+                tone *= gate
+
+                self._coupler_phase = (t_phase[-1] + inc) % 1.0
+                self._coupler_beep_timer = t_env[-1] + (1.0 / self.samplerate)
+            else:
+                # Continuous tone, pitch scales with distance
+                dist_norm = math.exp(-coupler_dist / COUPLER_HALF_DIST_M)
+                pitch_mult = COUPLER_MIN_PITCH + (COUPLER_MAX_PITCH - COUPLER_MIN_PITCH) * dist_norm
+                freq = COUPLER_TONE_FREQ_HZ * pitch_mult
+                inc = freq / self.samplerate
+                t_phase = self._coupler_phase + np.arange(frames) * inc
+                tone = np.sin(2.0 * np.pi * t_phase).astype(np.float32) * amp
+
+                self._coupler_phase = (t_phase[-1] + inc) % 1.0
+                self._coupler_beep_timer = 0.0
+
+            # HRTF spatial panning based on coupler bearing
+            hrtf_az = coupler_bearing % 360.0
+
+            if self._hrtf is not None and self._hrtf_user_enabled:
+                ir_l, ir_r = self._hrtf.get_hrir(hrtf_az)
+                if ir_l is not None:
+                    conv_l = np.convolve(tone, ir_l, mode='full')
+                    conv_r = np.convolve(tone, ir_r, mode='full')
+                    if self._coupler_overlap_L is not None:
+                        ol = min(len(self._coupler_overlap_L), len(conv_l))
+                        conv_l[:ol] += self._coupler_overlap_L[:ol]
+                        conv_r[:ol] += self._coupler_overlap_R[:ol]
+                    bufL += conv_l[:frames].astype(np.float32)
+                    bufR += conv_r[:frames].astype(np.float32)
+                    self._coupler_overlap_L = conv_l[frames:].copy()
+                    self._coupler_overlap_R = conv_r[frames:].copy()
+                    coupler_produced_audio = True
+                else:
+                    pan_pos = -coupler_bearing / 90.0
+                    Lg, Rg = self._pan_gains(pan_pos)
+                    bufL += tone * Lg
+                    bufR += tone * Rg
+            else:
+                pan_pos = -coupler_bearing / 90.0
+                Lg, Rg = self._pan_gains(pan_pos)
+                bufL += tone * Lg
+                bufR += tone * Rg
+
+        # Drain coupler HRTF tail when no audio was produced this frame
+        if not coupler_produced_audio:
+            if self._coupler_overlap_L is not None and len(self._coupler_overlap_L) > 0:
+                ol = min(len(self._coupler_overlap_L), frames)
+                bufL[:ol] += self._coupler_overlap_L[:ol].astype(np.float32)
+                bufR[:ol] += self._coupler_overlap_R[:ol].astype(np.float32)
+            self._coupler_overlap_L = None
+            self._coupler_overlap_R = None
 
         # NEW: Obstacle Detection audio logic
         if obs_active and self.OBSTACLE_BUZZ_WAVEFORM is not None:

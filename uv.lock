@@ -120,6 +120,7 @@ dependencies = [
     { name = "comtypes" },
     { name = "h5py" },
     { name = "keyboard" },
+    { name = "mouse" },
     { name = "numpy" },
     { name = "sounddevice" },
     { name = "wxpython" },
@@ -138,6 +139,7 @@ requires-dist = [
     { name = "comtypes", specifier = ">=1.4.15" },
     { name = "h5py", specifier = ">=3.8.0" },
     { name = "keyboard", specifier = ">=0.13.5" },
+    { name = "mouse", specifier = ">=0.7.1" },
     { name = "numpy", specifier = ">=2.3.3" },
     { name = "sounddevice", specifier = ">=0.5.2" },
     { name = "wxpython", specifier = ">=4.2.3" },
@@ -365,6 +367,14 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/79/75/c969f2258e908c39aadfc57d1cb78247dc49e6d36371bb3a48c194640c01/keyboard-0.13.5.zip", hash = "sha256:63ed83305955939ca5c9a73755e5cc43e8242263f5ad5fd3bb7e0b032f3d308b", size = 71798, upload-time = "2020-03-23T21:47:06.614Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/55/88/287159903c5b3fc6d47b651c7ab65a54dcf9c9916de546188a7f62870d6d/keyboard-0.13.5-py3-none-any.whl", hash = "sha256:8e9c2422f1217e0bd84489b9ecd361027cc78415828f4fe4f88dd4acd587947b", size = 58098, upload-time = "2020-03-23T21:47:05.023Z" },
+]
+
+[[package]]
+name = "mouse"
+version = "0.7.1"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e5/cc/4a30b48913a3bdaa3f713a160517792f829a1703257fb0869e76f945a760/mouse-0.7.1-py2.py3-none-any.whl", hash = "sha256:d34bb9548890089fcb11988400e26f55c624e6c7b741fff75fedfdfbd37c0016", size = 16170, upload-time = "2020-01-01T16:51:33.438Z" },
 ]
 
 [[package]]

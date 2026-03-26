@@ -39,6 +39,12 @@ angular.module('beamng.apps')
                   var data = JSON.parse(evt.data);
                   if (data.type === 'context_action') {
                     handleContextAction(data.action);
+                  } else if (data.type === 'dom_dump') {
+                    performDomDump();
+                  } else if (data.type === 'get_vehicle_keybinds') {
+                    sendVehicleKeybinds();
+                  } else if (data.type === 'trigger_vehicle_action') {
+                    triggerVehicleAction(data.action);
                   }
                 } catch (e) {}
               };
@@ -213,6 +219,16 @@ angular.module('beamng.apps')
               _translate = bngApi.engine.translate;
               return _translate;
             }
+            try {
+              var inj = angular.element(document.body).injector();
+              if (inj) {
+                var $translate = inj.get('$translate');
+                if ($translate && typeof $translate.instant === 'function') {
+                  _translate = function(key, ctx) { return $translate.instant(key, ctx); };
+                  return _translate;
+                }
+              }
+            } catch (e) {}
             return function(key) { return key.substring(key.lastIndexOf('.') + 1).replace(/_/g, ' '); };
           }
           function speakOptionRow(focusedElement, src) {
@@ -325,10 +341,57 @@ angular.module('beamng.apps')
           var lastCameraSwitchTs = 0;
           function processAndSpeakMessage(payload) {
             var finalText = '';
-            if (typeof payload === 'string') { finalText = stripHtml(payload); }
-            else if (typeof payload === 'object' && payload !== null && payload.txt) { var translator = findTranslateFunc(); finalText = translator(payload.txt, payload.context); }
+            if (typeof payload === 'string') {
+              // Try translating dot-delimited keys (e.g. "vehicle.engine.oilLevelCritical.true")
+              if (/^[\w]+\.[\w.]+$/.test(payload)) {
+                var translator = findTranslateFunc();
+                var translated = translator(payload);
+                if (translated && translated !== payload) {
+                  finalText = translated;
+                } else {
+                  finalText = stripHtml(payload);
+                }
+              } else {
+                finalText = stripHtml(payload);
+              }
+            }
+            else if (typeof payload === 'object' && payload !== null && payload.txt) {
+              var translator = findTranslateFunc();
+              // Pre-translate context values that are translation keys (e.g. "ui.xxx")
+              // and provide both "key" and "key | translate" variants so angular-translate's
+              // literal interpolation of {{key | translate}} patterns works correctly.
+              var ctx = {};
+              if (payload.context && typeof payload.context === 'object') {
+                for (var k in payload.context) {
+                  var v = payload.context[k];
+                  var translated = (typeof v === 'string' && v.indexOf('ui.') === 0) ? translator(v) : v;
+                  ctx[k] = translated;
+                  ctx[k + ' | translate'] = translated;
+                }
+              }
+              finalText = translator(payload.txt, ctx);
+            }
             else if (typeof payload === 'object' && payload !== null) { log('warn', '[UNSPEAKABLE] object without .txt: ' + JSON.stringify(payload)); return; }
             else { log('warn', '[UNSPEAKABLE] unexpected payload type (' + typeof payload + '): ' + String(payload)); return; }
+            // Replace [action=XXX] tokens with friendly action names
+            finalText = finalText.replace(/\[action=([^\]]+)\]/g, function(match, actionName) {
+              // Try translation key first (e.g. ui.inputActions.vehicle.clutch.title)
+              var translator = findTranslateFunc();
+              var segments = actionName.split('.');
+              var candidates = [
+                'ui.inputActions.vehicle.' + actionName + '.title',
+                'ui.inputActions.' + actionName + '.title'
+              ];
+              for (var i = 0; i < candidates.length; i++) {
+                var result = translator(candidates[i]);
+                if (result && result !== candidates[i]) return result;
+              }
+              // Fallback: humanize camelCase (e.g. "activateStarterMotor" -> "Activate Starter Motor")
+              var humanized = actionName.replace(/([a-z])([A-Z])/g, '$1 $2');
+              // Also split on dots and take last segment
+              if (humanized.indexOf('.') !== -1) humanized = humanized.substring(humanized.lastIndexOf('.') + 1);
+              return humanized.charAt(0).toUpperCase() + humanized.slice(1);
+            });
             finalText = cleanText(finalText);
             if (finalText.toLowerCase() === 'switched' && (nowTS() - lastCameraSwitchTs) < 250) { return; }
             if (finalText && finalText.length >= MIN_CHARS) { scheduleSpeak(finalText, P.SYSTEM); }
@@ -355,6 +418,128 @@ angular.module('beamng.apps')
               scheduleSpeak(message, P.SYSTEM);
             }
           });
+
+          // ========== CRUISE CONTROL SPEECH ==========
+          var _ccUnitMultiplier = 2.23694; // default imperial (m/s to mph)
+          var _ccUnitLabel = 'mph';
+          var _ccWasEnabled = false;
+          var _ccLastSpokenSpeed = 0;
+
+          $rootScope.$on('SettingsChanged', function (event, data) {
+            if (data && data.values && data.values.uiUnitLength) {
+              if (data.values.uiUnitLength === 'metric') {
+                _ccUnitMultiplier = 3.6;
+                _ccUnitLabel = 'km/h';
+              } else {
+                _ccUnitMultiplier = 2.23694;
+                _ccUnitLabel = 'mph';
+              }
+            }
+          });
+
+          $rootScope.$on('CruiseControlState', function (event, data) {
+            if (!data) return;
+            var isEnabled = !!data.isEnabled;
+            var speedDisplay = Math.round(data.targetSpeed * _ccUnitMultiplier);
+
+            if (isEnabled && !_ccWasEnabled) {
+              // Just turned on
+              scheduleSpeak('Cruise control set, ' + speedDisplay + ' ' + _ccUnitLabel, P.SYSTEM);
+              _ccLastSpokenSpeed = speedDisplay;
+            } else if (!isEnabled && _ccWasEnabled) {
+              // Just turned off
+              scheduleSpeak('Cruise control cancelled', P.SYSTEM);
+              _ccLastSpokenSpeed = 0;
+            } else if (isEnabled && speedDisplay !== _ccLastSpokenSpeed) {
+              // Speed changed while active
+              scheduleSpeak(speedDisplay + ' ' + _ccUnitLabel, P.SYSTEM);
+              _ccLastSpokenSpeed = speedDisplay;
+            }
+
+            _ccWasEnabled = isEnabled;
+          });
+
+          // Request initial settings so we have the correct unit
+          try { bngApi.engineLua('settings.notifyUI()'); } catch (e) {}
+
+          // ========== VEHICLE-SPECIFIC KEYBINDS ==========
+          var _cachedVehicleKeybinds = [];
+          var _cachedVehicleActions = [];
+
+          $rootScope.$on('InputBindingsChanged', function (event, data) {
+            if (!data || !data.actions || !data.bindings) return;
+            var lines = [];
+            var actions = [];
+            var translator = findTranslateFunc();
+            // Build action->control mapping from bindings
+            var actionBindings = {};
+            for (var d = 0; d < data.bindings.length; d++) {
+              var device = data.bindings[d];
+              if (!device.contents || !device.contents.bindings) continue;
+              var devBindings = device.contents.bindings;
+              for (var b = 0; b < devBindings.length; b++) {
+                var bind = devBindings[b];
+                if (!bind.action) continue;
+                var actionInfo = data.actions[bind.action];
+                if (!actionInfo || actionInfo.cat !== 'vehicle_specific') continue;
+                if (!actionBindings[bind.action]) actionBindings[bind.action] = [];
+                actionBindings[bind.action].push(bind.control || '(unbound)');
+              }
+            }
+            // Also include unbound vehicle-specific actions
+            for (var actionName in data.actions) {
+              var act = data.actions[actionName];
+              if (act.cat !== 'vehicle_specific') continue;
+              if (!actionBindings[actionName]) actionBindings[actionName] = [];
+            }
+            // Build lines sorted by action order
+            var sortedActions = Object.keys(actionBindings).sort(function(a, b) {
+              var oa = (data.actions[a] && data.actions[a].order) || 999;
+              var ob = (data.actions[b] && data.actions[b].order) || 999;
+              return oa - ob;
+            });
+            for (var i = 0; i < sortedActions.length; i++) {
+              var aName = sortedActions[i];
+              var aInfo = data.actions[aName];
+              var title = aInfo && aInfo.title ? translator(aInfo.title) : aName;
+              // If translation failed, fall back to humanized action name
+              if (title === aInfo.title) {
+                var shortName = aName.indexOf('__') !== -1 ? aName.split('__')[1] : aName;
+                title = shortName.replace(/([a-z])([A-Z])/g, '$1 $2');
+                title = title.charAt(0).toUpperCase() + title.slice(1);
+              }
+              var controls = actionBindings[aName];
+              var controlStr = controls.length > 0 ? controls.join(', ') : 'unbound';
+              lines.push(title + ': ' + controlStr);
+              actions.push(aName);
+            }
+            _cachedVehicleKeybinds = lines;
+            _cachedVehicleActions = actions;
+          });
+
+          function sendVehicleKeybinds() {
+            if (_cachedVehicleKeybinds.length === 0) {
+              // Request a refresh from the engine
+              try { bngApi.engineLua('extensions.core_input_bindings.notifyUI("keybind_request")'); } catch (e) {}
+              // Wait briefly for the event to fire and cache to populate
+              setTimeout(function() {
+                send({ type: 'vehicle_keybinds', lines: _cachedVehicleKeybinds, actions: _cachedVehicleActions });
+              }, 300);
+            } else {
+              send({ type: 'vehicle_keybinds', lines: _cachedVehicleKeybinds, actions: _cachedVehicleActions });
+            }
+          }
+
+          function triggerVehicleAction(actionName) {
+            if (!actionName) return;
+            var safe = actionName.replace(/[^a-zA-Z0-9_]/g, '');
+            log("info", "[bnvda] triggerVehicleAction: " + safe);
+            try {
+              bngApi.engineLua('core_input_actions.triggerDownUp("' + safe + '")');
+            } catch (e) {
+              log("error", "[bnvda] Failed to trigger action: " + actionName + " err: " + e);
+            }
+          }
 
           // ========== GENERIC UI CONTROL HANDLERS ==========
           function speakCheckboxRow(focusedElement, src) {
@@ -415,6 +600,7 @@ angular.module('beamng.apps')
           }
 
           // ========== Specialized handler for Vehicle Parts Screen ==========
+          var _partsExpandHinted = false;
           function speakPartRow(focusedElement, src) {
             var row = closest(focusedElement, '.bng-accitem');
             if (!row) return false;
@@ -437,6 +623,15 @@ angular.module('beamng.apps')
                 var isVisible = visibilityButton.classList.contains('visibility-toggle-on');
                 parts.push(isVisible ? "visible" : "hidden");
               }
+              var isExpandable = row.classList.contains('bng-accitem-expandable');
+              if (isExpandable) {
+                var isExpanded = row.classList.contains('bng-accitem-expanded');
+                parts.push(isExpanded ? "expanded" : "collapsed");
+                if (!_partsExpandHinted) {
+                  _partsExpandHinted = true;
+                  parts.push("press Y to expand or collapse");
+                }
+              }
               var finalText = parts.join(', ');
               scheduleSpeak(finalText, src);
               return true;
@@ -444,6 +639,24 @@ angular.module('beamng.apps')
             return false;
           }
 
+
+          // ========== Handler for menu accordion items (e.g. radial menu config) ==========
+          function speakMenuAccordionItem(focusedElement, src) {
+            if (!focusedElement.classList.contains('menu-navigation')) return false;
+            var row = closest(focusedElement, '.bng-accitem');
+            if (!row) return false;
+            var contentEl = row.querySelector('.bng-accitem-caption-content');
+            var text = contentEl ? cleanText(contentEl.innerText) : cleanText(focusedElement.innerText);
+            if (!text) return false;
+            var parts = [text];
+            var isExpandable = row.classList.contains('bng-accitem-expandable');
+            if (isExpandable) {
+              var isExpanded = row.classList.contains('bng-accitem-expanded');
+              parts.push(isExpanded ? 'expanded' : 'collapsed');
+            }
+            scheduleSpeak(parts.join(', '), src);
+            return true;
+          }
 
           // ========== CONTROLS BINDINGS NAVIGATION FIX ==========
           // Crossfire's isTarget scoring favors elements with high horizontal
@@ -1031,7 +1244,9 @@ angular.module('beamng.apps')
 
               _radialItemObserver = new MutationObserver(function() {
                 var text = (_radialLabelDiv.textContent || '').trim();
-                if (!text || text === _radialDefaultText || text === _radialLastSpokenItem) return;
+                var isEmpty = !text || text === _radialDefaultText;
+                if (isEmpty) { _radialLastSpokenItem = ''; scheduleSpeak('empty', P.CONTROLLER); return; }
+                if (text === _radialLastSpokenItem) return;
                 _radialLastSpokenItem = text;
                 var hotkeyText = _radialHotkeyDiv ? (_radialHotkeyDiv.textContent || '').trim() : '';
                 if (hotkeyText) {
@@ -1100,7 +1315,7 @@ angular.module('beamng.apps')
             focusDebounceTimer = setTimeout(function() {
               if (!element || element === lastFocusedElement) return;
               lastFocusedElement = element;
-              
+
               var src = P.CONTROLLER;
 
               // --- Primary Logic ---
@@ -1110,7 +1325,9 @@ angular.module('beamng.apps')
               if (speakSliderRow(element, src)) return;
               if (speakBindingEditItem(element, src)) return;
               if (speakBindingElement(element, src)) return;
+
               if (optionsObserverAttached && speakOptionRow(element, src)) return;
+              if (speakMenuAccordionItem(element, src)) return;
 
               scheduleSpeak(extractText(element), src);
             }, 75);
@@ -1171,6 +1388,121 @@ angular.module('beamng.apps')
             log('info', '[CTXACTION] No context action found for current UI');
           }
 
+          // ========== DOM DUMP LOGGER ==========
+          // Triggered by F9+Ctrl+L. Walks the visible DOM tree and sends
+          // a structured snapshot back via WS for logging to file.
+          function performDomDump() {
+            log('info', '[DOMDUMP] Starting DOM dump...');
+            var lines = [];
+            var url = window.location.href || '';
+            lines.push('=== DOM DUMP ===');
+            lines.push('URL: ' + url);
+            lines.push('Time: ' + new Date().toISOString());
+
+            // Identify the current Angular route/view
+            try {
+              var injector = angular.element(document.body).injector();
+              if (injector) {
+                var loc = injector.get('$location');
+                if (loc) lines.push('Route: ' + loc.path());
+              }
+            } catch (e) {}
+
+            // Find the focused element
+            var focused = document.querySelector('.focus-visible');
+            if (focused) {
+              lines.push('Focused: <' + focused.tagName.toLowerCase() + '> class="' +
+                (focused.className || '').toString().substring(0, 120) + '" text="' +
+                (focused.innerText || '').replace(/\s+/g, ' ').trim().substring(0, 100) + '"');
+            }
+
+            lines.push('');
+
+            // Walk visible elements with meaningful content
+            function dumpNode(node, depth) {
+              if (!node || !node.tagName) return;
+              if (depth > 15) return;
+
+              var tag = node.tagName.toLowerCase();
+              // Skip invisible, script, style elements
+              if (tag === 'script' || tag === 'style' || tag === 'link') return;
+              var rect = node.getBoundingClientRect ? node.getBoundingClientRect() : null;
+              if (rect && (rect.width === 0 || rect.height === 0)) return;
+              if (node.style && node.style.display === 'none') return;
+
+              var indent = '';
+              for (var d = 0; d < depth; d++) indent += '  ';
+
+              // Build attribute summary
+              var attrs = [];
+              if (node.id) attrs.push('id="' + node.id + '"');
+              var cls = (node.className || '').toString().trim();
+              if (cls) attrs.push('class="' + cls.substring(0, 100) + '"');
+              if (node.hasAttribute && node.hasAttribute('ng-controller'))
+                attrs.push('ng-controller="' + node.getAttribute('ng-controller') + '"');
+              if (node.hasAttribute && node.hasAttribute('ng-click'))
+                attrs.push('ng-click="' + node.getAttribute('ng-click').substring(0, 60) + '"');
+              if (node.hasAttribute && node.hasAttribute('ng-bind-html'))
+                attrs.push('ng-bind-html="' + node.getAttribute('ng-bind-html').substring(0, 60) + '"');
+              if (node.hasAttribute && node.hasAttribute('bng-nav-item'))
+                attrs.push('bng-nav-item');
+              if (node.hasAttribute && node.hasAttribute('tabindex'))
+                attrs.push('tabindex="' + node.getAttribute('tabindex') + '"');
+              if (node.hasAttribute && node.hasAttribute('role'))
+                attrs.push('role="' + node.getAttribute('role') + '"');
+              if (node === focused) attrs.push('[FOCUSED]');
+
+              // Get direct text (not children's text)
+              var directText = '';
+              for (var c = 0; c < node.childNodes.length; c++) {
+                if (node.childNodes[c].nodeType === 3) {
+                  var t = node.childNodes[c].textContent.replace(/\s+/g, ' ').trim();
+                  if (t) directText += t + ' ';
+                }
+              }
+              directText = directText.trim();
+              if (directText.length > 80) directText = directText.substring(0, 80) + '...';
+
+              // Only output nodes that have attrs, text, or are containers
+              var hasContent = attrs.length > 0 || directText;
+              var isContainer = tag === 'div' || tag === 'section' || tag === 'md-content' ||
+                tag === 'md-list' || tag === 'md-grid-list' || tag === 'form' ||
+                tag === 'table' || tag === 'tbody' || tag === 'ul' || tag === 'ol' ||
+                tag === 'nav' || tag === 'header' || tag === 'main';
+
+              if (hasContent || isContainer) {
+                var line = indent + '<' + tag;
+                if (attrs.length > 0) line += ' ' + attrs.join(' ');
+                line += '>';
+                if (directText) line += ' "' + directText + '"';
+                lines.push(line);
+              }
+
+              // Recurse into children
+              var children = node.children;
+              if (children) {
+                for (var i = 0; i < children.length; i++) {
+                  dumpNode(children[i], depth + 1);
+                }
+              }
+            }
+
+            // Start from body, but skip our own invisible hook element
+            var body = document.body;
+            if (body) {
+              var children = body.children;
+              for (var i = 0; i < children.length; i++) {
+                dumpNode(children[i], 0);
+              }
+            }
+
+            lines.push('=== END DOM DUMP (' + lines.length + ' lines) ===');
+
+            // Send back as dom_dump_result
+            send({ type: 'dom_dump_result', lines: lines });
+            log('info', '[DOMDUMP] Sent ' + lines.length + ' lines.');
+          }
+
           // ---------- EVENT HOOKS AND INITIALIZATION ----------
           function initializeModules() {
             log("info", "[bnvda] Page loaded. Initializing modules...");
@@ -1180,6 +1512,7 @@ angular.module('beamng.apps')
             startBindingEditWatcher();
             attachMainObserver();
             startRadialMenuWatcher();
+
           }
 
           connectWS();

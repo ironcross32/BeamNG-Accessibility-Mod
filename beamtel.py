@@ -29,7 +29,7 @@ import socket
 import struct
 import time
 import threading
-from nvda_ws_speaker import start_server_in_thread, register_details_callbacks, broadcast
+from nvda_ws_speaker import start_server_in_thread, register_details_callbacks, register_dom_dump_callback, register_vehicle_keybinds_callback, broadcast
 import signal
 import os
 import json
@@ -65,6 +65,55 @@ CONFIG_PATH = os.path.join(CONFIG_DIR, "beamtel_config.json")
 
 
 STOP = threading.Event()
+
+# ---------- DOM Dump Logger ----------
+DOM_DUMP_PATH = os.path.join(CONFIG_DIR, "dom_dump.log")
+
+# ---------- Speech Logger ----------
+SPEECH_LOG_PATH = os.path.join(CONFIG_DIR, "speech.log")
+speech_logging_active = False
+
+
+def _on_dom_dump_received(lines):
+    """Write DOM dump lines to a dedicated log file."""
+    try:
+        with open(DOM_DUMP_PATH, "w", encoding="utf-8") as f:
+            for line in lines:
+                f.write(line + "\n")
+        logger.info(f"DOM dump written to {DOM_DUMP_PATH} ({len(lines)} lines)")
+    except Exception as e:
+        logger.error(f"Failed to write DOM dump: {e}")
+
+
+def _on_vehicle_keybinds_received(lines, actions=None):
+    """Open the virtual browser with vehicle-specific keybind lines."""
+    filtered = []
+    filtered_actions = []
+    for i, l in enumerate(lines):
+        if isinstance(l, str) and l.strip():
+            filtered.append(l.strip())
+            if actions and i < len(actions):
+                filtered_actions.append(actions[i])
+            else:
+                filtered_actions.append(None)
+    if not filtered:
+        say("No vehicle-specific keybinds", exclude_from_buffer=True)
+        return
+    open_virtual_browser(filtered, f"{len(filtered)} vehicle keybinds",
+                         on_enter=_on_vehicle_keybind_activate,
+                         entry_data=filtered_actions)
+
+
+def _on_vehicle_keybind_activate(index, line, data):
+    """Called when Enter is pressed on a vehicle keybind browser entry."""
+    action_name = data
+    if not action_name:
+        say("Cannot activate this action", exclude_from_buffer=True)
+        return
+    # Extract just the display name (before the colon)
+    display = line.split(":")[0].strip() if ":" in line else line
+    say(f"Activated {display}", exclude_from_buffer=True)
+    broadcast({"type": "trigger_vehicle_action", "action": action_name})
 
 
 def _handle_sigint(signum, frame):
@@ -149,10 +198,18 @@ def say(text: str, interrupt: bool = True, exclude_from_buffer: bool = False):
     t = (text or "").strip()
     if not t:
         return
-    
+
     if _command_context:
         logger.info(f"Speech output: '{t}'")
-    
+
+    if speech_logging_active:
+        try:
+            import datetime
+            with open(SPEECH_LOG_PATH, "a", encoding="utf-8") as f:
+                f.write(f"[{datetime.datetime.now().strftime('%H:%M:%S.%f')[:-3]}] {t}\n")
+        except Exception:
+            pass
+
     if not exclude_from_buffer:
         SPEECH_BUFFER.append(t)
 
@@ -207,7 +264,7 @@ def load_config():
 OG_FORMAT = "<I4sHBBfffffffIIfff16s16si"
 OG_SIZE = struct.calcsize(OG_FORMAT)
 
-EXT_FORMAT = "<H4sBx9fII23f"
+EXT_FORMAT = "<H4sBx9fII26f"
 EXT_SIZE = struct.calcsize(EXT_FORMAT)
 
 MS_MAGIC = b"BNG1"
@@ -270,7 +327,7 @@ def ui_listener(stop_event):
 
 def scanner_listener(audio_controller, stop_event):
     """Listens for UDP packets from vehicleScanner.lua and passes data to the audio controller."""
-    global last_scanner_target_name, last_scanner_distance, last_scanner_approach_deg
+    global last_scanner_target_name, last_scanner_distance, last_scanner_approach_deg, last_scanner_bearing
     SCANNER_PACKET_FORMAT = '<ff'
     SCANNER_PACKET_SIZE = struct.calcsize(SCANNER_PACKET_FORMAT)
     
@@ -289,8 +346,63 @@ def scanner_listener(audio_controller, stop_event):
                     first_packet = False
                 try:
                     text = data.decode('ascii').strip()
-                    # Alignment responses
-                    if text == "ALIGN_OK":
+                    # Coupler tracking responses
+                    if text.startswith("COUPLER_START:"):
+                        tags = text[len("COUPLER_START:"):]
+                        parts_tags = tags.split(",")
+                        ptag = parts_tags[0] if len(parts_tags) > 0 else "unknown"
+                        ttag = parts_tags[1] if len(parts_tags) > 1 else "unknown"
+                        say(f"Aligned. {ptag} and {ttag}. Tracking couplers. Reverse to couple.", exclude_from_buffer=True)
+                        audio_controller.set_coupler_tracking(True)
+                    elif text.startswith("COUPLER_ATTACHED:"):
+                        tags = text[len("COUPLER_ATTACHED:"):]
+                        parts_tags = tags.split(",")
+                        ptag = parts_tags[0] if len(parts_tags) > 0 else "unknown"
+                        ttag = parts_tags[1] if len(parts_tags) > 1 else "unknown"
+                        say(f"Fifth wheel coupled. {ptag} and {ttag}.", exclude_from_buffer=True)
+                    elif text.startswith("COUPLER_FAIL:"):
+                        reason = text[len("COUPLER_FAIL:"):]
+                        say(reason, exclude_from_buffer=True)
+                    elif text == "COUPLER_LOST":
+                        say("Coupler tracking lost", exclude_from_buffer=True)
+                        audio_controller.set_coupler_tracking(False)
+                    elif text.startswith("COUPLER:"):
+                        cparts = text[len("COUPLER:"):].split(",")
+                        if len(cparts) >= 3:
+                            c_bearing = float(cparts[0])
+                            c_distance = float(cparts[1])
+                            c_in_range = int(cparts[2]) != 0
+                            audio_controller.update_coupler_target(c_bearing, c_distance, c_in_range)
+                    # Coupler distance mode responses
+                    elif text.startswith("COUPLER_DIST:"):
+                        dparts = text[len("COUPLER_DIST:"):].split(",")
+                        if len(dparts) >= 2:
+                            horiz = float(dparts[0])
+                            height = float(dparts[1])
+                            if UNITS_MODE == "imperial":
+                                horiz_val = horiz * 3.28084
+                                height_val = abs(height) * 3.28084
+                                unit = "feet"
+                            else:
+                                horiz_val = horiz
+                                height_val = abs(height)
+                                unit = "meters"
+                            dist_str = f"{horiz_val:.1f} {unit}"
+                            if height_val < 0.05:
+                                height_str = "level"
+                            elif height > 0:
+                                height_str = f"{height_val:.1f} {unit} high"
+                            else:
+                                height_str = f"{height_val:.1f} {unit} low"
+                            say(f"{dist_str}, {height_str}", interrupt=False, exclude_from_buffer=True)
+                    elif text.startswith("COUPLER_DIST_MODE:"):
+                        mode = text[len("COUPLER_DIST_MODE:"):]
+                        say(f"Coupler distance {'on' if mode == 'ON' else 'off'}", exclude_from_buffer=True)
+                    elif text.startswith("COUPLER_DIST_FAIL:"):
+                        reason = text[len("COUPLER_DIST_FAIL:"):]
+                        say(reason, exclude_from_buffer=True)
+                    # Alignment responses (legacy)
+                    elif text == "ALIGN_OK":
                         say("Aligned to trailer. Reverse straight back and press L to couple.", exclude_from_buffer=True)
                     elif text.startswith("ALIGN_FAIL:"):
                         reason = text[len("ALIGN_FAIL:"):]
@@ -329,6 +441,7 @@ def scanner_listener(audio_controller, stop_event):
                             with state_lock:
                                 last_scanner_distance     = distance
                                 last_scanner_approach_deg = approach
+                                last_scanner_bearing      = bearing
                             audio_controller.update_scanner_target(bearing, distance)
                 except (ValueError, UnicodeDecodeError):
                     # Fallback: old binary '<ff' format
@@ -516,6 +629,230 @@ def camera_listener(audio_controller, stop_event):
         logger.info("Camera info listener stopped.")
 
 
+def nodegrab_listener(audio_controller, stop_event):
+    """Listens for UDP packets from nodeGrabberAccessible.lua — node hover data and snap coords."""
+    global nodegrab_last_cid, nodegrab_scanning
+    import ctypes
+
+    VK_CONTROL = 0x11
+    GetAsyncKeyState = ctypes.windll.user32.GetAsyncKeyState
+    last_ctrl_state = False
+    snap_sent_this_press = False
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", NODEGRAB_LISTEN_PORT))
+        sock.settimeout(0.05)  # faster polling for CTRL state
+        logger.info(f"Node grabber listener started on port {NODEGRAB_LISTEN_PORT}")
+
+        first_packet = True
+        last_announce_ts = 0.0
+        DEBOUNCE_SEC = 0.15
+
+        while not stop_event.is_set():
+            # Poll CTRL key state via Win32 API (more reliable than keyboard hooks)
+            if nodegrab_mode_active:
+                ctrl_down = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0
+                if ctrl_down and not last_ctrl_state:
+                    # CTRL just pressed
+                    nodegrab_scanning = True
+                    _send_nodegrab_cmd("SCAN_ON")
+                    _send_nodegrab_cmd("SNAP")
+                    snap_sent_this_press = True
+                elif not ctrl_down and last_ctrl_state:
+                    # CTRL just released
+                    nodegrab_scanning = False
+                    _send_nodegrab_cmd("SCAN_OFF")
+                    snap_sent_this_press = False
+                last_ctrl_state = ctrl_down
+            else:
+                last_ctrl_state = False
+
+            try:
+                data, addr = sock.recvfrom(2048)
+                if first_packet:
+                    logger.info(f"First UDP packet from node grabber (source: {addr})")
+                    first_packet = False
+
+                text = data.decode("utf-8", errors="ignore").strip()
+                if not text:
+                    continue
+
+                now = time.time()
+
+                if text == "NODE_CLEAR":
+                    if nodegrab_last_cid != -1:
+                        audio_controller.trigger_node_hover_beep(0.5, reverse=True)
+                        nodegrab_last_cid = -1
+                    continue
+
+                # Ignore node hover data if Python knows CTRL isn't held (stale Lua scan)
+                if not nodegrab_scanning and text.startswith("NODE:"):
+                    continue
+
+                if text.startswith("SNAP:"):
+                    # SNAP:<screenX>,<screenY>,<cid>,<name>,<location>,<groups>,<heightNorm>
+                    parts = text[5:].split(",", 6)
+                    if len(parts) >= 2:
+                        sx, sy = int(parts[0]), int(parts[1])
+                        try:
+                            ctypes.windll.user32.SetCursorPos(sx, sy)
+                        except Exception as e:
+                            logger.error(f"SetCursorPos failed: {e}")
+                        # Also announce the snapped node if we have info
+                        if len(parts) >= 7:
+                            cid = int(parts[2])
+                            name = parts[3]
+                            location = parts[4]
+                            groups = parts[5]
+                            height_norm = float(parts[6])
+                            audio_controller.trigger_node_hover_beep(height_norm)
+                            desc = f"{name}, {location}"
+                            if groups:
+                                desc += f", {groups}"
+                            say(desc, exclude_from_buffer=True)
+                    continue
+
+                if text.startswith("NODE:"):
+                    # NODE:<cid>,<name>,<location>,<groups>,<heightNorm>
+                    parts = text[5:].split(",", 4)
+                    if len(parts) == 5:
+                        cid = int(parts[0])
+                        name = parts[1]
+                        location = parts[2]
+                        groups = parts[3]
+                        height_norm = float(parts[4])
+
+                        nodegrab_last_cid = cid
+
+                        # Trigger audio beep immediately
+                        audio_controller.trigger_node_hover_beep(height_norm)
+
+                        # Debounce speech
+                        if now - last_announce_ts >= DEBOUNCE_SEC:
+                            last_announce_ts = now
+                            desc = f"{name}, {location}"
+                            if groups:
+                                desc += f", {groups}"
+                            say(desc, exclude_from_buffer=True)
+
+            except socket.timeout:
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Node grabber listener socket error.")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+        logger.info("Node grabber listener stopped.")
+
+
+def clickspot_listener(audio_controller, stop_event):
+    """Listens for UDP packets from clickspotAccessible.lua — trigger hover data and list."""
+    import ctypes
+    global clickspot_trigger_list, clickspot_last_hover_id
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", CLICKSPOT_LISTEN_PORT))
+        sock.settimeout(0.2)
+        logger.info(f"Clickspot listener started on port {CLICKSPOT_LISTEN_PORT}")
+
+        first_packet = True
+        last_announce_ts = 0.0
+        DEBOUNCE_SEC = 0.15
+
+        while not stop_event.is_set():
+            try:
+                data, addr = sock.recvfrom(2048)
+                if first_packet:
+                    logger.info(f"First UDP packet from clickspot detector (source: {addr})")
+                    first_packet = False
+
+                text = data.decode("utf-8", errors="ignore").strip()
+                if not text:
+                    continue
+
+                now = time.time()
+
+                if text == "HOVER_CLEAR":
+                    if clickspot_last_hover_id != -1:
+                        audio_controller.trigger_clickspot_beep(reverse=True)
+                    clickspot_last_hover_id = -1
+                    continue
+
+                if text.startswith("TRIGGER_LIST:"):
+                    count = int(text[13:])
+                    clickspot_trigger_list = []
+                    if count == 0:
+                        say("No clickspots found on this vehicle", exclude_from_buffer=True)
+                    else:
+                        say(f"{count} clickspot{'s' if count != 1 else ''} found", exclude_from_buffer=True)
+                    continue
+
+                if text.startswith("TRIGGER:"):
+                    # TRIGGER:<cacheIndex>,<triggerId>,<displayName>
+                    parts = text[8:].split(",", 2)
+                    if len(parts) == 3:
+                        cache_idx = int(parts[0])
+                        trigger_id = int(parts[1])
+                        display_name = parts[2]
+                        clickspot_trigger_list.append((cache_idx, trigger_id, display_name))
+                    continue
+
+                if text.startswith("HOVER:"):
+                    # HOVER:<triggerId>,<displayName>
+                    parts = text[6:].split(",", 1)
+                    if len(parts) == 2:
+                        trigger_id = int(parts[0])
+                        display_name = parts[1]
+                        clickspot_last_hover_id = trigger_id
+
+                        # Trigger forward beep (mouse moved onto clickspot)
+                        audio_controller.trigger_clickspot_beep(reverse=False)
+
+                        # Debounce speech
+                        if now - last_announce_ts >= DEBOUNCE_SEC:
+                            last_announce_ts = now
+                            say(display_name, exclude_from_buffer=True)
+                    continue
+
+                if text.startswith("SNAP_OK:"):
+                    # SNAP_OK:<screenX>,<screenY>,<triggerId>,<displayName>
+                    parts = text[8:].split(",", 3)
+                    if len(parts) >= 4:
+                        sx, sy = int(parts[0]), int(parts[1])
+                        display_name = parts[3]
+                        try:
+                            ctypes.windll.user32.SetCursorPos(sx, sy)
+                        except Exception as e:
+                            logger.error(f"SetCursorPos failed: {e}")
+                        # No beep on menu-initiated jump — speech only
+                        say(f"Jumped to {display_name}", exclude_from_buffer=True)
+                    continue
+
+                if text.startswith("SNAP_FAIL:"):
+                    reason = text[10:]
+                    say(f"Cannot jump, {reason}", exclude_from_buffer=True)
+                    continue
+
+            except socket.timeout:
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Clickspot listener socket error.")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+        logger.info("Clickspot listener stopped.")
+
+
 # =========================
 #  Units & formatting
 # =========================
@@ -676,6 +1013,7 @@ last_g_lon = 0.0
 last_tire_pressure_fl, last_tire_pressure_fr, last_tire_pressure_rl, last_tire_pressure_rr = 0.0, 0.0, 0.0, 0.0
 last_tire_temp_fl, last_tire_temp_fr, last_tire_temp_rl, last_tire_temp_rr = 0.0, 0.0, 0.0, 0.0
 last_brake_temp_fl, last_brake_temp_fr, last_brake_temp_rl, last_brake_temp_rr = 0.0, 0.0, 0.0, 0.0
+last_signal_left_input, last_signal_right_input, last_hazard_enabled = False, False, False
 
 # Status Mode
 status_mode_active = False
@@ -710,6 +1048,7 @@ neutral_pending, neutral_spoken, neutral_start_ts, neutral_dwell_sec = False, Fa
 # State shared with audio module
 pedal_tones_active = False
 scan_mode_active = False
+coupler_dist_mode = False
 obstacle_mode_active = False
 _command_context = False   # True only while processing an F9/F10 command keystroke
 
@@ -743,6 +1082,7 @@ _ls_steady_start_ts = 0.0
 last_scanner_target_name = ""
 last_scanner_distance    = float('inf')
 last_scanner_approach_deg = 0.0
+last_scanner_bearing     = 0.0
 
 # Camera Info State
 free_cam_active = False
@@ -757,11 +1097,28 @@ cam_compass_click_counter = 0
 cam_last_announced_compass_idx = -1
 cam_last_compass_ts = 0.0
 
-# Vehicle Details Browsing State
+# Node Grabber State
+nodegrab_mode_active = False
+nodegrab_scanning = False
+nodegrab_last_cid = -1
+nodegrab_strength = 50  # tracked locally (0-100)
+_nodegrab_scroll_hook = None
+
+# Clickspot Detection State
+clickspot_mode_active = False
+clickspot_trigger_list = []  # list of (cache_index, trigger_id, display_name)
+clickspot_last_hover_id = -1
+
+# Generic Virtual Browser State
+_vbrowser_lines = []
+_vbrowser_index = 0
+_vbrowser_hooks = []
+_vbrowser_active = False
+_vbrowser_on_enter = None
+_vbrowser_entry_data = []
+
+# Vehicle Details State
 _vehicle_selector_open = False
-_vehicle_detail_lines = []
-_vehicle_detail_index = 0
-_vehicle_detail_arrow_hooks = []
 audio_controller_ref = None
 
 # =========================
@@ -778,33 +1135,86 @@ next_key_hook_press, next_key_hook_release, next_key_timer = None, None, None
 command_timeout_sec = 4.0
 _capture_mods = {"ctrl": False, "shift": False, "alt": False}
 
-HELP_LINES = [
-    "Speaks attitude (roll/pitch): A", "Speaks coordinates: C", "Speaks engine temperature: E", "Dump all electrics values to log: SHIFT+E", "Dump all powertrain data to log: SHIFT+P", "Dump all hydros data to log: SHIFT+H",
-    "Speaks fuel: F", "Speaks gear: G", "Speaks oil temperature: O", "Speaks RPM: R",
-    "Speaks Max RPM (red line): Shift+R", "Speaks speed: S", "Speaks turbo pressure: T",
-    "Speaks max turbo pressure: Shift+T", "Toggle Status Mode: CTRL+S",
-    "Toggle Buffer Mode: CTRL+B", "Toggle Pedal Tones: CTRL+C", "Toggle Vehicle Scanner: CTRL+V",
-    "Toggle Obstacle Detection: CTRL+O",
-    "Align to trailer coupler: SHIFT+V", "Cycle scanner target: TAB / SHIFT+TAB",
-    "Toggle Heading Guidance: CTRL+H", "Toggle Drift Detection: CTRL+D",
-    "Toggle Low Speed Detection: CTRL+L",
-    "Mark waypoint at current position: SHIFT+C",
-    "Speak marked waypoint: ALT+C",
-    "Distance and bearing to waypoint: W",
-    "Scanner distance and approach direction: D (scanner must be on)",
-    "Toggle Coordinate Guidance: CTRL+G",
-    "Toggle Camera Info: ALT+F",
-    "Camera heading: ALT+H", "Camera altitude: ALT+A", "Camera pitch: ALT+P",
-    "Vehicle bearing from camera: ALT+V", "Vehicle distance from camera: ALT+D",
-    "Damage Report: M",
-    "Show this help: question mark or slash",
-]
-HELP_TEXT = ",\n".join(HELP_LINES)
+_input_help_mode = False
+
+# F9 command descriptions keyed by (name, ctrl, shift, alt)
+_F9_HELP = {
+    ("s", False, False, False): "Speak speed",
+    ("r", False, False, False): "Speak RPM",
+    ("r", False, True, False): "Speak redline RPM",
+    ("g", False, False, False): "Speak gear",
+    ("f", False, False, False): "Speak fuel",
+    ("e", False, False, False): "Speak engine temperature",
+    ("e", False, True, False): "Dump electrics to log",
+    ("p", False, True, False): "Dump powertrain to log",
+    ("h", False, True, False): "Dump hydros to log",
+    ("t", False, False, False): "Speak turbo pressure",
+    ("t", False, True, False): "Speak max turbo pressure",
+    ("o", False, False, False): "Speak oil temperature",
+    ("a", False, False, False): "Speak attitude, roll and pitch",
+    ("c", False, False, False): "Speak coordinates",
+    ("c", False, True, False): "Mark waypoint at current position",
+    ("c", False, False, True): "Speak marked waypoint",
+    ("w", False, False, False): "Distance and bearing to waypoint",
+    ("d", False, False, False): "Scanner distance and orientation",
+    ("d", False, True, False): "Scanner relative bearing to target",
+    ("d", True, False, False): "Toggle drift detection",
+    ("d", True, True, False): "Toggle coupler distance callouts",
+    ("m", False, False, False): "Damage report",
+    ("s", True, False, False): "Toggle status mode",
+    ("b", True, False, False): "Toggle buffer mode",
+    ("c", True, False, False): "Toggle pedal tones",
+    ("v", True, False, False): "Toggle vehicle scanner",
+    ("v", False, True, False): "Align to trailer coupler and start coupler tracking",
+    ("o", True, False, False): "Toggle obstacle detection",
+    ("tab", False, False, False): "Next scanner target",
+    ("tab", False, True, False): "Previous scanner target",
+    ("h", True, False, False): "Toggle heading guidance",
+    ("g", True, False, False): "Toggle coordinate guidance",
+    ("l", True, False, False): "DOM dump",
+    ("l", True, True, False): "Toggle low speed detection",
+    ("s", True, True, False): "Toggle speech logger",
+    ("v", True, True, False): "Browse vehicle-specific keybinds",
+    ("f", False, False, True): "Toggle camera info",
+    ("h", False, False, True): "Camera heading",
+    ("a", False, False, True): "Camera altitude",
+    ("p", False, False, True): "Camera pitch",
+    ("v", False, False, True): "Vehicle bearing from camera",
+    ("d", False, False, True): "Vehicle distance from camera",
+    ("h", False, False, False): "Speak heading",
+    ("p", False, False, False): "Speak air pressure",
+    ("u", False, False, False): "Switch between imperial and metric",
+    ("space", False, False, False): "Activate context action",
+    ("n", True, False, False): "Toggle accessible node grabber",
+    ("c", True, True, False): "Toggle clickspot detection",
+    ("c", True, True, True): "Browse clickspots",
+}
+
+# F10 (AI) command descriptions
+_F10_HELP = {
+    ("d", False, False, False): "Disable AI",
+    ("t", False, False, False): "Traffic mode",
+    ("r", False, False, False): "Random mode",
+    ("s", False, False, False): "Stop AI",
+    ("c", False, False, False): "Chase mode",
+    ("f", False, False, False): "Follow mode",
+    ("e", False, False, False): "Flee mode",
+    ("a", False, False, False): "Cycle avoid cars",
+    ("l", False, False, False): "Toggle lane driving",
+    ("+", False, False, False): "Increase speed limit",
+    ("=", False, False, False): "Increase speed limit",
+    ("-", False, False, False): "Decrease speed limit",
+    ("0", False, False, False): "Clear speed limit",
+}
+# Aggression keys 1-9
+for _k, _v in [('1','0.2'),('2','0.4'),('3','0.7'),('4','0.9'),('5','1.0'),('6','1.2'),('7','1.5'),('8','1.8'),('9','2.0')]:
+    _F10_HELP[(_k, False, False, False)] = f"Aggression {_v}"
 
 
 def _clear_next_key_hook(speak_exit: bool):
-    global next_key_hook_press, next_key_hook_release, next_key_timer, _command_context
+    global next_key_hook_press, next_key_hook_release, next_key_timer, _command_context, _input_help_mode
     _command_context = False
+    _input_help_mode = False
     try:
         if next_key_hook_press is not None: keyboard.unhook(next_key_hook_press)
     except Exception: pass
@@ -915,60 +1325,110 @@ def toggle_buffer_mode():
             except Exception: pass
         buffer_key_hooks.clear()
 
-def _on_vehicle_detail_arrow(event):
-    global _vehicle_detail_index
-    if not _vehicle_detail_lines:
+def _on_vbrowser_nav(event):
+    global _vbrowser_index
+    if not _vbrowser_lines:
         return
     if event.name == 'down':
-        _vehicle_detail_index += 1
-        if _vehicle_detail_index >= len(_vehicle_detail_lines):
-            _vehicle_detail_index = len(_vehicle_detail_lines) - 1
-            say(f"Bottom: {_vehicle_detail_lines[_vehicle_detail_index]}", exclude_from_buffer=True)
+        _vbrowser_index += 1
+        if _vbrowser_index >= len(_vbrowser_lines):
+            _vbrowser_index = len(_vbrowser_lines) - 1
+            say(f"Bottom: {_vbrowser_lines[_vbrowser_index]}", exclude_from_buffer=True)
         else:
-            say(_vehicle_detail_lines[_vehicle_detail_index], exclude_from_buffer=True)
+            say(_vbrowser_lines[_vbrowser_index], exclude_from_buffer=True)
     elif event.name == 'up':
-        _vehicle_detail_index -= 1
-        if _vehicle_detail_index < 0:
-            _vehicle_detail_index = 0
-            say(f"Top: {_vehicle_detail_lines[_vehicle_detail_index]}", exclude_from_buffer=True)
+        _vbrowser_index -= 1
+        if _vbrowser_index < 0:
+            _vbrowser_index = 0
+            say(f"Top: {_vbrowser_lines[_vbrowser_index]}", exclude_from_buffer=True)
         else:
-            say(_vehicle_detail_lines[_vehicle_detail_index], exclude_from_buffer=True)
+            say(_vbrowser_lines[_vbrowser_index], exclude_from_buffer=True)
+
+
+def _on_vbrowser_escape(event):
+    close_virtual_browser(speak_exit=True)
+
+
+def _on_vbrowser_enter(event):
+    if not _vbrowser_lines or _vbrowser_on_enter is None:
+        return
+    idx = _vbrowser_index
+    line = _vbrowser_lines[idx]
+    data = _vbrowser_entry_data[idx] if idx < len(_vbrowser_entry_data) else None
+    try:
+        _vbrowser_on_enter(idx, line, data)
+    except Exception as e:
+        logger.error(f"Virtual browser enter callback error: {e}")
+
+
+def open_virtual_browser(lines, title=None, on_enter=None, entry_data=None, start_index=0):
+    global _vbrowser_lines, _vbrowser_index, _vbrowser_active
+    global _vbrowser_on_enter, _vbrowser_entry_data
+    close_virtual_browser(speak_exit=False)
+    if not lines:
+        say("No information available", exclude_from_buffer=True)
+        return
+    _vbrowser_lines = list(lines)
+    _vbrowser_index = max(0, min(start_index, len(_vbrowser_lines) - 1))
+    _vbrowser_active = True
+    _vbrowser_on_enter = on_enter
+    _vbrowser_entry_data = list(entry_data) if entry_data else []
+    if KEYBOARD_OK:
+        try:
+            for key in ['up', 'down']:
+                _vbrowser_hooks.append(
+                    keyboard.on_press_key(key, _on_vbrowser_nav, suppress=True)
+                )
+            _vbrowser_hooks.append(
+                keyboard.on_press_key('escape', _on_vbrowser_escape, suppress=True)
+            )
+            if on_enter is not None:
+                _vbrowser_hooks.append(
+                    keyboard.on_press_key('enter', _on_vbrowser_enter, suppress=True)
+                )
+        except Exception as e:
+            logger.error(f"Failed to hook virtual browser keys: {e}")
+    if title:
+        say(f"{title}. {_vbrowser_lines[_vbrowser_index]}", exclude_from_buffer=True)
+    else:
+        say(_vbrowser_lines[_vbrowser_index], exclude_from_buffer=True)
+
+
+def close_virtual_browser(speak_exit=True):
+    global _vbrowser_lines, _vbrowser_index, _vbrowser_active
+    global _vbrowser_on_enter, _vbrowser_entry_data
+    _vbrowser_active = False
+    _vbrowser_on_enter = None
+    _vbrowser_entry_data = []
+    for hook in _vbrowser_hooks:
+        try: keyboard.unhook(hook)
+        except Exception: pass
+    _vbrowser_hooks.clear()
+    _vbrowser_lines = []
+    _vbrowser_index = 0
+    if speak_exit:
+        say("Exit", exclude_from_buffer=True)
 
 
 def _on_vehicle_details_received(lines):
-    global _vehicle_detail_lines, _vehicle_detail_index
     filtered = [l.strip() for l in lines if isinstance(l, str) and l.strip()]
     if not filtered:
         return
-    _vehicle_detail_lines = filtered
-    _vehicle_detail_index = 0
+    if _vehicle_selector_open:
+        open_virtual_browser(filtered)
     if audio_controller_ref:
         audio_controller_ref.trigger_details_tone()
 
 
 def _on_vehicle_selector_state(is_open):
-    global _vehicle_selector_open, _vehicle_detail_lines, _vehicle_detail_index, _vehicle_detail_arrow_hooks
+    global _vehicle_selector_open
     if is_open == _vehicle_selector_open:
         return
     _vehicle_selector_open = is_open
     if is_open:
-        if KEYBOARD_OK:
-            try:
-                for key in ['up', 'down']:
-                    _vehicle_detail_arrow_hooks.append(
-                        keyboard.on_press_key(key, _on_vehicle_detail_arrow, suppress=True)
-                    )
-            except Exception as e:
-                logger.error(f"Failed to hook vehicle detail arrow keys: {e}")
+        pass  # Browser opens when details arrive via _on_vehicle_details_received
     else:
-        for hook in _vehicle_detail_arrow_hooks:
-            try:
-                keyboard.unhook(hook)
-            except Exception:
-                pass
-        _vehicle_detail_arrow_hooks.clear()
-        _vehicle_detail_lines = []
-        _vehicle_detail_index = 0
+        close_virtual_browser(speak_exit=False)
 
 
 SCANNER_CMD_PORT = 4448  # UDP port to send ON/OFF commands to vehicle scanner
@@ -977,6 +1437,10 @@ CAMERA_LISTEN_PORT = 4450  # UDP port to receive camera data from cameraInfo.lua
 CAMERA_CMD_PORT = 4451     # UDP port to send ON/OFF commands to cameraInfo.lua
 OBSTACLE_LISTEN_PORT = 4452  # UDP port to receive obstacle data from obstacleDetector.lua
 OBSTACLE_CMD_PORT = 4453     # UDP port to send ON/OFF commands to obstacleDetector.lua
+NODEGRAB_LISTEN_PORT = 4454  # UDP port to receive node data from nodeGrabberAccessible.lua
+NODEGRAB_CMD_PORT = 4455     # UDP port to send commands to nodeGrabberAccessible.lua
+CLICKSPOT_LISTEN_PORT = 4456 # UDP port to receive clickspot data from clickspotAccessible.lua
+CLICKSPOT_CMD_PORT = 4457    # UDP port to send commands to clickspotAccessible.lua
 
 # AI Control State
 ai_speed_limit_ms = None     # current speed limit in m/s, None = off
@@ -984,11 +1448,13 @@ ai_avoid_mode = "auto"       # "auto", "on", "off"
 ai_lane_driving = False
 
 def toggle_scan_mode(audio_controller):
-    global scan_mode_active, last_scanner_target_name, last_scanner_distance, last_scanner_approach_deg
+    global scan_mode_active, coupler_dist_mode, last_scanner_target_name, last_scanner_distance, last_scanner_approach_deg, last_scanner_bearing
     scan_mode_active = not scan_mode_active
+    coupler_dist_mode = False
     last_scanner_target_name = ""
     last_scanner_distance = float('inf')
     last_scanner_approach_deg = 0.0
+    last_scanner_bearing = 0.0
 
     command = "ON" if scan_mode_active else "OFF"
 
@@ -1000,6 +1466,8 @@ def toggle_scan_mode(audio_controller):
         logger.error(f"Failed to send scanner command via UDP: {e}")
 
     audio_controller.set_scan_mode(scan_mode_active)
+    if not scan_mode_active:
+        audio_controller.set_coupler_tracking(False)
 
     say(f"Vehicle scanner {'on' if scan_mode_active else 'off'}", exclude_from_buffer=True)
 
@@ -1043,8 +1511,124 @@ def toggle_free_cam_info(audio_controller):
     say(f"Camera info {'on' if free_cam_active else 'off'}", exclude_from_buffer=True)
 
 
+def _send_nodegrab_cmd(command):
+    try:
+        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        cmd_sock.sendto(command.encode("utf-8"), ("127.0.0.1", NODEGRAB_CMD_PORT))
+        cmd_sock.close()
+    except Exception as e:
+        logger.error(f"Failed to send node grabber command via UDP: {e}")
+
+
+def _install_nodegrab_hooks():
+    global _nodegrab_scroll_hook
+    try:
+        import mouse
+        _nodegrab_scroll_hook = mouse.hook(_nodegrab_on_mouse_event)
+    except ImportError:
+        logger.warning("mouse module unavailable — scroll/middle-click hooks disabled for node grabber")
+
+
+def _nodegrab_on_mouse_event(event):
+    """Hook for mouse wheel events while node grabber is active."""
+    try:
+        import mouse
+        if isinstance(event, mouse.WheelEvent):
+            if not nodegrab_mode_active:
+                return
+            global nodegrab_strength
+            if event.delta > 0:
+                nodegrab_strength = min(100, nodegrab_strength + 5)
+            else:
+                nodegrab_strength = max(0, nodegrab_strength - 5)
+            say(f"Strength {nodegrab_strength} percent", exclude_from_buffer=True)
+        elif isinstance(event, mouse.ButtonEvent) and event.button == "middle" and event.event_type == "up":
+            if nodegrab_mode_active and nodegrab_scanning:
+                say("Node pinned", exclude_from_buffer=True)
+    except Exception as e:
+        logger.error(f"Node grabber mouse event error: {e}")
+
+
+def _remove_nodegrab_hooks():
+    global _nodegrab_scroll_hook, nodegrab_scanning
+    nodegrab_scanning = False
+    if _nodegrab_scroll_hook is not None:
+        try:
+            import mouse
+            mouse.unhook(_nodegrab_scroll_hook)
+        except Exception:
+            pass
+        _nodegrab_scroll_hook = None
+
+
+def toggle_nodegrab_mode(audio_controller):
+    global nodegrab_mode_active, nodegrab_last_cid, nodegrab_strength
+    nodegrab_mode_active = not nodegrab_mode_active
+    nodegrab_last_cid = -1
+    nodegrab_strength = 50
+
+    command = "ON" if nodegrab_mode_active else "OFF"
+    _send_nodegrab_cmd(command)
+
+    if nodegrab_mode_active:
+        _install_nodegrab_hooks()
+    else:
+        _remove_nodegrab_hooks()
+
+    say(f"Accessible node grabber {'on' if nodegrab_mode_active else 'off'}", exclude_from_buffer=True)
+
+
+def _send_clickspot_cmd(command):
+    try:
+        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        cmd_sock.sendto(command.encode("utf-8"), ("127.0.0.1", CLICKSPOT_CMD_PORT))
+        cmd_sock.close()
+    except Exception as e:
+        logger.error(f"Failed to send clickspot command via UDP: {e}")
+
+
+def _clickspot_browser_on_enter(idx, line, data):
+    """Virtual browser enter callback — snap cursor to trigger and execute press+release."""
+    if data is None:
+        return
+    cache_idx = data
+    _send_clickspot_cmd(f"SNAP:{cache_idx}")
+    # Also execute a press+release to activate the trigger
+    import threading as _th
+    def _do_exec():
+        time.sleep(0.1)  # small delay to let SNAP/cursor warp complete
+        _send_clickspot_cmd(f"EXEC:{cache_idx},1")
+        time.sleep(0.15)
+        _send_clickspot_cmd(f"EXEC:{cache_idx},0")
+    _th.Thread(target=_do_exec, daemon=True).start()
+
+
+def toggle_clickspot_mode(audio_controller):
+    global clickspot_mode_active, clickspot_trigger_list
+    clickspot_mode_active = not clickspot_mode_active
+    clickspot_trigger_list = []
+
+    command = "ON" if clickspot_mode_active else "OFF"
+    _send_clickspot_cmd(command)
+
+    say(f"Clickspot detection {'on' if clickspot_mode_active else 'off'}", exclude_from_buffer=True)
+
+
+def open_clickspot_browser():
+    """Open a virtual browser listing all detected clickspots."""
+    if not clickspot_mode_active:
+        say("Clickspot detection is not active", exclude_from_buffer=True)
+        return
+    if not clickspot_trigger_list:
+        say("No clickspots available", exclude_from_buffer=True)
+        return
+    lines = [t[2] for t in clickspot_trigger_list]  # display names
+    entry_data = [t[0] for t in clickspot_trigger_list]  # cache indices
+    open_virtual_browser(lines, title=f"{len(lines)} clickspots", on_enter=_clickspot_browser_on_enter, entry_data=entry_data)
+
+
 def _on_next_key_press(event, audio_controller):
-    global marked_coord_x, marked_coord_y, _last_coord_bearing_ts
+    global marked_coord_x, marked_coord_y, _last_coord_bearing_ts, _input_help_mode
     if event.event_type != "down": return
     name = (event.name or "").lower()
 
@@ -1053,6 +1637,32 @@ def _on_next_key_press(event, audio_controller):
     if name in ("alt", "left alt", "right alt"): _capture_mods["alt"] = True; return
 
     if name == "f9": return
+
+    # Toggle input help mode with ? (shift+/)
+    if name in ("/", "?"):
+        _input_help_mode = not _input_help_mode
+        if _input_help_mode:
+            say("Input help on", exclude_from_buffer=True)
+            # Cancel timeout so layer stays open
+            if next_key_timer is not None:
+                try: next_key_timer.cancel()
+                except Exception: pass
+        else:
+            say("Input help off", exclude_from_buffer=True)
+            _clear_next_key_hook(speak_exit=False)
+        return
+
+    # In help mode: speak what the key does, reset timeout, don't execute
+    if _input_help_mode:
+        key = (name, _capture_mods["ctrl"], _capture_mods["shift"], _capture_mods["alt"])
+        desc = _F9_HELP.get(key)
+        if name.isdigit() and not (_capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]):
+            desc = f"Speak buffer message {name}" if name != '0' else "Speak buffer message 10"
+        if desc:
+            say(desc, exclude_from_buffer=True)
+        else:
+            say("No command", exclude_from_buffer=True)
+        return
 
     if name.isdigit() and not (_capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]):
         target_recency = 10 if name == '0' else int(name)
@@ -1144,7 +1754,6 @@ def _on_next_key_press(event, audio_controller):
             say("Camera info is off", exclude_from_buffer=True)
         _clear_next_key_hook(speak_exit=False)
         return
-
     if name == "s" and not _capture_mods["ctrl"]: say(f"{spd_val} {spd_unit}")
     elif name == "r" and _capture_mods["shift"]: say(f"Redline {int(round(rpm_max_snap))} RPM" if protocol_mode == "extended" else "Unavailable")
     elif name == "r": say(f"{rpm} rpm")
@@ -1157,7 +1766,19 @@ def _on_next_key_press(event, audio_controller):
             say(f"Heading guidance on", exclude_from_buffer=True)
         else:
             say("Heading guidance off", exclude_from_buffer=True)
-    elif name == "d" and _capture_mods["ctrl"]:
+    elif name == "d" and _capture_mods["ctrl"] and _capture_mods["shift"] and not _capture_mods["alt"]:
+        global coupler_dist_mode
+        if not scan_mode_active:
+            say("Vehicle scanner is not active", exclude_from_buffer=True)
+        else:
+            coupler_dist_mode = not coupler_dist_mode
+            try:
+                cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                cmd_sock.sendto(b"COUPLER_DIST", ("127.0.0.1", SCANNER_CMD_PORT))
+                cmd_sock.close()
+            except Exception as e:
+                logger.error(f"Failed to send COUPLER_DIST command via UDP: {e}")
+    elif name == "d" and _capture_mods["ctrl"] and not (_capture_mods["shift"] or _capture_mods["alt"]):
         global drift_mode_active, last_drift_check_ts, drift_baseline_heading, drift_alert_active
         drift_mode_active = not drift_mode_active
         if drift_mode_active:
@@ -1169,32 +1790,46 @@ def _on_next_key_press(event, audio_controller):
         else:
             drift_alert_active = False
             say("Drift detection off", exclude_from_buffer=True)
+    elif name == "d" and _capture_mods["shift"] and not (_capture_mods["ctrl"] or _capture_mods["alt"]):
+        if not scan_mode_active:
+            say("Scanner is not active", exclude_from_buffer=True)
+        else:
+            with state_lock:
+                brg = last_scanner_bearing
+                dist = last_scanner_distance
+            if dist == float('inf'):
+                say("No target", exclude_from_buffer=True)
+            else:
+                direction = "right" if brg >= 0 else "left"
+                say(f"{abs(brg):.0f} degrees {direction}", exclude_from_buffer=True)
     elif name == "d" and not (_capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]):
         if not scan_mode_active:
             say("Scanner is not active", exclude_from_buffer=True)
         else:
             with state_lock:
-                dist     = last_scanner_distance
-                approach = last_scanner_approach_deg
-                tname    = last_scanner_target_name
+                dist  = last_scanner_distance
+                brg   = last_scanner_bearing
+                tname = last_scanner_target_name
             if dist == float('inf'):
                 say("No target", exclude_from_buffer=True)
             else:
-                a = abs(approach)
-                if a < 45:
-                    direction = "front"
-                elif a > 135:
-                    direction = "rear"
-                elif approach > 0:
-                    direction = "right"
+                a = abs(brg)
+                if a < 30:
+                    orientation = "approaching"
+                elif a < 60:
+                    orientation = "angling toward"
+                elif a < 120:
+                    orientation = "broadside"
+                elif a < 150:
+                    orientation = "angling away"
                 else:
-                    direction = "left"
+                    orientation = "departing"
                 if UNITS_MODE == "imperial":
                     dist_str = f"{dist * 3.28084:.0f} feet"
                 else:
                     dist_str = f"{dist:.0f} meters"
                 prefix = f"{tname}, " if tname else ""
-                say(f"{prefix}{dist_str} away, approaching {direction}", exclude_from_buffer=True)
+                say(f"{prefix}{dist_str} away, {orientation}", exclude_from_buffer=True)
     elif name == "w" and not (_capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]):
         if marked_coord_x is None:
             say("No waypoint marked", exclude_from_buffer=True)
@@ -1215,10 +1850,25 @@ def _on_next_key_press(event, audio_controller):
                 else:
                     dist_str = f"{dist:.0f} meters"
                 say(f"{dist_str}, {abs(err):.0f} degrees {turn_dir}", exclude_from_buffer=True)
-    elif name == "l" and _capture_mods["ctrl"] and not (_capture_mods["shift"] or _capture_mods["alt"]):
+    elif name == "s" and _capture_mods["ctrl"] and _capture_mods["shift"] and not _capture_mods["alt"]:
+        global speech_logging_active
+        speech_logging_active = not speech_logging_active
+        if speech_logging_active:
+            # Clear the log on each new session
+            try:
+                open(SPEECH_LOG_PATH, "w").close()
+            except Exception:
+                pass
+            say("Speech logging on", exclude_from_buffer=True)
+        else:
+            say(f"Speech logging off, saved to {SPEECH_LOG_PATH}", exclude_from_buffer=True)
+    elif name == "l" and _capture_mods["ctrl"] and _capture_mods["shift"] and not _capture_mods["alt"]:
         global low_speed_mode_active
         low_speed_mode_active = not low_speed_mode_active
         say("Low speed detection on" if low_speed_mode_active else "Low speed detection off", exclude_from_buffer=True)
+    elif name == "l" and _capture_mods["ctrl"] and not (_capture_mods["shift"] or _capture_mods["alt"]):
+        say("Dumping DOM", exclude_from_buffer=True)
+        broadcast({"type": "dom_dump"})
     elif name == "g" and _capture_mods["ctrl"]:
         global coord_guidance_active
         coord_guidance_active = not coord_guidance_active
@@ -1355,15 +2005,15 @@ def _on_next_key_press(event, audio_controller):
     elif name == "m" and not (_capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]):
         say("Checking damage", exclude_from_buffer=True)
         def _do_damage_report():
-            DUMP_CMD_PORT  = 4446
             DUMP_RESP_PORT = 4447
             recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             try:
                 recv_sock.bind(("127.0.0.1", DUMP_RESP_PORT))
                 cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                cmd_sock.sendto(b"DAMAGE", ("127.0.0.1", DUMP_CMD_PORT))
+                cmd_sock.sendto(b"DAMAGE", ("127.0.0.1", SCANNER_CMD_PORT))
                 cmd_sock.close()
                 recv_sock.settimeout(5.0)
+                veh_name = ""
                 items = []
                 for _ in range(200):
                     try:
@@ -1373,14 +2023,18 @@ def _on_next_key_press(event, audio_controller):
                             break
                         if text == "NONE":
                             continue
+                        if text.startswith("NAME:"):
+                            veh_name = text[5:]
+                            continue
                         items.append(text)
                         recv_sock.settimeout(0.5)
                     except socket.timeout:
                         break
             finally:
                 recv_sock.close()
+            preamble = f"Damage report for {veh_name}" if veh_name else "Damage report"
             if not items:
-                say("No damaged components", exclude_from_buffer=True)
+                say(f"{preamble}: no damaged components", exclude_from_buffer=True)
             else:
                 if len(items) == 1:
                     sentence = items[0]
@@ -1388,27 +2042,33 @@ def _on_next_key_press(event, audio_controller):
                     sentence = f"{items[0]} and {items[1]}"
                 else:
                     sentence = ", ".join(items[:-1]) + ", and " + items[-1]
-                say(sentence, exclude_from_buffer=True)
+                say(f"{preamble}: {sentence}", exclude_from_buffer=True)
         threading.Thread(target=_do_damage_report, daemon=True).start()
     elif name == "o" and not _capture_mods["ctrl"]: say(f"Oil temperature {otemp_val} {otemp_unit}")
-    elif name == "c" and _capture_mods["alt"]:
+    elif name == "c" and _capture_mods["ctrl"] and _capture_mods["shift"] and _capture_mods["alt"]:
+        open_clickspot_browser()
+    elif name == "c" and _capture_mods["ctrl"] and _capture_mods["shift"] and not _capture_mods["alt"]:
+        toggle_clickspot_mode(audio_controller)
+    elif name == "c" and _capture_mods["alt"] and not (_capture_mods["ctrl"] or _capture_mods["shift"]):
         if marked_coord_x is None:
             say("No waypoint marked", exclude_from_buffer=True)
         else:
             say(f"Waypoint X {marked_coord_x:.1f}, Y {marked_coord_y:.1f}", exclude_from_buffer=True)
-    elif name == "c" and _capture_mods["shift"]:
+    elif name == "c" and _capture_mods["shift"] and not (_capture_mods["ctrl"] or _capture_mods["alt"]):
         marked_coord_x, marked_coord_y = x, y
         _last_coord_bearing_ts = 0.0  # force immediate recalculation
         say(f"Waypoint marked at X {x:.1f}, Y {y:.1f}", exclude_from_buffer=True)
     elif name == "c" and not _capture_mods["ctrl"] and not _capture_mods["shift"] and not _capture_mods["alt"]: say(f"Coordinates X {x:.2f}, Y {y:.2f}, Z {z:.2f}")
-    elif name in ("/", "?"): say(HELP_TEXT, exclude_from_buffer=True)
     elif name == "s" and _capture_mods["ctrl"]: toggle_status_mode()
     elif name == "b" and _capture_mods["ctrl"]: toggle_buffer_mode()
-    elif name == "c" and _capture_mods["ctrl"]:
+    elif name == "c" and _capture_mods["ctrl"] and not (_capture_mods["shift"] or _capture_mods["alt"]):
         global pedal_tones_active
         pedal_tones_active = not pedal_tones_active
         say("Pedal tones on" if pedal_tones_active else "Pedal tones off", exclude_from_buffer=True)
-    elif name == "v" and _capture_mods["shift"]:
+    elif name == "v" and _capture_mods["ctrl"] and _capture_mods["shift"] and not _capture_mods["alt"]:
+        say("Fetching vehicle keybinds", exclude_from_buffer=True)
+        broadcast({"type": "get_vehicle_keybinds"})
+    elif name == "v" and _capture_mods["shift"] and not _capture_mods["ctrl"]:
         if not scan_mode_active:
             say("Vehicle scanner is not active", exclude_from_buffer=True)
         else:
@@ -1423,6 +2083,8 @@ def _on_next_key_press(event, audio_controller):
         toggle_scan_mode(audio_controller)
     elif name == "o" and _capture_mods["ctrl"]:
         toggle_obstacle_mode(audio_controller)
+    elif name == "n" and _capture_mods["ctrl"] and not (_capture_mods["shift"] or _capture_mods["alt"]):
+        toggle_nodegrab_mode(audio_controller)
     elif name == "tab":
         if not scan_mode_active:
             say("Turn on vehicle scanner first", exclude_from_buffer=True)
@@ -1481,8 +2143,9 @@ def _send_ai_command(cmd):
         logger.error(f"Failed to send AI command via UDP: {e}")
 
 def _clear_ai_hook(speak_exit: bool):
-    global ai_hook_press, ai_hook_release, ai_timer, _command_context
+    global ai_hook_press, ai_hook_release, ai_timer, _command_context, _input_help_mode
     _command_context = False
+    _input_help_mode = False
     try:
         if ai_hook_press is not None: keyboard.unhook(ai_hook_press)
     except Exception: pass
@@ -1505,7 +2168,7 @@ def _on_ai_key_release(event):
     elif name in ("alt", "left alt", "right alt"): _ai_mods["alt"] = False
 
 def _on_ai_key_press(event):
-    global ai_speed_limit_ms, ai_avoid_mode, ai_lane_driving
+    global ai_speed_limit_ms, ai_avoid_mode, ai_lane_driving, _input_help_mode
     if event.event_type != "down": return
     name = (event.name or "").lower()
 
@@ -1513,6 +2176,32 @@ def _on_ai_key_press(event):
     if name in ("shift", "left shift", "right shift"): _ai_mods["shift"] = True; return
     if name in ("alt", "left alt", "right alt"): _ai_mods["alt"] = True; return
     if name == "f10": return
+
+    # Toggle input help mode with ? (shift+/)
+    if name in ("/", "?"):
+        _input_help_mode = not _input_help_mode
+        if _input_help_mode:
+            say("Input help on", exclude_from_buffer=True)
+            if ai_timer is not None:
+                try: ai_timer.cancel()
+                except Exception: pass
+        else:
+            say("Input help off", exclude_from_buffer=True)
+            _clear_ai_hook(speak_exit=False)
+        return
+
+    # In help mode: speak what the key does, don't execute
+    if _input_help_mode:
+        key = (name, _ai_mods["ctrl"], _ai_mods["shift"], _ai_mods["alt"])
+        # Also match "add"/"subtract" variants
+        if name == "add": key = ("+", False, False, False)
+        elif name == "subtract": key = ("-", False, False, False)
+        desc = _F10_HELP.get(key)
+        if desc:
+            say(desc, exclude_from_buffer=True)
+        else:
+            say("No command", exclude_from_buffer=True)
+        return
 
     if name == "d":
         say("AI disabled", exclude_from_buffer=True)
@@ -1576,14 +2265,6 @@ def _on_ai_key_press(event):
         ai_lane_driving = not ai_lane_driving
         say(f"Lane driving {'on' if ai_lane_driving else 'off'}", exclude_from_buffer=True)
         _send_ai_command(f"LANE:{'on' if ai_lane_driving else 'off'}")
-    elif name in ("/", "?"):
-        ai_help = (
-            "D disable, T traffic, R random, S stop, "
-            "C chase, F follow, E flee, "
-            "1 through 9 aggression, plus and minus speed limit, 0 clear speed, "
-            "A cycle avoid cars, L toggle lane driving"
-        )
-        say(ai_help, exclude_from_buffer=True)
     else:
         _clear_ai_hook(speak_exit=False)
         return
@@ -1645,6 +2326,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
     global last_tire_pressure_fl, last_tire_pressure_fr, last_tire_pressure_rl, last_tire_pressure_rr
     global last_tire_temp_fl, last_tire_temp_fr, last_tire_temp_rl, last_tire_temp_rr
     global last_brake_temp_fl, last_brake_temp_fr, last_brake_temp_rl, last_brake_temp_rr
+    global last_signal_left_input, last_signal_right_input, last_hazard_enabled
     global last_gear_byte, last_gear_str, neutral_pending, neutral_start_ts, neutral_spoken, last_bucket, last_speed_announce_ts
     global drift_alert_active, last_drift_check_ts, drift_baseline_heading, drift_pan_direction # NEW
     global drift_rate_val # NEW
@@ -1807,12 +2489,33 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     (throttle, brake, clutch, steering, actual_steering, steering_input,
                      air_pressure, air_pressure_max, clutch_temp, g_lat, g_lon,
                      tire_p_fl, tire_p_fr, tire_p_rl, tire_p_rr, tire_t_fl, tire_t_fr, tire_t_rl, tire_t_rr,
-                     brake_t_fl, brake_t_fr, brake_t_rl, brake_t_rr) = unpacked[14:]
+                     brake_t_fl, brake_t_fr, brake_t_rl, brake_t_rr,
+                     sig_left_in, sig_right_in, hazard_en) = unpacked[14:]
                     last_oil_pressure, last_air_pressure, last_air_pressure_max = oil_pressure, air_pressure, air_pressure_max
                     last_clutch_temp, last_g_lat, last_g_lon = clutch_temp, g_lat, g_lon
                     last_tire_pressure_fl, last_tire_pressure_fr, last_tire_pressure_rl, last_tire_pressure_rr = tire_p_fl, tire_p_fr, tire_p_rl, tire_p_rr
                     last_tire_temp_fl, last_tire_temp_fr, last_tire_temp_rl, last_tire_temp_rr = tire_t_fl, tire_t_fr, tire_t_rl, tire_t_rr
                     last_brake_temp_fl, last_brake_temp_fr, last_brake_temp_rl, last_brake_temp_rr = brake_t_fl, brake_t_fr, brake_t_rl, brake_t_rr
+
+                    # Turn signal / hazard announcements
+                    cur_left = sig_left_in > 0.5
+                    cur_right = sig_right_in > 0.5
+                    cur_hazard = hazard_en > 0.5
+                    prev_left = last_signal_left_input
+                    prev_right = last_signal_right_input
+                    prev_hazard = last_hazard_enabled
+                    last_signal_left_input = cur_left
+                    last_signal_right_input = cur_right
+                    last_hazard_enabled = cur_hazard
+                    if cur_hazard != prev_hazard or cur_left != prev_left or cur_right != prev_right:
+                        if cur_hazard:
+                            say("Hazards on")
+                        elif cur_left:
+                            say("Left turn signal on")
+                        elif cur_right:
+                            say("Right turn signal on")
+                        else:
+                            say("Turn signals off")
                 else: # outgauge
                     showLights = unpacked[13]
                     speed_ms, rpm, turbo, engtemp, fuel, oil_pressure, oiltemp = unpacked[5:12]
@@ -1998,6 +2701,8 @@ def main():
         logger.error(f"Failed to start NVDA WS/HTTP bridge: {_e}")
 
     register_details_callbacks(_on_vehicle_details_received, _on_vehicle_selector_state)
+    register_dom_dump_callback(_on_dom_dump_received)
+    register_vehicle_keybinds_callback(_on_vehicle_keybinds_received)
 
     if cfg.get("launch_beamng", False):
         try:
@@ -2026,6 +2731,12 @@ def main():
 
     camera_thread = threading.Thread(target=camera_listener, args=(audio_controller, STOP), daemon=True)
     camera_thread.start()
+
+    nodegrab_thread = threading.Thread(target=nodegrab_listener, args=(audio_controller, STOP), daemon=True)
+    nodegrab_thread.start()
+
+    clickspot_thread = threading.Thread(target=clickspot_listener, args=(audio_controller, STOP), daemon=True)
+    clickspot_thread.start()
 
     try:
         telemetry_loop(audio_controller=audio_controller, port=4444, stop_event=STOP)

@@ -1,0 +1,18 @@
+{
+  "displayNames": [
+    "DualSense™ wireless controller",
+    "DUALSHOCK©4"
+  ],
+  "ffbSupported": "<div class='bng-hw vibration'></div>",
+  "guid": "{0CE6054C-0000-0000-0000-504944564944}",
+  "name": "DualSense™ wireless controller",
+  "imagePack": "ps5",
+  "vendorName": "Sony",
+  "vidpid": "sce_pad_standard",
+  "bindings": [
+    {
+      "control": "upov",
+      "action": "toggle_jack"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+"cargotrailer_skin_upull": {
+    "information":{
+        "authors":"BeamNG",
+        "name":"U-Pull Livery",
+        "value":5000,
+    },
+    "slotType" : "paint_design",
+    "globalSkin" : "upull",
+},
+"cargotrailer_skin_truckitup": {
+    "information":{
+        "authors":"BeamNG",
+        "name":"TruckItUp! Livery",
+        "value":5000,
+    },
+    "slotType" : "paint_design",
+    "globalSkin" : "truckitup",
+},
+}

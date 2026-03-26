@@ -36,6 +36,11 @@ local function init()
   if not ok then _dumpSock = nil end
 end
 
+local function destroy()
+  if _cmdSock then pcall(function() _cmdSock:close() end); _cmdSock = nil end
+  if _dumpSock then pcall(function() _dumpSock:close() end); _dumpSock = nil end
+end
+
 local function reset() end
 local function getAddress()        return "127.0.0.1" end
 local function getPort()           return "4444" end
@@ -97,6 +102,11 @@ local function getStructDefinition()
     float          braketemp_FR;
     float          braketemp_RL;
     float          braketemp_RR;
+
+    // --- Signal Inputs (0 or 1) ---
+    float          signal_left_input;
+    float          signal_right_input;
+    float          hazard_enabled;
   ]]
 end
 
@@ -116,7 +126,32 @@ local DL_BATTERY      = 2 ^ 9
 local DL_ABS          = 2 ^ 10
 local DL_LOWBEAM      = 2 ^ 11
 
+local _cmdRebindCounter = 0
+
 local function fillStruct(o, dtSim)
+  -- If we lost (or never got) the command socket, try to reclaim it periodically.
+  -- This handles vehicle switches where the old vehicle orphaned the port.
+  if not _cmdSock then
+    _cmdRebindCounter = _cmdRebindCounter + 1
+    if _cmdRebindCounter >= 30 then  -- ~0.5s at 60fps
+      _cmdRebindCounter = 0
+      local ok = pcall(function()
+        _cmdSock = socket.udp()
+        _cmdSock:setsockname("127.0.0.1", DUMP_CMD_PORT)
+        _cmdSock:settimeout(0)
+      end)
+      if not ok then _cmdSock = nil end
+    end
+  end
+  if not _dumpSock then
+    local ok = pcall(function()
+      _dumpSock = socket.udp()
+      _dumpSock:setpeername("127.0.0.1", DUMP_RESP_PORT)
+      _dumpSock:settimeout(0)
+    end)
+    if not ok then _dumpSock = nil end
+  end
+
   -- Diagnostic dump commands from beamtel.py
   if _cmdSock and _dumpSock then
     local cmd = _cmdSock:receive()
@@ -358,6 +393,8 @@ local function fillStruct(o, dtSim)
         if damageTracker.getDamage("gearbox", "synchroWear") == true then
           _dumpSock:send("Synchro wear"); found = true
         end
+
+        -- Note: detached parts detection is in vehicleScanner.lua's DAMAGE handler
       end)
       if not ok then
         _dumpSock:send("(error: " .. tostring(err) .. ")")
@@ -513,10 +550,15 @@ local function fillStruct(o, dtSim)
   o.braketemp_RL = brakeTemps.RL or 0
   o.braketemp_RR = brakeTemps.RR or 0
 
+  o.signal_left_input  = electrics.values.signal_left_input or 0
+  o.signal_right_input = electrics.values.signal_right_input or 0
+  o.hazard_enabled     = electrics.values.hazard_enabled or 0
+
   return true
 end
 
 M.init = init
+M.destroy = destroy
 M.reset = reset
 M.getAddress = getAddress
 M.getPort = getPort

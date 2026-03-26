@@ -1,0 +1,13 @@
+{
+  "guid": "{0E5F054C-0000-0000-0000-504944564944}",
+  "name": "Access Controller",
+  "imagePack": "ps5",
+  "vendorName": "Sony",
+  "vidpid": "0E5F054C",
+  "bindings": [
+    {
+      "control": "upov",
+      "action": "toggle_jack"
+    }
+  ]
+}

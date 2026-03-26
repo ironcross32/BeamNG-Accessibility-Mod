@@ -1,0 +1,88 @@
+{
+  "cargotrailer.skin.truckitup": {
+    "name": "cargotrailer.skin.truckitup",
+    "mapTo": "cargotrailer.skin.truckitup",
+    "class": "Material",
+    "Stages": [
+      {
+        "ambientOcclusionMap": "vehicles/cargotrailer/cargotrailer_ao.data.png",
+        "baseColorMap": "vehicles/cargotrailer/cargotrailer_b.color.png",
+        "diffuseMapUseUV": null,
+        "metallicFactor": 1,
+        "metallicMap": "vehicles/cargotrailer/cargotrailer_m.data.png",
+        "normalMap": "vehicles/cargotrailer/cargotrailer_nm.normal.png",
+        "roughnessFactor": null,
+        "roughnessMap": "vehicles/cargotrailer/cargotrailer_r.data.png"
+      },
+      {
+        "ambientOcclusionMap": "/vehicles/cargotrailer/cargotrailer_ao.data.png",
+        "baseColorMap": "vehicles/cargotrailer/cargotrailer_skin_truckitup.color.png",
+        "diffuseMapUseUV": 1,
+        "metallicFactor": 0.800000012,
+        "metallicMap": "vehicles/cargotrailer/cargotrailer_m.data.png",
+        "normalMap": "vehicles/cargotrailer/cargotrailer_nm.normal.png",
+        "opacityMap": "vehicles/cargotrailer/cargotrailer_o.data.png",
+        "roughnessFactor": 0.600000024,
+        "roughnessMap": "vehicles/cargotrailer/cargotrailer_r.data.png"
+      },
+      {
+        "diffuseMapUseUV": null,
+        "metallicFactor": null,
+        "roughnessFactor": null
+      },
+      {
+        "diffuseMapUseUV": null,
+        "metallicFactor": null,
+        "roughnessFactor": null
+      }
+    ],
+    "activeLayers": 2,
+    "dynamicCubemap": true,
+    "materialTag0": "beamng",
+    "materialTag1": "vehicle",
+    "version": 1.5
+  },
+  "cargotrailer.skin.upull": {
+    "name": "cargotrailer.skin.upull",
+    "mapTo": "cargotrailer.skin.upull",
+    "class": "Material",
+    "Stages": [
+      {
+        "ambientOcclusionMap": "vehicles/cargotrailer/cargotrailer_ao.data.png",
+        "baseColorMap": "vehicles/cargotrailer/cargotrailer_b.color.png",
+        "diffuseMapUseUV": null,
+        "metallicFactor": 1,
+        "metallicMap": "vehicles/cargotrailer/cargotrailer_m.data.png",
+        "normalMap": "vehicles/cargotrailer/cargotrailer_nm.normal.png",
+        "roughnessFactor": null,
+        "roughnessMap": "vehicles/cargotrailer/cargotrailer_r.data.png"
+      },
+      {
+        "ambientOcclusionMap": "/vehicles/cargotrailer/cargotrailer_ao.data.png",
+        "baseColorMap": "vehicles/cargotrailer/cargotrailer_skin_upull.color.png",
+        "diffuseMapUseUV": 1,
+        "metallicFactor": 0.800000012,
+        "metallicMap": "vehicles/cargotrailer/cargotrailer_m.data.png",
+        "normalMap": "vehicles/cargotrailer/cargotrailer_nm.normal.png",
+        "opacityMap": "vehicles/cargotrailer/cargotrailer_o.data.png",
+        "roughnessFactor": 0.600000024,
+        "roughnessMap": "vehicles/cargotrailer/cargotrailer_r.data.png"
+      },
+      {
+        "diffuseMapUseUV": null,
+        "metallicFactor": null,
+        "roughnessFactor": null
+      },
+      {
+        "diffuseMapUseUV": null,
+        "metallicFactor": null,
+        "roughnessFactor": null
+      }
+    ],
+    "activeLayers": 2,
+    "dynamicCubemap": true,
+    "materialTag0": "beamng",
+    "materialTag1": "vehicle",
+    "version": 1.5
+  }
+}

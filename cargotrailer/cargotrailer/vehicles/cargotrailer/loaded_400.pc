@@ -1,0 +1,23 @@
+{
+  "format":2,
+  "mainPartName":"cargotrailer",
+  "model":"cargotrailer",
+  "vars":{
+  "$weight":2
+},
+  "parts":{
+    "paint_design":"cargotrailer_skin_truckitup",
+    "cargotrailer_brakes":"cargotrailer_brakes",
+    "cargotrailer_door":"cargotrailer_door",
+    "cargotrailer_fender_L":"cargotrailer_fender_L",
+    "cargotrailer_fender_R":"cargotrailer_fender_R",
+    "cargotrailer_licenseplate":"cargotrailer_licenseplate",
+    "cargotrailer_load":"cargotrailer_woodcrate",
+    "cargotrailer_mod":"",
+    "cargotrailer_springs":"cargotrailer_springs",
+    "cargotrailer_suspension":"cargotrailer_suspension",
+    "cargotrailer_tailgate":"cargotrailer_tailgate",
+    "cargotrailer_wheeldata_F":"cargotrailer_wheeldata_F",
+    "cargotrailer_wheeldata_R":"cargotrailer_wheeldata_R",
+  }
+}

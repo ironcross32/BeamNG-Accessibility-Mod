@@ -1,0 +1,29 @@
+{
+  "Name": "Enclosed Cargo Trailer",
+  "Author": "BeamNG",
+  "Type": "Trailer",
+  "InsuranceClass": "commercial",
+  "Region": "northAmerica",
+  "Population": 0,
+  "default_pc": "default",
+  "paints": {},
+  "libraryPaints": [
+    "fire_red",
+    "chestnut",
+    "brilliant_blue",
+    "gray",
+    "charcoal",
+    "black",
+    "white",
+    "scarlet_red",
+    "shale_green",
+    "solar_yellow",
+    "forest_green",
+    "steel_blue",
+    "verdant_green",
+    "navy_blue",
+    "silver",
+    "jet_black",
+    "royal_blue"
+  ]
+}
