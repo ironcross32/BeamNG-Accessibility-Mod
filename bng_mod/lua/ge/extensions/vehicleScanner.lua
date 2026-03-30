@@ -604,7 +604,7 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
               local function friendlyName(pp)
                 local seg = pp:match("([^/]+)$") or pp
                 -- Strip vehicle prefix (first word before underscore)
-                local stripped = seg:match("^%w-_(.+)$")
+                local stripped = seg:match("^%%w-_(.+)$")
                 if stripped and #stripped > 0 then seg = stripped end
                 -- Map direction suffix
                 for _, d in ipairs(dirSuffixes) do
@@ -634,6 +634,184 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
             _ds:send("DONE")
             _ds:close()
           ]], fallback))
+        end
+      elseif cmd == "DUMP" then
+        scannerLog('info', "DUMP command received, routing to active vehicle.")
+        local player = be:getPlayerVehicle(0)
+        if not player then
+          local tmpSock = socket.udp()
+          if tmpSock then
+            tmpSock:setpeername("127.0.0.1", 4447)
+            tmpSock:send("NONE")
+            tmpSock:send("DONE")
+            tmpSock:close()
+          end
+        else
+          player:queueLuaCommand([[
+            local _ds = require("socket").udp()
+            _ds:setpeername("127.0.0.1", 4447)
+            local lines = {}
+            local ok, err = pcall(function()
+              for k, v in pairs(electrics.values) do
+                lines[#lines + 1] = tostring(k) .. "=" .. tostring(v)
+              end
+            end)
+            if not ok then lines[#lines + 1] = "(error: " .. tostring(err) .. ")" end
+            table.sort(lines)
+            for _, line in ipairs(lines) do
+              _ds:send(line)
+            end
+            _ds:send("DONE")
+            _ds:close()
+          ]])
+        end
+      elseif cmd == "PDUMP" then
+        scannerLog('info', "PDUMP command received, routing to active vehicle.")
+        local player = be:getPlayerVehicle(0)
+        if not player then
+          local tmpSock = socket.udp()
+          if tmpSock then
+            tmpSock:setpeername("127.0.0.1", 4447)
+            tmpSock:send("NONE")
+            tmpSock:send("DONE")
+            tmpSock:close()
+          end
+        else
+          player:queueLuaCommand([[
+            local _ds = require("socket").udp()
+            _ds:setpeername("127.0.0.1", 4447)
+            local lines = {}
+            local ok, err = pcall(function()
+              for k, v in pairs(powertrain) do
+                local vt = type(v)
+                if vt == "number" or vt == "string" or vt == "boolean" then
+                  lines[#lines + 1] = tostring(k) .. "=" .. tostring(v)
+                elseif vt == "table" then
+                  for sk, sv in pairs(v) do
+                    local svt = type(sv)
+                    if svt == "number" or svt == "string" or svt == "boolean" then
+                      lines[#lines + 1] = tostring(k) .. "." .. tostring(sk) .. "=" .. tostring(sv)
+                    end
+                  end
+                end
+              end
+              if type(powertrain.getDevice) == "function" then
+                local candidates = {
+                  "engine", "gearbox", "transmission", "driveshaft",
+                  "frontDifferential", "rearDifferential", "differential",
+                  "clutch", "torqueConverter",
+                  "steerR", "steerL", "steerF",
+                  "hydraulicPump", "mainPump",
+                  "boomLiftLeft", "boomLiftRight", "boomTilt",
+                  "articulationJoint", "articulation",
+                }
+                for _, devName in ipairs(candidates) do
+                  local dok, dev = pcall(function() return powertrain.getDevice(devName) end)
+                  if dok and dev and type(dev) == "table" then
+                    for sk, sv in pairs(dev) do
+                      local svt = type(sv)
+                      if svt == "number" or svt == "string" or svt == "boolean" then
+                        lines[#lines + 1] = devName .. "." .. tostring(sk) .. "=" .. tostring(sv)
+                      end
+                    end
+                  end
+                end
+              end
+            end)
+            if not ok then lines[#lines + 1] = "(error: " .. tostring(err) .. ")" end
+            table.sort(lines)
+            for _, line in ipairs(lines) do
+              _ds:send(line)
+            end
+            _ds:send("DONE")
+            _ds:close()
+          ]])
+        end
+      elseif cmd == "HDUMP" then
+        scannerLog('info', "HDUMP command received, routing to active vehicle.")
+        local player = be:getPlayerVehicle(0)
+        if not player then
+          local tmpSock = socket.udp()
+          if tmpSock then
+            tmpSock:setpeername("127.0.0.1", 4447)
+            tmpSock:send("(no vehicle spawned)")
+            tmpSock:send("DONE")
+            tmpSock:close()
+          end
+        else
+          player:queueLuaCommand([[
+            local _ds = require("socket").udp()
+            _ds:setpeername("127.0.0.1", 4447)
+            local lines = {}
+            local ok, err = pcall(function()
+              if hydros then
+                lines[#lines + 1] = "--- hydros top-level keys ---"
+                for k, v in pairs(hydros) do
+                  lines[#lines + 1] = "TYPE:hydros." .. tostring(k) .. "=" .. type(v)
+                end
+                if hydros.values then
+                  lines[#lines + 1] = "--- hydros.values keys ---"
+                  local count = 0
+                  for k, v in pairs(hydros.values) do
+                    count = count + 1
+                    local vt = type(v)
+                    lines[#lines + 1] = "TYPE:values." .. tostring(k) .. "=" .. vt
+                    if vt == "number" or vt == "string" or vt == "boolean" then
+                      lines[#lines + 1] = "values." .. tostring(k) .. "=" .. tostring(v)
+                    elseif vt == "table" then
+                      for sk, sv in pairs(v) do
+                        local svt = type(sv)
+                        if svt == "number" or svt == "string" or svt == "boolean" then
+                          lines[#lines + 1] = "values." .. tostring(k) .. "." .. tostring(sk) .. "=" .. tostring(sv)
+                        else
+                          lines[#lines + 1] = "TYPE:values." .. tostring(k) .. "." .. tostring(sk) .. "=" .. svt
+                        end
+                      end
+                    end
+                  end
+                  lines[#lines + 1] = "values._count=" .. count
+                else
+                  lines[#lines + 1] = "(hydros.values is nil)"
+                end
+                if type(hydros.hydros) == "table" then
+                  lines[#lines + 1] = "--- hydros.hydros entries ---"
+                  for k, v in pairs(hydros.hydros) do
+                    local prefix = "hydros." .. tostring(k)
+                    local vt = type(v)
+                    if vt == "number" or vt == "string" or vt == "boolean" then
+                      lines[#lines + 1] = prefix .. "=" .. tostring(v)
+                    elseif vt == "table" then
+                      for sk, sv in pairs(v) do
+                        local svt = type(sv)
+                        if svt == "number" or svt == "string" or svt == "boolean" then
+                          lines[#lines + 1] = prefix .. "." .. tostring(sk) .. "=" .. tostring(sv)
+                        else
+                          lines[#lines + 1] = "TYPE:" .. prefix .. "." .. tostring(sk) .. "=" .. svt
+                        end
+                      end
+                    end
+                  end
+                end
+                for k, v in pairs(hydros) do
+                  if k ~= "values" and k ~= "hydros" then
+                    local vt = type(v)
+                    if vt == "number" or vt == "string" or vt == "boolean" then
+                      lines[#lines + 1] = tostring(k) .. "=" .. tostring(v)
+                    end
+                  end
+                end
+              else
+                lines[#lines + 1] = "(hydros module not present on this vehicle)"
+              end
+            end)
+            if not ok then lines[#lines + 1] = "(error: " .. tostring(err) .. ")" end
+            table.sort(lines)
+            for _, line in ipairs(lines) do
+              _ds:send(line)
+            end
+            _ds:send("DONE")
+            _ds:close()
+          ]])
         end
       elseif cmd == "ALIGN" then
         scannerLog('info', "ALIGN command received.")

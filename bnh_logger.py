@@ -6,14 +6,17 @@ import logging.handlers
 import os
 import sys
 
-# Determine the base directory to store the log file
-FROZEN = getattr(sys, "frozen", False)
-BASE_DIR = (
-    os.path.dirname(os.path.abspath(sys.executable))
-    if FROZEN
-    else os.path.dirname(os.path.abspath(__file__))
-)
-LOG_FILENAME = os.path.join(BASE_DIR, "bnvdahook.log")
+# Store the log file in %LOCALAPPDATA%\beamtel alongside other app data
+def _get_log_dir():
+    base_path = os.getenv("LOCALAPPDATA")
+    if base_path is None:
+        base_path = os.path.expanduser("~")
+    log_dir = os.path.join(base_path, "beamtel")
+    os.makedirs(log_dir, exist_ok=True)
+    return log_dir
+
+LOG_DIR = _get_log_dir()
+LOG_FILENAME = os.path.join(LOG_DIR, "bnvdahook.log")
 
 _LOGGER = None
 

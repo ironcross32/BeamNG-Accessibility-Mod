@@ -1,8 +1,0 @@
-{
-    "fileversion": 2,
-    "actions": {
-        "lockL":{"order":1.1,"onDown":"controller.getControllerSafe('rampLCoupler').toggleGroupConditional({{'liftCoupler','autoCoupling','vehicle.advancedCouplerControl.cargoTrailerRamp'}})",                                                                          "title":"vehicle.interaction.tailgateLatchL.toggle.title","desc":"vehicle.interaction.tailgateLatchL.toggle.desc"},
-        "lockR":{"order":1.2,"onDown":"controller.getControllerSafe('rampRCoupler').toggleGroupConditional({{'liftCoupler','autoCoupling','vehicle.advancedCouplerControl.cargoTrailerRamp'}})",                                                                          "title":"vehicle.interaction.tailgateLatchR.toggle.title","desc":"vehicle.interaction.tailgateLatchR.toggle.desc"},
-        "lift": {"order":1.3,"onDown":"controller.getControllerSafe('liftCoupler').toggleGroupConditional({{'rampLCoupler','attached','vehicle.advancedCouplerControl.cargoTrailerLock'},{'rampRCoupler','attached','vehicle.advancedCouplerControl.cargoTrailerLock'}})","title":"vehicle.interaction.tailgate.toggle.title",      "desc":"vehicle.interaction.tailgate.toggle.desc"},
-    }
-}

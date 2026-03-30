@@ -334,7 +334,7 @@ class AudioController:
         self._device_watcher_thread = None
         self._current_device_index = None
         self._current_device_name = None
-        self._preferred_hostapi_name = "wasapi"
+        self._preferred_device_name = ""
         self._follow_default_enabled = True
         self._audio_poll_interval = 2.0
         
@@ -480,9 +480,24 @@ class AudioController:
         self.CAM_CLICK_WAVEFORM = self._generate_cam_click()
         self.CAM_HIGHLIGHT_CLICK_WAVEFORM = self._generate_cam_highlight_click()
 
-        self._preferred_hostapi_name = str(cfg.get("preferred_hostapi", "wasapi")).strip().lower()
+        old_follow = self._follow_default_enabled
+        old_device = self._preferred_device_name
         self._follow_default_enabled = bool(cfg.get("follow_default_audio_device", True))
+        self._preferred_device_name = str(cfg.get("preferred_device_name", "")).strip()
         self._audio_poll_interval = float(cfg.get("audio_poll_interval_sec", 2.0))
+
+        # If the device selection changed while the stream is already running, switch immediately.
+        if self._audio_stream is not None and (
+                old_follow != self._follow_default_enabled or
+                old_device != self._preferred_device_name):
+            new_idx = self._find_target_device(verbose=True)
+            if new_idx is not None:
+                self._restart_audio_stream(new_idx)
+            # If the user just switched to "follow default" and the watcher isn't running, start it.
+            if self._follow_default_enabled and self._device_watcher_thread is None:
+                self._device_watcher_thread = threading.Thread(
+                    target=self._device_watcher_loop, daemon=True)
+                self._device_watcher_thread.start()
 
     def load_hrtf(self, sofa_path):
         """Load HRTF data from a SOFA file for binaural compass clicks."""
@@ -1917,31 +1932,55 @@ class AudioController:
 
     def _find_target_device(self, verbose=False):
         try:
+            wasapi_idx = self._find_hostapi_index("wasapi")
+
+            if not self._follow_default_enabled and self._preferred_device_name:
+                # Fixed-device mode: open the named WASAPI device directly.
+                if wasapi_idx is None:
+                    self.logger.warning("WASAPI not available; falling back to system default.")
+                    return sd.default.device[1]
+                all_devices = sd.query_devices()
+                for idx, device in enumerate(all_devices):
+                    if (device['hostapi'] == wasapi_idx and
+                            device['max_output_channels'] > 0 and
+                            self._preferred_device_name in device.get("name", "")):
+                        if verbose:
+                            self.logger.info(
+                                f"Using fixed WASAPI device: '{device['name']}' (Index: {idx})")
+                        return idx
+                self.logger.warning(
+                    f"Fixed device '{self._preferred_device_name}' not found; "
+                    f"falling back to system default.")
+                return sd.default.device[1]
+
+            # Follow-default mode: find the WASAPI device matching the OS default.
             system_default_idx = sd.default.device[1]
             if system_default_idx == -1:
                 self.logger.warning("No default output device found in the system.")
                 return None
-            
+
             default_info = sd.query_devices(system_default_idx)
             default_name = default_info.get("name", "")
             if verbose:
-                self.logger.info(f"System default output device is: '{default_name}' (Index: {system_default_idx})")
+                self.logger.info(
+                    f"System default output device is: '{default_name}' (Index: {system_default_idx})")
 
-            wasapi_hostapi_idx = self._find_hostapi_index(self._preferred_hostapi_name)
-            if wasapi_hostapi_idx is None:
-                self.logger.warning(f"Host API '{self._preferred_hostapi_name}' not found. Using system default device.")
+            if wasapi_idx is None:
+                self.logger.warning("WASAPI not found; using system default device.")
                 return system_default_idx
 
             all_devices = sd.query_devices()
             for idx, device in enumerate(all_devices):
-                if (device['hostapi'] == wasapi_hostapi_idx and
-                    device['max_output_channels'] > 0 and
-                    default_name in device.get("name", "")):
+                if (device['hostapi'] == wasapi_idx and
+                        device['max_output_channels'] > 0 and
+                        default_name in device.get("name", "")):
                     if verbose:
-                        self.logger.info(f"Found matching WASAPI device: '{device['name']}' (Index: {idx})")
+                        self.logger.info(
+                            f"Found matching WASAPI device: '{device['name']}' (Index: {idx})")
                     return idx
-            
-            self.logger.warning(f"Could not find a WASAPI equivalent for '{default_name}'. Falling back to system default.")
+
+            self.logger.warning(
+                f"No WASAPI equivalent for '{default_name}'; falling back to system default.")
             return system_default_idx
 
         except Exception as e:
@@ -2022,7 +2061,7 @@ class AudioController:
         if self._follow_default_enabled:
             self._device_watcher_thread = threading.Thread(target=self._device_watcher_loop, daemon=True)
             self._device_watcher_thread.start()
-            self.logger.info(f"Following OS default output device, preferring Host API '{self._preferred_hostapi_name}'.")
+            self.logger.info("Following OS default output device (WASAPI).")
 
     def stop(self):
         if not self._is_enabled: return
