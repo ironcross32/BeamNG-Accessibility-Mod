@@ -337,8 +337,40 @@ end
 --  GE Extension Hooks
 -- =================================================================================================
 
+local function setupSockets()
+  -- Close existing sockets (no-op on first call; matters on map reload / Ctrl+L)
+  if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
+  if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
+
+  -- Create send socket
+  udpSend = socket.udp()
+  if udpSend then
+    udpSend:setpeername(PYTHON_HOST, PYTHON_PORT_DATA)
+    udpSend:settimeout(0)
+    ngLog('info', "UDP send socket targeting " .. PYTHON_HOST .. ":" .. PYTHON_PORT_DATA)
+  else
+    ngLog('error', "Failed to create UDP send socket.")
+  end
+
+  -- Create command receive socket
+  local ok, err = pcall(function()
+    udpCmd = socket.udp()
+    udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
+    udpCmd:settimeout(0)
+  end)
+  if ok and udpCmd then
+    ngLog('info', "UDP command socket listening on port " .. CMD_LISTEN_PORT)
+  else
+    ngLog('error', "Failed to create UDP command socket: " .. tostring(err))
+    udpCmd = nil
+  end
+end
+
 function M.onExtensionLoaded()
   ngLog('info', "Accessible node grabber extension loaded.")
+  -- Bind sockets here so Ctrl+L Lua reload re-opens them; onWorldReadyState
+  -- doesn't fire on a hot reload.
+  setupSockets()
 end
 
 function M.onVehicleSwitched(oldId, newId, player)
@@ -357,11 +389,7 @@ function M.onWorldReadyState(state)
   if state == 2 then
     ngLog('info', "World ready. Initializing accessible node grabber.")
 
-    -- Close existing sockets
-    if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
-    if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
-
-    -- Reset state
+    -- Reset state on map (re)load
     isActive = false
     isScanning = false
     nodeCache = nil
@@ -372,28 +400,8 @@ function M.onWorldReadyState(state)
     lastHoveredCid = -1
     scanTimer = 0
 
-    -- Create send socket
-    udpSend = socket.udp()
-    if udpSend then
-      udpSend:setpeername(PYTHON_HOST, PYTHON_PORT_DATA)
-      udpSend:settimeout(0)
-      ngLog('info', "UDP send socket targeting " .. PYTHON_HOST .. ":" .. PYTHON_PORT_DATA)
-    else
-      ngLog('error', "Failed to create UDP send socket.")
-    end
-
-    -- Create command receive socket
-    local ok, err = pcall(function()
-      udpCmd = socket.udp()
-      udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
-      udpCmd:settimeout(0)
-    end)
-    if ok and udpCmd then
-      ngLog('info', "UDP command socket listening on port " .. CMD_LISTEN_PORT)
-    else
-      ngLog('error', "Failed to create UDP command socket: " .. tostring(err))
-      udpCmd = nil
-    end
+    -- Re-bind sockets in case the previous bind was torn down
+    setupSockets()
   end
 end
 

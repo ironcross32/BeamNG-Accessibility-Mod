@@ -41,10 +41,6 @@ angular.module('beamng.apps')
                     handleContextAction(data.action);
                   } else if (data.type === 'dom_dump') {
                     performDomDump();
-                  } else if (data.type === 'get_vehicle_keybinds') {
-                    sendVehicleKeybinds();
-                  } else if (data.type === 'trigger_vehicle_action') {
-                    triggerVehicleAction(data.action);
                   }
                 } catch (e) {}
               };
@@ -112,6 +108,8 @@ angular.module('beamng.apps')
 
           var P = { POINTER: 1, KEYBOARD: 2, CONTROLLER: 3, SYSTEM: 4 };
           var lastSpoken = "", lastSource = 0, lastSpeakTs = 0, lastControllerTs = 0, speakTimer = null;
+          var _lastOpenedSelect = null;
+
 
           function hasNonAscii(s) {
             for (var i = 0; i < s.length; i++) {
@@ -131,7 +129,7 @@ angular.module('beamng.apps')
 
           function scheduleSpeak(txt, src) {
             if (!txt) return;
-            if (hasNonAscii(txt)) {
+            if (DEBUG && hasNonAscii(txt)) {
               log('info', '[GLYPH] "' + txt + '" chars=' + charDump(txt));
             }
             var t = nowTS();
@@ -165,16 +163,18 @@ angular.module('beamng.apps')
             var targetElement = el.querySelector('[bng-translate], [ng-bind]') || el;
             var rawText = (targetElement.innerText || targetElement.textContent || "").trim();
             // Diagnose short results: log the element's context so we can improve extraction
-            var cleaned0 = cleanText(rawText);
-            if (cleaned0.length > 0 && cleaned0.length <= 2) {
-              var parent = el.parentElement;
-              var parentText = parent ? cleanText(parent.innerText || '') : '';
-              log('info', '[SHORTTEXT] "' + cleaned0 + '" tag=' + el.tagName + ' class=' + (el.className || '').toString().substring(0, 80) + ' parentTag=' + (parent ? parent.tagName : 'none') + ' parentText="' + (parentText || '').substring(0, 120) + '" outerHTML=' + el.outerHTML.substring(0, 300));
+            if (DEBUG) {
+              var cleaned0 = cleanText(rawText);
+              if (cleaned0.length > 0 && cleaned0.length <= 2) {
+                var parent = el.parentElement;
+                var parentText = parent ? cleanText(parent.innerText || '') : '';
+                log('info', '[SHORTTEXT] "' + cleaned0 + '" tag=' + el.tagName + ' class=' + (el.className || '').toString().substring(0, 80) + ' parentTag=' + (parent ? parent.tagName : 'none') + ' parentText="' + (parentText || '').substring(0, 120) + '" outerHTML=' + el.outerHTML.substring(0, 300));
+              }
             }
             if (rawText.startsWith('{{') && rawText.endsWith('}}')) {
               try {
                 var scope = angular.element(targetElement).scope();
-                if (scope) {
+                if (scope && !scope.$$phase && !scope.$root.$$phase) {
                   var expression = rawText.substring(2, rawText.length - 2).trim();
                   var evaluatedText = scope.$eval(expression);
                   if (evaluatedText && typeof evaluatedText === 'string') {
@@ -231,14 +231,50 @@ angular.module('beamng.apps')
             } catch (e) {}
             return function(key) { return key.substring(key.lastIndexOf('.') + 1).replace(/_/g, ' '); };
           }
+          // Extract a readable label from a node (respecting both innerHTML translation
+          // keys and plain innerText). Returns "" if nothing usable.
+          function extractLabelFromElement(el, translator) {
+            if (!el) return "";
+            var html = el.innerHTML || "";
+            var m = html.match(/['"](ui\.(?:options|debug|inputActions|mainmenu|common)\.[^'"]+)['"]/);
+            if (m && m[1]) {
+              var t = cleanText(translator(m[1]));
+              if (t) return t;
+            }
+            var bngKey = el.getAttribute && el.getAttribute('bng-translate');
+            if (bngKey) {
+              var tk = cleanText(translator(bngKey));
+              if (tk) return tk;
+            }
+            return cleanText(el.innerText || el.textContent || "");
+          }
+
           function speakOptionRow(focusedElement, src) {
             var optionRow = closest(focusedElement, 'md-list-item');
-            if (!optionRow) return false;
+            var isBare = false;
+            if (!optionRow) {
+              // Bare <div> consent rows (online / telemetry) — find enclosing container.
+              var bareBox = closest(focusedElement, 'md-checkbox');
+              if (bareBox) {
+                optionRow = bareBox.parentElement;
+                // Walk up to a container that also holds a descriptive <p>/[bng-translate]
+                var hops = 0;
+                while (optionRow && hops < 3 &&
+                       !optionRow.querySelector('p, [bng-translate]')) {
+                  optionRow = optionRow.parentElement;
+                  hops++;
+                }
+                if (!optionRow) return false;
+                isBare = true;
+              } else {
+                return false;
+              }
+            }
             var ngScope;
             try { ngScope = window.angular.element(optionRow).scope(); } catch(e) { return false; }
             if (!ngScope) return false;
             var optionsData = (ngScope.options && ngScope.options.data) || (ngScope.$parent && ngScope.$parent.options && ngScope.$parent.options.data);
-            if (!optionsData) {
+            if (!optionsData && !isBare) {
               var simpleTextElem = optionRow.querySelector('h3, p, md-button');
               if (simpleTextElem) {
                  var simpleText = cleanText(simpleTextElem.innerText);
@@ -248,40 +284,132 @@ angular.module('beamng.apps')
             }
             var translator = findTranslateFunc();
             var parts = [];
-            var labelElem = optionRow.querySelector('p');
-            if (labelElem) {
-              var labelMatch = labelElem.innerHTML.match(/['"](ui\.(?:options|debug|inputActions)\.[^'"]+)['"]/);
-              if (labelMatch && labelMatch[1]) {
-                parts.push(cleanText(translator(labelMatch[1])));
-              } else {
-                 var cleanedLabel = cleanText(labelElem.innerText);
-                 if (cleanedLabel) parts.push(cleanedLabel);
+
+            // Identify the focused control so multi-control rows can be disambiguated.
+            var focusedControl = closest(focusedElement, 'md-select, md-checkbox, md-slider, input, md-button');
+            if (focusedControl && !optionRow.contains(focusedControl)) focusedControl = null;
+            var inputElem = focusedControl || optionRow.querySelector('md-select, md-checkbox, md-slider, md-input-container input, md-button');
+
+            // --- Label extraction ---
+            var labelText = '';
+
+            // 1. md-input-container has its own <label> paired with the input.
+            if (focusedControl) {
+              var ic = closest(focusedControl, 'md-input-container');
+              if (ic) {
+                var icLabel = ic.querySelector('label');
+                if (icLabel) labelText = cleanText(icLabel.innerText);
               }
             }
-            var inputElem = optionRow.querySelector('md-select, md-checkbox, md-slider');
-            if (inputElem && inputElem.hasAttribute('ng-model')) {
-              var modelString = inputElem.getAttribute('ng-model');
-              var currentValue;
-              try { currentValue = ngScope.$eval(modelString); } catch(e) { currentValue = '[error]'; }
-              var valueText = '';
-              var tagName = inputElem.tagName.toLowerCase();
-              if (tagName === 'md-select') {
-                var optionsPath = modelString.replace('.values.', '.options.') + '.modes';
-                var modes;
-                try { modes = ngScope.$eval(optionsPath); } catch (e) { modes = null; }
-                if (modes && modes.keys && modes.values) {
-                  var valueIndex = modes.keys.indexOf(currentValue);
-                  if (valueIndex !== -1 && modes.values[valueIndex]) { valueText = translator(modes.values[valueIndex]); }
+
+            // 2. Preceding sibling of focused control (e.g. <span flex> before a slider).
+            if (!labelText && focusedControl && focusedControl.previousElementSibling) {
+              var sib = focusedControl.previousElementSibling;
+              if (sib.matches && sib.matches('p, label, span[flex]')) {
+                var sibText = extractLabelFromElement(sib, translator);
+                if (sibText) labelText = sibText;
+              }
+            }
+
+            // 3. First meaningful <p>/<label>/<span flex> in the row.
+            if (!labelText) {
+              var candidates = toArray(optionRow.querySelectorAll('p, label, span[flex], [bng-translate]'));
+              for (var i = 0; i < candidates.length; i++) {
+                // Skip labels that belong to a *different* md-input-container than our focused one
+                var candIc = closest(candidates[i], 'md-input-container');
+                if (candIc && focusedControl && closest(focusedControl, 'md-input-container') && candIc !== closest(focusedControl, 'md-input-container')) continue;
+                var ct = extractLabelFromElement(candidates[i], translator);
+                if (ct) { labelText = ct; break; }
+              }
+            }
+
+            // 4. For bare consent rows, fall back to a preceding description <p>.
+            if (!labelText && isBare) {
+              var desc = optionRow.querySelector('[bng-translate], p');
+              if (desc) labelText = extractLabelFromElement(desc, translator);
+            }
+
+            if (labelText) parts.push(labelText);
+
+            // --- Multi-control row: append column header (e.g. "X", "Y", "Z") ---
+            if (focusedControl && inputElem === focusedControl) {
+              var siblingControls = toArray(optionRow.querySelectorAll('md-slider, md-select, md-checkbox, md-input-container input, md-button'));
+              if (siblingControls.length > 1) {
+                var idx = siblingControls.indexOf(focusedControl);
+                if (idx >= 0) {
+                  var prev = optionRow.previousElementSibling;
+                  while (prev && prev.tagName && prev.tagName.toLowerCase() !== 'md-list-item') {
+                    prev = prev.previousElementSibling;
+                  }
+                  if (prev) {
+                    var prevLabels = toArray(prev.querySelectorAll('p, span[flex]')).filter(function(el) {
+                      return cleanText(el.innerText).length > 0;
+                    });
+                    if (prevLabels[idx]) {
+                      parts.push(cleanText(prevLabels[idx].innerText));
+                    }
+                  }
                 }
-              } else if (tagName === 'md-checkbox') {
-                valueText = currentValue ? translator('ui.common.on') : translator('ui.common.off');
-              } else if (tagName === 'md-slider') {
-                var valueDisplay = optionRow.querySelector('span:not([flex]), input[type=number]');
-                if (valueDisplay) { valueText = valueDisplay.tagName.toLowerCase() === 'input' ? valueDisplay.value : valueDisplay.innerText.trim(); }
               }
-              if (!valueText) valueText = String(currentValue);
-              parts.push(cleanText(valueText));
             }
+
+            // --- Input value extraction ---
+            if (inputElem && inputElem.tagName) {
+              var tagName = inputElem.tagName.toLowerCase();
+              var valueText = '';
+
+              if (tagName === 'input') {
+                valueText = inputElem.value || '';
+                if (!valueText) valueText = translator('ui.common.empty') || 'empty';
+              } else if (tagName === 'md-button') {
+                valueText = cleanText(inputElem.innerText);
+              } else if (inputElem.hasAttribute && inputElem.hasAttribute('ng-model')) {
+                var modelString = inputElem.getAttribute('ng-model');
+                var currentValue;
+                try {
+                  if (ngScope.$$phase || ngScope.$root.$$phase) { currentValue = ''; }
+                  else { currentValue = ngScope.$eval(modelString); }
+                } catch(e) { currentValue = '[error]'; }
+
+                if (tagName === 'md-select') {
+                  var optionsPath = modelString.replace('.values.', '.options.') + '.modes';
+                  var modes;
+                  try { modes = (ngScope.$$phase || ngScope.$root.$$phase) ? null : ngScope.$eval(optionsPath); } catch (e) { modes = null; }
+                  if (modes && modes.keys && modes.values) {
+                    var valueIndex = modes.keys.indexOf(currentValue);
+                    if (valueIndex !== -1 && modes.values[valueIndex]) { valueText = translator(modes.values[valueIndex]); }
+                  }
+                  if (!valueText) {
+                    var mdsv = inputElem.querySelector('md-select-value');
+                    if (mdsv) valueText = cleanText(mdsv.innerText);
+                  }
+                } else if (tagName === 'md-checkbox') {
+                  var isChecked = inputElem.classList.contains('md-checked');
+                  valueText = isChecked ? translator('ui.common.on') : translator('ui.common.off');
+                } else if (tagName === 'md-slider') {
+                  // Prefer a value display that is a sibling of THIS slider, not the first in the row.
+                  var vdisp = inputElem.nextElementSibling;
+                  if (vdisp && vdisp.tagName && (vdisp.tagName.toLowerCase() === 'span' || vdisp.tagName.toLowerCase() === 'input')) {
+                    valueText = vdisp.tagName.toLowerCase() === 'input' ? vdisp.value : vdisp.innerText.trim();
+                  }
+                  if (!valueText) {
+                    var valueDisplay = optionRow.querySelector('span:not([flex]), input[type=number]');
+                    if (valueDisplay) { valueText = valueDisplay.tagName.toLowerCase() === 'input' ? valueDisplay.value : valueDisplay.innerText.trim(); }
+                  }
+                  if (!valueText) {
+                    var aria = inputElem.getAttribute('aria-valuenow');
+                    if (aria) valueText = aria;
+                  }
+                }
+                if (!valueText) valueText = String(currentValue);
+              } else if (tagName === 'md-checkbox') {
+                var isChecked2 = inputElem.classList.contains('md-checked');
+                valueText = isChecked2 ? translator('ui.common.on') : translator('ui.common.off');
+              }
+
+              if (valueText) parts.push(cleanText(valueText));
+            }
+
             var finalText = parts.join(', ');
             if (!finalText && !parts.length) {
                 var header = optionRow.querySelector('h3');
@@ -339,7 +467,19 @@ angular.module('beamng.apps')
           
           // ---------- CENTRALIZED MESSAGE PROCESSOR ----------
           var lastCameraSwitchTs = 0;
+          // Translation keys for the recurring "engine is off" stall messages — these
+          // fire every ~1.8 s while ignitionLevel >= 2 and the engine isn't running,
+          // producing annoying repetitive speech.  Block them here.
+          var BLOCKED_TRANSLATION_KEYS = [
+            'vehicle.vehicleController.stalled',
+            'vehicle.vehicleController.stalledAutoClutch',
+            'vehicle.vehicleController.stalledStarting'
+          ];
           function processAndSpeakMessage(payload) {
+            // Block known spammy translation keys before any processing
+            if (typeof payload === 'object' && payload !== null && payload.txt) {
+              if (BLOCKED_TRANSLATION_KEYS.indexOf(payload.txt) !== -1) return;
+            }
             var finalText = '';
             if (typeof payload === 'string') {
               // Try translating dot-delimited keys (e.g. "vehicle.engine.oilLevelCritical.true")
@@ -462,94 +602,33 @@ angular.module('beamng.apps')
           // Request initial settings so we have the correct unit
           try { bngApi.engineLua('settings.notifyUI()'); } catch (e) {}
 
-          // ========== VEHICLE-SPECIFIC KEYBINDS ==========
-          var _cachedVehicleKeybinds = [];
-          var _cachedVehicleActions = [];
-
-          $rootScope.$on('InputBindingsChanged', function (event, data) {
-            if (!data || !data.actions || !data.bindings) return;
-            var lines = [];
-            var actions = [];
-            var translator = findTranslateFunc();
-            // Build action->control mapping from bindings
-            var actionBindings = {};
-            for (var d = 0; d < data.bindings.length; d++) {
-              var device = data.bindings[d];
-              if (!device.contents || !device.contents.bindings) continue;
-              var devBindings = device.contents.bindings;
-              for (var b = 0; b < devBindings.length; b++) {
-                var bind = devBindings[b];
-                if (!bind.action) continue;
-                var actionInfo = data.actions[bind.action];
-                if (!actionInfo || actionInfo.cat !== 'vehicle_specific') continue;
-                if (!actionBindings[bind.action]) actionBindings[bind.action] = [];
-                actionBindings[bind.action].push(bind.control || '(unbound)');
-              }
-            }
-            // Also include unbound vehicle-specific actions
-            for (var actionName in data.actions) {
-              var act = data.actions[actionName];
-              if (act.cat !== 'vehicle_specific') continue;
-              if (!actionBindings[actionName]) actionBindings[actionName] = [];
-            }
-            // Build lines sorted by action order
-            var sortedActions = Object.keys(actionBindings).sort(function(a, b) {
-              var oa = (data.actions[a] && data.actions[a].order) || 999;
-              var ob = (data.actions[b] && data.actions[b].order) || 999;
-              return oa - ob;
-            });
-            for (var i = 0; i < sortedActions.length; i++) {
-              var aName = sortedActions[i];
-              var aInfo = data.actions[aName];
-              var title = aInfo && aInfo.title ? translator(aInfo.title) : aName;
-              // If translation failed, fall back to humanized action name
-              if (title === aInfo.title) {
-                var shortName = aName.indexOf('__') !== -1 ? aName.split('__')[1] : aName;
-                title = shortName.replace(/([a-z])([A-Z])/g, '$1 $2');
-                title = title.charAt(0).toUpperCase() + title.slice(1);
-              }
-              var controls = actionBindings[aName];
-              var controlStr = controls.length > 0 ? controls.join(', ') : 'unbound';
-              lines.push(title + ': ' + controlStr);
-              actions.push(aName);
-            }
-            _cachedVehicleKeybinds = lines;
-            _cachedVehicleActions = actions;
-          });
-
-          function sendVehicleKeybinds() {
-            if (_cachedVehicleKeybinds.length === 0) {
-              // Request a refresh from the engine
-              try { bngApi.engineLua('extensions.core_input_bindings.notifyUI("keybind_request")'); } catch (e) {}
-              // Wait briefly for the event to fire and cache to populate
-              setTimeout(function() {
-                send({ type: 'vehicle_keybinds', lines: _cachedVehicleKeybinds, actions: _cachedVehicleActions });
-              }, 300);
-            } else {
-              send({ type: 'vehicle_keybinds', lines: _cachedVehicleKeybinds, actions: _cachedVehicleActions });
-            }
-          }
-
-          function triggerVehicleAction(actionName) {
-            if (!actionName) return;
-            var safe = actionName.replace(/[^a-zA-Z0-9_]/g, '');
-            log("info", "[bnvda] triggerVehicleAction: " + safe);
-            try {
-              bngApi.engineLua('core_input_actions.triggerDownUp("' + safe + '")');
-            } catch (e) {
-              log("error", "[bnvda] Failed to trigger action: " + actionName + " err: " + e);
-            }
-          }
-
           // ========== GENERIC UI CONTROL HANDLERS ==========
           function speakCheckboxRow(focusedElement, src) {
+            // Prefer the md-checkbox that encloses the focused element directly,
+            // so rows with multiple checkboxes / nested layouts read correctly.
+            var checkboxEl = closest(focusedElement, 'md-checkbox');
             var row = closest(focusedElement, 'md-list-item');
-            if (!row) return false;
-            var checkboxEl = row.querySelector('md-checkbox');
+            if (!checkboxEl && row) checkboxEl = row.querySelector('md-checkbox');
             if (!checkboxEl) return false;
+            if (!row) {
+              // Bare <div> consent rows (online/telemetry): delegate to speakOptionRow
+              // which knows how to walk a <div> container for labels.
+              return false;
+            }
             var parts = [];
+            var labelText = '';
             var labelEl = row.querySelector('p');
-            if (labelEl) { parts.push(cleanText(labelEl.innerText)); }
+            if (labelEl) labelText = cleanText(labelEl.innerText);
+            if (!labelText) {
+              var altLabel = row.querySelector('span[flex], label, [bng-translate]');
+              if (altLabel) labelText = cleanText(altLabel.innerText);
+            }
+            if (!labelText) {
+              // md-checkbox itself may contain inline text
+              var cbText = cleanText(checkboxEl.innerText);
+              if (cbText) labelText = cbText;
+            }
+            if (labelText) parts.push(labelText);
             var isChecked = checkboxEl.classList.contains('md-checked');
             parts.push(isChecked ? 'checked' : 'unchecked');
             var finalText = parts.join(', ');
@@ -560,19 +639,48 @@ angular.module('beamng.apps')
           function speakSliderRow(focusedElement, src) {
             var row = closest(focusedElement, 'md-list-item');
             if (!row) return false;
-            var sliderEl = row.querySelector('md-slider');
+            // Prefer the slider that contains / is adjacent to the focused element.
+            var sliderEl = closest(focusedElement, 'md-slider');
+            if (!sliderEl) sliderEl = row.querySelector('md-slider');
             if (!sliderEl) return false;
             var parts = [];
-            var labelEl = row.querySelector('p');
-            if (labelEl) { parts.push(cleanText(labelEl.innerText)); }
-            var valueEl = row.querySelector('input[type="number"], span.md-body-1');
-            if (valueEl) {
-              var value = valueEl.tagName.toLowerCase() === 'input' ? valueEl.value : valueEl.innerText;
-              parts.push(cleanText(value));
-            } else {
-              var ariaValue = sliderEl.getAttribute('aria-valuenow');
-              if (ariaValue) { parts.push(cleanText(ariaValue)); }
+            var labelText = '';
+
+            // Label search: preceding sibling of the slider first (handles <span flex>),
+            // then first <p>/<label>/<span flex> in the row.
+            if (sliderEl.previousElementSibling) {
+              var sib = sliderEl.previousElementSibling;
+              if (sib.matches && sib.matches('p, label, span[flex]')) {
+                labelText = cleanText(sib.innerText);
+              }
             }
+            if (!labelText) {
+              var labelEl = row.querySelector('p, label, span[flex]');
+              if (labelEl) labelText = cleanText(labelEl.innerText);
+            }
+            if (labelText) parts.push(labelText);
+
+            // Value: prefer a sibling directly after the focused slider
+            var valueText = '';
+            var vdisp = sliderEl.nextElementSibling;
+            if (vdisp && vdisp.tagName) {
+              var vtn = vdisp.tagName.toLowerCase();
+              if (vtn === 'span' || vtn === 'input') {
+                valueText = vtn === 'input' ? vdisp.value : cleanText(vdisp.innerText);
+              }
+            }
+            if (!valueText) {
+              var valueEl = row.querySelector('input[type="number"], span.md-body-1');
+              if (valueEl) {
+                valueText = valueEl.tagName.toLowerCase() === 'input' ? valueEl.value : cleanText(valueEl.innerText);
+              }
+            }
+            if (!valueText) {
+              var ariaValue = sliderEl.getAttribute('aria-valuenow');
+              if (ariaValue) valueText = cleanText(ariaValue);
+            }
+            if (valueText) parts.push(valueText);
+
             if (parts.length >= 2) {
               var finalText = parts.join(', ');
               scheduleSpeak(finalText, src);
@@ -666,9 +774,12 @@ angular.module('beamng.apps')
           // Fix: add bng-nav-item to the individual interactive elements inside
           // each row (label, each binding, add button) so crossfire can navigate
           // left/right across columns and up/down between rows.
+          var _bindingsAlreadyPatched = false;
           function patchBindingsNavigation() {
             var bindingList = document.getElementById('binding_list');
-            if (!bindingList) return;
+            if (!bindingList) { _bindingsAlreadyPatched = false; return; }
+            if (_bindingsAlreadyPatched) return;
+            _bindingsAlreadyPatched = true;
             var patched = 0;
             var rows = bindingList.querySelectorAll('md-list-item[layout="row"]');
             for (var i = 0; i < rows.length; i++) {
@@ -694,6 +805,70 @@ angular.module('beamng.apps')
             if (patched > 0) {
               log('info', '[bnvda] Patched ' + patched + ' binding elements for controller navigation.');
             }
+          }
+
+          // Patch md-list-item rows on the Options screen that crossfire navigation
+          // would otherwise skip. In BeamNG's options screens, md-list-items containing
+          // md-select controls use the `md-no-proxy` class (the md-select itself is the
+          // focus target, not the row). Crossfire appears to walk by list-item in some
+          // modes, so without a tabindex on the row the user never lands on these rows
+          // at all. Force them to be crossfire-visible by adding bng-nav-item and
+          // tabindex="0". This also helps our focusin handler hear them consistently.
+          function patchOptionsNavigation() {
+            var rows = document.querySelectorAll('md-list-item.md-no-proxy');
+            if (rows.length === 0) return;
+            var patched = 0;
+            for (var i = 0; i < rows.length; i++) {
+              var row = rows[i];
+              // Only touch rows that actually host a focus-capable control
+              // (md-select, input, md-button, md-switch). Skip already-patched rows.
+              if (row.hasAttribute('data-bnvda-patched')) continue;
+              var hasControl = row.querySelector('md-select, md-input-container input, md-input-container textarea, md-switch, md-button');
+              if (!hasControl) continue;
+              row.setAttribute('data-bnvda-patched', '1');
+              if (!row.hasAttribute('bng-nav-item')) row.setAttribute('bng-nav-item', '');
+              if (!row.hasAttribute('tabindex')) row.setAttribute('tabindex', '0');
+              // Also make sure any inner md-select has bng-nav-item so crossfire
+              // can target it directly if it walks by control rather than row.
+              var inner = row.querySelectorAll('md-select, md-input-container input');
+              for (var k = 0; k < inner.length; k++) {
+                if (!inner[k].hasAttribute('bng-nav-item')) {
+                  inner[k].setAttribute('bng-nav-item', '');
+                }
+              }
+              patched++;
+            }
+            if (patched > 0) {
+              log('info', '[bnvda] Patched ' + patched + ' options md-no-proxy rows for controller navigation.');
+            }
+          }
+
+          // Fallback: poll document.activeElement so md-select focus changes that
+          // escape our focusin listener (e.g. programmatic focus transitions during
+          // crossfire traversal) still trigger speech. This is cheap — we only
+          // compare against our own _lastPolledActive reference.
+          var _lastPolledActive = null;
+          function pollActiveElementForOptions() {
+            try {
+              var ae = document.activeElement;
+              if (!ae || ae === _lastPolledActive) return;
+              // Only react while we're on an options/menu route to avoid spam.
+              if (!document.querySelector('md-list-item.md-no-proxy')) {
+                _lastPolledActive = ae;
+                return;
+              }
+              _lastPolledActive = ae;
+              // Only fire for controls we care about that focusin may have missed.
+              var sel = closest(ae, 'md-select');
+              if (sel) {
+                processFocusChange(sel, P.KEYBOARD);
+                return;
+              }
+              var row = closest(ae, 'md-list-item.md-no-proxy');
+              if (row) {
+                processFocusChange(ae, P.KEYBOARD);
+              }
+            } catch (e) {}
           }
 
           // ========== CONTROLS BINDINGS SCREEN MODULE ==========
@@ -1194,44 +1369,58 @@ angular.module('beamng.apps')
               } catch (e) {
                 log('info', '[bnvda] Vehicle details watcher error: ' + e.message);
               }
-            }, 300);
+            }, 1000);
           }
 
           // ========== RADIAL MENU SPEECH MODULE ==========
           var _radialMenuWasOpen = false;
-          var _radialDefaultText = '';
           var _radialLastSpokenItem = '';
           var _radialLastCategory = '';
-          var _radialItemObserver = null;
-          var _radialCategoryObserver = null;
-          var _radialLabelDiv = null;
-          var _radialHotkeyDiv = null;
+          var _radialPollTimer = null;
+          var _radialAttachTimer = null;
+          var _radialWrap = null;
 
-          function findRadialInfoElements(container) {
+          // Radial menu SVG foreignObject layout (5 children of wrap):
+          //   [0] svg icon  [1] empty div  [2] category/default text
+          //   [3] item name (empty until hover)  [4] hotkey text
+          // Vue replaces child nodes rather than mutating text, so we observe
+          // the wrap element and re-read children by index on each mutation.
+          function findRadialWrap(container) {
             var svgEl = container.querySelector('.radial-svg svg');
-            if (!svgEl) return null;
+            if (!svgEl) { log('info', '[RADIAL] No .radial-svg svg found'); return null; }
             var fo = svgEl.querySelector('foreignObject');
-            if (!fo) return null;
+            if (!fo) { log('info', '[RADIAL] No foreignObject in svg'); return null; }
             var body = fo.firstElementChild;
-            if (!body) return null;
+            if (!body) { log('info', '[RADIAL] No child in foreignObject'); return null; }
             var wrap = body.firstElementChild;
-            if (!wrap || !wrap.children || wrap.children.length < 5) return null;
-            return { label: wrap.children[2], hotkey: wrap.children[4] };
+            if (!wrap) { log('info', '[RADIAL] No wrap element'); return null; }
+            if (wrap.children.length < 4) { log('info', '[RADIAL] wrap has only ' + wrap.children.length + ' children, need at least 4'); return null; }
+            return wrap;
           }
 
           function radialMenuOnOpen(container) {
+            if (_radialPollTimer) { clearInterval(_radialPollTimer); _radialPollTimer = null; }
+            if (_radialAttachTimer) { clearTimeout(_radialAttachTimer); _radialAttachTimer = null; }
             var attempts = 0;
             function tryAttach() {
-              var els = findRadialInfoElements(container);
-              if (!els) {
+              _radialAttachTimer = null;
+              // Bail if the menu closed during retries — avoids leaking a poll
+              // timer when the outer watcher fires open→close→open in quick succession.
+              if (!container.isConnected || !document.querySelector('.radial-menu')) return;
+              var wrap = findRadialWrap(container);
+              if (!wrap) {
                 attempts++;
-                if (attempts < 3) { setTimeout(tryAttach, 50); }
+                if (attempts < 10) { _radialAttachTimer = setTimeout(tryAttach, 100); }
+                else { log('info', '[RADIAL] Gave up finding wrap after ' + attempts + ' attempts'); }
                 return;
               }
-              _radialLabelDiv = els.label;
-              _radialHotkeyDiv = els.hotkey;
-              _radialDefaultText = (_radialLabelDiv.textContent || '').trim();
-              scheduleSpeak('Radial menu', P.SYSTEM);
+              _radialWrap = wrap;
+              var defaultText = (wrap.children[2] ? wrap.children[2].textContent : '').trim();
+              var openMsg = 'Radial menu';
+              if (defaultText && defaultText !== 'Select an option') {
+                openMsg += ', ' + defaultText;
+              }
+              scheduleSpeak(openMsg, P.SYSTEM);
 
               var selectedCat = container.querySelector('.radial-category.selected .radial-category-label');
               if (selectedCat) {
@@ -1242,49 +1431,77 @@ angular.module('beamng.apps')
                 }
               }
 
-              _radialItemObserver = new MutationObserver(function() {
-                var text = (_radialLabelDiv.textContent || '').trim();
-                var isEmpty = !text || text === _radialDefaultText;
-                if (isEmpty) { _radialLastSpokenItem = ''; scheduleSpeak('empty', P.CONTROLLER); return; }
-                if (text === _radialLastSpokenItem) return;
-                _radialLastSpokenItem = text;
-                var hotkeyText = _radialHotkeyDiv ? (_radialHotkeyDiv.textContent || '').trim() : '';
+              // Poll for changes — Vue's virtual DOM patching doesn't reliably
+              // trigger MutationObserver, so we poll every 80ms instead.
+              _radialPollTimer = setInterval(function() {
+                if (!_radialWrap) return;
+                // Self-check: if the radial menu has been removed from the DOM
+                // (e.g., outer watcher was paused or missed the close), tear
+                // ourselves down so we don't poll forever against a detached node.
+                if (!_radialWrap.isConnected || !document.querySelector('.radial-menu')) {
+                  _radialMenuWasOpen = false;
+                  radialMenuOnClose();
+                  return;
+                }
+                // Read all text children fresh each tick
+                var children = _radialWrap.children;
+                var itemText = '';
+                var hotkeyText = '';
+                var catDefault = '';
+                if (DEBUG) {
+                  for (var i = 0; i < children.length; i++) {
+                    var t = (children[i].textContent || '').trim();
+                    if (t) log('info', '[RADIAL-POLL] child[' + i + '] = "' + t.substring(0, 50) + '"');
+                  }
+                }
+                if (children[3]) itemText = (children[3].textContent || '').trim();
+                if (children[4]) hotkeyText = (children[4].textContent || '').trim();
+                if (children[2]) catDefault = (children[2].textContent || '').trim();
+
+                // If children[3] is empty, try children[2] as item text
+                // (some states put the item name there instead)
+                if (!itemText && catDefault && catDefault !== 'Select an option') {
+                  itemText = catDefault;
+                }
+
+                if (!itemText) {
+                  if (_radialLastSpokenItem !== '') {
+                    _radialLastSpokenItem = '';
+                    scheduleSpeak('empty', P.CONTROLLER);
+                  }
+                  return;
+                }
+                if (itemText === _radialLastSpokenItem) return;
+                _radialLastSpokenItem = itemText;
                 if (hotkeyText) {
                   var parts = hotkeyText.split(/\s+/);
                   hotkeyText = parts.length > 1 ? parts.slice(1).join(' ') : hotkeyText;
                 }
-                var speakText = hotkeyText ? text + ', ' + hotkeyText + ' key' : text;
+                var speakText = hotkeyText ? itemText + ', ' + hotkeyText + ' key' : itemText;
                 scheduleSpeak(speakText, P.CONTROLLER);
-              });
-              _radialItemObserver.observe(_radialLabelDiv, { childList: true, characterData: true, subtree: true });
 
-              var categoriesContainer = container.querySelector('.radial-categories');
-              if (categoriesContainer) {
-                _radialCategoryObserver = new MutationObserver(function() {
-                  var sel = container.querySelector('.radial-category.selected .radial-category-label');
-                  if (!sel) return;
-                  var catText = cleanText(sel.textContent);
-                  if (catText && catText !== _radialLastCategory) {
-                    _radialLastCategory = catText;
-                    scheduleSpeak(catText, P.CONTROLLER);
+                // Check category change
+                var sel = container.querySelector('.radial-category.selected .radial-category-label');
+                if (sel) {
+                  var newCat = cleanText(sel.textContent);
+                  if (newCat && newCat !== _radialLastCategory) {
+                    _radialLastCategory = newCat;
+                    scheduleSpeak(newCat, P.CONTROLLER);
                   }
-                });
-                _radialCategoryObserver.observe(categoriesContainer, { attributes: true, subtree: true, attributeFilter: ['class'] });
-              }
+                }
+              }, 80);
 
-              log('info', '[bnvda] Radial menu observers attached.');
+              log('info', '[bnvda] Radial menu polling started.');
             }
             tryAttach();
           }
 
           function radialMenuOnClose() {
-            if (_radialItemObserver) { _radialItemObserver.disconnect(); _radialItemObserver = null; }
-            if (_radialCategoryObserver) { _radialCategoryObserver.disconnect(); _radialCategoryObserver = null; }
-            _radialDefaultText = '';
+            if (_radialPollTimer) { clearInterval(_radialPollTimer); _radialPollTimer = null; }
+            if (_radialAttachTimer) { clearTimeout(_radialAttachTimer); _radialAttachTimer = null; }
             _radialLastSpokenItem = '';
             _radialLastCategory = '';
-            _radialLabelDiv = null;
-            _radialHotkeyDiv = null;
+            _radialWrap = null;
           }
 
           function startRadialMenuWatcher() {
@@ -1308,29 +1525,53 @@ angular.module('beamng.apps')
           // ---------- Non-Invasive Observer for UI Changes ----------
           var mainObserver = null;
           var lastFocusedElement = null;
-          var focusDebounceTimer = null;
+          var focusDebounceTimer = null;   // controller path
+          var kbFocusDebounceTimer = null; // keyboard path
+          function processFocusChange(element, src) {
+            src = (src !== undefined) ? src : P.CONTROLLER;
+            // Track the most recently focused md-select so the dropdown-close
+            // watcher can re-speak the new value after the user picks one.
+            if (element) {
+              var sel = closest(element, 'md-select');
+              if (sel) _lastOpenedSelect = sel;
+            }
 
-          function processFocusChange(element) {
-            clearTimeout(focusDebounceTimer);
-            focusDebounceTimer = setTimeout(function() {
-              if (!element || element === lastFocusedElement) return;
-              lastFocusedElement = element;
-
-              var src = P.CONTROLLER;
-
-              // --- Primary Logic ---
-              if (speakTuningControl(element, src)) return;
-              if (speakPartRow(element, src)) return;
-              if (speakCheckboxRow(element, src)) return;
-              if (speakSliderRow(element, src)) return;
-              if (speakBindingEditItem(element, src)) return;
-              if (speakBindingElement(element, src)) return;
-
-              if (optionsObserverAttached && speakOptionRow(element, src)) return;
-              if (speakMenuAccordionItem(element, src)) return;
-
-              scheduleSpeak(extractText(element), src);
-            }, 75);
+            if (src === P.CONTROLLER) {
+              // Controller wins: cancel any pending keyboard debounce as well.
+              clearTimeout(focusDebounceTimer);
+              clearTimeout(kbFocusDebounceTimer);
+              focusDebounceTimer = setTimeout(function() {
+                if (!element || element === lastFocusedElement) return;
+                lastFocusedElement = element;
+                if (speakTuningControl(element, src)) return;
+                if (speakPartRow(element, src)) return;
+                if (speakCheckboxRow(element, src)) return;
+                if (speakSliderRow(element, src)) return;
+                if (speakBindingEditItem(element, src)) return;
+                if (speakBindingElement(element, src)) return;
+                if (optionsObserverAttached && speakOptionRow(element, src)) return;
+                if (speakMenuAccordionItem(element, src)) return;
+                scheduleSpeak(extractText(element), src);
+              }, 75);
+            } else {
+              // Keyboard path: separate timer, does not cancel controller timer.
+              clearTimeout(kbFocusDebounceTimer);
+              kbFocusDebounceTimer = setTimeout(function() {
+                // If a controller became active during the debounce window, yield.
+                if ((nowTS() - lastControllerTs) < CONTROLLER_DOMINANCE_MS) return;
+                if (!element || element === lastFocusedElement) return;
+                lastFocusedElement = element;
+                if (speakTuningControl(element, src)) return;
+                if (speakPartRow(element, src)) return;
+                if (speakCheckboxRow(element, src)) return;
+                if (speakSliderRow(element, src)) return;
+                if (speakBindingEditItem(element, src)) return;
+                if (speakBindingElement(element, src)) return;
+                if (optionsObserverAttached && speakOptionRow(element, src)) return;
+                if (speakMenuAccordionItem(element, src)) return;
+                scheduleSpeak(extractText(element), src);
+              }, 75);
+            }
           }
 
           function attachMainObserver() {
@@ -1341,17 +1582,25 @@ angular.module('beamng.apps')
             var observerConfig = {
               attributes: true,
               subtree: true,
-              attributeFilter: ['class']
+              attributeFilter: ['class'],
+              // We need oldValue so we can detect *transitions* into focus-visible.
+              // Without this, every class mutation on an already-focused element
+              // (md-active, ng-* state classes, animation toggles, etc.) re-fires
+              // processFocusChange, causing needless clearTimeout/setTimeout churn.
+              attributeOldValue: true
             };
 
             var callback = function(mutationsList, observer) {
               for(var mutation of mutationsList) {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                  var targetElement = mutation.target;
-                  if (targetElement && typeof targetElement.classList.contains === 'function' && targetElement.classList.contains('focus-visible')) {
-                    processFocusChange(targetElement);
-                  }
-                }
+                if (mutation.type !== 'attributes' || mutation.attributeName !== 'class') continue;
+                var targetElement = mutation.target;
+                if (!targetElement || !targetElement.classList || typeof targetElement.classList.contains !== 'function') continue;
+                if (!targetElement.classList.contains('focus-visible')) continue;
+                // Skip if focus-visible was already present before this mutation
+                // (i.e. some other class changed on a still-focused element).
+                var oldClass = mutation.oldValue || '';
+                if (oldClass.indexOf('focus-visible') !== -1) continue;
+                processFocusChange(targetElement);
               }
             };
 
@@ -1503,24 +1752,81 @@ angular.module('beamng.apps')
             log('info', '[DOMDUMP] Sent ' + lines.length + ' lines.');
           }
 
+          // ---------- MD-SELECT DROPDOWN CLOSE WATCHER ----------
+          // When a user opens an md-select, picks an option, and closes the dropdown,
+          // focus returns to the same md-select element. processFocusChange's
+          // "element === lastFocusedElement" guard then suppresses re-speak, so the
+          // user never hears which value ended up selected. Detect dropdown removal
+          // and force a fresh announcement of the parent md-select row.
+          var selectCloseObserver = null;
+          function rememberOpenedSelect(sel) {
+            if (sel && sel.tagName && sel.tagName.toLowerCase() === 'md-select') {
+              _lastOpenedSelect = sel;
+            } else if (sel) {
+              var up = closest(sel, 'md-select');
+              if (up) _lastOpenedSelect = up;
+            }
+          }
+          function startSelectCloseWatcher() {
+            if (selectCloseObserver) return;
+            // Track md-select interaction via pointer or keyboard.
+            document.addEventListener('click', function(e) {
+              rememberOpenedSelect(e.target);
+            }, true);
+            document.addEventListener('keydown', function(e) {
+              if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+              rememberOpenedSelect(e.target);
+            }, true);
+            selectCloseObserver = new MutationObserver(function(muts) {
+              for (var i = 0; i < muts.length; i++) {
+                var removed = muts[i].removedNodes;
+                for (var j = 0; j < removed.length; j++) {
+                  var n = removed[j];
+                  if (n && n.nodeType === 1 && n.classList &&
+                      (n.classList.contains('md-select-menu-container') ||
+                       (n.querySelector && n.querySelector('.md-select-menu-container')))) {
+                    var target = _lastOpenedSelect;
+                    setTimeout(function(sel) {
+                      return function() {
+                        if (!sel || !document.body.contains(sel)) return;
+                        lastFocusedElement = null;
+                        lastSpoken = '';
+                        processFocusChange(sel, P.KEYBOARD);
+                      };
+                    }(target), 150);
+                    return;
+                  }
+                }
+              }
+            });
+            selectCloseObserver.observe(document.body, { childList: true, subtree: true });
+          }
+
           // ---------- EVENT HOOKS AND INITIALIZATION ----------
           function initializeModules() {
             log("info", "[bnvda] Page loaded. Initializing modules...");
             optionsInterval = setInterval(attachOptionsObserver, 1000);
             toasterInterval = setInterval(attachToasterPatcher, 1000);
-            setInterval(patchBindingsNavigation, 500);
+            setInterval(patchBindingsNavigation, 2000);
+            setInterval(patchOptionsNavigation, 1500);
+            setInterval(pollActiveElementForOptions, 250);
             startBindingEditWatcher();
             attachMainObserver();
             startRadialMenuWatcher();
+            startSelectCloseWatcher();
 
           }
 
           connectWS();
 
-          addEventListener("mouseover", function (e) {
+          addEventListener("focusin", function (e) {
+            processFocusChange(e.target, P.KEYBOARD);
+          }, true);
+
+          addEventListener("mouseover", throttle(function (e) {
             if ((nowTS() - lastControllerTs) < CONTROLLER_DOMINANCE_MS) return;
             scheduleSpeak(extractText(e.target), P.POINTER);
-          }, true);
+          }, 150), true);
           var pointerMoveHandler = throttle(function (e) {
             if ((nowTS() - lastControllerTs) < CONTROLLER_DOMINANCE_MS) return;
             var el = document.elementFromPoint(e.clientX, e.clientY);
@@ -1536,6 +1842,7 @@ angular.module('beamng.apps')
         
         })();
       } catch (e) { log('error', '[bnvda] Main script error: ' + e); }
+
     }
   };
 }]);

@@ -70,6 +70,14 @@ local _cdPendingPlayer      = nil   -- nil=not yet, false=no coupler, number=cid
 local _cdPendingTarget      = nil
 local _cdPlayerOverhang     = 0     -- how far truck body extends behind its coupler (meters)
 local _cdTargetOverhang     = 0     -- how far trailer body extends past its coupler toward truck (meters)
+local _cdEpoch              = 0     -- incremented each discovery; callbacks with wrong epoch are stale
+local _cdDiscoveryTimer     = 0     -- time elapsed since _cdDiscovering was set true
+local CD_DISCOVERY_TIMEOUT  = 3.0   -- seconds before retrying a stalled discovery
+
+-- Coupler Attach Monitor State
+-- Arms the onCouplerAttached GE hook to detect when the target vehicle physically couples.
+-- Auto-starts when an ALIGN command is received; auto-stops on detection or scanner OFF.
+local couplerAttachMonitor    = false
 
 -- Coupler tag compatibility table
 local COUPLER_COMPAT = {
@@ -312,6 +320,52 @@ local function cycleTarget(direction)  -- direction: 1 = next, -1 = prev
   ]], fallback))
 end
 
+-- Lock onto the non-player vehicle closest to the player. Used by F9+CTRL+Tab.
+local function targetClosest()
+  if not udpSend then return end
+  local player = be:getPlayerVehicle(0)
+  if not player then
+    udpSend:send("TARGET_NAME:No player vehicle")
+    return
+  end
+
+  local playerPos = player:getPosition()
+  local playerID  = player:getID()
+
+  local closestID, closestDist = nil, math.huge
+  for i = 0, be:getObjectCount() - 1 do
+    local obj = be:getObject(i)
+    if obj and obj:getID() ~= playerID then
+      local d = playerPos:distance(obj:getPosition())
+      if d < closestDist then
+        closestDist = d
+        closestID   = obj:getID()
+      end
+    end
+  end
+
+  if not closestID then
+    udpSend:send("TARGET_NAME:No other vehicles")
+    return
+  end
+
+  currentTargetID   = closestID
+  currentTargetDist = closestDist
+  scannerLog('info', string.format("Closest target locked: id=%d dist=%.1fm", closestID, closestDist))
+
+  local newVeh = scenetree.findObjectById(closestID)
+  if newVeh and extensions and extensions.vehicleNaming and extensions.vehicleNaming.describe then
+    local ok, name = pcall(extensions.vehicleNaming.describe, newVeh)
+    if ok and type(name) == "string" and name ~= "" then
+      udpSend:send("TARGET_NAME:" .. name)
+      return
+    end
+  end
+  -- Fallback to JBeam basename if the helper is unavailable.
+  local f = newVeh and newVeh:getJBeamFilename() or "unknown"
+  udpSend:send("TARGET_NAME:" .. (f:match("([^/\\]+)%.jbeam$") or f))
+end
+
 -- =================================================================================================
 --  Core Scan Logic
 -- =================================================================================================
@@ -398,8 +452,36 @@ end
 --  GE Extension Hooks (exported via M table)
 -- =================================================================================================
 
+local function setupSockets()
+  if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
+  if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
+
+  udpSend = socket.udp()
+  if udpSend then
+    udpSend:setpeername(PYTHON_HOST, PYTHON_PORT_SCANNER)
+    udpSend:settimeout(0)
+    scannerLog('info', "UDP send socket created, targeting " .. PYTHON_HOST .. ":" .. PYTHON_PORT_SCANNER)
+  else
+    scannerLog('error', "Failed to create UDP send socket.")
+  end
+
+  local ok, err = pcall(function()
+    udpCmd = socket.udp()
+    udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
+    udpCmd:settimeout(0)
+  end)
+  if ok and udpCmd then
+    scannerLog('info', "UDP command socket listening on port " .. CMD_LISTEN_PORT)
+  else
+    scannerLog('error', "Failed to create UDP command socket: " .. tostring(err))
+    udpCmd = nil
+  end
+end
+
 function M.onExtensionLoaded()
   scannerLog('info', "Vehicle scanner extension loaded.")
+  -- Bind sockets here so Ctrl+L Lua reload re-opens them.
+  setupSockets()
 end
 
 function M.onWorldReadyState(state)
@@ -407,10 +489,6 @@ function M.onWorldReadyState(state)
 
   if state == 2 then
     scannerLog('info', "World is ready. Initializing scanner systems.")
-
-    -- Close existing sockets before re-creating (handles map reload)
-    if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
-    if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
 
     -- Reset state for new map
     isScanModeActive  = false
@@ -436,29 +514,11 @@ function M.onWorldReadyState(state)
     _cdPendingTarget   = nil
     _cdPlayerOverhang  = 0
     _cdTargetOverhang  = 0
+    _cdEpoch             = 0
+    _cdDiscoveryTimer    = 0
+    couplerAttachMonitor = false
 
-    -- Create send socket for scan data
-    udpSend = socket.udp()
-    if udpSend then
-      udpSend:setpeername(PYTHON_HOST, PYTHON_PORT_SCANNER)
-      udpSend:settimeout(0)
-      scannerLog('info', "UDP send socket created, targeting " .. PYTHON_HOST .. ":" .. PYTHON_PORT_SCANNER)
-    else
-      scannerLog('error', "Failed to create UDP send socket.")
-    end
-
-    -- Create receive socket for ON/OFF commands from Python
-    local ok, err = pcall(function()
-      udpCmd = socket.udp()
-      udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
-      udpCmd:settimeout(0)
-    end)
-    if ok and udpCmd then
-      scannerLog('info', "UDP command socket listening on port " .. CMD_LISTEN_PORT)
-    else
-      scannerLog('error', "Failed to create UDP command socket: " .. tostring(err))
-      udpCmd = nil
-    end
+    setupSockets()
   end
 end
 
@@ -476,11 +536,14 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
       elseif cmd == "OFF" and isScanModeActive then
         isScanModeActive = false
         couplerTrackActive = false
+        couplerAttachMonitor = false
         scannerLog('info', "Scan mode deactivated via UDP.")
       elseif cmd == "NEXT" then
         cycleTarget(1)
       elseif cmd == "PREV" then
         cycleTarget(-1)
+      elseif cmd == "CLOSEST" then
+        targetClosest()
       elseif cmd == "DAMAGE" then
         scannerLog('info', "DAMAGE command received, routing to active vehicle.")
         local player = be:getPlayerVehicle(0)
@@ -813,8 +876,16 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
             _ds:close()
           ]])
         end
+      elseif cmd == "ATTACH_MONITOR" then
+        couplerAttachMonitor = not couplerAttachMonitor
+        scannerLog('info', "Coupler attach monitor explicitly toggled " .. (couplerAttachMonitor and "ON" or "OFF"))
+        if udpSend then
+          udpSend:send("ATTACH_MONITOR:" .. (couplerAttachMonitor and "ON" or "OFF"))
+        end
       elseif cmd == "ALIGN" then
-        scannerLog('info', "ALIGN command received.")
+        -- Auto-enable attach monitor whenever alignment is started
+        couplerAttachMonitor = true
+        scannerLog('info', "ALIGN command received; attach monitor armed.")
         if not currentTargetID then
           udpSend:send("COUPLER_FAIL:No vehicle target locked")
         else
@@ -915,6 +986,7 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
         if not couplerDistMode then
           couplerDistReady = false
           _cdDiscovering = false
+          _cdPlayerCid = nil      -- cleared so re-discovery fires unconditionally when toggled back on
           _cdPendingPlayer = nil
           _cdPendingTarget = nil
         end
@@ -984,22 +1056,25 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
     if couplerDistMode then
       couplerDistReady = false
       _cdDiscovering = false
+      _cdPlayerCid = nil      -- cleared so re-discovery fires even if switching back to original vehicles
       _cdPendingPlayer = nil
       _cdPendingTarget = nil
     end
     scannerLog('info', "Player vehicle changed; target lock reset.")
     if udpSend and player then
-      -- Query brand/model from inside the vehicle VM; falls back to jbeam filename
-      local fallback = player:getJBeamFilename() or "unknown"
-      player:queueLuaCommand(string.format([[
-        local info = (v.data and v.data.information) or {}
-        local brand = tostring(info.brand or "")
-        local model = tostring(info.name or %q)
-        local display = brand ~= "" and (brand .. " " .. model) or model
-        obj:queueGameEngineLua(string.format(
-          "extensions.vehicleScanner.onVehicleNameReady(%%q)", display
-        ))
-      ]], fallback))
+      -- Use the GE-side vehicleNaming helper for a rich identifier
+      -- (brand, friendly model, configuration, color) without an async
+      -- cross-VM round trip. Fall back to JBeam basename on any failure.
+      local display = nil
+      if extensions and extensions.vehicleNaming and extensions.vehicleNaming.describe then
+        local ok, name = pcall(extensions.vehicleNaming.describe, player)
+        if ok and type(name) == "string" and name ~= "" then display = name end
+      end
+      if not display then
+        local f = player:getJBeamFilename() or "unknown"
+        display = f:match("([^/\\]+)%.jbeam$") or f
+      end
+      udpSend:send("SWITCHED:" .. display)
     end
   end
 
@@ -1054,7 +1129,10 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
     -- (Re)discover couplers when player or target changes
     if not couplerDistReady and not _cdDiscovering and plyr then
       if _cdTargetID ~= currentTargetID or _cdPlayerID ~= pID or (_cdPlayerCid == nil) then
+        _cdEpoch = _cdEpoch + 1
+        local epoch = _cdEpoch
         _cdDiscovering = true
+        _cdDiscoveryTimer = 0
         _cdPendingPlayer = nil
         _cdPendingTarget = nil
         _cdPlayerID = pID
@@ -1062,7 +1140,7 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
         couplerDistReady = false
 
         -- Query player vehicle for best coupler node CID + rear overhang
-        plyr:queueLuaCommand([[
+        plyr:queueLuaCommand(string.format([[
           local best, bpri = nil, 0
           for _, nd in pairs(v.data.nodes) do
             local p = 0
@@ -1099,16 +1177,16 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
               if behindDist > rearOverhang then rearOverhang = behindDist end
             end
             obj:queueGameEngineLua(string.format(
-              'extensions.vehicleScanner.onCouplerDistPlayerInfo(%d, %.4f)', best.cid, rearOverhang))
+              'extensions.vehicleScanner.onCouplerDistPlayerInfo(%%d, %d, %%.4f)', best.cid, rearOverhang))
           else
-            obj:queueGameEngineLua('extensions.vehicleScanner.onCouplerDistPlayerInfo(-1, 0)')
+            obj:queueGameEngineLua('extensions.vehicleScanner.onCouplerDistPlayerInfo(-1, %d, 0)')
           end
-        ]])
+        ]], epoch, epoch))
 
         -- Query target vehicle for best coupler node CID + front overhang
         local targetVeh = scenetree.findObjectById(currentTargetID)
         if targetVeh then
-          targetVeh:queueLuaCommand([[
+          targetVeh:queueLuaCommand(string.format([[
             local best, bpri = nil, 0
             for _, nd in pairs(v.data.nodes) do
               local p = 0
@@ -1152,15 +1230,27 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
                 if aheadDist > frontOverhang then frontOverhang = aheadDist end
               end
               obj:queueGameEngineLua(string.format(
-                'extensions.vehicleScanner.onCouplerDistTargetInfo(%d, %.4f)', best.cid, frontOverhang))
+                'extensions.vehicleScanner.onCouplerDistTargetInfo(%%d, %d, %%.4f)', best.cid, frontOverhang))
             else
-              obj:queueGameEngineLua('extensions.vehicleScanner.onCouplerDistTargetInfo(-1, 0)')
+              obj:queueGameEngineLua('extensions.vehicleScanner.onCouplerDistTargetInfo(-1, %d, 0)')
             end
-          ]])
+          ]], epoch, epoch))
         else
           _cdPendingTarget = false
           _tryCouplerDistReady()
         end
+      end
+    end
+
+    -- Discovery timeout: retry if vehicle VM callbacks never arrived
+    if _cdDiscovering then
+      _cdDiscoveryTimer = _cdDiscoveryTimer + dtReal
+      if _cdDiscoveryTimer >= CD_DISCOVERY_TIMEOUT then
+        scannerLog('warn', "Coupler distance discovery timed out, will retry")
+        _cdDiscovering = false
+        _cdDiscoveryTimer = 0
+        _cdPendingPlayer = nil
+        _cdPendingTarget = nil
       end
     end
 
@@ -1191,6 +1281,7 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
       end
     end
   end
+
 end
 
 -- =================================================================================================
@@ -1221,7 +1312,11 @@ function M.onTargetCouplerForAlign(tid, cid, cx, cy, cz, ox, oy, oz, tag)
 end
 
 -- Coupler Distance Mode callbacks (called from vehicle VM)
-function M.onCouplerDistPlayerInfo(cid, overhang)
+function M.onCouplerDistPlayerInfo(cid, epoch, overhang)
+  if epoch ~= _cdEpoch then
+    scannerLog('info', "Coupler dist player info: stale epoch " .. tostring(epoch) .. " (current " .. tostring(_cdEpoch) .. "), discarding")
+    return
+  end
   scannerLog('info', "Coupler dist player info: cid=" .. tostring(cid) .. " rearOverhang=" .. tostring(overhang))
   if cid == -1 then
     _cdPendingPlayer = false
@@ -1233,7 +1328,11 @@ function M.onCouplerDistPlayerInfo(cid, overhang)
   _tryCouplerDistReady()
 end
 
-function M.onCouplerDistTargetInfo(cid, overhang)
+function M.onCouplerDistTargetInfo(cid, epoch, overhang)
+  if epoch ~= _cdEpoch then
+    scannerLog('info', "Coupler dist target info: stale epoch " .. tostring(epoch) .. " (current " .. tostring(_cdEpoch) .. "), discarding")
+    return
+  end
   scannerLog('info', "Coupler dist target info: cid=" .. tostring(cid) .. " frontOverhang=" .. tostring(overhang))
   if cid == -1 then
     _cdPendingTarget = false
@@ -1259,6 +1358,62 @@ end
 
 function M.getCurrentTargetID()
   return currentTargetID
+end
+
+-- =================================================================================================
+--  GE-level coupler hooks (called by beamstate via queueGameEngineLua)
+-- =================================================================================================
+
+-- Fired by the vehicle with the lower objectId when two vehicles physically couple.
+-- objectId/obj2id are the two vehicle IDs; nodeId/obj2nodeId are the coupler node CIDs.
+function M.onCouplerAttached(objectId, obj2id, nodeId, obj2nodeId)
+  scannerLog('info', string.format("onCouplerAttached: obj=%s obj2=%s node=%s obj2node=%s",
+    tostring(objectId), tostring(obj2id), tostring(nodeId), tostring(obj2nodeId)))
+
+  if not couplerAttachMonitor then return end
+
+  local player = be:getPlayerVehicle(0)
+  local playerID = player and player:getID() or nil
+  if not playerID or not currentTargetID then return end
+
+  -- Check if the coupling involves our player and our current target
+  local playerInvolved = (objectId == playerID or obj2id == playerID)
+  local targetInvolved = (objectId == currentTargetID or obj2id == currentTargetID)
+
+  if playerInvolved and targetInvolved then
+    scannerLog('info', "ATTACH_MONITOR: player and target coupled — disabling tracking")
+    couplerAttachMonitor = false
+
+    -- Disable coupler distance mode locally (Python will mirror via COUPLED_DETECTED)
+    if couplerDistMode then
+      couplerDistMode = false
+      couplerDistReady = false
+      _cdDiscovering = false
+      _cdPlayerCid = nil
+    end
+
+    -- Disable coupler tracking
+    if couplerTrackActive then
+      couplerTrackActive = false
+    end
+
+    if udpSend then udpSend:send("COUPLED_DETECTED:") end
+  end
+end
+
+-- Fired when two vehicles decouple. Logged for diagnostics.
+function M.onCouplerDetached(objectId, obj2id, nodeId, obj2nodeId)
+  scannerLog('info', string.format("onCouplerDetached: obj=%s obj2=%s node=%s obj2node=%s",
+    tostring(objectId), tostring(obj2id), tostring(nodeId), tostring(obj2nodeId)))
+end
+
+-- Called from vehicle VM (via queueGameEngineLua) when the player presses L to toggle couplers.
+-- isActive=true means coupler mode was just enabled (visual indicators on);
+-- isActive=false means it was just disabled.
+function M.onCouplerModeChange(isActive)
+  if udpSend then
+    udpSend:send(isActive and "COUPLER_MODE:ON" or "COUPLER_MODE:OFF")
+  end
 end
 
 return M

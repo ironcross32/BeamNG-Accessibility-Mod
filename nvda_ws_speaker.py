@@ -21,7 +21,7 @@ _HOVER_TOKEN = None
 _DETAILS_CALLBACK = None
 _VEHICLE_SELECTOR_CALLBACK = None
 _DOM_DUMP_CALLBACK = None
-_VEHICLE_KEYBINDS_CALLBACK = None
+
 _CLIENTS: set = set()  # connected WebSocket instances
 
 
@@ -35,10 +35,6 @@ def register_dom_dump_callback(callback):
     global _DOM_DUMP_CALLBACK
     _DOM_DUMP_CALLBACK = callback
 
-
-def register_vehicle_keybinds_callback(callback):
-    global _VEHICLE_KEYBINDS_CALLBACK
-    _VEHICLE_KEYBINDS_CALLBACK = callback
 
 
 # ---------- Core helpers ----------
@@ -118,12 +114,6 @@ def handle_ws_message(data):
                 _VEHICLE_SELECTOR_CALLBACK(data.get("open", False))
             except Exception as e:
                 logger.error(f"vehicle_selector_state callback error: {e}")
-    elif msg_type == "vehicle_keybinds":
-        if _VEHICLE_KEYBINDS_CALLBACK:
-            try:
-                _VEHICLE_KEYBINDS_CALLBACK(data.get("lines", []), data.get("actions"))
-            except Exception as e:
-                logger.error(f"vehicle_keybinds callback error: {e}")
     elif msg_type == "dom_dump_result":
         if _DOM_DUMP_CALLBACK:
             try:

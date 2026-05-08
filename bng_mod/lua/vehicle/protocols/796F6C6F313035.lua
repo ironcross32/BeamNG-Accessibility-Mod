@@ -10,14 +10,39 @@ local hasShiftLights = false
 local _airPressureKey = nil   -- cached electrics key, e.g. "mainAirTank_pressureRelative"
 local _airKeySearched = false -- true once we have committed to a result
 
+-- Coupler mode detection: wrap extensions.couplings hooks to notify the GE extension
+-- when the player toggles couplers on/off with the L key.
+local _couplerHooksWrapped = false
+
+local function tryCouplerHookWrap()
+  if _couplerHooksWrapped then return end
+  if not extensions or not extensions.couplings then return end
+  local couplings = extensions.couplings
+  local origActivate = couplings.onBeamstateActivateAutoCoupling
+  couplings.onBeamstateActivateAutoCoupling = function(...)
+    if origActivate then origActivate(...) end
+    obj:queueGameEngineLua('if extensions.vehicleScanner then extensions.vehicleScanner.onCouplerModeChange(true) end')
+  end
+  local origDisable = couplings.onBeamstateDisableAutoLatching
+  couplings.onBeamstateDisableAutoLatching = function(...)
+    if origDisable then origDisable(...) end
+    obj:queueGameEngineLua('if extensions.vehicleScanner then extensions.vehicleScanner.onCouplerModeChange(false) end')
+  end
+  _couplerHooksWrapped = true
+end
+
 local function init()
   local shiftLightControllers = controller.getControllersByType("shiftLights")
   hasShiftLights = shiftLightControllers and #shiftLightControllers > 0
+  tryCouplerHookWrap()
 end
 
 local function destroy() end
 
-local function reset() end
+local function reset()
+  _couplerHooksWrapped = false
+  tryCouplerHookWrap()
+end
 local function getAddress()        return "127.0.0.1" end
 local function getPort()           return "4444" end
 local function getMaxUpdateRate()  return 60 end
@@ -83,6 +108,12 @@ local function getStructDefinition()
     float          signal_left_input;
     float          signal_right_input;
     float          hazard_enabled;
+
+    // --- Lightbar (0=off, 1=lights, 2=lights+siren) ---
+    float          lightbar;
+
+    // --- Fog Lights (0=off, 1=on) ---
+    float          fog;
   ]]
 end
 
@@ -103,6 +134,7 @@ local DL_ABS          = 2 ^ 10
 local DL_LOWBEAM      = 2 ^ 11
 
 local function fillStruct(o, dtSim)
+  if not _couplerHooksWrapped then tryCouplerHookWrap() end
   if not electrics.values.watertemp then
     return false
   end
@@ -249,7 +281,8 @@ local function fillStruct(o, dtSim)
   o.signal_left_input  = electrics.values.signal_left_input or 0
   o.signal_right_input = electrics.values.signal_right_input or 0
   o.hazard_enabled     = electrics.values.hazard_enabled or 0
-
+  o.lightbar           = electrics.values.lightbar or 0
+  o.fog                = electrics.values.fog or 0
   return true
 end
 

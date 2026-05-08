@@ -36,8 +36,36 @@ end
 --  GE Extension Hooks
 -- =================================================================================================
 
+local function setupSockets()
+  if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
+  if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
+
+  udpSend = socket.udp()
+  if udpSend then
+    udpSend:setpeername(PYTHON_HOST, PYTHON_PORT_DATA)
+    udpSend:settimeout(0)
+    camLog('info', "UDP send socket created, targeting " .. PYTHON_HOST .. ":" .. PYTHON_PORT_DATA)
+  else
+    camLog('error', "Failed to create UDP send socket.")
+  end
+
+  local ok, err = pcall(function()
+    udpCmd = socket.udp()
+    udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
+    udpCmd:settimeout(0)
+  end)
+  if ok and udpCmd then
+    camLog('info', "UDP command socket listening on port " .. CMD_LISTEN_PORT)
+  else
+    camLog('error', "Failed to create UDP command socket: " .. tostring(err))
+    udpCmd = nil
+  end
+end
+
 function M.onExtensionLoaded()
   camLog('info', "Camera info extension loaded.")
+  -- Bind sockets here so Ctrl+L Lua reload re-opens them.
+  setupSockets()
 end
 
 function M.onWorldReadyState(state)
@@ -46,36 +74,11 @@ function M.onWorldReadyState(state)
   if state == 2 then
     camLog('info', "World is ready. Initializing camera info systems.")
 
-    -- Close existing sockets before re-creating (handles map reload)
-    if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
-    if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
-
     -- Reset state for new map
     isActive = false
     timer    = 0
 
-    -- Create send socket for camera data
-    udpSend = socket.udp()
-    if udpSend then
-      udpSend:setpeername(PYTHON_HOST, PYTHON_PORT_DATA)
-      udpSend:settimeout(0)
-      camLog('info', "UDP send socket created, targeting " .. PYTHON_HOST .. ":" .. PYTHON_PORT_DATA)
-    else
-      camLog('error', "Failed to create UDP send socket.")
-    end
-
-    -- Create receive socket for ON/OFF commands from Python
-    local ok, err = pcall(function()
-      udpCmd = socket.udp()
-      udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
-      udpCmd:settimeout(0)
-    end)
-    if ok and udpCmd then
-      camLog('info', "UDP command socket listening on port " .. CMD_LISTEN_PORT)
-    else
-      camLog('error', "Failed to create UDP command socket: " .. tostring(err))
-      udpCmd = nil
-    end
+    setupSockets()
   end
 end
 

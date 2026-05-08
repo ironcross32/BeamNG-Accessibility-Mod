@@ -258,17 +258,41 @@ end
 --  GE Extension Hooks
 -- =================================================================================================
 
+local function setupSockets()
+  if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
+  if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
+
+  udpSend = socket.udp()
+  if udpSend then
+    udpSend:setpeername(PYTHON_HOST, PYTHON_PORT_DATA)
+    udpSend:settimeout(0)
+    detLog('info', "UDP send socket created, targeting " .. PYTHON_HOST .. ":" .. PYTHON_PORT_DATA)
+  else
+    detLog('error', "Failed to create UDP send socket.")
+  end
+
+  local ok, err = pcall(function()
+    udpCmd = socket.udp()
+    udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
+    udpCmd:settimeout(0)
+  end)
+  if ok and udpCmd then
+    detLog('info', "UDP command socket listening on port " .. CMD_LISTEN_PORT)
+  else
+    detLog('error', "Failed to create UDP command socket: " .. tostring(err))
+    udpCmd = nil
+  end
+end
+
 function M.onExtensionLoaded()
   detLog('info', "Obstacle detector extension loaded.")
+  -- Bind sockets here so Ctrl+L Lua reload re-opens them.
+  setupSockets()
 end
 
 function M.onWorldReadyState(state)
   if state == 2 then
     detLog('info', "World ready. Initializing obstacle detector.")
-
-    -- Close existing sockets before re-creating (handles map reload)
-    if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
-    if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
 
     -- Reset state for new map
     isActive        = false
@@ -283,28 +307,7 @@ function M.onWorldReadyState(state)
       quadrants[i].type = 0
     end
 
-    -- Create send socket
-    udpSend = socket.udp()
-    if udpSend then
-      udpSend:setpeername(PYTHON_HOST, PYTHON_PORT_DATA)
-      udpSend:settimeout(0)
-      detLog('info', "UDP send socket created, targeting " .. PYTHON_HOST .. ":" .. PYTHON_PORT_DATA)
-    else
-      detLog('error', "Failed to create UDP send socket.")
-    end
-
-    -- Create command receive socket
-    local ok, err = pcall(function()
-      udpCmd = socket.udp()
-      udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
-      udpCmd:settimeout(0)
-    end)
-    if ok and udpCmd then
-      detLog('info', "UDP command socket listening on port " .. CMD_LISTEN_PORT)
-    else
-      detLog('error', "Failed to create UDP command socket: " .. tostring(err))
-      udpCmd = nil
-    end
+    setupSockets()
   end
 end
 

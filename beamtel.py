@@ -1,31 +1,22 @@
-# --- START OF beamtel.py ---
-
 # Nuitka stuff
+# nuitka-project: --nofollow-import-to=IPython
+# nuitka-project: --plugin-enable=anti-bloat
 # nuitka-project: --output-dir=build
 # nuitka-project: --remove-output
 # nuitka-project: --include-package=sral
-# Copy SRAL.dll (x64) next to your EXE or add:
 # nuitka-project: --include-data-file=SRAL.dll=SRAL.dll
 # nuitka-project: --include-data-file=nvdaControllerClient.dll=nvdaControllerClient.dll
-# --include-package=websockets
-#  --include-package=websockets.asyncio
-#  --include-package=websockets.legacy
-#  --include-module=websockets.server
-
-# nuitka-project: --include-module=nvda_ws_speaker
-# nuitka-project: --include-module=bnh_logger
-# nuitka-project: --include-module=audio
-# nuitka-project: --include-module=hrtf
+# nuitka-project: --include-data-file=mit_kemar_normal_pinna.sofa=mit_kemar_normal_pinna.sofa
 # nuitka-project: --include-package=h5py
 # nuitka-project: --include-package-data=h5py
-# nuitka-project: --include-data-file=mit_kemar_normal_pinna.sofa=mit_kemar_normal_pinna.sofa
+# nuitka-project: --standalone
 # nuitka-project: --onefile
+# nuitka-project: --onefile-cache-mode=cached
+# nuitka-project: --onefile-tempdir-spec="{PROGRAM_DIR}/.appdata"
 # nuitka-project: --assume-yes-for-downloads
-# nuitka-project: --windows-disable-console
+# nuitka-project: --jobs=12
+# nuitka-project: --windows-console-mode=disable
 # nuitka-project: --windows-uac-admin
-# nuitka-project: --include-module=configurator
-# nuitka-project: --include-module=config_ui
-# nuitka-project: --include-package=wx
 
 import math
 import socket
@@ -37,7 +28,6 @@ from nvda_ws_speaker import (
     start_server_in_thread,
     register_details_callbacks,
     register_dom_dump_callback,
-    register_vehicle_keybinds_callback,
     broadcast,
 )
 import signal
@@ -100,40 +90,6 @@ def _on_dom_dump_received(lines):
         logger.error(f"Failed to write DOM dump: {e}")
 
 
-def _on_vehicle_keybinds_received(lines, actions=None):
-    """Open the virtual browser with vehicle-specific keybind lines."""
-    filtered = []
-    filtered_actions = []
-    for i, l in enumerate(lines):
-        if isinstance(l, str) and l.strip():
-            filtered.append(l.strip())
-            if actions and i < len(actions):
-                filtered_actions.append(actions[i])
-            else:
-                filtered_actions.append(None)
-    if not filtered:
-        say("No vehicle-specific keybinds", exclude_from_buffer=True)
-        return
-    open_virtual_browser(
-        filtered,
-        f"{len(filtered)} vehicle keybinds",
-        on_enter=_on_vehicle_keybind_activate,
-        entry_data=filtered_actions,
-    )
-
-
-def _on_vehicle_keybind_activate(index, line, data):
-    """Called when Enter is pressed on a vehicle keybind browser entry."""
-    action_name = data
-    if not action_name:
-        say("Cannot activate this action", exclude_from_buffer=True)
-        return
-    # Extract just the display name (before the colon)
-    display = line.split(":")[0].strip() if ":" in line else line
-    say(f"Activated {display}", exclude_from_buffer=True)
-    broadcast({"type": "trigger_vehicle_action", "action": action_name})
-
-
 def _handle_sigint(signum, frame):
     STOP.set()
 
@@ -162,7 +118,6 @@ DEFAULT_CONFIG = {
     "pitch_roll_min_dbfs": -36.0,
     "compass_click_level_dbfs": -6.0,
     "lowspeed_click_level_dbfs": -14.0,
-    "neutral_dwell_ms": 300,
     "telemetry_protocol": "extended",
     "compass_click_interval": 15,
     "compass_highlight_enabled": True,
@@ -178,6 +133,12 @@ DEFAULT_CONFIG = {
     "obstacle_max_range_m": 20,
     "obstacle_warning_range_m": 15,
     "launch_beamng": False,
+    "announce_turn_signals": True,
+    "announce_speed": True,
+    "speed_announce_interval": 25,
+    "announce_gear": True,
+    "scanner_distance_callout_enabled": False,
+    "scanner_distance_callout_interval": 10,
 }
 
 # =========================
@@ -223,6 +184,15 @@ def say(text: str, interrupt: bool = True, exclude_from_buffer: bool = False):
 
     if _command_context:
         logger.info(f"Speech output: '{t}'")
+
+    # Background threads must not cut through a protected vehicle-name
+    # announcement. Command context (user-triggered) always interrupts normally.
+    if (
+        interrupt
+        and not _command_context
+        and time.monotonic() < _speech_protected_until
+    ):
+        interrupt = False
 
     if speech_logging_active:
         try:
@@ -293,7 +263,7 @@ def load_config():
 OG_FORMAT = "<I4sHBBfffffffIIfff16s16si"
 OG_SIZE = struct.calcsize(OG_FORMAT)
 
-EXT_FORMAT = "<H4sBx9fII26f"
+EXT_FORMAT = "<H4sBx9fII28f"
 EXT_SIZE = struct.calcsize(EXT_FORMAT)
 
 MS_MAGIC = b"BNG1"
@@ -358,10 +328,14 @@ def ui_listener(stop_event):
 def scanner_listener(audio_controller, stop_event):
     """Listens for UDP packets from vehicleScanner.lua and passes data to the audio controller."""
     global \
+        scan_mode_active, \
+        coupler_dist_mode, \
         last_scanner_target_name, \
         last_scanner_distance, \
         last_scanner_approach_deg, \
-        last_scanner_bearing
+        last_scanner_bearing, \
+        _last_vehicle_switch_ts, \
+        _speech_protected_until
     SCANNER_PACKET_FORMAT = "<ff"
     SCANNER_PACKET_SIZE = struct.calcsize(SCANNER_PACKET_FORMAT)
 
@@ -452,6 +426,56 @@ def scanner_listener(audio_controller, stop_event):
                     elif text.startswith("COUPLER_DIST_FAIL:"):
                         reason = text[len("COUPLER_DIST_FAIL:") :]
                         say(reason, exclude_from_buffer=True)
+                    elif text == "COUPLED_DETECTED:":
+                        # Attach monitor detected the trailer is now physically coupled.
+                        # Disable coupler distance mode and vehicle scanner.
+                        parts_disabled = []
+                        if coupler_dist_mode:
+                            coupler_dist_mode = False
+                            try:
+                                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                                s.sendto(
+                                    b"COUPLER_DIST", ("127.0.0.1", SCANNER_CMD_PORT)
+                                )
+                                s.close()
+                            except Exception:
+                                pass
+                            parts_disabled.append("distance tracking")
+                        if scan_mode_active:
+                            scan_mode_active = False
+                            last_scanner_target_name = ""
+                            last_scanner_distance = float("inf")
+                            last_scanner_approach_deg = 0.0
+                            last_scanner_bearing = 0.0
+                            try:
+                                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                                s.sendto(b"OFF", ("127.0.0.1", SCANNER_CMD_PORT))
+                                s.close()
+                            except Exception:
+                                pass
+                            audio_controller.set_scan_mode(False)
+                            audio_controller.set_coupler_tracking(False)
+                            parts_disabled.append("scanner")
+                        msg = "Coupled"
+                        if parts_disabled:
+                            msg += (
+                                ". "
+                                + " and ".join(parts_disabled).capitalize()
+                                + " disabled"
+                            )
+                        say(msg, exclude_from_buffer=True)
+                    elif text.startswith("ATTACH_MONITOR:"):
+                        mode = text[len("ATTACH_MONITOR:") :]
+                        say(
+                            f"Attach monitor {'on' if mode == 'ON' else 'off'}",
+                            exclude_from_buffer=True,
+                        )
+                    elif text.startswith("COUPLER_MODE:"):
+                        state = text[len("COUPLER_MODE:") :]
+                        say(
+                            f"Couplers {'on' if state == 'ON' else 'off'}",
+                            exclude_from_buffer=True,
+                        )
                     # Alignment responses (legacy)
                     elif text == "ALIGN_OK":
                         say(
@@ -472,13 +496,18 @@ def scanner_listener(audio_controller, stop_event):
                         name = text[len("TARGET_NAME:") :]
                         with state_lock:
                             last_scanner_target_name = name
+                        _speech_protected_until = time.monotonic() + SPEECH_PROTECT_S
                         say(name, exclude_from_buffer=True)
                     elif text.startswith("SWITCHED:"):
                         name = text[len("SWITCHED:") :]
                         with state_lock:
                             last_scanner_target_name = ""
                             last_scanner_distance = float("inf")
+                        _last_vehicle_switch_ts = time.monotonic()
+                        _speech_protected_until = time.monotonic() + SPEECH_PROTECT_S
                         say(name, exclude_from_buffer=True)
+                    elif text.startswith("AI_STATUS_ALL:"):
+                        _speak_status_all_response(text[len("AI_STATUS_ALL:") :])
                     elif text.startswith("AI_STATUS:"):
                         parts = text[len("AI_STATUS:") :].split(",")
                         if len(parts) >= 5:
@@ -525,6 +554,45 @@ def scanner_listener(audio_controller, stop_event):
         except Exception:
             pass
         logger.info("Vehicle scanner listener stopped.")
+
+
+def scanner_callout_thread_fn(stop_event):
+    """Periodically announces scanner target distance and direction when enabled."""
+    last_callout_ts = 0.0
+    while not stop_event.is_set():
+        stop_event.wait(timeout=1.0)
+        if stop_event.is_set():
+            break
+        if not scanner_distance_callout_enabled:
+            continue
+        if not scan_mode_active:
+            continue
+        now = time.monotonic()
+        interval = scanner_distance_callout_interval
+        if now - last_callout_ts < interval:
+            continue
+        with state_lock:
+            dist = last_scanner_distance
+            brg = last_scanner_bearing
+            tname = last_scanner_target_name
+        if dist == float("inf"):
+            continue
+        last_callout_ts = now
+        a = abs(brg)
+        if a < 45:
+            direction = "in front of you"
+        elif a > 135:
+            direction = "behind you"
+        elif brg > 0:
+            direction = "to the left of you"
+        else:
+            direction = "to the right of you"
+        if UNITS_MODE == "imperial":
+            dist_str = f"{dist * 3.28084:.0f} feet"
+        else:
+            dist_str = f"{dist:.0f} meters"
+        prefix = f"{tname}, " if tname else ""
+        say(f"{prefix}{dist_str}, {direction}", interrupt=False, exclude_from_buffer=True)
 
 
 def obstacle_listener(audio_controller, stop_event):
@@ -607,7 +675,10 @@ def camera_listener(audio_controller, stop_event):
         cam_compass_click_counter, \
         cam_last_announced_compass_idx, \
         cam_last_compass_ts
-    global compass_highlight_enabled, compass_highlight_nth_click, compass_click_interval_deg
+    global \
+        compass_highlight_enabled, \
+        compass_highlight_nth_click, \
+        compass_click_interval_deg
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -674,7 +745,9 @@ def camera_listener(audio_controller, stop_event):
                                         heading, pitch_mult
                                     )
 
-                                num_intervals = round(heading / compass_click_interval_deg)
+                                num_intervals = round(
+                                    heading / compass_click_interval_deg
+                                )
                                 cam_last_click_heading_deg = (
                                     num_intervals * compass_click_interval_deg
                                 ) % 360.0
@@ -702,9 +775,12 @@ def camera_listener(audio_controller, stop_event):
 
                             if current_compass_idx != cam_last_announced_compass_idx:
                                 if current_compass_idx != -1:
+                                    in_switch_quiet = (
+                                        time.monotonic() - _last_vehicle_switch_ts
+                                    ) < VEHICLE_SWITCH_QUIET_S
                                     if (
                                         now - cam_last_compass_ts
-                                    ) >= compass_min_interval:
+                                    ) >= compass_min_interval and not in_switch_quiet:
                                         say(
                                             f"Camera {COMPASS_NAMES[current_compass_idx]}",
                                             exclude_from_buffer=True,
@@ -962,11 +1038,62 @@ def clickspot_listener(audio_controller, stop_event):
         logger.info("Clickspot listener stopped.")
 
 
+def slot_listener(stop_event):
+    """Listens for SLOTS: messages from vehicleSlots.lua and updates _vehicle_slots."""
+    global _vehicle_slots, _selected_slots, _target_slot
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", SLOT_LISTEN_PORT))
+        sock.settimeout(0.2)
+        logger.info(f"Vehicle slot listener started on port {SLOT_LISTEN_PORT}")
+        while not stop_event.is_set():
+            try:
+                data, _ = sock.recvfrom(4096)
+                text = data.decode("utf-8").strip()
+                if not text.startswith("SLOTS:"):
+                    continue
+                payload = text[6:]
+                new_slots = {}
+                if payload:
+                    for part in payload.split("|"):
+                        pieces = part.split(",", 2)
+                        if len(pieces) == 3:
+                            try:
+                                slot = int(pieces[0])
+                                vid = int(pieces[1])
+                                name = pieces[2]
+                                new_slots[slot] = {"id": vid, "name": name}
+                            except ValueError:
+                                pass
+                with _slots_lock:
+                    _vehicle_slots = new_slots
+                    # Purge selections/target for slots that no longer exist.
+                    _selected_slots = {s for s in _selected_slots if s in new_slots}
+                    if _target_slot is not None and _target_slot not in new_slots:
+                        _target_slot = None
+            except socket.timeout:
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Slot listener socket error.")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+        logger.info("Slot listener stopped.")
+
+
 # =========================
 #  Units & formatting
 # =========================
 UNITS_MODE = "imperial"
 oil_chime_enabled = True
+announce_turn_signals = True
+announce_speed = True
+speed_announce_interval = 25
+announce_gear = True
 MPH_PER_MS = 2.2369362920544
 KMH_PER_MS = 3.6
 PSI_PER_BAR = 14.503773773
@@ -1082,12 +1209,13 @@ def extended_gear_to_phrase(gear_str: str) -> str:
 def get_speed_bucket(speed_ms: float) -> int:
     if speed_ms < 0:
         return 0
+    interval = max(1, speed_announce_interval)
     if UNITS_MODE == "metric":
         kph = speed_ms * KMH_PER_MS
-        return int(kph // 25)
+        return int(kph // interval)
     else:
         mph = speed_ms * MPH_PER_MS
-        return int(mph // 25)
+        return int(mph // interval)
 
 
 # =========================
@@ -1168,6 +1296,8 @@ last_signal_left_input, last_signal_right_input, last_hazard_enabled = (
     False,
     False,
 )
+last_lightbar = -1
+last_fog = -1
 
 # Status Mode
 status_mode_active = False
@@ -1197,12 +1327,6 @@ last_bucket, last_speed_announce_ts, cooldown_sec = None, 0.0, 1.0
 
 NEUTRAL = 1
 last_gear_byte, last_gear_str = None, None
-neutral_pending, neutral_spoken, neutral_start_ts, neutral_dwell_sec = (
-    False,
-    False,
-    0.0,
-    0.30,
-)
 
 # State shared with audio module
 pedal_tones_active = False
@@ -1243,6 +1367,23 @@ last_scanner_distance = float("inf")
 last_scanner_approach_deg = 0.0
 last_scanner_bearing = 0.0
 
+# Scanner periodic distance callout settings (applied via _apply_live_config)
+scanner_distance_callout_enabled = False
+scanner_distance_callout_interval = 10
+
+# Monotonic timestamp of the last vehicle-switch announcement. The camera
+# compass listener checks this and skips its own callout briefly afterwards
+# so a heading-crossing tick can't talk over the (typically longer)
+# "Switched to ETK 800-Series 856ti, blue" line.
+_last_vehicle_switch_ts = 0.0
+VEHICLE_SWITCH_QUIET_S = 2.5
+
+# When a vehicle name is announced (SWITCHED or TARGET_NAME), background speech
+# (camera compass, gear, obstacles) is forced to interrupt=False so it queues
+# behind the name rather than cutting it off. Duration covers even long names.
+_speech_protected_until = 0.0
+SPEECH_PROTECT_S = 10.0
+
 # Camera Info State
 free_cam_active = False
 cam_yaw_deg = 0.0
@@ -1279,6 +1420,9 @@ _vbrowser_entry_data = []
 # Vehicle Details State
 _vehicle_selector_open = False
 audio_controller_ref = None
+
+# Vehicle spawner module reference (set in main() after import)
+_vehicle_spawner = None
 
 # =========================
 #  Keyboard (suppressed layered commands)
@@ -1327,16 +1471,21 @@ _F9_HELP = {
     ("b", True, False, False): "Toggle buffer mode",
     ("c", True, False, False): "Toggle pedal tones",
     ("v", True, False, False): "Toggle vehicle scanner",
-    ("v", False, True, False): "Align to trailer coupler and start coupler tracking",
+    (
+        "v",
+        False,
+        True,
+        False,
+    ): "Align to trailer coupler, start coupler tracking, and start attach monitor",
     ("o", True, False, False): "Toggle obstacle detection",
     ("tab", False, False, False): "Next scanner target",
     ("tab", False, True, False): "Previous scanner target",
+    ("tab", True, False, False): "Closest scanner target",
     ("h", True, False, False): "Toggle heading guidance",
     ("g", True, False, False): "Toggle coordinate guidance",
     ("l", True, False, False): "DOM dump",
     ("l", True, True, False): "Toggle low speed detection",
     ("s", True, True, False): "Toggle speech logger",
-    ("v", True, True, False): "Browse vehicle-specific keybinds",
     ("f", False, False, True): "Toggle camera info",
     ("h", False, False, True): "Camera heading",
     ("a", False, False, True): "Camera altitude",
@@ -1362,13 +1511,16 @@ _F10_HELP = {
     ("f", False, False, False): "Follow mode",
     ("e", False, False, False): "Flee mode",
     ("a", False, False, False): "Cycle avoid cars",
+    ("a", True, False, False): "Select all vehicles",
+    ("n", True, False, False): "Clear selection",
     ("l", False, False, False): "Toggle lane driving",
     ("+", False, False, False): "Increase speed limit",
     ("=", False, False, False): "Increase speed limit",
     ("-", False, False, False): "Decrease speed limit",
     ("0", False, False, False): "Clear speed limit",
+    ("space", False, False, False): "Read AI status summary",
 }
-# Aggression keys 1-9
+# Aggression keys 1-9 (unmodified)
 for _k, _v in [
     ("1", "0.2"),
     ("2", "0.4"),
@@ -1381,6 +1533,21 @@ for _k, _v in [
     ("9", "2.0"),
 ]:
     _F10_HELP[(_k, False, False, False)] = f"Aggression {_v}"
+
+# Vehicle slot selection (SHIFT+digit) and target (CTRL+digit)
+for _k in "1234567890":
+    _slot_label = "10" if _k == "0" else _k
+    _F10_HELP[(_k, False, True, False)] = f"Toggle slot {_slot_label} selection"
+    _F10_HELP[(_k, True, False, False)] = f"Set slot {_slot_label} as AI target"
+
+# Preset configurations (ALT+digit)
+_F10_HELP[("1", False, False, True)] = "Preset: Motorcade (each follows the one ahead)"
+_F10_HELP[("2", False, False, True)] = "Preset: Gang-up (all chase vehicle 1)"
+_F10_HELP[("3", False, False, True)] = "Preset: Tour of Destruction (chase chain)"
+_F10_HELP[("4", False, False, True)] = (
+    "Preset: Tour of Destruction Spectator (you watch)"
+)
+_F10_HELP[("5", False, False, True)] = "Preset: Police mode (all follow CTRL target)"
 
 
 def _clear_next_key_hook(speak_exit: bool):
@@ -1628,6 +1795,8 @@ def open_virtual_browser(
 ):
     global _vbrowser_lines, _vbrowser_index, _vbrowser_active
     global _vbrowser_on_enter, _vbrowser_entry_data
+    if _vehicle_spawner is not None and _vehicle_spawner.is_modal_open():
+        _vehicle_spawner.close_modal()
     close_virtual_browser(speak_exit=False)
     if not lines:
         say("No information available", exclude_from_buffer=True)
@@ -1699,6 +1868,10 @@ def _on_vehicle_selector_state(is_open):
 
 SCANNER_CMD_PORT = 4448  # UDP port to send ON/OFF commands to vehicle scanner
 AI_CMD_PORT = 4449  # UDP port to send AI commands to beamtelAI extension
+SLOT_LISTEN_PORT = 4458  # UDP port to receive vehicle slot data from vehicleSlots.lua
+SLOT_CMD_PORT_OUT = (
+    4459  # UDP port to send slot management commands to vehicleSlots.lua
+)
 CAMERA_LISTEN_PORT = 4450  # UDP port to receive camera data from cameraInfo.lua
 CAMERA_CMD_PORT = 4451  # UDP port to send ON/OFF commands to cameraInfo.lua
 OBSTACLE_LISTEN_PORT = (
@@ -1718,6 +1891,18 @@ CLICKSPOT_CMD_PORT = 4457  # UDP port to send commands to clickspotAccessible.lu
 ai_speed_limit_ms = None  # current speed limit in m/s, None = off
 ai_avoid_mode = "auto"  # "auto", "on", "off"
 ai_lane_driving = False
+
+# Vehicle Slot State (updated by slot_listener thread)
+_vehicle_slots: dict = {}  # slot_num (1-10) → {"id": int, "name": str}
+_selected_slots: set = set()  # slot numbers currently selected for multi-AI dispatch
+_target_slot = None  # slot number whose vehicle is the AI target
+_pending_target_confirm = None  # slot number awaiting CTRL+digit confirmation
+_slots_lock = threading.Lock()
+
+# Tracks the last AI command issued to each vehicle by Python.
+# vid → {"mode": str, "target_id": int|None}
+# Updated whenever a command is dispatched; read by the space-bar status reporter.
+_ai_vehicle_commands: dict = {}
 
 
 def toggle_scan_mode(audio_controller):
@@ -2208,6 +2393,7 @@ def _on_next_key_press(event, audio_controller):
                 dist = last_scanner_distance
                 brg = last_scanner_bearing
                 tname = last_scanner_target_name
+                approach = last_scanner_approach_deg
             if dist == float("inf"):
                 say("No target", exclude_from_buffer=True)
             else:
@@ -2222,12 +2408,23 @@ def _on_next_key_press(event, audio_controller):
                     orientation = "angling away"
                 else:
                     orientation = "departing"
+                ap = abs(approach)
+                if ap < 45:
+                    side = "front"
+                elif ap > 135:
+                    side = "rear"
+                elif approach > 0:
+                    side = "right side"
+                else:
+                    side = "left side"
                 if UNITS_MODE == "imperial":
                     dist_str = f"{dist * 3.28084:.0f} feet"
                 else:
                     dist_str = f"{dist:.0f} meters"
                 prefix = f"{tname}, " if tname else ""
-                say(f"{prefix}{dist_str} away, {orientation}", exclude_from_buffer=True)
+                say(
+                    f"{prefix}{dist_str} {orientation} {side}", exclude_from_buffer=True
+                )
     elif name == "w" and not (
         _capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]
     ):
@@ -2569,14 +2766,6 @@ def _on_next_key_press(event, audio_controller):
             "Pedal tones on" if pedal_tones_active else "Pedal tones off",
             exclude_from_buffer=True,
         )
-    elif (
-        name == "v"
-        and _capture_mods["ctrl"]
-        and _capture_mods["shift"]
-        and not _capture_mods["alt"]
-    ):
-        say("Fetching vehicle keybinds", exclude_from_buffer=True)
-        broadcast({"type": "get_vehicle_keybinds"})
     elif name == "v" and _capture_mods["shift"] and not _capture_mods["ctrl"]:
         if not scan_mode_active:
             say("Vehicle scanner is not active", exclude_from_buffer=True)
@@ -2602,7 +2791,12 @@ def _on_next_key_press(event, audio_controller):
         if not scan_mode_active:
             say("Turn on vehicle scanner first", exclude_from_buffer=True)
         else:
-            direction = b"PREV" if _capture_mods["shift"] else b"NEXT"
+            if _capture_mods["ctrl"]:
+                direction = b"CLOSEST"
+            elif _capture_mods["shift"]:
+                direction = b"PREV"
+            else:
+                direction = b"NEXT"
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.sendto(direction, ("127.0.0.1", SCANNER_CMD_PORT))
@@ -2676,10 +2870,413 @@ def _send_ai_command(cmd):
         logger.error(f"Failed to send AI command via UDP: {e}")
 
 
+def _send_slot_command(cmd):
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.sendto(cmd.encode("utf-8"), ("127.0.0.1", SLOT_CMD_PORT_OUT))
+        sock.close()
+    except Exception as e:
+        logger.error(f"Failed to send slot command via UDP: {e}")
+
+
+def _record_ai_command(vid, mode, target_id=None):
+    """Record what AI command was most recently issued to a vehicle (by vehicle ID)."""
+    _ai_vehicle_commands[vid] = {"mode": mode, "target_id": target_id}
+
+
+# Vehicle IDs whose lights+siren we turned on for police-mode preset.
+# Cleared when any other AI mode change is dispatched, so the lights stop with the role.
+_police_lights_active = set()
+
+
+def _set_lightbars(state, vids):
+    """Queue electrics.set_lightbar_signal(state) on each vid via the LIGHTBAR command."""
+    if not vids:
+        return
+    id_list = ",".join(str(v) for v in vids)
+    _send_ai_command(f"LIGHTBAR:{state}:{id_list}")
+
+
+def _clear_police_lights():
+    """Turn off lights+siren on any vehicles still flagged as police-mode followers."""
+    global _police_lights_active
+    if not _police_lights_active:
+        return
+    _set_lightbars(0, list(_police_lights_active))
+    _police_lights_active = set()
+
+
+def _speak_status_all_response(payload):
+    """Parse and speak an AI_STATUS_ALL: response received from the game."""
+    if not payload or payload == "no vehicles":
+        say("No vehicles tracked in game", exclude_from_buffer=True)
+        return
+    parts = []
+    for entry in payload.split("|"):
+        fields = entry.split(",", 3)
+        if len(fields) < 3:
+            continue
+        slot_num, vname, mode = fields[0], fields[1], fields[2]
+        tname = fields[3] if len(fields) > 3 else ""
+        key = "0" if slot_num == "10" else slot_num
+        if mode == "disabled":
+            status = "AI disabled"
+        elif mode == "stop":
+            status = "stopped"
+        elif mode in ("traffic", "random"):
+            status = f"{mode} mode"
+        elif mode == "chase":
+            status = f"chasing {tname}" if tname else "chasing"
+        elif mode == "follow":
+            status = f"following {tname}" if tname else "following"
+        elif mode == "flee":
+            status = f"fleeing from {tname}" if tname else "fleeing"
+        elif mode in ("unknown", "no response"):
+            status = mode
+        else:
+            status = mode
+        parts.append(f"Vehicle {key}, {vname}: {status}")
+    if parts:
+        say(". ".join(parts), exclude_from_buffer=True)
+    else:
+        say("No status data received", exclude_from_buffer=True)
+
+
+def _speak_ai_status():
+    """Read out a summary of the last commanded AI mode for every tracked vehicle."""
+    with _slots_lock:
+        slots = dict(_vehicle_slots)
+    commands = dict(_ai_vehicle_commands)
+    vid_to_name = {info["id"]: info["name"] for info in slots.values()}
+
+    if not slots:
+        say("No vehicles tracked", exclude_from_buffer=True)
+        return
+
+    parts = []
+    for slot_num in sorted(slots.keys()):
+        vid = slots[slot_num]["id"]
+        name = slots[slot_num]["name"]
+        key = "0" if slot_num == 10 else str(slot_num)
+        cmd = commands.get(vid)
+        if cmd is None:
+            status = "no command given"
+        else:
+            mode = cmd["mode"]
+            target_id = cmd.get("target_id")
+            tname = vid_to_name.get(target_id) if target_id is not None else None
+            if mode == "disabled":
+                status = "AI disabled"
+            elif mode == "stop":
+                status = "stopped"
+            elif mode in ("traffic", "random"):
+                status = f"{mode} mode"
+            elif mode == "chase":
+                status = f"chasing {tname}" if tname else "chasing"
+            elif mode == "follow":
+                status = f"following {tname}" if tname else "following"
+            elif mode == "flee":
+                status = f"fleeing from {tname}" if tname else "fleeing"
+            else:
+                status = mode
+        parts.append(f"Vehicle {key}, {name}: {status}")
+
+    say(". ".join(parts), exclude_from_buffer=True)
+
+
+def _reset_ai_timer():
+    """Restart the F10 layer inactivity timer without closing the layer."""
+    global ai_timer
+    if ai_timer is not None:
+        try:
+            ai_timer.cancel()
+        except Exception:
+            pass
+    ai_timer = threading.Timer(
+        command_timeout_sec, lambda: _clear_ai_hook(speak_exit=True)
+    )
+    ai_timer.daemon = True
+    ai_timer.start()
+
+
+def _slot_key_label(slot):
+    """Return the keyboard label for a slot number (slot 10 → '0')."""
+    return "0" if slot == 10 else str(slot)
+
+
+def _toggle_slot_selection(slot):
+    """Toggle the selected state of a vehicle slot. Does not close the F10 layer."""
+    global _selected_slots
+    with _slots_lock:
+        if slot not in _vehicle_slots:
+            label = _slot_key_label(slot)
+            say(f"Slot {label} is empty", exclude_from_buffer=True)
+            return
+        name = _vehicle_slots[slot]["name"]
+        if slot == _target_slot:
+            say(
+                f"Cannot select {name}, it is the target vehicle",
+                exclude_from_buffer=True,
+            )
+            return
+        if slot in _selected_slots:
+            _selected_slots.discard(slot)
+            selected = False
+        else:
+            _selected_slots.add(slot)
+            selected = True
+    say(f"{name}, {'selected' if selected else 'unselected'}", exclude_from_buffer=True)
+
+
+def _select_all_slots():
+    """Select all non-target vehicles. Does not close the F10 layer."""
+    global _selected_slots
+    with _slots_lock:
+        selectables = [s for s in _vehicle_slots if s != _target_slot]
+        _selected_slots = set(selectables)
+        names = [_vehicle_slots[s]["name"] for s in sorted(selectables)]
+    if names:
+        say(f"Selected: {', '.join(names)}", exclude_from_buffer=True)
+    else:
+        say("No vehicles to select", exclude_from_buffer=True)
+
+
+def _set_target_slot(slot):
+    """Set the AI target slot, with confirmation if the slot is currently selected."""
+    global _target_slot, _pending_target_confirm
+    with _slots_lock:
+        if slot not in _vehicle_slots:
+            label = _slot_key_label(slot)
+            say(f"Slot {label} is empty", exclude_from_buffer=True)
+            _pending_target_confirm = None
+            return
+        name = _vehicle_slots[slot]["name"]
+        is_selected = slot in _selected_slots
+
+    if is_selected:
+        if _pending_target_confirm == slot:
+            # Confirmed — set target and silently remove from selection.
+            with _slots_lock:
+                _target_slot = slot
+                _selected_slots.discard(slot)
+            _pending_target_confirm = None
+            say(
+                f"Target set to {name}, removed from selection",
+                exclude_from_buffer=True,
+            )
+        else:
+            _pending_target_confirm = slot
+            label = _slot_key_label(slot)
+            say(
+                f"{name} is selected. Press CTRL+{label} again to confirm target change, any other key to cancel",
+                exclude_from_buffer=True,
+            )
+    else:
+        _pending_target_confirm = None
+        with _slots_lock:
+            _target_slot = slot
+        say(f"Target: {name}", exclude_from_buffer=True)
+
+
+def _dispatch_ai_mode(mode):
+    """Issue an AI mode command to all selected vehicles, or the player vehicle if none selected."""
+    _clear_police_lights()
+    with _slots_lock:
+        selected = set(_selected_slots)
+        target_slot = _target_slot
+        slots = dict(_vehicle_slots)
+
+    if not selected:
+        # Legacy single-vehicle path — targets current player vehicle via scanner.
+        _send_ai_command(f"MODE:{mode}")
+        # Record against slot 1 as best approximation of the player vehicle.
+        if 1 in slots:
+            _record_ai_command(slots[1]["id"], mode)
+        return
+
+    if mode in ("chase", "follow", "flee"):
+        if target_slot is None or target_slot not in slots:
+            say(
+                "No target set. Use CTRL+1-0 to set a target vehicle.",
+                exclude_from_buffer=True,
+            )
+            return
+        target_id = slots[target_slot]["id"]
+        ids = [slots[s]["id"] for s in sorted(selected) if s in slots]
+        if not ids:
+            say("No valid vehicles selected", exclude_from_buffer=True)
+            return
+        _send_ai_command(
+            f"MULTI_MODE:{mode}:{target_id}:{','.join(str(i) for i in ids)}"
+        )
+        for vid in ids:
+            _record_ai_command(vid, mode, target_id)
+    else:
+        ids = [slots[s]["id"] for s in sorted(selected) if s in slots]
+        if not ids:
+            say("No valid vehicles selected", exclude_from_buffer=True)
+            return
+        _send_ai_command(f"MULTI_MODE:{mode}:none:{','.join(str(i) for i in ids)}")
+        for vid in ids:
+            _record_ai_command(vid, mode)
+
+
+_PRESET_DELAY_SEC = 3.0
+
+
+def _run_staggered(commands):
+    """Run (ai_cmd_str,) tuples sequentially with _PRESET_DELAY_SEC gaps in a daemon thread."""
+
+    def _worker():
+        for i, cmd in enumerate(commands):
+            if i > 0:
+                time.sleep(_PRESET_DELAY_SEC)
+            _send_ai_command(cmd)
+
+    threading.Thread(target=_worker, daemon=True).start()
+
+
+def _preset_motorcade(slots, occupied):
+    """Each vehicle follows the one before it in slot order."""
+    if len(occupied) < 2:
+        say("Motorcade needs at least 2 vehicles", exclude_from_buffer=True)
+        return
+    cmds = []
+    for i in range(1, len(occupied)):
+        follower_id = slots[occupied[i]]["id"]
+        leader_id = slots[occupied[i - 1]]["id"]
+        cmds.append(f"MULTI_MODE:follow:{leader_id}:{follower_id}")
+        _record_ai_command(follower_id, "follow", leader_id)
+    say(f"Motorcade, {len(occupied)} vehicles", exclude_from_buffer=True)
+    _run_staggered(cmds)
+
+
+def _preset_gangup(slots, occupied):
+    """Every vehicle except slot 1 chases slot 1."""
+    if 1 not in slots:
+        say("Gang-up requires a vehicle in slot 1", exclude_from_buffer=True)
+        return
+    target_id = slots[1]["id"]
+    chasers = [s for s in occupied if s != 1]
+    if not chasers:
+        say("Gang-up needs at least 2 vehicles", exclude_from_buffer=True)
+        return
+    cmds = []
+    for s in chasers:
+        vid = slots[s]["id"]
+        cmds.append(f"MULTI_MODE:chase:{target_id}:{vid}")
+        _record_ai_command(vid, "chase", target_id)
+    say(
+        f"Gang-up, {len(chasers)} vehicles on {slots[1]['name']}",
+        exclude_from_buffer=True,
+    )
+    _run_staggered(cmds)
+
+
+def _preset_tod(slots, occupied):
+    """Chase chain: each vehicle chases the one before it in slot order."""
+    if len(occupied) < 2:
+        say("Tour of Destruction needs at least 2 vehicles", exclude_from_buffer=True)
+        return
+    cmds = []
+    for i in range(1, len(occupied)):
+        chaser_id = slots[occupied[i]]["id"]
+        target_id = slots[occupied[i - 1]]["id"]
+        cmds.append(f"MULTI_MODE:chase:{target_id}:{chaser_id}")
+        _record_ai_command(chaser_id, "chase", target_id)
+    say(f"Tour of Destruction, {len(occupied)} vehicles", exclude_from_buffer=True)
+    _run_staggered(cmds)
+
+
+def _preset_tod_spectator(slots, occupied):
+    """Chase chain among slots 2+; slot 1 watches. Lead AI (slot 2) gets random mode."""
+    non_p1 = [s for s in occupied if s != 1]
+    if len(non_p1) < 2:
+        say(
+            "Tour of Destruction Spectator needs at least 3 vehicles total",
+            exclude_from_buffer=True,
+        )
+        return
+    cmds = []
+    lead_id = slots[non_p1[0]]["id"]
+    cmds.append(f"MULTI_MODE:random:none:{lead_id}")
+    _record_ai_command(lead_id, "random")
+    for i in range(1, len(non_p1)):
+        chaser_id = slots[non_p1[i]]["id"]
+        target_id = slots[non_p1[i - 1]]["id"]
+        cmds.append(f"MULTI_MODE:chase:{target_id}:{chaser_id}")
+        _record_ai_command(chaser_id, "chase", target_id)
+    say(
+        f"Tour of Destruction Spectator, {len(non_p1)} AI vehicles, you watch",
+        exclude_from_buffer=True,
+    )
+    _run_staggered(cmds)
+
+
+def _preset_police(slots, occupied, target_slot):
+    """All vehicles except the target follow the target (the 'bad guy')."""
+    if target_slot is None or target_slot not in slots:
+        say("Set the bad guy target first with CTRL+1-0", exclude_from_buffer=True)
+        return
+    bad_guy_id = slots[target_slot]["id"]
+    bad_guy_name = slots[target_slot]["name"]
+    followers = [s for s in occupied if s != target_slot]
+    if not followers:
+        say("Police mode needs at least 2 vehicles", exclude_from_buffer=True)
+        return
+    cmds = []
+    follower_ids = []
+    for s in followers:
+        vid = slots[s]["id"]
+        follower_ids.append(vid)
+        cmds.append(f"MULTI_MODE:follow:{bad_guy_id}:{vid}")
+        _record_ai_command(vid, "follow", bad_guy_id)
+    say(
+        f"Police mode, {len(followers)} vehicles following {bad_guy_name}",
+        exclude_from_buffer=True,
+    )
+    _run_staggered(cmds)
+    # Trigger lights + siren on each follower. Vehicles without a sirenSound will
+    # ignore state 2 (BeamNG wraps modulo 2 → 0), but police-equipped vehicles —
+    # the only ones this preset is useful for — engage both.
+    _set_lightbars(2, follower_ids)
+    global _police_lights_active
+    _police_lights_active = set(follower_ids)
+
+
+def _trigger_preset(preset_num):
+    with _slots_lock:
+        slots = dict(_vehicle_slots)
+        target_slot = _target_slot
+    occupied = sorted(slots.keys())
+    if not occupied:
+        say("No vehicles tracked yet", exclude_from_buffer=True)
+        return
+    if preset_num != 5:
+        _clear_police_lights()
+    if preset_num == 1:
+        _preset_motorcade(slots, occupied)
+    elif preset_num == 2:
+        _preset_gangup(slots, occupied)
+    elif preset_num == 3:
+        _preset_tod(slots, occupied)
+    elif preset_num == 4:
+        _preset_tod_spectator(slots, occupied)
+    elif preset_num == 5:
+        _preset_police(slots, occupied, target_slot)
+
+
 def _clear_ai_hook(speak_exit: bool):
-    global ai_hook_press, ai_hook_release, ai_timer, _command_context, _input_help_mode
+    global \
+        ai_hook_press, \
+        ai_hook_release, \
+        ai_timer, \
+        _command_context, \
+        _input_help_mode, \
+        _pending_target_confirm
     _command_context = False
     _input_help_mode = False
+    _pending_target_confirm = None
     try:
         if ai_hook_press is not None:
             keyboard.unhook(ai_hook_press)
@@ -2715,7 +3312,12 @@ def _on_ai_key_release(event):
 
 
 def _on_ai_key_press(event):
-    global ai_speed_limit_ms, ai_avoid_mode, ai_lane_driving, _input_help_mode
+    global \
+        ai_speed_limit_ms, \
+        ai_avoid_mode, \
+        ai_lane_driving, \
+        _input_help_mode, \
+        _pending_target_confirm
     if event.event_type != "down":
         return
     name = (event.name or "").lower()
@@ -2730,6 +3332,61 @@ def _on_ai_key_press(event):
         _ai_mods["alt"] = True
         return
     if name == "f10":
+        return
+
+    # Normalise shifted digit characters before any checks (see note below).
+    _SHIFTED_DIGITS = {
+        "!": "1",
+        "@": "2",
+        "#": "3",
+        "$": "4",
+        "%": "5",
+        "^": "6",
+        "&": "7",
+        "*": "8",
+        "(": "9",
+        ")": "0",
+    }
+    is_shifted_char = name in _SHIFTED_DIGITS
+    base_name = _SHIFTED_DIGITS.get(name, name)
+
+    # If a target-change confirmation is pending, any key other than the
+    # confirming CTRL+digit cancels it before normal processing continues.
+    if _pending_target_confirm is not None:
+        pending_label = _slot_key_label(_pending_target_confirm)
+        if not (_ai_mods["ctrl"] and base_name == pending_label):
+            _pending_target_confirm = None
+            say("Target change cancelled", exclude_from_buffer=True)
+            # Fall through to process the current key normally.
+
+    # SHIFT+1-0: toggle vehicle slot selection (layer stays open).
+    if base_name in "1234567890" and (
+        (_ai_mods["shift"] and not _ai_mods["ctrl"]) or is_shifted_char
+    ):
+        slot = 10 if base_name == "0" else int(base_name)
+        _toggle_slot_selection(slot)
+        return
+
+    # CTRL+1-0: set AI target slot (layer stays open).
+    if (
+        base_name in "1234567890"
+        and _ai_mods["ctrl"]
+        and not _ai_mods["shift"]
+        and not is_shifted_char
+    ):
+        slot = 10 if base_name == "0" else int(base_name)
+        _set_target_slot(slot)
+        return
+
+    # ALT+1-5: fire a preset AI configuration (layer closes after triggering).
+    if (
+        name in "12345"
+        and _ai_mods["alt"]
+        and not _ai_mods["ctrl"]
+        and not _ai_mods["shift"]
+    ):
+        _trigger_preset(int(name))
+        _clear_ai_hook(speak_exit=False)
         return
 
     # Toggle input help mode with ? (shift+/)
@@ -2764,25 +3421,25 @@ def _on_ai_key_press(event):
 
     if name == "d":
         say("AI disabled", exclude_from_buffer=True)
-        _send_ai_command("MODE:disabled")
+        _dispatch_ai_mode("disabled")
     elif name == "t":
         say("Traffic mode", exclude_from_buffer=True)
-        _send_ai_command("MODE:traffic")
+        _dispatch_ai_mode("traffic")
     elif name == "r":
         say("Random mode", exclude_from_buffer=True)
-        _send_ai_command("MODE:random")
+        _dispatch_ai_mode("random")
     elif name == "s":
         say("AI stop", exclude_from_buffer=True)
-        _send_ai_command("MODE:stop")
+        _dispatch_ai_mode("stop")
     elif name == "c":
         say("Chase mode", exclude_from_buffer=True)
-        _send_ai_command("MODE:chase")
+        _dispatch_ai_mode("chase")
     elif name == "f":
         say("Follow mode", exclude_from_buffer=True)
-        _send_ai_command("MODE:follow")
+        _dispatch_ai_mode("follow")
     elif name == "e":
         say("Flee mode", exclude_from_buffer=True)
-        _send_ai_command("MODE:flee")
+        _dispatch_ai_mode("flee")
     elif name in _AGGRESSION_MAP:
         val = _AGGRESSION_MAP[name]
         say(f"Aggression {val}", exclude_from_buffer=True)
@@ -2815,6 +3472,14 @@ def _on_ai_key_press(event):
         ai_speed_limit_ms = None
         say("Speed limit off", exclude_from_buffer=True)
         _send_ai_command("CLEARSPEED")
+    elif name == "a" and _ai_mods["ctrl"]:
+        _select_all_slots()
+        return  # layer stays open; no AI command issued
+    elif name == "n" and _ai_mods["ctrl"]:
+        with _slots_lock:
+            _selected_slots.clear()
+        say("Selection cleared", exclude_from_buffer=True)
+        return
     elif name == "a":
         idx = _AVOID_CYCLE.index(ai_avoid_mode) if ai_avoid_mode in _AVOID_CYCLE else 0
         ai_avoid_mode = _AVOID_CYCLE[(idx + 1) % len(_AVOID_CYCLE)]
@@ -2827,6 +3492,9 @@ def _on_ai_key_press(event):
             exclude_from_buffer=True,
         )
         _send_ai_command(f"LANE:{'on' if ai_lane_driving else 'off'}")
+    elif name == "space":
+        _send_ai_command("STATUS_ALL")
+        return  # layer stays open; response arrives async via scanner_listener
     else:
         _clear_ai_hook(speak_exit=False)
         return
@@ -2839,11 +3507,7 @@ def _start_ai_capture():
     _clear_ai_hook(speak_exit=False)
     ai_hook_press = keyboard.on_press(_on_ai_key_press, suppress=True)
     ai_hook_release = keyboard.on_release(_on_ai_key_release)
-    ai_timer = threading.Timer(
-        command_timeout_sec, lambda: _clear_ai_hook(speak_exit=True)
-    )
-    ai_timer.daemon = True
-    ai_timer.start()
+    ai_timer = None  # F10 layer has no timeout; stays open until a command is issued.
 
 
 def _is_beamng_focused() -> bool:
@@ -2877,6 +3541,11 @@ def install_hotkeys(audio_controller):
             return
         global _command_context
         _command_context = True
+        # Revalidate slots so deleted/renamed vehicles don't linger in the
+        # list the user is about to address with Ctrl+/Shift+digit. Lua
+        # responds with a fresh SLOTS: packet within a frame or two, well
+        # before the user can press the next key.
+        _send_slot_command("SLOT_VALIDATE")
         say("AI?", interrupt=True, exclude_from_buffer=True)
         _start_ai_capture()
 
@@ -2935,15 +3604,13 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
         last_brake_temp_fr, \
         last_brake_temp_rl, \
         last_brake_temp_rr
-    global last_signal_left_input, last_signal_right_input, last_hazard_enabled
     global \
-        last_gear_byte, \
-        last_gear_str, \
-        neutral_pending, \
-        neutral_start_ts, \
-        neutral_spoken, \
-        last_bucket, \
-        last_speed_announce_ts
+        last_signal_left_input, \
+        last_signal_right_input, \
+        last_hazard_enabled, \
+        last_lightbar, \
+        last_fog
+    global last_gear_byte, last_gear_str, last_bucket, last_speed_announce_ts
     global drift_alert_active, last_drift_check_ts, drift_baseline_heading, drift_pan_direction  # NEW
     global drift_rate_val  # NEW
     global \
@@ -2959,7 +3626,10 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
     prev_drift_sample_ts = 0.0
     prev_drift_sample_heading = 0.0
 
-    global compass_highlight_enabled, compass_highlight_nth_click, compass_click_interval_deg
+    global \
+        compass_highlight_enabled, \
+        compass_highlight_nth_click, \
+        compass_click_interval_deg
 
     if stop_event is None:
         stop_event = STOP
@@ -2986,11 +3656,6 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
             try:
                 data, _ = sock.recvfrom(2048)
             except (socket.timeout, TimeoutError):
-                with state_lock:
-                    if neutral_pending and not neutral_spoken:
-                        if (now - neutral_start_ts) >= neutral_dwell_sec:
-                            say("neutral", exclude_from_buffer=True)
-                            neutral_spoken = True
                 continue
             except OSError:
                 if stop_event.is_set():
@@ -3081,42 +3746,39 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                                     heading, pitch_mult
                                 )
 
-                            # Reset the reference heading
+                            # Snap to the nearest interval boundary
                             num_intervals = round(heading / compass_click_interval_deg)
                             last_click_heading_deg = (
                                 num_intervals * compass_click_interval_deg
                             ) % 360.0
 
-                        # Compass announcement logic with tight hysteresis
-                        targets = [i * 45.0 for i in range(8)]
-                        half_width = 3.0
-                        current_compass_idx = -1
+                            # Announce compass name when the snapped heading lands on a
+                            # named direction (a 45° multiple). Fires in sync with the
+                            # click rather than from a separate zone-entry check.
+                            snapped = last_click_heading_deg
+                            compass_match = -1
+                            for i, target in enumerate(COMPASS_NAMES):
+                                target_deg = i * 45.0
+                                diff = abs(
+                                    (snapped - target_deg + 180.0) % 360.0 - 180.0
+                                )
+                                if diff < 0.5:
+                                    compass_match = i
+                                    break
 
-                        for i, target_heading in enumerate(targets):
-                            lower_bound = (target_heading - half_width + 360) % 360
-                            upper_bound = (target_heading + half_width) % 360
-
-                            is_inside = False
-                            if lower_bound < upper_bound:
-                                if lower_bound <= heading < upper_bound:
-                                    is_inside = True
-                            else:
-                                if heading >= lower_bound or heading < upper_bound:
-                                    is_inside = True
-
-                            if is_inside:
-                                current_compass_idx = i
-                                break
-
-                        if current_compass_idx != last_announced_compass_idx:
-                            if current_compass_idx != -1:
+                            if (
+                                compass_match != -1
+                                and compass_match != last_announced_compass_idx
+                            ):
                                 if (now - last_compass_ts) >= compass_min_interval:
                                     say(
-                                        COMPASS_NAMES[current_compass_idx],
+                                        COMPASS_NAMES[compass_match],
                                         exclude_from_buffer=True,
                                     )
                                     last_compass_ts = now
-                            last_announced_compass_idx = current_compass_idx
+                                last_announced_compass_idx = compass_match
+                            elif compass_match == -1:
+                                last_announced_compass_idx = -1
 
                         current_inverted_state = upZ < -0.6
                         if not inverted and current_inverted_state:
@@ -3184,6 +3846,8 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         sig_left_in,
                         sig_right_in,
                         hazard_en,
+                        lightbar_raw,
+                        fog_raw,
                     ) = unpacked[14:]
                     last_oil_pressure, last_air_pressure, last_air_pressure_max = (
                         oil_pressure,
@@ -3220,7 +3884,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     last_signal_left_input = cur_left
                     last_signal_right_input = cur_right
                     last_hazard_enabled = cur_hazard
-                    if (
+                    if announce_turn_signals and (
                         cur_hazard != prev_hazard
                         or cur_left != prev_left
                         or cur_right != prev_right
@@ -3232,7 +3896,24 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         elif cur_right:
                             say("Right turn signal on")
                         else:
-                            say("Turn signals off")
+                            say("Hazards off" if prev_hazard else "Turn signals off")
+
+                    # Lightbar announcements
+                    cur_lightbar = int(lightbar_raw)
+                    if cur_lightbar != last_lightbar:
+                        last_lightbar = cur_lightbar
+                        if cur_lightbar == 0:
+                            say("Lightbar off")
+                        elif cur_lightbar == 1:
+                            say("Lightbar on")
+                        elif cur_lightbar == 2:
+                            say("Lightbar and siren on")
+
+                    # Fog light announcements
+                    cur_fog = int(fog_raw)
+                    if cur_fog != last_fog:
+                        last_fog = cur_fog
+                        say("Fog lights on" if cur_fog else "Fog lights off")
                 else:  # outgauge
                     showLights = unpacked[13]
                     speed_ms, rpm, turbo, engtemp, fuel, oil_pressure, oiltemp = (
@@ -3269,47 +3950,27 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         unpacked[1].decode("utf-8", errors="ignore").strip("\x00")
                     )
                     if gear_str != last_gear_str:
-                        phrase = extended_gear_to_phrase(gear_str)
-                        if (gear_str or "").strip().upper() == "N":
-                            neutral_pending, neutral_start_ts, neutral_spoken = (
-                                True,
-                                now,
-                                False,
-                            )
-                        else:
-                            if neutral_pending and not neutral_spoken:
-                                neutral_pending, neutral_spoken = False, False
-                            if phrase not in ("unknown", "neutral"):
+                        if announce_gear:
+                            phrase = extended_gear_to_phrase(gear_str)
+                            if (gear_str or "").strip().upper() == "N":
+                                say("neutral", exclude_from_buffer=True)
+                            elif phrase not in ("unknown", "neutral"):
                                 say(phrase, exclude_from_buffer=True)
                         last_gear_str = gear_str
                 else:  # outgauge
                     gear_byte = unpacked[3]
                     if gear_byte != last_gear_byte:
-                        phrase = gear_to_phrase(gear_byte)
-                        if gear_byte == NEUTRAL:
-                            neutral_pending, neutral_start_ts, neutral_spoken = (
-                                True,
-                                now,
-                                False,
-                            )
-                        else:
-                            if neutral_pending and not neutral_spoken:
-                                neutral_pending, neutral_spoken = False, False
-                            if phrase not in ("unknown", "neutral"):
+                        if announce_gear:
+                            phrase = gear_to_phrase(gear_byte)
+                            if gear_byte == NEUTRAL:
+                                say("neutral", exclude_from_buffer=True)
+                            elif phrase not in ("unknown", "neutral"):
                                 say(phrase, exclude_from_buffer=True)
                         last_gear_byte = gear_byte
 
-                if (
-                    neutral_pending
-                    and not neutral_spoken
-                    and (now - neutral_start_ts) >= neutral_dwell_sec
-                ):
-                    say("neutral", exclude_from_buffer=True)
-                    neutral_spoken = True
-
                 current_bucket = get_speed_bucket(speed_ms)
                 if current_bucket != last_bucket:
-                    if now - last_speed_announce_ts >= cooldown_sec:
+                    if announce_speed and now - last_speed_announce_ts >= cooldown_sec:
                         spd_val, spd_unit = fmt_speed(speed_ms)
                         say(f"{spd_val} {spd_unit}", exclude_from_buffer=True)
                         last_speed_announce_ts = now
@@ -3423,6 +4084,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     "drift_rate": drift_rate_val,  # NEW
                     "ls_clicks_active": ls_clicks_active,
                     "ls_speed_mph": ls_speed_mph,
+                    "scan_speed_ms": speed_ms,
                     "ls_decel": ls_decel,
                     "coord_guidance_active": coord_guidance_active,
                     "coord_guidance_error_deg": coord_bearing_error,
@@ -3494,7 +4156,7 @@ class BeamTelFrame(wx.Frame):
     """Unified BEAM application window with Main and Configuration tabs."""
 
     def __init__(self):
-        super().__init__(None, title="BEAM - BeamNG Accessibility", size=(700, 700))
+        super().__init__(None, title="BeamNG Accessibility", size=(700, 700))
         self.SetMinSize((600, 500))
         self._engine_thread = None
 
@@ -3527,19 +4189,37 @@ class BeamTelFrame(wx.Frame):
             log_btn_sizer.Add(b, 0, wx.RIGHT, 5)
         main_sizer.Add(log_btn_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 5)
 
-        # Exit button
+        # Bottom button row
+        bottom_btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        btn_install_mod = wx.Button(main_panel, label="&Install Mod")
+        btn_install_mod.SetName("Install Mod")
+        btn_install_mod.SetToolTip(
+            "Copy bng_screenreader_mod.zip into the BeamNG.drive mods directory."
+        )
+        bottom_btn_sizer.Add(btn_install_mod, 0, wx.RIGHT, 5)
+        bottom_btn_sizer.AddStretchSpacer()
         btn_exit = wx.Button(main_panel, label="E&xit")
         btn_exit.SetName("Exit")
-        main_sizer.Add(btn_exit, 0, wx.ALIGN_RIGHT | wx.RIGHT | wx.BOTTOM, 10)
+        bottom_btn_sizer.Add(btn_exit)
+        main_sizer.Add(
+            bottom_btn_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10
+        )
 
         main_panel.SetSizer(main_sizer)
 
         # ---- Configuration tab ----
-        from config_ui import ConfigPanel, wrap_nav_key, _focusable_leaves
+        from config_ui import (
+            ConfigPanel,
+            wrap_nav_key,
+            _focusable_leaves,
+            install_mod_interactive,
+        )
 
         config_panel = ConfigPanel(notebook)
 
-        main_panel.Bind(wx.EVT_NAVIGATION_KEY, lambda evt: wrap_nav_key(evt, main_panel))
+        main_panel.Bind(
+            wx.EVT_NAVIGATION_KEY, lambda evt: wrap_nav_key(evt, main_panel)
+        )
 
         notebook.AddPage(main_panel, "&Main")
         notebook.AddPage(config_panel, "&Configuration")
@@ -3561,6 +4241,7 @@ class BeamTelFrame(wx.Frame):
         btn_app_log.Bind(wx.EVT_BUTTON, self._on_open_app_log)
         btn_speech_log.Bind(wx.EVT_BUTTON, self._on_open_speech_log)
         btn_dom_log.Bind(wx.EVT_BUTTON, self._on_open_dom_log)
+        btn_install_mod.Bind(wx.EVT_BUTTON, lambda evt: install_mod_interactive(self))
         btn_exit.Bind(wx.EVT_BUTTON, lambda evt: self.Close())
         self.Bind(wx.EVT_CLOSE, self._on_close)
 
@@ -3600,20 +4281,20 @@ class BeamTelFrame(wx.Frame):
             ... → last control → Notebook tabs → first control → ...
         """
         if evt.IsWindowChange():
-            evt.Skip()   # Ctrl+Tab: let the Notebook switch pages normally
+            evt.Skip()  # Ctrl+Tab: let the Notebook switch pages normally
             return
         focused = wx.Window.FindFocus()
         if focused is not self._notebook:
-            evt.Skip()   # Event originated from inside a page; let it propagate
+            evt.Skip()  # Event originated from inside a page; let it propagate
             return
         page = self._notebook.GetCurrentPage()
         leaves = self._focusable_leaves(page)
         if not leaves:
             evt.Skip()
             return
-        if evt.GetDirection():   # Tab → first control in page
+        if evt.GetDirection():  # Tab → first control in page
             leaves[0].SetFocus()
-        else:                    # Shift+Tab → last control in page
+        else:  # Shift+Tab → last control in page
             leaves[-1].SetFocus()
 
     # ---- Shutdown ----
@@ -3632,8 +4313,14 @@ class BeamTelFrame(wx.Frame):
 
 def _apply_live_config(audio_controller):
     """Load config from disk and apply all settings to the running engine."""
-    global UNITS_MODE, neutral_dwell_sec, oil_chime_enabled
-    global protocol_mode, compass_highlight_enabled, compass_highlight_nth_click, compass_click_interval_deg
+    global UNITS_MODE, oil_chime_enabled
+    global \
+        protocol_mode, \
+        compass_highlight_enabled, \
+        compass_highlight_nth_click, \
+        compass_click_interval_deg
+    global announce_turn_signals, announce_speed, speed_announce_interval, announce_gear
+    global scanner_distance_callout_enabled, scanner_distance_callout_interval
     try:
         cfg = load_config()
     except Exception as e:
@@ -3641,12 +4328,17 @@ def _apply_live_config(audio_controller):
         return
     with state_lock:
         UNITS_MODE = cfg.get("units", "imperial")
-        neutral_dwell_sec = max(0.0, float(cfg.get("neutral_dwell_ms", 300)) / 1000.0)
         oil_chime_enabled = cfg.get("oil_chime_enabled", True)
         protocol_mode = cfg.get("telemetry_protocol", "outgauge")
         compass_highlight_enabled = cfg.get("compass_highlight_enabled", True)
         compass_highlight_nth_click = int(cfg.get("compass_highlight_nth_click", 6))
         compass_click_interval_deg = float(cfg.get("compass_click_interval", 15.0))
+        announce_turn_signals = cfg.get("announce_turn_signals", True)
+        announce_speed = cfg.get("announce_speed", True)
+        speed_announce_interval = cfg.get("speed_announce_interval", 25)
+        announce_gear = cfg.get("announce_gear", True)
+        scanner_distance_callout_enabled = cfg.get("scanner_distance_callout_enabled", False)
+        scanner_distance_callout_interval = cfg.get("scanner_distance_callout_interval", 10)
     if audio_controller is not None:
         audio_controller.apply_config(cfg)
     logger.info("Configuration reloaded.")
@@ -3671,10 +4363,17 @@ def _config_watcher(stop_event):
 def _run_engine():
     """Telemetry engine — runs in a daemon thread while the GUI event loop owns the main thread."""
     cfg = load_config()
-    global UNITS_MODE, neutral_dwell_sec, oil_chime_enabled
+    global UNITS_MODE, oil_chime_enabled
+    global announce_turn_signals, announce_speed, speed_announce_interval, announce_gear
+    global scanner_distance_callout_enabled, scanner_distance_callout_interval
     UNITS_MODE = cfg.get("units", "imperial")
-    neutral_dwell_sec = max(0.0, float(cfg.get("neutral_dwell_ms", 300)) / 1000.0)
     oil_chime_enabled = cfg.get("oil_chime_enabled", True)
+    announce_turn_signals = cfg.get("announce_turn_signals", True)
+    announce_speed = cfg.get("announce_speed", True)
+    speed_announce_interval = cfg.get("speed_announce_interval", 25)
+    announce_gear = cfg.get("announce_gear", True)
+    scanner_distance_callout_enabled = cfg.get("scanner_distance_callout_enabled", False)
+    scanner_distance_callout_interval = cfg.get("scanner_distance_callout_interval", 10)
 
     global audio_controller_ref
     audio_controller = AudioController(logger)
@@ -3684,9 +4383,7 @@ def _run_engine():
 
     _apply_live_config(audio_controller)
 
-    watcher_thread = threading.Thread(
-        target=_config_watcher, args=(STOP,), daemon=True
-    )
+    watcher_thread = threading.Thread(target=_config_watcher, args=(STOP,), daemon=True)
     watcher_thread.start()
 
     sofa_path = os.path.join(HERE, "mit_kemar_normal_pinna.sofa")
@@ -3700,7 +4397,6 @@ def _run_engine():
 
     register_details_callbacks(_on_vehicle_details_received, _on_vehicle_selector_state)
     register_dom_dump_callback(_on_dom_dump_received)
-    register_vehicle_keybinds_callback(_on_vehicle_keybinds_received)
 
     if cfg.get("launch_beamng", False):
         try:
@@ -3715,8 +4411,26 @@ def _run_engine():
             if "BeamNG.drive.x64.exe" in result.stdout:
                 logger.info("BeamNG.drive is already running, skipping launch.")
             else:
-                os.startfile("steam://rungameid/284160")
-                logger.info("Launched BeamNG.drive via Steam.")
+                import winreg
+
+                steam_path = None
+                for reg_path in (
+                    r"SOFTWARE\Valve\Steam",
+                    r"SOFTWARE\WOW6432Node\Valve\Steam",
+                ):
+                    try:
+                        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, reg_path) as k:
+                            steam_path = winreg.QueryValueEx(k, "InstallPath")[0]
+                        break
+                    except OSError:
+                        pass
+                if not steam_path:
+                    raise RuntimeError("Steam installation not found in registry.")
+                steam_exe = os.path.join(steam_path, "steam.exe")
+                renderer = cfg.get("beamng_renderer", "d3d")
+                gfx_flag = "vk" if renderer == "vulkan" else "dx11"
+                subprocess.Popen([steam_exe, "-applaunch", "284160", "-gfx", gfx_flag])
+                logger.info(f"Launched BeamNG.drive via Steam (-applaunch, {gfx_flag}).")
         except Exception as e:
             logger.warning(f"Failed to launch BeamNG.drive: {e}")
 
@@ -3729,6 +4443,11 @@ def _run_engine():
         target=scanner_listener, args=(audio_controller, STOP), daemon=True
     )
     scanner_thread.start()
+
+    callout_thread = threading.Thread(
+        target=scanner_callout_thread_fn, args=(STOP,), daemon=True
+    )
+    callout_thread.start()
 
     obstacle_thread = threading.Thread(
         target=obstacle_listener, args=(audio_controller, STOP), daemon=True
@@ -3749,6 +4468,31 @@ def _run_engine():
         target=clickspot_listener, args=(audio_controller, STOP), daemon=True
     )
     clickspot_thread.start()
+
+    slot_thread = threading.Thread(target=slot_listener, args=(STOP,), daemon=True)
+    slot_thread.start()
+    # Request initial slot list from Lua once the thread is running.
+    threading.Timer(2.0, lambda: _send_slot_command("SLOT_STATUS")).start()
+
+    try:
+        import vehicle_spawner as _vs_module
+        global _vehicle_spawner
+        _vehicle_spawner = _vs_module
+
+        def _get_spawner_slots():
+            with _slots_lock:
+                return {k: dict(v) for k, v in _vehicle_slots.items()}
+
+        _vehicle_spawner.init(
+            say,
+            _is_beamng_focused,
+            logger,
+            get_slots_fn=_get_spawner_slots,
+            close_others_fn=lambda: close_virtual_browser(speak_exit=False),
+        )
+        _vehicle_spawner.start(STOP)
+    except Exception as e:
+        logger.error(f"Failed to start vehicle spawner: {e}")
 
     try:
         telemetry_loop(audio_controller=audio_controller, port=4444, stop_event=STOP)

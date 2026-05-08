@@ -58,7 +58,8 @@ DRIFT_AMP_DB = -15.0
 SCANNER_BEEP_DUR_MS = 60       # Duration of a single beep
 SCANNER_MAX_RATE_HZ = 10.0     # Beeps per second at close range
 SCANNER_MIN_RATE_HZ = 0.5      # Beeps per second at long range
-SCANNER_HALF_DIST_M = 40.0     # The distance at which the beep rate is halfway between min and max
+SCANNER_HALF_DIST_BASE_M = 20.0  # Half-distance at standstill (meters)
+SCANNER_HALF_DIST_PER_MS = 3.0   # Additional half-distance per m/s of vehicle speed
 SCANNER_PITCH_BASE = 0.8       # Pitch multiplier for a target directly behind (-180 deg)
 SCANNER_PITCH_RANGE = 1.2      # Pitch variation (Base + Range = max pitch at 0 deg)
 SCANNER_BEEP_FREQ_HZ = 1000.0  # Base frequency of the beep sound
@@ -264,6 +265,7 @@ class AudioController:
         self._scan_mode_active = False
         self._scanner_target_bearing = 0.0
         self._scanner_target_distance = float('inf')
+        self._scan_speed_ms = 0.0
         self._scanner_beep_timer = 0.0
         self._scanner_overlap_L = None
         self._scanner_overlap_R = None
@@ -550,6 +552,7 @@ class AudioController:
             self._ls_clicks_active = state.get('ls_clicks_active', self._ls_clicks_active)
             self._ls_speed_mph = state.get('ls_speed_mph', self._ls_speed_mph)
             self._ls_decel = state.get('ls_decel', self._ls_decel)
+            self._scan_speed_ms = state.get('scan_speed_ms', self._scan_speed_ms)
 
     def _hrtf_emphasis_gain(self, hrtf_az_deg):
         """Compute front-back emphasis gain. 0 dB at front (0°), emphasis_db at back (180°)."""
@@ -1036,6 +1039,7 @@ class AudioController:
             ls_active = self._ls_clicks_active
             ls_speed_mph = self._ls_speed_mph
             ls_decel = self._ls_decel
+            scan_speed_ms = self._scan_speed_ms
 
         bufL, bufR = np.zeros(frames, dtype=np.float32), np.zeros(frames, dtype=np.float32)
 
@@ -1397,8 +1401,10 @@ class AudioController:
         # NEW: Vehicle Scanner audio logic (suppressed when coupler tracking is active)
         scanner_produced_audio = False
         if scan_active and scan_dist != float('inf') and not coupler_active:
-            # Calculate beep repetition rate based on distance (exponentially)
-            rate_norm = math.exp(-scan_dist / SCANNER_HALF_DIST_M)
+            # Calculate beep repetition rate based on distance (exponentially).
+            # Half-distance scales with vehicle speed so faster travel gives earlier urgency.
+            half_dist = SCANNER_HALF_DIST_BASE_M + scan_speed_ms * SCANNER_HALF_DIST_PER_MS
+            rate_norm = math.exp(-scan_dist / half_dist)
             rate_hz = SCANNER_MIN_RATE_HZ + (SCANNER_MAX_RATE_HZ - SCANNER_MIN_RATE_HZ) * rate_norm
             interval_sec = 1.0 / rate_hz
 
@@ -1417,9 +1423,10 @@ class AudioController:
                 # Calculate pitch based on bearing
                 pitch_norm = 1.0 - (abs(scan_bearing) / 180.0) # 1.0 front, 0.0 back
                 pitch_mult = SCANNER_PITCH_BASE + SCANNER_PITCH_RANGE * pitch_norm
-                # Sharp half-octave boost when dead-on aligned (within 0.5 deg)
-                if aligned:
-                    pitch_mult *= 1.5
+                # Smooth exponential pitch boost: full octave (2x) at perfect alignment (0 deg),
+                # rapidly decaying on either side. Decay constant 0.8 deg gives ~50% boost at
+                # 0.5 deg off-center and is negligible beyond ~3 deg.
+                pitch_mult *= (1.0 + math.exp(-abs(scan_bearing) / 0.8))
 
                 indices = self._scanner_playback_pos + np.arange(frames) * pitch_mult
                 valid_mask = indices < (beep_len - 1)

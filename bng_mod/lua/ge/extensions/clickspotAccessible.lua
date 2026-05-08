@@ -399,8 +399,36 @@ end
 --  GE Extension Hooks
 -- =================================================================================================
 
+local function setupSockets()
+  if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
+  if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
+
+  udpSend = socket.udp()
+  if udpSend then
+    udpSend:setpeername(PYTHON_HOST, PYTHON_PORT_DATA)
+    udpSend:settimeout(0)
+    csLog('info', "UDP send socket targeting " .. PYTHON_HOST .. ":" .. PYTHON_PORT_DATA)
+  else
+    csLog('error', "Failed to create UDP send socket.")
+  end
+
+  local ok, err = pcall(function()
+    udpCmd = socket.udp()
+    udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
+    udpCmd:settimeout(0)
+  end)
+  if ok and udpCmd then
+    csLog('info', "UDP command socket listening on port " .. CMD_LISTEN_PORT)
+  else
+    csLog('error', "Failed to create UDP command socket: " .. tostring(err))
+    udpCmd = nil
+  end
+end
+
 function M.onExtensionLoaded()
   csLog('info', "Accessible clickspot detection extension loaded.")
+  -- Bind sockets here so Ctrl+L Lua reload re-opens them.
+  setupSockets()
 end
 
 function M.onVehicleSwitched(oldId, newId, player)
@@ -420,38 +448,13 @@ function M.onWorldReadyState(state)
   if state == 2 then
     csLog('info', "World ready. Initializing clickspot detection.")
 
-    -- Close existing sockets
-    if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
-    if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
-
     -- Reset state
     isActive = false
     triggerCache = nil
     triggerCacheVehID = nil
     lastHoveredId = -1
 
-    -- Create send socket
-    udpSend = socket.udp()
-    if udpSend then
-      udpSend:setpeername(PYTHON_HOST, PYTHON_PORT_DATA)
-      udpSend:settimeout(0)
-      csLog('info', "UDP send socket targeting " .. PYTHON_HOST .. ":" .. PYTHON_PORT_DATA)
-    else
-      csLog('error', "Failed to create UDP send socket.")
-    end
-
-    -- Create command receive socket
-    local ok, err = pcall(function()
-      udpCmd = socket.udp()
-      udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
-      udpCmd:settimeout(0)
-    end)
-    if ok and udpCmd then
-      csLog('info', "UDP command socket listening on port " .. CMD_LISTEN_PORT)
-    else
-      csLog('error', "Failed to create UDP command socket: " .. tostring(err))
-      udpCmd = nil
-    end
+    setupSockets()
   end
 end
 

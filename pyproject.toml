@@ -12,6 +12,7 @@ dependencies = [
     "keyboard>=0.13.5",
     "mouse>=0.7.1",
     "numpy>=2.3.3",
+    "ordered-set>=4.1.0",
     "sounddevice>=0.5.2",
     "wxpython>=4.2.3",
     "zstandard>=0.25.0",
@@ -19,5 +20,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "ipython>=9.10.1",
     "nuitka>=4.0",
 ]

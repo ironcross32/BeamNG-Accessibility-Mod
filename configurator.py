@@ -26,7 +26,22 @@ try:
 except ImportError:
     pass
 
-FROZEN = getattr(sys, "frozen", False)
+FROZEN = getattr(sys, "frozen", False) or "__compiled__" in globals()
+
+
+def _get_program_dir():
+    """Return the directory containing this program (works for source and Nuitka onefile builds).
+
+    sys.frozen is set by PyInstaller. Nuitka instead injects __compiled__ into
+    the module's global namespace, so both are checked.
+
+    For Nuitka onefile builds, sys.executable points to the temp extraction
+    directory, not the user's actual executable location. sys.argv[0] is the
+    path the user invoked, which is always beside the zip file.
+    """
+    if FROZEN:
+        return os.path.dirname(os.path.abspath(sys.argv[0]))
+    return os.path.dirname(os.path.abspath(__file__))
 
 # --- Use %localappdata% for configuration ---
 def _get_config_dir():
@@ -59,7 +74,6 @@ DEFAULT_CONFIG = {
     "pitch_roll_min_dbfs": -36.0,
     "compass_click_level_dbfs": -6.0,
     "lowspeed_click_level_dbfs": -14.0,
-    "neutral_dwell_ms": 300,
     "telemetry_protocol": "extended",
     "compass_click_interval": 15,
     "compass_highlight_enabled": True,
@@ -72,6 +86,13 @@ DEFAULT_CONFIG = {
     "preferred_device_name": "",
     "audio_poll_interval_sec": 2.0,
     "launch_beamng": False,
+    "beamng_renderer": "d3d",
+    "announce_turn_signals": True,
+    "announce_speed": True,
+    "speed_announce_interval": 25,
+    "announce_gear": True,
+    "scanner_distance_callout_enabled": False,
+    "scanner_distance_callout_interval": 10,
 }
 
 
@@ -225,7 +246,7 @@ def load_config():
         _coerce("pitch_roll_min_dbfs", float, -36.0)
         _coerce("compass_click_level_dbfs", float, -6.0)
         _coerce("lowspeed_click_level_dbfs", float, -14.0)
-        _coerce("neutral_dwell_ms", int, 300)
+
         _coerce("compass_click_interval", int, 15)
         _coerce("compass_highlight_enabled", bool, False)
         _coerce("compass_highlight_nth_click", int, 6) # MODIFIED
@@ -233,17 +254,28 @@ def load_config():
         _coerce("hrtf_front_emphasis_db", float, -6.0)
         _coerce("hrtf_distance_gain_db", float, 0.0)
         _coerce("launch_beamng", bool, False)
+        _coerce("beamng_renderer", str, "d3d")
         _coerce("follow_default_audio_device", bool, True)
+        _coerce("announce_turn_signals", bool, True)
+        _coerce("announce_speed", bool, True)
+        _coerce("speed_announce_interval", int, 25)
+        _coerce("announce_gear", bool, True)
+        _coerce("scanner_distance_callout_enabled", bool, False)
+        _coerce("scanner_distance_callout_interval", int, 10)
         _coerce("preferred_device_name", str, "")
         _coerce("audio_poll_interval_sec", float, 2.0)
 
         merged["sapi_rate"] = max(-10, min(10, merged["sapi_rate"]))
         merged["sapi_volume"] = max(0, min(100, merged["sapi_volume"]))
         merged["shift_tone_frequency_hz"] = max(20.0, min(20000.0, merged["shift_tone_frequency_hz"]))
-        merged["neutral_dwell_ms"] = max(0, min(5000, merged["neutral_dwell_ms"]))
+
         merged["compass_click_interval"] = max(1, min(90, merged["compass_click_interval"]))
         merged["compass_highlight_nth_click"] = max(2, min(100, merged["compass_highlight_nth_click"])) # MODIFIED
         merged["audio_poll_interval_sec"] = max(0.1, min(10.0, merged["audio_poll_interval_sec"]))
+        if merged["speed_announce_interval"] not in (25, 50, 75, 100):
+            merged["speed_announce_interval"] = 25
+        if merged["scanner_distance_callout_interval"] not in (5, 10, 15, 20, 30, 45, 60):
+            merged["scanner_distance_callout_interval"] = 10
 
         for key in ["shift_tone_level_dbfs", "check_engine_buzzer_level_dbfs", "oil_chime_level_dbfs",
                     "pitch_roll_max_dbfs", "pitch_roll_min_dbfs", "compass_click_level_dbfs",
@@ -254,6 +286,7 @@ def load_config():
 
         merged["units"] = "metric" if str(merged.get("units", "imperial")).lower().startswith("m") else "imperial"
         merged["telemetry_protocol"] = "outgauge" if str(merged.get("telemetry_protocol", "extended")).lower() == "outgauge" else "extended"
+        merged["beamng_renderer"] = "vulkan" if str(merged.get("beamng_renderer", "d3d")).lower() == "vulkan" else "d3d"
 
         return merged
     except Exception:

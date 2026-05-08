@@ -61,7 +61,17 @@
       "Bash(lua:*)",
       "Bash(lua -e \"loadfile\\(''bng_mod/lua/ge/extensions/nodeGrabberAccessible.lua''\\)\")",
       "Bash(lua -e \"loadfile\\(''bng_mod/lua/ge/extensions/clickspotAccessible.lua''\\)\")",
-      "mcp__plugin_context-mode_context-mode__index"
+      "mcp__plugin_context-mode_context-mode__index",
+      "Bash(unzip -p bng_screenreader_mod.zip lua/ge/extensions/vehicleScanner.lua)",
+      "Read(//tmp/**)",
+      "Bash(cp bng_screenreader_mod.zip bng_screenreader_mod.zip.bak)",
+      "Bash(zip -u bng_screenreader_mod.zip lua/ge/extensions/vehicleScanner.lua)",
+      "Read(//c/Users/bcros/AppData/Local/BeamNG.drive/0.34/**)",
+      "Read(//c/Users/bcros/AppData/Local/BeamNG/**)",
+      "Bash(uv run:*)",
+      "Bash(uv pip:*)",
+      "Bash(unzip -p \"D:/Steam/steamapps/common/BeamNG.drive/content/vehicles/fullsize.zip\" \"vehicles/fullsize/info.json\")",
+      "Bash(unzip -p \"D:/Steam/steamapps/common/BeamNG.drive/content/vehicles/autobello.zip\" \"vehicles/autobello/info.json\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\bcros\\AppData\\Local\\BeamNG\\BeamNG.drive\\current\\mods\\unpacked\\bng_screenreader_mod"
