@@ -1646,6 +1646,7 @@ STATUS_METRICS = [
 ]
 
 
+
 def on_status_arrow_press(event):
     global current_status_metric_index
     if _vehicle_selector_open:

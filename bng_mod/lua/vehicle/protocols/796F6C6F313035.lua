@@ -135,6 +135,14 @@ local DL_LOWBEAM      = 2 ^ 11
 
 local function fillStruct(o, dtSim)
   if not _couplerHooksWrapped then tryCouplerHookWrap() end
+  -- Only emit telemetry from the active player vehicle. Otherwise every
+  -- spawned vehicle (trailers, traffic, AI cars) runs this 60Hz pipeline and
+  -- floods the Python listener on port 4444 with overlapping packets.
+  -- `be` is a Game Engine global and is not available in the vehicle VM, so
+  -- use the per-vehicle `playerInfo` table populated by BeamNG instead.
+  if not (playerInfo and playerInfo.firstPlayerSeated) then
+    return false
+  end
   if not electrics.values.watertemp then
     return false
   end

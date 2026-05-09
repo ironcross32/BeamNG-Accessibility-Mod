@@ -1777,14 +1777,20 @@ angular.module('beamng.apps')
               if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
               rememberOpenedSelect(e.target);
             }, true);
+            // md-select-menu-container is appended as a direct child of <body>
+            // by Angular Material, so observe only body's direct children — no
+            // subtree. This avoids firing on every node removal in the entire
+            // UI tree (a major hitch source when closing complex screens like
+            // the parts selector). The previous implementation also called
+            // querySelector on each removed subtree, which walks tens of
+            // thousands of nodes when a big panel is dismissed.
             selectCloseObserver = new MutationObserver(function(muts) {
               for (var i = 0; i < muts.length; i++) {
                 var removed = muts[i].removedNodes;
                 for (var j = 0; j < removed.length; j++) {
                   var n = removed[j];
                   if (n && n.nodeType === 1 && n.classList &&
-                      (n.classList.contains('md-select-menu-container') ||
-                       (n.querySelector && n.querySelector('.md-select-menu-container')))) {
+                      n.classList.contains('md-select-menu-container')) {
                     var target = _lastOpenedSelect;
                     setTimeout(function(sel) {
                       return function() {
@@ -1799,7 +1805,7 @@ angular.module('beamng.apps')
                 }
               }
             });
-            selectCloseObserver.observe(document.body, { childList: true, subtree: true });
+            selectCloseObserver.observe(document.body, { childList: true });
           }
 
           // ---------- EVENT HOOKS AND INITIALIZATION ----------
