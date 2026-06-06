@@ -25,7 +25,15 @@ local SCAN_INTERVAL      = 0.1   -- seconds between scan ticks (10 Hz)
 -- Ray Configuration
 local NUM_RAYS           = 12    -- directions around the vehicle (every 30 degrees)
 local RAYS_PER_TICK      = 4     -- how many rays to cast per scan tick (performance budget)
-local RAY_HEIGHT_OFFSET  = 0.5   -- meters above vehicle center to cast from (bumper height)
+-- Two ray heights bracket the "drive-over vs real obstacle" boundary. Vehicle origin sits
+-- ~0.5m above ground; the guardrail rail-top in BeamNG is ~0.7m above ground. So:
+--   LOW (~0.3m above ground): above typical curb/island height (~0.15m), so curbs miss.
+--   HIGH (~0.7m above ground): at guardrail rail height — guardrails register, but knee-high
+--                              decorative props the car can plow through often don't.
+local LOW_RAY_OFFSET     = -0.2  -- low probe offset above vehicle origin
+local HIGH_RAY_OFFSET    = 0.2   -- high probe offset above vehicle origin
+local CLEARANCE_TOLERANCE = 1.5  -- if high ray hits within this far of low hit, treat as same obstacle
+local CLOSE_OBSTACLE_DIST = 4.0  -- low-only hits closer than this still warn (safety override)
 local RAY_UPWARD_ANGLE   = 2.0   -- degrees to angle rays upward (avoid hitting flat ground)
 
 -- Speed-Sensitive Range Configuration
@@ -55,14 +63,20 @@ local currentRayIndex    = 0   -- which ray direction to start from this tick
 local currentMaxRange    = BASE_MAX_RANGE
 local currentWarnRange   = BASE_WARNING_RANGE
 
--- Obstacle state: one slot per quadrant (front-left, front-right, rear-left, rear-right)
--- Each stores the nearest obstacle in that quadrant
-local quadrants = {
-  { bearing = 0, distance = math.huge, type = 0 },  -- front-right (0 to 90)
-  { bearing = 0, distance = math.huge, type = 0 },  -- rear-right  (90 to 180)
-  { bearing = 0, distance = math.huge, type = 0 },  -- rear-left   (-180 to -90)
-  { bearing = 0, distance = math.huge, type = 0 },  -- front-left  (-90 to 0)
-}
+-- Per-ray hit storage for the current sweep. Each entry: { hit, distance, bearing }.
+-- After a full sweep, contiguous rays with similar distances are clustered into one
+-- "obstacle" so a long wall/guardrail produces a single beep at its closest point
+-- rather than 3-4 stacked beeps along its length.
+local sweepHits = {}
+for i = 1, NUM_RAYS do
+  sweepHits[i] = { hit = false, distance = math.huge, bearing = 0 }
+end
+
+-- Cluster threshold: contiguous rays whose hit distances differ by less than this
+-- are treated as the same obstacle. Tuned for typical walls/guardrails seen at
+-- 30deg spacing — a flat wall in front produces ~2-3 ray hits at distances d, d/cos(30),
+-- d/cos(60), with the first two within ~0.7d of each other.
+local CLUSTER_DIST_THRESHOLD = 4.0
 
 -- Terrain warning state (to avoid spamming)
 local lastDropoffSent    = false
@@ -94,16 +108,52 @@ local function rotateVectorAroundAxis(vec, axis, angleDeg)
 end
 
 -- =================================================================================================
---  Utility: Determine which quadrant a bearing falls into
---  Returns 1-4: 1=front-right(0..90), 2=rear-right(90..180),
---               3=rear-left(-180..-90), 4=front-left(-90..0)
+--  Cluster contiguous-angle ray hits with similar distances. Wall along several rays
+--  becomes one obstacle, placed at the closest hit (minimum distance) in the cluster.
+--  Returns a list of { distance, bearing } for each cluster, in arbitrary order.
 -- =================================================================================================
 
-local function bearingToQuadrant(bearingDeg)
-  if bearingDeg >= 0 and bearingDeg < 90 then return 1
-  elseif bearingDeg >= 90 then return 2
-  elseif bearingDeg < -90 then return 3
-  else return 4 end
+local function clusterSweepHits()
+  local clusters = {}
+  local visited = {}
+
+  -- Walk circularly so a cluster spanning the 0-degree wraparound is captured.
+  local startIdx = 1
+  -- Find a non-hit gap to start from (so we don't begin in the middle of a cluster
+  -- that wraps around). If every ray hit, just start at 1.
+  for i = 1, NUM_RAYS do
+    if not sweepHits[i].hit then startIdx = i; break end
+  end
+
+  local i = 0
+  while i < NUM_RAYS do
+    local idx = ((startIdx - 1 + i) % NUM_RAYS) + 1
+    if sweepHits[idx].hit and not visited[idx] then
+      local minDist = sweepHits[idx].distance
+      local minBearing = sweepHits[idx].bearing
+      local prevDist = sweepHits[idx].distance
+      visited[idx] = true
+      -- Walk forward as long as the next ray hit and within threshold of the previous
+      local j = i + 1
+      while j < NUM_RAYS do
+        local jdx = ((startIdx - 1 + j) % NUM_RAYS) + 1
+        if not sweepHits[jdx].hit then break end
+        if math.abs(sweepHits[jdx].distance - prevDist) >= CLUSTER_DIST_THRESHOLD then break end
+        if sweepHits[jdx].distance < minDist then
+          minDist = sweepHits[jdx].distance
+          minBearing = sweepHits[jdx].bearing
+        end
+        prevDist = sweepHits[jdx].distance
+        visited[jdx] = true
+        j = j + 1
+      end
+      table.insert(clusters, { distance = minDist, bearing = minBearing })
+      i = j
+    else
+      i = i + 1
+    end
+  end
+  return clusters
 end
 
 -- =================================================================================================
@@ -129,14 +179,16 @@ local function performScan()
   currentMaxRange  = math.min(BASE_MAX_RANGE  + speedMps * RANGE_PER_MPS, MAX_RANGE_CAP)
   currentWarnRange = math.min(BASE_WARNING_RANGE + speedMps * RANGE_PER_MPS, WARNING_RANGE_CAP)
 
-  -- Raise ray origin above vehicle center
-  local rayOrigin = playerPos + playerUp * RAY_HEIGHT_OFFSET
+  -- Two ray origins for clearance probe. Low ray catches anything in the way; high ray
+  -- confirms the obstacle is tall enough to actually matter (vs a curb the car drives over).
+  local rayOriginLow  = playerPos + playerUp * LOW_RAY_OFFSET
+  local rayOriginHigh = playerPos + playerUp * HIGH_RAY_OFFSET
 
-  -- Reset quadrants for this scan cycle when we wrap around to ray 0
+  -- Reset sweep hits when we wrap around to ray 0
   if currentRayIndex == 0 then
-    for i = 1, 4 do
-      quadrants[i].distance = math.huge
-      quadrants[i].type = 0
+    for i = 1, NUM_RAYS do
+      sweepHits[i].hit = false
+      sweepHits[i].distance = math.huge
     end
   end
 
@@ -154,39 +206,46 @@ local function performScan()
     rayDir = rotateVectorAroundAxis(rayDir, playerRight, -RAY_UPWARD_ANGLE)
     rayDir = rayDir:normalized()
 
-    -- Cast ray
-    local hitDist = castRayStatic(rayOrigin, rayDir, currentMaxRange)
+    -- Cast low ray first — cheap rejection if nothing is there at all.
+    local hitLow = castRayStatic(rayOriginLow, rayDir, currentMaxRange)
 
-    if hitDist > 0 and hitDist < currentWarnRange then
-      -- Convert ray angle to signed bearing (-180 to +180, positive = right)
-      local bearing = angleDeg
-      if bearing > 180 then bearing = bearing - 360 end
+    if hitLow > 0 and hitLow < currentWarnRange then
+      -- Confirm with high ray. Real obstacle only if high ray also hits at a similar
+      -- distance, OR the obstacle is dangerously close (low-only at <CLOSE_OBSTACLE_DIST
+      -- biases toward false positives over false negatives at imminent-collision range).
+      local hitHigh = castRayStatic(rayOriginHigh, rayDir, currentMaxRange)
+      local highConfirms = (hitHigh > 0 and hitHigh < (hitLow + CLEARANCE_TOLERANCE))
+      local closeOverride = (hitLow < CLOSE_OBSTACLE_DIST)
+      if highConfirms or closeOverride then
+        -- Convert ray angle to signed bearing (-180 to +180, positive = right)
+        local bearing = angleDeg
+        if bearing > 180 then bearing = bearing - 360 end
 
-      local quad = bearingToQuadrant(bearing)
-      if hitDist < quadrants[quad].distance then
-        quadrants[quad].bearing  = bearing
-        quadrants[quad].distance = hitDist
-        quadrants[quad].type     = PKT_STATIC
+        sweepHits[idx].hit      = true
+        sweepHits[idx].distance = hitLow
+        sweepHits[idx].bearing  = bearing
       end
     end
   end
 
-  -- After a full sweep (all rays cast), send results as CSV text
-  -- Format: "type,bearing,urgency,distance" per obstacle, or "0" for all clear
+  -- After a full sweep, cluster contiguous hits and send everything in one packet.
+  -- Format:
+  --   "0"                                            -- no static obstacles
+  --   "1,n,b1,u1,d1,b2,u2,d2,...,bn,un,dn"           -- n clustered static obstacles
   if currentRayIndex == 0 then
-    local anyObstacle = false
-    for i = 1, 4 do
-      if quadrants[i].type ~= 0 then
-        anyObstacle = true
-        local urgency = math.floor(math.max(0, math.min(255,
-          (1 - quadrants[i].distance / currentWarnRange) * 255)))
-        local packet = string.format("%d,%.2f,%d,%.2f",
-          quadrants[i].type, quadrants[i].bearing, urgency, quadrants[i].distance)
-        udpSend:send(packet)
-      end
-    end
-    if not anyObstacle then
+    local clusters = clusterSweepHits()
+    if #clusters == 0 then
       udpSend:send("0")
+    else
+      local parts = { "1", tostring(#clusters) }
+      for _, c in ipairs(clusters) do
+        local urgency = math.floor(math.max(0, math.min(255,
+          (1 - c.distance / currentWarnRange) * 255)))
+        table.insert(parts, string.format("%.2f", c.bearing))
+        table.insert(parts, tostring(urgency))
+        table.insert(parts, string.format("%.2f", c.distance))
+      end
+      udpSend:send(table.concat(parts, ","))
     end
   end
 end
@@ -302,9 +361,9 @@ function M.onWorldReadyState(state)
     currentWarnRange = BASE_WARNING_RANGE
     lastDropoffSent = false
     lastHillSent    = false
-    for i = 1, 4 do
-      quadrants[i].distance = math.huge
-      quadrants[i].type = 0
+    for i = 1, NUM_RAYS do
+      sweepHits[i].hit = false
+      sweepHits[i].distance = math.huge
     end
 
     setupSockets()

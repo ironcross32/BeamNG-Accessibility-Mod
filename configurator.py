@@ -93,6 +93,9 @@ DEFAULT_CONFIG = {
     "announce_gear": True,
     "scanner_distance_callout_enabled": False,
     "scanner_distance_callout_interval": 10,
+    "ai_describer_api_key": "",
+    "ai_describer_model": "models/gemini-3-flash-preview",
+    "ai_describer_disable_ui_toggle": False,
 }
 
 
@@ -264,6 +267,17 @@ def load_config():
         _coerce("scanner_distance_callout_interval", int, 10)
         _coerce("preferred_device_name", str, "")
         _coerce("audio_poll_interval_sec", float, 2.0)
+        _coerce("ai_describer_api_key", str, "")
+        _coerce("ai_describer_model", str, "models/gemini-3-flash-preview")
+        _coerce("ai_describer_disable_ui_toggle", bool, False)
+
+        try:
+            from ai_describer import VISION_MODEL_NAMES, DEFAULT_MODEL
+
+            if merged["ai_describer_model"] not in VISION_MODEL_NAMES:
+                merged["ai_describer_model"] = DEFAULT_MODEL
+        except Exception:
+            pass
 
         merged["sapi_rate"] = max(-10, min(10, merged["sapi_rate"]))
         merged["sapi_volume"] = max(0, min(100, merged["sapi_volume"]))

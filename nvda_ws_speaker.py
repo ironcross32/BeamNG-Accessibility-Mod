@@ -2,9 +2,18 @@
 # WebSocket-Only version
 # Designed to be embedded: start_server_in_thread(lambda text: say(text))
 
-import asyncio, json, os, threading
+import asyncio, json, os, re, threading
 from aiohttp import web, WSMsgType
 from bnh_logger import get_logger
+
+# Safety net for raw CSS that can leak from the UI hook when a handler reads the
+# textContent of a non-rendered <style> element (happens when the game UI is
+# toggled off). The app.js side filters these too; this is a backstop.
+_CSS_LEAK_RE = re.compile(r"[#.\w-]+\s*\{[^}]*:[^}]*;|\}\s*[#.\w-]+\s*\{")
+
+
+def _looks_like_css(t: str) -> bool:
+    return bool(_CSS_LEAK_RE.search(t))
 
 HOST = os.getenv("BNVDA_HOST", "127.0.0.1")
 WS_PORT = int(os.getenv("BNVDA_WS_PORT", "8765"))
@@ -42,6 +51,9 @@ def engine_offer(text: str):
     global _SPEAK_LAST
     t = (text or "").strip()
     if not t:
+        return
+    if _looks_like_css(t):
+        logger.info("[bnvda] Suppressed CSS-like text from UI hook.")
         return
     if t == _SPEAK_LAST:
         return

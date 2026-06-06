@@ -49,6 +49,7 @@ The project has two halves that communicate via UDP:
 - **hrtf.py** — HRTF binaural panning. Loads MIT KEMAR SOFA files via h5py, interpolates impulse responses by azimuth, FFT-resamples to 48kHz. Used by audio.py for spatial compass clicks.
 - **configurator.py** — wxPython GUI for `beamtel_config.json`. SAPI voice enumeration via comtypes, real-time tone testing.
 - **sral.py** — Wrapper around native SRAL.dll for speech synthesis. Falls back to SAPI if unavailable.
+- **ai_describer.py** — AI Describer pipeline. Captures the primary monitor (`mss`), sends the image to Google Gemini's `generateContent` REST endpoint with a blind-friendly system prompt, returns the spoken description. Validates API keys via the free ListModels endpoint. Logs all descriptions and API errors to `%LOCALAPPDATA%/beamtel/ai_descriptions.log`. Invoked in-game by F10 then Space.
 - **nvda_ws_speaker.py** — aiohttp WebSocket server on port 8765. Bridges UI events to speech output.
 - **bnh_logger.py** — Rotating file logger (`bnvdahook.log`, 1MB max, 3 backups).
 - **diagnostic/** — Standalone UDP listeners for debugging telemetry protocols.
@@ -64,6 +65,7 @@ Entry point: `scripts/bng_screenreader_mod/modScript.lua` — loads all GE exten
 - **`lua/ge/extensions/cameraInfo.lua`** — Camera spatial data (yaw, pitch, AGL). Port 4450→4451.
 - **`lua/ge/extensions/nodeGrabberAccessible.lua`** — Accessible node grabber. Ray-sphere node detection under mouse cursor, cross-VM node metadata caching, SNAP cursor warp. Port 4454→4455.
 - **`lua/ge/extensions/clickspotAccessible.lua`** — Accessible clickspot detection. Enumerates vehicle interior trigger volumes, detects hover via `be:triggerRaycastClosest()`, executes trigger actions directly. Port 4456→4457.
+- **`lua/ge/extensions/uiToggle.lua`** — Hides/shows the game UI on command (`ui_visibility.set`/`toggle`, the same thing ALT+U toggles). Used by the AI Describer to remove HUD elements before a screenshot. Port 4464.
 - **`lua/ge/extensions/bnvdaAutoSpawner.lua`** — Deferred UI app spawning (currently commented out).
 - **`ui/modules/apps/bnvda_hook/app.js`** — Invisible Angular directive (1x1px). WebSocket client bridging BeamNG UI events to Python on ws://127.0.0.1:8765. DOM observer with debouncing and controller dominance detection.
 
@@ -85,6 +87,9 @@ Entry point: `scripts/bng_screenreader_mod/modScript.lua` — loads all GE exten
 | 4455 | Python→Game | Node grabber commands (ON/OFF/SCAN_ON/SCAN_OFF/SNAP) |
 | 4456 | Game→Python | Clickspot data (trigger list, hover, snap) |
 | 4457 | Python→Game | Clickspot commands (ON/OFF/SNAP/EXEC) |
+| 4462 | Game→Python | Road detector status (ON_ROAD/OFF_ROAD/DORMANT) |
+| 4463 | Python→Game | Road detector commands (ON/OFF) |
+| 4464 | Python→Game | UI visibility toggle (HIDE/SHOW/TOGGLE) |
 | 4579 | Game→Python | UI toast messages |
 | 8765 | WebSocket | NVDA/UI bridge |
 

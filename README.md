@@ -1,5 +1,14 @@
 # BEAM Accessibility Mod
 
+
+### Purpose
+
+Provide screen reader accessibility for BeamNG.drive through use of telemetry and a UI app that hooks in and fetches strings to be spoken.
+
+### Use of AI Disclosure
+
+Use of AI coding agents and tooling have been heavily used in this project.
+
 ### Installation Instructions
 
 1. Unzip the contents to a directory of your choice (If you're seeing this, hopefully you have already done this)
@@ -27,7 +36,7 @@ Press ? (Shift+/) in either the F9 or F10 layer to toggle input help mode. While
 
 Press F9, then one of the following keys. If you press an invalid key or allow the command to time out, you'll hear "Exit".
 
-**Telemetry readouts:**
+#### Telemetry readouts:
 
 - S: Speak speed
 - R: Speak RPM
@@ -44,18 +53,18 @@ Press F9, then one of the following keys. If you press an invalid key or allow t
 - C: Speak coordinates
 - U: Switch between imperial and metric
 
-**Message buffer:**
+#### Message buffer:
 
 - 1-9: Speak the 1st through 9th most recent message
 - 0: Speak the 10th most recent message
 
-**Waypoints:**
+#### Waypoints:
 
 - Shift+C: Mark waypoint at current position
 - Alt+C: Speak marked waypoint coordinates
 - W: Distance and bearing to waypoint
 
-**Vehicle scanner:**
+#### Vehicle scanner:
 
 - Ctrl+V: Toggle vehicle scanner
 - Tab: Next scanner target
@@ -65,7 +74,7 @@ Press F9, then one of the following keys. If you press an invalid key or allow t
 - Shift+V: Align to trailer coupler — vehicle scanner must be on, target must be a trailer, couplers on source vehicle and target must be compatible
 - Ctrl+Shift+D: Automatic coupler distance callouts — vehicle scanner must be on
 
-**Toggleable modes:**
+#### Toggleable modes:
 
 - Ctrl+S: Toggle status mode
 - Ctrl+B: Toggle buffer mode
@@ -78,7 +87,7 @@ Press F9, then one of the following keys. If you press an invalid key or allow t
 - Ctrl+Shift+C: Clickspot detection
 - Ctrl+N: Accessible node grabber
 
-**Camera info (free camera):**
+#### Camera info (free camera):
 
 - Alt+F: Toggle camera info
 - Alt+H: Camera heading
@@ -87,7 +96,7 @@ Press F9, then one of the following keys. If you press an invalid key or allow t
 - Alt+V: Vehicle bearing from camera
 - Alt+D: Vehicle distance from camera
 
-**Diagnostics:**
+#### Diagnostics:
 
 - M: Damage report
 - Shift+E: Dump electrics to log
@@ -96,9 +105,9 @@ Press F9, then one of the following keys. If you press an invalid key or allow t
 - Ctrl+L: DOM dump
 - Ctrl+Shift+S: Toggle speech logger
 
-**Other:**
+#### Other:
 
-- Space: Activate context action
+- Space: Activate context action)
 - Ctrl+Shift+Alt+C: When clickspot detection is on, open a browsable menu of all clickspots; arrows to navigate, Enter to activate
 - ?: Toggle input help mode
 

@@ -69,6 +69,18 @@ angular.module('beamng.apps')
             if (s.length > MAX_LEN) s = s.slice(0, MAX_LEN - 3) + "...";
             return s;
           }
+          // Detect raw CSS that leaks in when a handler reads textContent of a
+          // non-rendered element (e.g. a <style> block) — innerText is empty for
+          // hidden nodes so extraction falls back to textContent, which for a
+          // style element is the stylesheet itself. This happens notably when the
+          // UI is toggled off. Never speak such text.
+          function looksLikeCss(s) {
+            if (!s) return false;
+            if (/[#.\w-]+\s*\{[^}]*:[^}]*;/.test(s)) return true;   // selector { prop: val; }
+            if (/\}\s*[#.\w-]+\s*\{/.test(s)) return true;          // } selector {
+            if (/\b(rgba?|md-|color|background|padding|margin)\b[^;{]*\{/.test(s)) return true;
+            return false;
+          }
           function throttle(func, limit) {
             var lastFunc, lastRan;
             return function() {
@@ -129,6 +141,7 @@ angular.module('beamng.apps')
 
           function scheduleSpeak(txt, src) {
             if (!txt) return;
+            if (looksLikeCss(txt)) return;
             if (DEBUG && hasNonAscii(txt)) {
               log('info', '[GLYPH] "' + txt + '" chars=' + charDump(txt));
             }

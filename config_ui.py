@@ -814,6 +814,20 @@ class ConfigPanel(wx.ScrolledWindow):
         """Write current controls to the config file (called by the timer)."""
         try:
             cfg = self.controls_to_config()
+            # The AI Describer tab owns these keys and writes them independently;
+            # re-read them from disk so this panel's snapshot doesn't clobber a
+            # value the user just changed there.
+            try:
+                disk = load_config()
+                for k in (
+                    "ai_describer_api_key",
+                    "ai_describer_model",
+                    "ai_describer_disable_ui_toggle",
+                ):
+                    if k in disk:
+                        cfg[k] = disk[k]
+            except Exception:
+                pass
             _write_config(CONFIG_PATH, cfg)
             self.cur_cfg = cfg
         except Exception:
@@ -1035,3 +1049,209 @@ class ConfigPanel(wx.ScrolledWindow):
             self._schedule_save()
         except Exception as e:
             wx.MessageBox(f"Failed to reset:\n{e}", "Error", wx.OK | wx.ICON_ERROR)
+
+
+class AIDescriberPanel(wx.ScrolledWindow):
+    """Configuration for the AI Describer feature (Gemini scene description).
+
+    Owns three config keys: ai_describer_api_key, ai_describer_model and
+    ai_describer_disable_ui_toggle. Writes are merged onto a fresh disk read so
+    this panel doesn't clobber settings owned by the main Configuration tab.
+    """
+
+    _AI_KEYS = (
+        "ai_describer_api_key",
+        "ai_describer_model",
+        "ai_describer_disable_ui_toggle",
+    )
+
+    def __init__(self, parent):
+        super().__init__(parent, style=wx.TAB_TRAVERSAL)
+        self.SetScrollRate(0, 10)
+        self.cur_cfg = load_config()
+
+        self.Bind(wx.EVT_NAVIGATION_KEY, lambda evt: wrap_nav_key(evt, self))
+
+        from ai_describer import VISION_MODELS, DEFAULT_MODEL
+
+        self._models = list(VISION_MODELS)
+        self._default_model = DEFAULT_MODEL
+
+        vbox = wx.BoxSizer(wx.VERTICAL)
+
+        intro = wx.StaticText(
+            self,
+            label=(
+                "Press F10 then Space in-game to describe the current scene using "
+                "Google Gemini. The description is spoken and added to the speech "
+                "buffer."
+            ),
+        )
+        intro.Wrap(560)
+        vbox.Add(intro, 0, wx.ALL, 8)
+
+        # ---- API key ----
+        key_box = wx.StaticBoxSizer(wx.VERTICAL, self, "Gemini API Key")
+        self.btn_api_key = wx.Button(self, label="Set API &key")
+        self.btn_api_key.SetName("Set or clear API key")
+        self.btn_api_key.Bind(wx.EVT_BUTTON, self.on_api_key_button)
+        key_box.Add(self.btn_api_key, 0, wx.ALL, 6)
+        self.lbl_key_status = wx.StaticText(self, label="")
+        self.lbl_key_status.SetName("API key status")
+        key_box.Add(self.lbl_key_status, 0, wx.LEFT | wx.BOTTOM, 6)
+        vbox.Add(key_box, 0, wx.EXPAND | wx.ALL, 6)
+
+        # ---- Model ----
+        model_box = wx.StaticBoxSizer(wx.VERTICAL, self, "Model")
+        grid = wx.FlexGridSizer(1, 2, 6, 6)
+        grid.AddGrowableCol(1, 1)
+        lbl_model = wx.StaticText(self, label="&Vision model:")
+        self.choice_model = wx.Choice(self, choices=[d for _n, d in self._models])
+        self.choice_model.SetToolTip("The Gemini model used to describe the scene.")
+        self.choice_model.SetName("Vision model")
+        self.choice_model.Bind(wx.EVT_CHOICE, self.on_change)
+        grid.Add(lbl_model, 0, wx.ALIGN_CENTER_VERTICAL)
+        grid.Add(self.choice_model, 1, wx.EXPAND)
+        model_box.Add(grid, 0, wx.EXPAND | wx.ALL, 6)
+        vbox.Add(model_box, 0, wx.EXPAND | wx.ALL, 6)
+
+        # ---- Capture options ----
+        opt_box = wx.StaticBoxSizer(wx.VERTICAL, self, "Capture")
+        self.chk_disable_ui_toggle = wx.CheckBox(
+            self, label="&Disable automatic UI hiding during capture"
+        )
+        self.chk_disable_ui_toggle.SetToolTip(
+            "When unchecked, the game UI is briefly hidden while the screenshot is "
+            "taken so HUD elements don't appear in the description. Check this to "
+            "leave the UI visible (e.g. to have it described)."
+        )
+        self.chk_disable_ui_toggle.SetName("Disable automatic UI hiding")
+        self.chk_disable_ui_toggle.Bind(wx.EVT_CHECKBOX, self.on_change)
+        opt_box.Add(self.chk_disable_ui_toggle, 0, wx.ALL, 6)
+        vbox.Add(opt_box, 0, wx.EXPAND | wx.ALL, 6)
+
+        self.SetSizer(vbox)
+
+        self.load_into_controls(self.cur_cfg)
+
+    # ---- Persistence ----
+
+    def _save(self):
+        """Merge this panel's keys onto a fresh disk read and write the file."""
+        try:
+            cfg = load_config()
+        except Exception:
+            cfg = self.cur_cfg.copy()
+        cfg["ai_describer_model"] = self._selected_model_name()
+        cfg["ai_describer_disable_ui_toggle"] = self.chk_disable_ui_toggle.GetValue()
+        cfg["ai_describer_api_key"] = self.cur_cfg.get("ai_describer_api_key", "")
+        try:
+            _write_config(CONFIG_PATH, cfg)
+            self.cur_cfg = cfg
+        except Exception:
+            pass
+
+    def on_change(self, evt=None):
+        self._save()
+        if evt:
+            evt.Skip()
+
+    def _selected_model_name(self):
+        sel = self.choice_model.GetSelection()
+        if 0 <= sel < len(self._models):
+            return self._models[sel][0]
+        return self._default_model
+
+    def load_into_controls(self, cfg):
+        self.cur_cfg = cfg
+        want = cfg.get("ai_describer_model", self._default_model)
+        idx = 0
+        for i, (name, _disp) in enumerate(self._models):
+            if name == want:
+                idx = i
+                break
+        self.choice_model.SetSelection(idx)
+        self.chk_disable_ui_toggle.SetValue(bool(cfg.get("ai_describer_disable_ui_toggle", False)))
+        self._refresh_key_button()
+
+    def _has_key(self):
+        return bool((self.cur_cfg.get("ai_describer_api_key", "") or "").strip())
+
+    def _refresh_key_button(self):
+        if self._has_key():
+            self.btn_api_key.SetLabel("Clear API &key")
+            self.lbl_key_status.SetLabel("An API key is configured.")
+        else:
+            self.btn_api_key.SetLabel("Set API &key")
+            self.lbl_key_status.SetLabel("No API key configured.")
+        self.Layout()
+
+    # ---- API key button ----
+
+    def on_api_key_button(self, evt):
+        if self._has_key():
+            self._clear_api_key()
+        else:
+            self._set_api_key()
+
+    def _clear_api_key(self):
+        ans = wx.MessageBox(
+            "Remove your stored Gemini API key?",
+            "Clear API Key",
+            wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
+            self,
+        )
+        if ans != wx.YES:
+            return
+        self.cur_cfg["ai_describer_api_key"] = ""
+        self._save()
+        self._refresh_key_button()
+
+    def _set_api_key(self):
+        dlg = wx.TextEntryDialog(
+            self,
+            "Paste your Google Gemini API key:",
+            "Set API Key",
+        )
+        try:
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            key = (dlg.GetValue() or "").strip()
+        finally:
+            dlg.Destroy()
+        if not key:
+            return
+
+        self.btn_api_key.Enable(False)
+        self.lbl_key_status.SetLabel("Validating API key...")
+
+        def worker():
+            from ai_describer import validate_api_key
+
+            ok, err = validate_api_key(key)
+            wx.CallAfter(self._on_validated, key, ok, err)
+
+        import threading
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _on_validated(self, key, ok, err):
+        self.btn_api_key.Enable(True)
+        if ok:
+            self.cur_cfg["ai_describer_api_key"] = key
+            self._save()
+            self._refresh_key_button()
+            wx.MessageBox(
+                "API key validated and saved.",
+                "API Key",
+                wx.OK | wx.ICON_INFORMATION,
+                self,
+            )
+        else:
+            self._refresh_key_button()
+            wx.MessageBox(
+                f"The API key could not be validated:\n\n{err}",
+                "Invalid API Key",
+                wx.OK | wx.ICON_ERROR,
+                self,
+            )

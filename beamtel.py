@@ -9,6 +9,7 @@
 # nuitka-project: --include-data-file=mit_kemar_normal_pinna.sofa=mit_kemar_normal_pinna.sofa
 # nuitka-project: --include-package=h5py
 # nuitka-project: --include-package-data=h5py
+# nuitka-project: --include-package=mss
 # nuitka-project: --standalone
 # nuitka-project: --onefile
 # nuitka-project: --onefile-cache-mode=cached
@@ -132,6 +133,7 @@ DEFAULT_CONFIG = {
     "obstacle_buzz_volume_db": -12.0,
     "obstacle_max_range_m": 20,
     "obstacle_warning_range_m": 15,
+    "road_beep_volume_db": -14.0,
     "launch_beamng": False,
     "announce_turn_signals": True,
     "announce_speed": True,
@@ -139,6 +141,9 @@ DEFAULT_CONFIG = {
     "announce_gear": True,
     "scanner_distance_callout_enabled": False,
     "scanner_distance_callout_interval": 10,
+    "ai_describer_api_key": "",
+    "ai_describer_model": "models/gemini-3-flash-preview",
+    "ai_describer_disable_ui_toggle": False,
 }
 
 # =========================
@@ -624,28 +629,48 @@ def obstacle_listener(audio_controller, stop_event):
                     continue
 
                 if text == "0":
-                    audio_controller.clear_obstacles()
+                    audio_controller.update_static_obstacles([])
                     terrain_announced[2] = False
                     terrain_announced[3] = False
                     continue
 
                 parts = text.split(",")
-                if len(parts) == 4:
-                    pkt_type = int(parts[0])
+                if not parts:
+                    continue
+
+                pkt_type = int(parts[0])
+
+                if pkt_type == 1:
+                    # Static-obstacle packet: "1,n,b1,u1,d1,b2,u2,d2,...,bn,un,dn"
+                    if len(parts) < 2:
+                        continue
+                    n = int(parts[1])
+                    obstacles = []
+                    for i in range(n):
+                        base = 2 + i * 3
+                        if base + 2 >= len(parts):
+                            break
+                        bearing = float(parts[base])
+                        urgency = int(parts[base + 1])
+                        distance = float(parts[base + 2])
+                        obstacles.append((bearing, urgency, distance))
+                    audio_controller.update_static_obstacles(obstacles)
+
+                elif pkt_type in (2, 3) and len(parts) == 4:
                     bearing = float(parts[1])
                     urgency = int(parts[2])
                     distance = float(parts[3])
-
                     audio_controller.update_obstacle(
                         pkt_type, bearing, urgency, distance
                     )
-
                     if pkt_type == 2 and not terrain_announced[2]:
                         say("Drop-off ahead", exclude_from_buffer=True)
                         terrain_announced[2] = True
+                        terrain_announced[3] = False
                     elif pkt_type == 3 and not terrain_announced[3]:
                         say("Steep hill ahead", exclude_from_buffer=True)
                         terrain_announced[3] = True
+                        terrain_announced[2] = False
 
             except socket.timeout:
                 continue
@@ -659,6 +684,72 @@ def obstacle_listener(audio_controller, stop_event):
         except Exception:
             pass
         logger.info("Obstacle detector listener stopped.")
+
+
+def road_listener(audio_controller, stop_event):
+    """Listens for UDP packets from roadDetector.lua. Drives the off-road guidance beep."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", ROAD_LISTEN_PORT))
+        sock.settimeout(0.2)
+        logger.info(f"Road detector listener started on port {ROAD_LISTEN_PORT}")
+
+        first_packet = True
+        last_state = None  # "DORMANT" / "ON_ROAD" / "OFF_ROAD"
+
+        while not stop_event.is_set():
+            try:
+                data, addr = sock.recvfrom(1024)
+                if first_packet:
+                    logger.info(
+                        f"First UDP packet received from road detector (source: {addr})"
+                    )
+                    first_packet = False
+
+                text = data.decode("utf-8", errors="ignore").strip()
+                if not text:
+                    continue
+
+                if text == "DORMANT":
+                    audio_controller.update_road_state(on_road=True, bearing=0.0, distance=0.0)
+                    if last_state != "DORMANT":
+                        say("No roads detected on this map", exclude_from_buffer=True)
+                        last_state = "DORMANT"
+                elif text.startswith("ON_ROAD"):
+                    parts = text.split(",")
+                    audio_controller.update_road_state(on_road=True, bearing=0.0, distance=0.0)
+                    if len(parts) >= 3:
+                        try:
+                            b_first = float(parts[1])
+                            b_second = float(parts[2])
+                            audio_controller.trigger_road_orientation_chime(b_first, b_second)
+                        except ValueError:
+                            pass
+                    last_state = "ON_ROAD"
+                elif text.startswith("OFF_ROAD"):
+                    parts = text.split(",")
+                    if len(parts) >= 3:
+                        try:
+                            bearing = float(parts[1])
+                            distance = float(parts[2])
+                            audio_controller.update_road_state(
+                                on_road=False, bearing=bearing, distance=distance
+                            )
+                            last_state = "OFF_ROAD"
+                        except ValueError:
+                            pass
+            except socket.timeout:
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Road listener socket error.")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+        logger.info("Road detector listener stopped.")
 
 
 def camera_listener(audio_controller, stop_event):
@@ -1094,6 +1185,9 @@ announce_turn_signals = True
 announce_speed = True
 speed_announce_interval = 25
 announce_gear = True
+ai_describer_api_key = ""
+ai_describer_model = "models/gemini-3-flash-preview"
+ai_describer_disable_ui_toggle = False
 MPH_PER_MS = 2.2369362920544
 KMH_PER_MS = 3.6
 PSI_PER_BAR = 14.503773773
@@ -1333,6 +1427,7 @@ pedal_tones_active = False
 scan_mode_active = False
 coupler_dist_mode = False
 obstacle_mode_active = False
+road_mode_active = False
 _command_context = False  # True only while processing an F9/F10 command keystroke
 
 # NEW: Heading Guidance State
@@ -1478,6 +1573,7 @@ _F9_HELP = {
         False,
     ): "Align to trailer coupler, start coupler tracking, and start attach monitor",
     ("o", True, False, False): "Toggle obstacle detection",
+    ("r", True, False, False): "Toggle road detection",
     ("tab", False, False, False): "Next scanner target",
     ("tab", False, True, False): "Previous scanner target",
     ("tab", True, False, False): "Closest scanner target",
@@ -1518,7 +1614,7 @@ _F10_HELP = {
     ("=", False, False, False): "Increase speed limit",
     ("-", False, False, False): "Decrease speed limit",
     ("0", False, False, False): "Clear speed limit",
-    ("space", False, False, False): "Read AI status summary",
+    ("space", False, False, False): "Describe scene (AI)",
 }
 # Aggression keys 1-9 (unmodified)
 for _k, _v in [
@@ -1887,6 +1983,9 @@ CLICKSPOT_LISTEN_PORT = (
     4456  # UDP port to receive clickspot data from clickspotAccessible.lua
 )
 CLICKSPOT_CMD_PORT = 4457  # UDP port to send commands to clickspotAccessible.lua
+ROAD_LISTEN_PORT = 4462  # UDP port to receive road status from roadDetector.lua
+ROAD_CMD_PORT = 4463  # UDP port to send commands to roadDetector.lua
+UI_TOGGLE_CMD_PORT = 4464  # UDP port to send HIDE/SHOW/TOGGLE commands to uiToggle.lua
 
 # AI Control State
 ai_speed_limit_ms = None  # current speed limit in m/s, None = off
@@ -1957,6 +2056,26 @@ def toggle_obstacle_mode(audio_controller):
 
     say(
         f"Obstacle detection {'on' if obstacle_mode_active else 'off'}",
+        exclude_from_buffer=True,
+    )
+
+
+def toggle_road_mode(audio_controller):
+    global road_mode_active
+    road_mode_active = not road_mode_active
+
+    command = "ON" if road_mode_active else "OFF"
+    try:
+        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        cmd_sock.sendto(command.encode("utf-8"), ("127.0.0.1", ROAD_CMD_PORT))
+        cmd_sock.close()
+    except Exception as e:
+        logger.error(f"Failed to send road detector command via UDP: {e}")
+
+    audio_controller.set_road_mode(road_mode_active)
+
+    say(
+        f"Road detection {'on' if road_mode_active else 'off'}",
         exclude_from_buffer=True,
     )
 
@@ -2314,13 +2433,15 @@ def _on_next_key_press(event, audio_controller):
         return
     if name == "s" and not _capture_mods["ctrl"]:
         say(f"{spd_val} {spd_unit}")
-    elif name == "r" and _capture_mods["shift"]:
+    elif name == "r" and _capture_mods["shift"] and not _capture_mods["ctrl"]:
         say(
             f"Redline {int(round(rpm_max_snap))} RPM"
             if protocol_mode == "extended"
             else "Unavailable"
         )
-    elif name == "r":
+    elif name == "r" and _capture_mods["ctrl"] and not (_capture_mods["shift"] or _capture_mods["alt"]):
+        toggle_road_mode(audio_controller)
+    elif name == "r" and not (_capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]):
         say(f"{rpm} rpm")
     elif name == "h" and _capture_mods["ctrl"]:
         global heading_guidance_active, heading_guidance_target
@@ -2878,6 +2999,100 @@ def _send_slot_command(cmd):
         sock.close()
     except Exception as e:
         logger.error(f"Failed to send slot command via UDP: {e}")
+
+
+def _send_ui_command(cmd):
+    """Send a HIDE/SHOW/TOGGLE command to the uiToggle.lua GE extension."""
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.sendto(cmd.encode("utf-8"), ("127.0.0.1", UI_TOGGLE_CMD_PORT))
+        sock.close()
+    except Exception as e:
+        logger.error(f"Failed to send UI toggle command via UDP: {e}")
+
+
+# =========================
+#  AI Describer (F10 + Space)
+# =========================
+_describer_lock = threading.Lock()
+_describer_busy = False
+
+
+def _ai_describe_worker(audio_controller):
+    """Background worker: hide the UI, screenshot, send to Gemini, speak the result.
+
+    Runs on a daemon thread so the keyboard hook returns immediately.
+    """
+    import ai_describer
+
+    global _describer_busy
+    try:
+        api_key = ai_describer_api_key
+        model = ai_describer_model
+        toggle_ui = not ai_describer_disable_ui_toggle
+
+        if not (api_key or "").strip():
+            msg = "No API key set. Configure it in the AI Describer tab."
+            ai_describer.log_error(msg)
+            say(msg)
+            return
+
+        # Capture the scene, hiding the game UI around the grab so HUD/menu
+        # elements don't pollute what the model sees. The UI is always restored.
+        png = None
+        capture_err = None
+        try:
+            if toggle_ui:
+                _send_ui_command("HIDE")
+                time.sleep(0.2)  # let the game render a UI-free frame
+            png = ai_describer.capture_primary_monitor()
+        except Exception as e:
+            capture_err = f"Screenshot failed: {e}"
+        finally:
+            if toggle_ui:
+                _send_ui_command("SHOW")
+
+        if png is None:
+            ai_describer.log_error(capture_err or "Screenshot failed.")
+            say(capture_err or "Screenshot failed.")
+            return
+
+        say("Description in progress.", exclude_from_buffer=True)
+        text, err = ai_describer.describe_image(png, model, api_key, timeout=60)
+        if text:
+            ai_describer.log_description(text)
+            say(text)
+        else:
+            err = err or "Description failed."
+            ai_describer.log_error(err)
+            say(f"Description failed. {err}")
+    except Exception as e:
+        try:
+            ai_describer.log_error(f"Unexpected error: {e}")
+        except Exception:
+            pass
+        say("Description failed.")
+    finally:
+        with _describer_lock:
+            _describer_busy = False
+
+
+def _trigger_ai_describe(audio_controller):
+    """Kick off an AI scene description, guarding against overlapping requests.
+
+    A double-press while a request is in flight plays a low FM error buzz and is
+    otherwise ignored (no speech), per design.
+    """
+    global _describer_busy
+    with _describer_lock:
+        if _describer_busy:
+            if audio_controller is not None:
+                audio_controller.trigger_describe_error_buzz()
+            return
+        _describer_busy = True
+    threading.Thread(
+        target=_ai_describe_worker, args=(audio_controller,), daemon=True
+    ).start()
 
 
 def _record_ai_command(vid, mode, target_id=None):
@@ -3494,8 +3709,11 @@ def _on_ai_key_press(event):
         )
         _send_ai_command(f"LANE:{'on' if ai_lane_driving else 'off'}")
     elif name == "space":
-        _send_ai_command("STATUS_ALL")
-        return  # layer stays open; response arrives async via scanner_listener
+        # Close the AI layer and kick off an AI scene description. The pipeline
+        # runs on its own daemon thread so this hook returns immediately.
+        _clear_ai_hook(speak_exit=False)
+        _trigger_ai_describe(audio_controller_ref)
+        return
     else:
         _clear_ai_hook(speak_exit=False)
         return
@@ -4211,12 +4429,14 @@ class BeamTelFrame(wx.Frame):
         # ---- Configuration tab ----
         from config_ui import (
             ConfigPanel,
+            AIDescriberPanel,
             wrap_nav_key,
             _focusable_leaves,
             install_mod_interactive,
         )
 
         config_panel = ConfigPanel(notebook)
+        describer_panel = AIDescriberPanel(notebook)
 
         main_panel.Bind(
             wx.EVT_NAVIGATION_KEY, lambda evt: wrap_nav_key(evt, main_panel)
@@ -4224,6 +4444,7 @@ class BeamTelFrame(wx.Frame):
 
         notebook.AddPage(main_panel, "&Main")
         notebook.AddPage(config_panel, "&Configuration")
+        notebook.AddPage(describer_panel, "&AI Describer")
 
         self._notebook = notebook
         self._focusable_leaves = _focusable_leaves
@@ -4322,6 +4543,7 @@ def _apply_live_config(audio_controller):
         compass_click_interval_deg
     global announce_turn_signals, announce_speed, speed_announce_interval, announce_gear
     global scanner_distance_callout_enabled, scanner_distance_callout_interval
+    global ai_describer_api_key, ai_describer_model, ai_describer_disable_ui_toggle
     try:
         cfg = load_config()
     except Exception as e:
@@ -4340,6 +4562,9 @@ def _apply_live_config(audio_controller):
         announce_gear = cfg.get("announce_gear", True)
         scanner_distance_callout_enabled = cfg.get("scanner_distance_callout_enabled", False)
         scanner_distance_callout_interval = cfg.get("scanner_distance_callout_interval", 10)
+        ai_describer_api_key = cfg.get("ai_describer_api_key", "")
+        ai_describer_model = cfg.get("ai_describer_model", "models/gemini-3-flash-preview")
+        ai_describer_disable_ui_toggle = cfg.get("ai_describer_disable_ui_toggle", False)
     if audio_controller is not None:
         audio_controller.apply_config(cfg)
     logger.info("Configuration reloaded.")
@@ -4454,6 +4679,11 @@ def _run_engine():
         target=obstacle_listener, args=(audio_controller, STOP), daemon=True
     )
     obstacle_thread.start()
+
+    road_thread = threading.Thread(
+        target=road_listener, args=(audio_controller, STOP), daemon=True
+    )
+    road_thread.start()
 
     camera_thread = threading.Thread(
         target=camera_listener, args=(audio_controller, STOP), daemon=True

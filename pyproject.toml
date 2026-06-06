@@ -11,6 +11,7 @@ dependencies = [
     "h5py>=3.8.0",
     "keyboard>=0.13.5",
     "mouse>=0.7.1",
+    "mss>=9.0.1",
     "numpy>=2.3.3",
     "ordered-set>=4.1.0",
     "sounddevice>=0.5.2",
