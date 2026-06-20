@@ -141,6 +141,9 @@ DEFAULT_CONFIG = {
     "announce_gear": True,
     "scanner_distance_callout_enabled": False,
     "scanner_distance_callout_interval": 10,
+    "scanner_steer_tone_enabled": True,
+    "scanner_base_freq_hz": 1000.0,
+    "scanner_pitch_offset_oct": 1.0,
     "ai_describer_api_key": "",
     "ai_describer_model": "models/gemini-3-flash-preview",
     "ai_describer_disable_ui_toggle": False,
@@ -1986,6 +1989,80 @@ CLICKSPOT_CMD_PORT = 4457  # UDP port to send commands to clickspotAccessible.lu
 ROAD_LISTEN_PORT = 4462  # UDP port to receive road status from roadDetector.lua
 ROAD_CMD_PORT = 4463  # UDP port to send commands to roadDetector.lua
 UI_TOGGLE_CMD_PORT = 4464  # UDP port to send HIDE/SHOW/TOGGLE commands to uiToggle.lua
+CONSOLE_CMD_PORT = 4465  # UDP port to send EXEC/CTXLIST/LOGON/LOGOFF to consoleAccessible.lua
+CONSOLE_RESP_PORT = (
+    4466  # UDP port to receive console responses/log stream from consoleAccessible.lua
+)
+CONSOLE_HISTORY_PATH = os.path.join(CONFIG_DIR, "console_history.json")
+CONSOLE_HISTORY_MAX = 50  # cap on persisted accessible-console command history
+
+# Reference to the GUI frame, set by BeamTelFrame once it is constructed, so the
+# console_listener thread can marshal incoming messages onto the wx controls.
+console_frame = None
+
+
+def _load_console_history():
+    """Load persisted accessible-console command history (most recent last)."""
+    try:
+        with open(CONSOLE_HISTORY_PATH, encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            return [str(x) for x in data][-CONSOLE_HISTORY_MAX:]
+    except Exception:
+        pass
+    return []
+
+
+def _save_console_history(history):
+    """Persist accessible-console command history to disk."""
+    try:
+        with open(CONSOLE_HISTORY_PATH, "w", encoding="utf-8") as f:
+            json.dump(history[-CONSOLE_HISTORY_MAX:], f)
+    except Exception as e:
+        logger.error(f"Failed to save console history: {e}")
+
+
+def send_console_command(msg):
+    """Send a single command datagram to consoleAccessible.lua on the GE side."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.sendto(msg.encode("utf-8"), ("127.0.0.1", CONSOLE_CMD_PORT))
+        s.close()
+    except Exception as e:
+        logger.error(f"Failed to send console command via UDP: {e}")
+
+
+def console_listener(stop_event):
+    """Receive responses / context list / log stream from consoleAccessible.lua.
+
+    Each UDP datagram is one record (RESP|, OUT|, LOG|, CTX|, CTXEND, EXECEND).
+    Records are handed to the GUI via wx.CallAfter so all control updates run on
+    the wx main thread.
+    """
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # A single large dump is chunked into many datagrams arriving in a burst; enlarge the
+        # receive buffer so the kernel doesn't drop them before this thread drains them.
+        try:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1 << 20)
+        except OSError:
+            pass
+        sock.bind(("127.0.0.1", CONSOLE_RESP_PORT))
+        sock.settimeout(0.2)
+        logger.info(f"Console listener started on port {CONSOLE_RESP_PORT}")
+        while not stop_event.is_set():
+            try:
+                data, _addr = sock.recvfrom(8192)
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            text = data.decode("utf-8", errors="replace")
+            frame = console_frame
+            if frame is not None:
+                wx.CallAfter(frame.on_console_message, text)
+    finally:
+        sock.close()
 
 # AI Control State
 ai_speed_limit_ms = None  # current speed limit in m/s, None = off
@@ -4379,6 +4456,18 @@ class BeamTelFrame(wx.Frame):
         self.SetMinSize((600, 500))
         self._engine_thread = None
 
+        # Accessible-console state
+        self._console_history = _load_console_history()
+        self._console_history_pos = len(self._console_history)  # one past the end
+        self._console_search_prefix = None  # locked prefix during history navigation
+        self._console_ctx_indices = []  # context index per wx.Choice item
+        self._console_ctx_pending = []  # accumulates CTX lines until CTXEND
+        self._console_lines = []  # full output backlog (filter shows a subset)
+        self._console_cmd_lines = None  # per-command output capture (None = idle)
+
+        global console_frame
+        console_frame = self
+
         notebook = wx.Notebook(self)
         notebook.SetName("BEAM Tabs")
 
@@ -4407,6 +4496,11 @@ class BeamTelFrame(wx.Frame):
         for b in (btn_app_log, btn_speech_log, btn_dom_log):
             log_btn_sizer.Add(b, 0, wx.RIGHT, 5)
         main_sizer.Add(log_btn_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 5)
+
+        # Accessible developer console (created here so its controls fall between the
+        # log buttons and the bottom buttons in keyboard tab order).
+        console_sizer = self._build_console_section(main_panel)
+        main_sizer.Add(console_sizer, 2, wx.EXPAND | wx.ALL, 5)
 
         # Bottom button row
         bottom_btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -4519,6 +4613,262 @@ class BeamTelFrame(wx.Frame):
         else:  # Shift+Tab → last control in page
             leaves[-1].SetFocus()
 
+    # ---- Accessible developer console ----
+
+    def _build_console_section(self, parent):
+        """Build the accessible developer-console controls; returns a sizer.
+
+        Controls are parented to ``parent`` (the Main-tab panel) so the existing
+        _focusable_leaves tab-order walk picks them up automatically.
+        """
+        box = wx.StaticBoxSizer(wx.VERTICAL, parent, "Developer Console")
+
+        # Context (sandbox) selector
+        ctx_row = wx.BoxSizer(wx.HORIZONTAL)
+        ctx_label = wx.StaticText(parent, label="Conte&xt:")
+        self.console_ctx_choice = wx.Choice(
+            parent, choices=["GE - Lua", "GE - TorqueScript", "CEF/UI - JS"]
+        )
+        self.console_ctx_choice.SetName("Console Context")
+        self.console_ctx_choice.SetSelection(0)
+        self._console_ctx_indices = [0, 1, 2]
+        btn_refresh = wx.Button(parent, label="&Refresh Contexts")
+        btn_refresh.SetName("Refresh Console Contexts")
+        ctx_row.Add(ctx_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 5)
+        ctx_row.Add(self.console_ctx_choice, 1, wx.RIGHT, 5)
+        ctx_row.Add(btn_refresh, 0)
+        box.Add(ctx_row, 0, wx.EXPAND | wx.ALL, 3)
+
+        # Command input
+        cmd_row = wx.BoxSizer(wx.HORIZONTAL)
+        cmd_label = wx.StaticText(parent, label="&Command:")
+        self.console_input = wx.TextCtrl(parent, style=wx.TE_PROCESS_ENTER)
+        self.console_input.SetName("Console Command")
+        btn_run = wx.Button(parent, label="R&un")
+        btn_run.SetName("Run Console Command")
+        cmd_row.Add(cmd_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 5)
+        cmd_row.Add(self.console_input, 1, wx.RIGHT, 5)
+        cmd_row.Add(btn_run, 0)
+        box.Add(cmd_row, 0, wx.EXPAND | wx.ALL, 3)
+
+        # Output (review with the screen reader's own reading keys)
+        self.console_output = wx.TextCtrl(
+            parent,
+            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2 | wx.TE_DONTWRAP,
+        )
+        self.console_output.SetName("Console Output")
+        box.Add(self.console_output, 1, wx.EXPAND | wx.ALL, 3)
+
+        # Output filter (applies to all output) + stream toggle + clear
+        filt_row = wx.BoxSizer(wx.HORIZONTAL)
+        filt_label = wx.StaticText(parent, label="&Filter:")
+        self.console_filter = wx.TextCtrl(parent)
+        self.console_filter.SetName("Filter")
+        self.console_log_check = wx.CheckBox(parent, label="Stream game lo&g")
+        self.console_log_check.SetName("Stream Game Log")
+        btn_clear = wx.Button(parent, label="C&lear Output")
+        btn_clear.SetName("Clear Console Output")
+        filt_row.Add(filt_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 5)
+        filt_row.Add(self.console_filter, 1, wx.RIGHT, 5)
+        filt_row.Add(self.console_log_check, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 5)
+        filt_row.Add(btn_clear, 0)
+        box.Add(filt_row, 0, wx.EXPAND | wx.ALL, 3)
+
+        # Events
+        self.console_input.Bind(wx.EVT_TEXT_ENTER, self._on_console_run)
+        self.console_input.Bind(wx.EVT_KEY_DOWN, self._on_console_input_key)
+        btn_run.Bind(wx.EVT_BUTTON, self._on_console_run)
+        btn_refresh.Bind(
+            wx.EVT_BUTTON, lambda evt: send_console_command("CTXLIST")
+        )
+        btn_clear.Bind(wx.EVT_BUTTON, self._on_console_clear)
+        self.console_filter.Bind(wx.EVT_TEXT, self._on_console_filter_changed)
+        self.console_log_check.Bind(wx.EVT_CHECKBOX, self._on_console_log_toggle)
+
+        return box
+
+    def _console_matches_filter(self, line):
+        """True if `line` should be visible under the current Filter substring."""
+        filt = self.console_filter.GetValue().strip().lower()
+        return not filt or filt in line.lower()
+
+    def _console_append(self, line):
+        """Record a line in the backlog and show it if it matches the Filter."""
+        line = line.rstrip("\n")
+        self._console_lines.append(line)
+        if self._console_matches_filter(line):
+            self.console_output.AppendText(line + "\n")
+
+    def _console_rerender(self):
+        """Rebuild the output control from the backlog under the current Filter."""
+        visible = [
+            ln for ln in self._console_lines if self._console_matches_filter(ln)
+        ]
+        # SetValue in one shot (AppendText per line is slow for large backlogs).
+        self.console_output.SetValue("\n".join(visible) + ("\n" if visible else ""))
+        self.console_output.SetInsertionPointEnd()
+
+    def _on_console_filter_changed(self, evt):
+        self._console_rerender()
+
+    def _on_console_clear(self, evt):
+        self._console_lines = []
+        self.console_output.SetValue("")
+
+    def _on_console_run(self, evt):
+        cmd = self.console_input.GetValue().strip()
+        if not cmd:
+            return
+        sel = self.console_ctx_choice.GetSelection()
+        if sel == wx.NOT_FOUND:
+            sel = 0
+        ctx_index = (
+            self._console_ctx_indices[sel]
+            if sel < len(self._console_ctx_indices)
+            else 0
+        )
+        ctx_label = self.console_ctx_choice.GetString(sel)
+
+        # Command history (skip consecutive duplicates), persisted to disk.
+        if not self._console_history or self._console_history[-1] != cmd:
+            self._console_history.append(cmd)
+            self._console_history = self._console_history[-CONSOLE_HISTORY_MAX:]
+            _save_console_history(self._console_history)
+        self._console_history_pos = len(self._console_history)
+        self._console_search_prefix = None  # end any prefix-search session
+
+        self._console_append(f"[{ctx_label}] > {cmd}")
+        send_console_command(f"EXEC|{ctx_index}|{cmd}")
+        self.console_input.SetValue("")
+        self.console_input.SetFocus()
+
+    def _on_console_input_key(self, evt):
+        """Up/Down history recall with optional prefix search (this control only).
+
+        Whatever is in the field when navigation begins is locked as a search prefix:
+        Up then walks back through only those history entries that start with it (and
+        recalls nothing on a failed match). An empty field locks an empty prefix, which
+        matches everything -- i.e. the plain history walk. Pressing any other key ends
+        the session so the next Up re-captures the current text as a fresh prefix.
+        """
+        key = evt.GetKeyCode()
+        if key not in (wx.WXK_UP, wx.WXK_DOWN):
+            self._console_search_prefix = None
+            evt.Skip()
+            return
+
+        if not self._console_history:
+            return
+
+        # Begin a navigation session: lock the current field text as the prefix.
+        if self._console_search_prefix is None:
+            self._console_search_prefix = self.console_input.GetValue()
+            self._console_history_pos = len(self._console_history)
+        prefix = self._console_search_prefix
+
+        if key == wx.WXK_UP:
+            idx = self._console_history_pos - 1
+            while idx >= 0:
+                if self._console_history[idx].startswith(prefix):
+                    self._console_history_pos = idx
+                    self.console_input.ChangeValue(self._console_history[idx])
+                    self.console_input.SetInsertionPointEnd()
+                    return
+                idx -= 1
+            # No older match: leave the field unchanged.
+            return
+
+        # WXK_DOWN -- search toward newer entries for the next prefix match.
+        idx = self._console_history_pos + 1
+        while idx < len(self._console_history):
+            if self._console_history[idx].startswith(prefix):
+                self._console_history_pos = idx
+                self.console_input.ChangeValue(self._console_history[idx])
+                self.console_input.SetInsertionPointEnd()
+                return
+            idx += 1
+        # Past the newest match: restore the originally typed prefix and end the session.
+        self._console_history_pos = len(self._console_history)
+        self.console_input.ChangeValue(prefix)
+        self.console_input.SetInsertionPointEnd()
+
+    def _on_console_log_toggle(self, evt):
+        send_console_command("LOGON" if self.console_log_check.GetValue() else "LOGOFF")
+
+    def _rebuild_context_choice(self):
+        """Replace the context dropdown contents from accumulated CTX lines."""
+        if not self._console_ctx_pending:
+            return
+        prev_idx = None
+        sel = self.console_ctx_choice.GetSelection()
+        if sel != wx.NOT_FOUND and sel < len(self._console_ctx_indices):
+            prev_idx = self._console_ctx_indices[sel]
+        labels = [lbl for (_i, lbl) in self._console_ctx_pending]
+        indices = [i for (i, _lbl) in self._console_ctx_pending]
+        self.console_ctx_choice.Set(labels)
+        self._console_ctx_indices = indices
+        new_sel = 0
+        if prev_idx is not None and prev_idx in indices:
+            new_sel = indices.index(prev_idx)
+        self.console_ctx_choice.SetSelection(new_sel)
+        self._console_ctx_pending = []
+
+    def on_console_message(self, text):
+        """Handle one record from consoleAccessible.lua (runs on the wx thread)."""
+        parts = text.split("|")
+        tag = parts[0]
+        if tag == "CTX":
+            if len(parts) >= 3:
+                try:
+                    idx = int(parts[1])
+                except ValueError:
+                    return
+                self._console_ctx_pending.append((idx, "|".join(parts[2:])))
+            return
+        if tag == "CTXEND":
+            self._rebuild_context_choice()
+            return
+        if tag == "RESP":
+            status = parts[1] if len(parts) > 1 else ""
+            body = "|".join(parts[2:]) if len(parts) > 2 else ""
+            # A RESP marks the start of one command's response; begin capturing its
+            # output so a single-line result can be spoken on EXECEND. Log-stream lines
+            # arrive outside this window and are never captured/spoken.
+            self._console_cmd_lines = []
+            if status == "error":
+                self._console_append(f"  error: {body}")
+                self._console_cmd_lines.append(f"error: {body}" if body else "error")
+            elif status == "ok":
+                if body:
+                    self._console_append(f"  = {body}")
+                    self._console_cmd_lines.append(body)
+            elif status == "queued":
+                self._console_append("  (queued)")
+                self._console_cmd_lines.append("queued")
+            return
+        if tag == "OUT":
+            content = "|".join(parts[1:])
+            self._console_append("  " + content)
+            if self._console_cmd_lines is not None:
+                spoken = content[2:] if content.startswith("= ") else content
+                self._console_cmd_lines.append(spoken)
+            return
+        if tag == "EXECEND":
+            # Speak the result only if the whole command produced exactly one line.
+            if self._console_cmd_lines is not None:
+                lines = [ln for ln in self._console_cmd_lines if ln.strip()]
+                if len(lines) == 1:
+                    say(lines[0].strip())
+                self._console_cmd_lines = None
+            return
+        if tag == "LOG":
+            if len(parts) >= 5:
+                lvl, origin, msg = parts[2], parts[3], "|".join(parts[4:])
+            else:
+                lvl, origin, msg = "", "", "|".join(parts[1:])
+            self._console_append(f"  [{lvl} {origin}] {msg}")
+            return
+
     # ---- Shutdown ----
 
     def _on_close(self, evt):
@@ -4617,7 +4967,9 @@ def _run_engine():
 
     _ws_thread, _ws_stop = None, lambda: None
     try:
-        _ws_thread, _ws_stop = start_server_in_thread(lambda text: say(text, True))
+        _ws_thread, _ws_stop = start_server_in_thread(
+            lambda text, interrupt=True: say(text, interrupt)
+        )
     except Exception as _e:
         logger.error(f"Failed to start NVDA WS/HTTP bridge: {_e}")
 
@@ -4704,6 +5056,13 @@ def _run_engine():
     slot_thread.start()
     # Request initial slot list from Lua once the thread is running.
     threading.Timer(2.0, lambda: _send_slot_command("SLOT_STATUS")).start()
+
+    console_thread = threading.Thread(
+        target=console_listener, args=(STOP,), daemon=True
+    )
+    console_thread.start()
+    # Request the initial context list from Lua once the listener is bound.
+    threading.Timer(2.0, lambda: send_console_command("CTXLIST")).start()
 
     try:
         import vehicle_spawner as _vs_module

@@ -18,6 +18,11 @@ except ImportError:
     AUDIO_OK = False
     logging.warning("sounddevice unavailable – 'pip install sounddevice' to enable audio cues.")
 
+try:
+    from scanner_hrtf_diag import ScannerHRTFDiagnostic
+except Exception:
+    ScannerHRTFDiagnostic = None
+
 DEFAULT_SR = 48000
 
 # =========================
@@ -60,10 +65,38 @@ SCANNER_MAX_RATE_HZ = 10.0     # Beeps per second at close range
 SCANNER_MIN_RATE_HZ = 0.5      # Beeps per second at long range
 SCANNER_HALF_DIST_BASE_M = 20.0  # Half-distance at standstill (meters)
 SCANNER_HALF_DIST_PER_MS = 3.0   # Additional half-distance per m/s of vehicle speed
-SCANNER_PITCH_BASE = 0.8       # Pitch multiplier for a target directly behind (-180 deg)
-SCANNER_PITCH_RANGE = 1.2      # Pitch variation (Base + Range = max pitch at 0 deg)
-SCANNER_BEEP_FREQ_HZ = 1000.0  # Base frequency of the beep sound
-SCANNER_ALIGN_THRESHOLD_DEG = 1.5  # Bearing threshold for alignment tone
+SCANNER_BEEP_FREQ_HZ = 1000.0  # Intrinsic render frequency of the beep waveform (pitch reference)
+SCANNER_ALIGN_THRESHOLD_DEG = 1.5  # Bearing threshold for alignment tone (bright waveform)
+# Scanner pitch model: frequency = base_freq * 2^(offset_oct * proximity), where proximity is 1 at
+# dead-center and 0 directly behind. base_freq and offset_oct are user-configurable (see apply_config).
+# proximity blends a broad linear ramp (back->front) with a sharp alignment term so the pitch climbs
+# continuously AND emphasises dead-center. The decay must be wide enough that the climb is trackable
+# across a usable band — a narrow spike is only sampled when a beep fires within ~1deg of center.
+SCANNER_ALIGN_PITCH_DECAY_DEG = 6.0  # Decay constant of the sharp alignment term (~15deg usable band)
+SCANNER_ALIGN_WEIGHT = 0.5           # Share of the pitch rise from the sharp alignment term vs broad ramp
+SCANNER_BASE_FREQ_DEFAULT = 1000.0   # Default base (resting) frequency, Hz
+SCANNER_OFFSET_OCT_DEFAULT = 1.0     # Default max pitch rise at alignment, octaves
+SCANNER_OFFSET_OCT_MIN = 0.5         # Minimum allowed offset (half an octave above base)
+SCANNER_OFFSET_OCT_MAX = 2.0         # Maximum allowed offset (two octaves above base)
+# Beep rate is driven by CLOSING speed (rate of change of distance), not raw speed, so heading away
+# from the target slows the beeps. Half-distance grows when approaching and shrinks when receding;
+# clamped to a positive minimum so the exp() denominator stays valid.
+SCANNER_HALF_DIST_MIN_M = 4.0
+SCANNER_CLOSING_SMOOTH = 0.25  # EMA factor for closing-speed estimate (per scanner packet)
+SCANNER_CLOSING_MAX_MS = 60.0  # Clamp implausible distance jumps (e.g. on target switch)
+# Beep rate is driven by CLOSING speed (rate of change of distance), not raw speed, so heading away
+# from the target slows the beeps. Half-distance grows when approaching and shrinks when receding;
+# clamped to a positive minimum so the exp() denominator stays valid.
+SCANNER_HALF_DIST_MIN_M = 4.0
+SCANNER_CLOSING_SMOOTH = 0.25  # EMA factor for closing-speed estimate (per scanner packet)
+SCANNER_CLOSING_MAX_MS = 60.0  # Clamp implausible distance jumps (e.g. on target switch)
+# Steering-locked steady tone: while the player is steering (non-zero input), the beep train morphs
+# into a continuous HRTF-positioned tone so the target's direction can be locked in even when beeps
+# are slow (far away). Returns to normal beeps as steering re-centers.
+SCANNER_STEER_TONE_DEADZONE = 0.04  # |steer| below this => pure beeps
+SCANNER_STEER_TONE_FULL     = 0.45  # |steer| at/above this => fully steady tone
+SCANNER_TONE_LEVEL_SMOOTH   = 0.12  # per-block one-pole smoothing of the morph level (click-free)
+SCANNER_TONE_AMP            = 0.12  # peak amplitude of the steady tone
 
 # Coupler Tracking Constants
 COUPLER_TONE_FREQ_HZ = 660.0      # Base frequency (E5, distinct from scanner/obstacle)
@@ -217,6 +250,11 @@ class AudioController:
         self.CLICKSPOT_BEEP_REV_WAVEFORM = None  # Clickspot hover beep (reverse/leaving)
         self.DESCRIBE_ERROR_WAVEFORM = None      # Low FM buzz: AI describer double-press
 
+        # Scanner/HRTF correlation diagnostic (no-op unless BEAM_SCANNER_DIAG is set)
+        self._scanner_diag = (
+            ScannerHRTFDiagnostic(self.logger) if ScannerHRTFDiagnostic is not None else None
+        )
+
         # HRTF State
         self._hrtf = None
         self._click_conv_L = None
@@ -301,6 +339,19 @@ class AudioController:
         self._scanner_beep_timer = 0.0
         self._scanner_overlap_L = None
         self._scanner_overlap_R = None
+        # Closing-speed estimate (positive = approaching) from successive distance samples
+        self._scan_closing_ms = 0.0
+        self._scan_prev_dist = None
+        self._scan_prev_dist_t = 0.0
+        # Scanner pitch / steady-tone config (overwritten by apply_config)
+        self._scan_base_freq = SCANNER_BASE_FREQ_DEFAULT
+        self._scan_offset_oct = SCANNER_OFFSET_OCT_DEFAULT
+        self._scan_steer_tone_enabled = True
+        # Steering-locked steady tone state
+        self._scan_tone_level = 0.0     # smoothed morph factor 0..1 (0=beeps, 1=steady tone)
+        self._scan_tone_phase = 0.0     # continuous oscillator phase, cycles
+        self._scan_tone_overlap_L = None
+        self._scan_tone_overlap_R = None
 
         # Coupler Tracking State
         self._coupler_active = False
@@ -420,7 +471,24 @@ class AudioController:
     def update_scanner_target(self, bearing, distance):
         with self.lock:
             self._scanner_target_bearing = float(bearing)
-            self._scanner_target_distance = float(distance)
+            distance = float(distance)
+            self._scanner_target_distance = distance
+
+            # Estimate closing speed (positive = approaching) from the change in distance.
+            # This captures actual direction of travel relative to the target — driving away
+            # yields a negative value that slows the beep rate, regardless of vehicle speed.
+            now = time.perf_counter()
+            prev = self._scan_prev_dist
+            if prev is not None and math.isfinite(prev) and math.isfinite(distance):
+                dt = now - self._scan_prev_dist_t
+                if 1e-3 < dt < 1.0:
+                    raw = (prev - distance) / dt
+                    raw = max(-SCANNER_CLOSING_MAX_MS, min(SCANNER_CLOSING_MAX_MS, raw))
+                    self._scan_closing_ms += SCANNER_CLOSING_SMOOTH * (raw - self._scan_closing_ms)
+            if not math.isfinite(distance):
+                self._scan_closing_ms = 0.0
+            self._scan_prev_dist = distance if math.isfinite(distance) else None
+            self._scan_prev_dist_t = now
 
     # Coupler tracking control methods
     def set_coupler_tracking(self, active):
@@ -581,6 +649,13 @@ class AudioController:
         self._hrtf_user_enabled = bool(cfg.get("hrtf_enabled", True))
         dist_db = float(cfg.get("hrtf_distance_gain_db", 0.0))
         self._hrtf_distance_gain = float(10.0 ** (dist_db / 20.0))
+
+        # Vehicle scanner pitch + steering-locked steady tone
+        self._scan_steer_tone_enabled = bool(cfg.get("scanner_steer_tone_enabled", True))
+        self._scan_base_freq = max(100.0, min(8000.0,
+            float(cfg.get("scanner_base_freq_hz", SCANNER_BASE_FREQ_DEFAULT))))
+        self._scan_offset_oct = max(SCANNER_OFFSET_OCT_MIN, min(SCANNER_OFFSET_OCT_MAX,
+            float(cfg.get("scanner_pitch_offset_oct", SCANNER_OFFSET_OCT_DEFAULT))))
 
         # Enable flags
         self._tc_clicks_enabled = bool(cfg.get("tc_clicks_enabled", True))
@@ -1255,6 +1330,10 @@ class AudioController:
             ls_speed_mph = self._ls_speed_mph
             ls_decel = self._ls_decel
             scan_speed_ms = self._scan_speed_ms
+            scan_closing_ms = self._scan_closing_ms
+            scan_base_freq = self._scan_base_freq
+            scan_offset_oct = self._scan_offset_oct
+            scan_steer_tone_enabled = self._scan_steer_tone_enabled
 
         bufL, bufR = np.zeros(frames, dtype=np.float32), np.zeros(frames, dtype=np.float32)
 
@@ -1617,12 +1696,40 @@ class AudioController:
         # NEW: Vehicle Scanner audio logic (suppressed when coupler tracking is active)
         scanner_produced_audio = False
         if scan_active and scan_dist != float('inf') and not coupler_active:
-            # Calculate beep repetition rate based on distance (exponentially).
-            # Half-distance scales with vehicle speed so faster travel gives earlier urgency.
-            half_dist = SCANNER_HALF_DIST_BASE_M + scan_speed_ms * SCANNER_HALF_DIST_PER_MS
+            # Beep repetition rate from distance (exponential). Half-distance scales with the CLOSING
+            # speed (how fast the distance is shrinking) rather than raw vehicle speed, so heading
+            # toward the target speeds the beeps up while heading away slows them down. Clamped to a
+            # positive minimum so the exp() denominator stays valid when receding fast.
+            half_dist = max(SCANNER_HALF_DIST_MIN_M,
+                            SCANNER_HALF_DIST_BASE_M + scan_closing_ms * SCANNER_HALF_DIST_PER_MS)
             rate_norm = math.exp(-scan_dist / half_dist)
             rate_hz = SCANNER_MIN_RATE_HZ + (SCANNER_MAX_RATE_HZ - SCANNER_MIN_RATE_HZ) * rate_norm
             interval_sec = 1.0 / rate_hz
+
+            # Bearing-derived cues, shared by the beep train and the steady tone.
+            # Pitch = base_freq * 2^(offset_oct * proximity); proximity blends a broad linear ramp
+            # (back->front) with a sharp alignment term so the pitch climbs continuously toward front
+            # and peaks at dead-center. base_freq/offset_oct are user-configurable so the top
+            # frequency can be tamed. pitch_mult resamples the beep waveform (rendered at BEEP_FREQ).
+            aligned = abs(scan_bearing) <= SCANNER_ALIGN_THRESHOLD_DEG
+            pitch_norm = 1.0 - (abs(scan_bearing) / 180.0)  # 1.0 front, 0.0 back (broad ramp)
+            align_norm = math.exp(-abs(scan_bearing) / SCANNER_ALIGN_PITCH_DECAY_DEG)
+            proximity = SCANNER_ALIGN_WEIGHT * align_norm + (1.0 - SCANNER_ALIGN_WEIGHT) * pitch_norm
+            scan_freq = scan_base_freq * (2.0 ** (scan_offset_oct * proximity))
+            pitch_mult = scan_freq / SCANNER_BEEP_FREQ_HZ
+            hrtf_az_scan = scan_bearing % 360.0
+
+            # Steering-locked morph: 0 = pure beeps, 1 = steady tone. Smoothed per block so the
+            # transition is click-free. Holding a turn converts the (possibly slow) beeps into a
+            # continuous directional tone for locking onto the target; re-centering restores beeps.
+            # Disabled entirely when the user opts out (config).
+            steer_mag = abs(v_steer) if scan_steer_tone_enabled else 0.0
+            tone_target = (steer_mag - SCANNER_STEER_TONE_DEADZONE) / \
+                max(1e-6, SCANNER_STEER_TONE_FULL - SCANNER_STEER_TONE_DEADZONE)
+            tone_target = min(1.0, max(0.0, tone_target))
+            self._scan_tone_level += SCANNER_TONE_LEVEL_SMOOTH * (tone_target - self._scan_tone_level)
+            tone_level = self._scan_tone_level
+            beep_gain = 1.0 - tone_level
 
             # Check if it's time to trigger a new beep
             self._scanner_beep_timer += frames / self.samplerate
@@ -1633,16 +1740,8 @@ class AudioController:
             # Mix the beep if it's currently playing
             if self._scanner_playback_pos >= 0 and self.SCANNER_BEEP_WAVEFORM is not None:
                 # Select waveform: bright aligned variant when within threshold
-                aligned = abs(scan_bearing) <= SCANNER_ALIGN_THRESHOLD_DEG
                 active_wf = self.SCANNER_ALIGNED_WAVEFORM if (aligned and self.SCANNER_ALIGNED_WAVEFORM is not None) else self.SCANNER_BEEP_WAVEFORM
                 beep_len = len(active_wf)
-                # Calculate pitch based on bearing
-                pitch_norm = 1.0 - (abs(scan_bearing) / 180.0) # 1.0 front, 0.0 back
-                pitch_mult = SCANNER_PITCH_BASE + SCANNER_PITCH_RANGE * pitch_norm
-                # Smooth exponential pitch boost: full octave (2x) at perfect alignment (0 deg),
-                # rapidly decaying on either side. Decay constant 0.8 deg gives ~50% boost at
-                # 0.5 deg off-center and is negligible beyond ~3 deg.
-                pitch_mult *= (1.0 + math.exp(-abs(scan_bearing) / 0.8))
 
                 indices = self._scanner_playback_pos + np.arange(frames) * pitch_mult
                 valid_mask = indices < (beep_len - 1)
@@ -1654,14 +1753,16 @@ class AudioController:
                     sample1, sample2 = active_wf[idx_floor], active_wf[idx_floor + 1]
                     beep_segment = sample1 + (sample2 - sample1) * fract
 
-                    # Build a full-frame mono buffer for this beep (needed for HRTF convolution)
+                    # Build a full-frame mono buffer for this beep (needed for HRTF convolution).
+                    # beep_gain crossfades the beep out as the steering-locked steady tone fades in.
                     mono_scan = np.zeros(frames, dtype=np.float32)
                     mono_scan[valid_mask] = beep_segment
 
-                    # HRTF azimuth from bearing (negate bearing to fix direction)
-                    # Convention: scan_bearing > 0 from Lua = target to the left
-                    # HRTF: 90° = left, 270° = right
-                    hrtf_az_scan = scan_bearing % 360.0
+                    # Diagnostic capture (only populated when the diag is enabled).
+                    diag = self._scanner_diag
+                    d_hrtf_used = False
+                    d_ir_l = d_ir_r = None
+                    d_out_l = d_out_r = None
 
                     if self._hrtf is not None and self._hrtf_user_enabled:
                         ir_l, ir_r = self._hrtf.get_hrir(hrtf_az_scan)
@@ -1672,35 +1773,102 @@ class AudioController:
                                 ol = min(len(self._scanner_overlap_L), len(conv_l))
                                 conv_l[:ol] += self._scanner_overlap_L[:ol]
                                 conv_r[:ol] += self._scanner_overlap_R[:ol]
-                            bufL += conv_l[:frames].astype(np.float32)
-                            bufR += conv_r[:frames].astype(np.float32)
+                            bufL += (beep_gain * conv_l[:frames]).astype(np.float32)
+                            bufR += (beep_gain * conv_r[:frames]).astype(np.float32)
                             self._scanner_overlap_L = conv_l[frames:].copy()
                             self._scanner_overlap_R = conv_r[frames:].copy()
                             scanner_produced_audio = True
+                            if diag is not None and diag.enabled:
+                                d_hrtf_used = True
+                                d_ir_l, d_ir_r = ir_l, ir_r
+                                # Record the exact post-overlap samples written this frame.
+                                d_out_l, d_out_r = conv_l[:frames], conv_r[:frames]
                         else:
                             # HRTF IR unavailable: proportional stereo pan (negated for correct direction)
                             pan_pos = -scan_bearing / 90.0
                             Lg, Rg = self._pan_gains(pan_pos)
-                            bufL[valid_mask] += beep_segment * Lg
-                            bufR[valid_mask] += beep_segment * Rg
+                            bufL[valid_mask] += beep_gain * beep_segment * Lg
+                            bufR[valid_mask] += beep_gain * beep_segment * Rg
+                            if diag is not None and diag.enabled:
+                                d_out_l, d_out_r = beep_segment * Lg, beep_segment * Rg
                     else:
                         # No HRTF: proportional stereo pan (negated for correct direction)
                         pan_pos = -scan_bearing / 90.0
                         Lg, Rg = self._pan_gains(pan_pos)
-                        bufL[valid_mask] += beep_segment * Lg
-                        bufR[valid_mask] += beep_segment * Rg
+                        bufL[valid_mask] += beep_gain * beep_segment * Lg
+                        bufR[valid_mask] += beep_gain * beep_segment * Rg
+                        if diag is not None and diag.enabled:
+                            d_out_l, d_out_r = beep_segment * Lg, beep_segment * Rg
+
+                    if diag is not None and diag.enabled:
+                        diag.record_beep(
+                            bearing_deg=scan_bearing, dist_m=scan_dist, aligned=aligned,
+                            pitch_norm=pitch_norm, pitch_mult=pitch_mult,
+                            hrtf_used=d_hrtf_used, hrtf_az_deg=hrtf_az_scan,
+                            ir_l=d_ir_l, ir_r=d_ir_r, out_l=d_out_l, out_r=d_out_r,
+                        )
 
                 next_pos = self._scanner_playback_pos + frames * pitch_mult
                 self._scanner_playback_pos = next_pos if next_pos < (beep_len - 1) else -1.0
 
-        # Drain scanner HRTF tail when no beep audio was produced this frame
-        if not scanner_produced_audio:
-            if self._scanner_overlap_L is not None and len(self._scanner_overlap_L) > 0:
+            # Drain the beep's HRTF tail (crossfaded) when no new beep audio played this frame.
+            if not scanner_produced_audio and self._scanner_overlap_L is not None:
                 ol = min(len(self._scanner_overlap_L), frames)
-                bufL[:ol] += self._scanner_overlap_L[:ol].astype(np.float32)
-                bufR[:ol] += self._scanner_overlap_R[:ol].astype(np.float32)
+                if ol > 0:
+                    bufL[:ol] += (beep_gain * self._scanner_overlap_L[:ol]).astype(np.float32)
+                    bufR[:ol] += (beep_gain * self._scanner_overlap_R[:ol]).astype(np.float32)
+                self._scanner_overlap_L = None
+                self._scanner_overlap_R = None
+
+            # Steering-locked steady tone: a continuous, HRTF-positioned triangle whose pitch tracks
+            # the same bearing->pitch mapping as the beeps. Fills the gaps between (slow) beeps so the
+            # player can hold a turn and hear an unbroken directional lock on the target.
+            if tone_level > 1e-3:
+                inc = scan_freq / self.samplerate  # cycles/sample (same Hz as the beep at this bearing)
+                ph = self._scan_tone_phase + inc * np.arange(frames)
+                tri = (2.0 / np.pi) * np.arcsin(np.sin(2.0 * np.pi * ph))
+                mono_tone = (tri * (SCANNER_TONE_AMP * tone_level)).astype(np.float32)
+                self._scan_tone_phase = float((self._scan_tone_phase + inc * frames) % 1.0)
+
+                used_hrtf_tone = False
+                if self._hrtf is not None and self._hrtf_user_enabled:
+                    ir_l, ir_r = self._hrtf.get_hrir(hrtf_az_scan)
+                    if ir_l is not None:
+                        tl = np.convolve(mono_tone, ir_l, mode='full')
+                        tr = np.convolve(mono_tone, ir_r, mode='full')
+                        if self._scan_tone_overlap_L is not None:
+                            ol = min(len(self._scan_tone_overlap_L), len(tl))
+                            tl[:ol] += self._scan_tone_overlap_L[:ol]
+                            tr[:ol] += self._scan_tone_overlap_R[:ol]
+                        bufL += tl[:frames].astype(np.float32)
+                        bufR += tr[:frames].astype(np.float32)
+                        self._scan_tone_overlap_L = tl[frames:].copy()
+                        self._scan_tone_overlap_R = tr[frames:].copy()
+                        used_hrtf_tone = True
+                if not used_hrtf_tone:
+                    pan_pos = -scan_bearing / 90.0
+                    Lg, Rg = self._pan_gains(pan_pos)
+                    bufL += mono_tone * Lg
+                    bufR += mono_tone * Rg
+                    self._scan_tone_overlap_L = None
+                    self._scan_tone_overlap_R = None
+            elif self._scan_tone_overlap_L is not None:
+                # Drain/clear the steady tone's HRTF tail as it fades out.
+                ol = min(len(self._scan_tone_overlap_L), frames)
+                if ol > 0:
+                    bufL[:ol] += self._scan_tone_overlap_L[:ol].astype(np.float32)
+                    bufR[:ol] += self._scan_tone_overlap_R[:ol].astype(np.float32)
+                self._scan_tone_overlap_L = None
+                self._scan_tone_overlap_R = None
+
+        else:
+            # Scanner inactive (or coupler tracking): clear all tails and relax the morph level so
+            # the next activation starts cleanly.
             self._scanner_overlap_L = None
             self._scanner_overlap_R = None
+            self._scan_tone_overlap_L = None
+            self._scan_tone_overlap_R = None
+            self._scan_tone_level = 0.0
 
         # Node grabber hover beep (pitch varies by node height, forward on enter, reverse on leave)
         if self._node_beep_playback_pos >= 0 and self.NODE_BEEP_WAVEFORM is not None:
@@ -2405,4 +2573,6 @@ class AudioController:
                     self._audio_stream.close()
                 except Exception: pass
             self._audio_stream = None
+        if self._scanner_diag is not None:
+            self._scanner_diag.stop()
         self.logger.info("Audio system stopped.")

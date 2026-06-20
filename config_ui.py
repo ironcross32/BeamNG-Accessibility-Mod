@@ -496,6 +496,51 @@ class ConfigPanel(wx.ScrolledWindow):
         compass_sizer.Add(self.hrtf_grid, 0, wx.ALL | wx.EXPAND, 6)
         vbox.Add(compass_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
+        # --- Vehicle Scanner Group ---
+        sb_scanner = wx.StaticBox(self, label="Vehicle Scanner")
+        scanner_sizer = wx.StaticBoxSizer(sb_scanner, wx.VERTICAL)
+
+        self.chk_scanner_steer_tone = wx.CheckBox(
+            self, label="Solid &tone while steering"
+        )
+        self.chk_scanner_steer_tone.SetName("Solid scanner tone while steering")
+        self.chk_scanner_steer_tone.SetToolTip(
+            "When the scanner is active and you are steering, morph the target beeps into a "
+            "continuous directional tone so you can lock onto the target's direction even when "
+            "the beeps are slow. Releasing the steering restores the normal beeps."
+        )
+        scanner_sizer.Add(self.chk_scanner_steer_tone, 0, wx.ALL, 6)
+
+        scanner_grid = wx.FlexGridSizer(0, 2, 6, 8)
+        scanner_grid.AddGrowableCol(1, 1)
+
+        lbl_scan_base = wx.StaticText(self, label="Base &Frequency (Hz):")
+        self.spin_scanner_base_freq = wx.SpinCtrl(self, min=100, max=8000)
+        self.spin_scanner_base_freq.SetToolTip(
+            "Resting pitch of the scanner beeps/tone (when the target is directly behind). "
+            "The pitch rises toward the target."
+        )
+        self.spin_scanner_base_freq.SetName("Scanner Base Frequency")
+        scanner_grid.Add(lbl_scan_base, 0, wx.ALIGN_CENTER_VERTICAL)
+        scanner_grid.Add(self.spin_scanner_base_freq, 0, wx.EXPAND)
+
+        lbl_scan_offset = wx.StaticText(self, label="Alignment Pitch &Offset (octaves):")
+        self.spin_scanner_offset = wx.SpinCtrlDouble(
+            self, min=0.5, max=2.0, inc=(1.0 / 12.0)
+        )
+        self.spin_scanner_offset.SetDigits(2)
+        self.spin_scanner_offset.SetToolTip(
+            "How far the pitch rises (in octaves) when the target is dead-center, above the base "
+            "frequency. Steps by one semitone; minimum half an octave, maximum two octaves."
+        )
+        self.spin_scanner_offset.SetName("Scanner Alignment Pitch Offset")
+        _label_spin_double(self.spin_scanner_offset, "Scanner Alignment Pitch Offset")
+        scanner_grid.Add(lbl_scan_offset, 0, wx.ALIGN_CENTER_VERTICAL)
+        scanner_grid.Add(self.spin_scanner_offset, 0, wx.EXPAND)
+
+        scanner_sizer.Add(scanner_grid, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 6)
+        vbox.Add(scanner_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
+
         # --- Pitch & Roll Group ---
         sb_pitchroll = wx.StaticBox(self, label="Pitch && Roll")
         pitchroll_sizer = wx.StaticBoxSizer(sb_pitchroll, wx.VERTICAL)
@@ -695,6 +740,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_announce_speed,
             self.chk_announce_gear,
             self.chk_scanner_callout,
+            self.chk_scanner_steer_tone,
         ):
             ctrl.Bind(wx.EVT_CHECKBOX, self._schedule_save)
 
@@ -712,6 +758,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.spin_volume,
             self.spin_compass_interval,
             self.spin_compass_highlight_nth,
+            self.spin_scanner_base_freq,
         ):
             ctrl.Bind(wx.EVT_SPINCTRL, self._schedule_save)
 
@@ -727,6 +774,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.spin_pitch_roll_max,
             self.spin_pitch_roll_min,
             self.spin_poll,
+            self.spin_scanner_offset,
         ):
             ctrl.Bind(wx.EVT_SPINCTRLDOUBLE, self._schedule_save)
             _bind_spin_double_page_keys(ctrl, self._schedule_save)
@@ -754,6 +802,7 @@ class ConfigPanel(wx.ScrolledWindow):
         sb_gen.SetName("General")
         sb_auto.SetName("Automatic announcements")
         sb_compass.SetName("Compass Clicks")
+        sb_scanner.SetName("Vehicle Scanner")
         sb_pitchroll.SetName("Pitch and Roll")
         sb_shift.SetName("Shift Tone")
         sb_warnings.SetName("Warning Sounds")
@@ -896,6 +945,9 @@ class ConfigPanel(wx.ScrolledWindow):
             callout_val = cfg.get("scanner_distance_callout_interval", 10)
             callout_idx = self._callout_intervals.index(callout_val) if callout_val in self._callout_intervals else 1
             self.choice_callout_interval.SetSelection(callout_idx)
+            self.chk_scanner_steer_tone.SetValue(cfg.get("scanner_steer_tone_enabled", True))
+            self.spin_scanner_base_freq.SetValue(int(round(cfg.get("scanner_base_freq_hz", 1000.0))))
+            self.spin_scanner_offset.SetValue(cfg.get("scanner_pitch_offset_oct", 1.0))
             self._update_speed_interval_labels()
             interval_val = cfg.get("speed_announce_interval", 25)
             interval_choices = [25, 50, 75, 100]
@@ -945,6 +997,10 @@ class ConfigPanel(wx.ScrolledWindow):
         cfg["scanner_distance_callout_enabled"] = self.chk_scanner_callout.GetValue()
         ci = self.choice_callout_interval.GetSelection()
         cfg["scanner_distance_callout_interval"] = self._callout_intervals[ci] if 0 <= ci < len(self._callout_intervals) else 10
+        cfg["scanner_steer_tone_enabled"] = self.chk_scanner_steer_tone.GetValue()
+        cfg["scanner_base_freq_hz"] = float(self.spin_scanner_base_freq.GetValue())
+        # Snap the octave offset to whole semitones so it stays on a musical grid.
+        cfg["scanner_pitch_offset_oct"] = round(self.spin_scanner_offset.GetValue() * 12.0) / 12.0
         interval_choices = [25, 50, 75, 100]
         sel_idx = self.choice_speed_interval.GetSelection()
         cfg["speed_announce_interval"] = interval_choices[sel_idx] if 0 <= sel_idx < len(interval_choices) else 25

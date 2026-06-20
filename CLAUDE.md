@@ -66,6 +66,7 @@ Entry point: `scripts/bng_screenreader_mod/modScript.lua` — loads all GE exten
 - **`lua/ge/extensions/nodeGrabberAccessible.lua`** — Accessible node grabber. Ray-sphere node detection under mouse cursor, cross-VM node metadata caching, SNAP cursor warp. Port 4454→4455.
 - **`lua/ge/extensions/clickspotAccessible.lua`** — Accessible clickspot detection. Enumerates vehicle interior trigger volumes, detects hover via `be:triggerRaycastClosest()`, executes trigger actions directly. Port 4456→4457.
 - **`lua/ge/extensions/uiToggle.lua`** — Hides/shows the game UI on command (`ui_visibility.set`/`toggle`, the same thing ALT+U toggles). Used by the AI Describer to remove HUD elements before a screenshot. Port 4464.
+- **`lua/ge/extensions/consoleAccessible.lua`** — Screen-reader-accessible equivalent of the stock ImGui developer console (the backtick `` ` `` console, which exposes no accessibility tree). Re-implements its execution model: runs commands in the GE Lua (via `executeLuaSandboxed` for captured return + print output), GE TorqueScript, CEF/UI JS, and per-vehicle Lua contexts; enumerates those contexts on demand; and can stream the global engine log (`Engine.getFrameLog()`). Surfaced through native wx controls on beamtel.py's Main tab. Port 4465→4466.
 - **`lua/ge/extensions/bnvdaAutoSpawner.lua`** — Deferred UI app spawning (currently commented out).
 - **`ui/modules/apps/bnvda_hook/app.js`** — Invisible Angular directive (1x1px). WebSocket client bridging BeamNG UI events to Python on ws://127.0.0.1:8765. DOM observer with debouncing and controller dominance detection.
 
@@ -87,9 +88,15 @@ Entry point: `scripts/bng_screenreader_mod/modScript.lua` — loads all GE exten
 | 4455 | Python→Game | Node grabber commands (ON/OFF/SCAN_ON/SCAN_OFF/SNAP) |
 | 4456 | Game→Python | Clickspot data (trigger list, hover, snap) |
 | 4457 | Python→Game | Clickspot commands (ON/OFF/SNAP/EXEC) |
+| 4458 | Game→Python | Vehicle slot data (vehicleSlots.lua) |
+| 4459 | Python→Game | Vehicle slot commands (vehicleSlots.lua) |
+| 4460 | Game→Python | Vehicle spawner data (vehicleSpawnerAccessible.lua) |
+| 4461 | Python→Game | Vehicle spawner commands (vehicleSpawnerAccessible.lua) |
 | 4462 | Game→Python | Road detector status (ON_ROAD/OFF_ROAD/DORMANT) |
 | 4463 | Python→Game | Road detector commands (ON/OFF) |
 | 4464 | Python→Game | UI visibility toggle (HIDE/SHOW/TOGGLE) |
+| 4465 | Python→Game | Accessible console commands (EXEC/CTXLIST/LOGON/LOGOFF) |
+| 4466 | Game→Python | Accessible console responses + log stream |
 | 4579 | Game→Python | UI toast messages |
 | 8765 | WebSocket | NVDA/UI bridge |
 

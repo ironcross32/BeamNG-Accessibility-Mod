@@ -2,7 +2,7 @@
 # WebSocket-Only version
 # Designed to be embedded: start_server_in_thread(lambda text: say(text))
 
-import asyncio, json, os, re, threading
+import asyncio, json, os, re, threading, time
 from aiohttp import web, WSMsgType
 from bnh_logger import get_logger
 
@@ -46,8 +46,55 @@ def register_dom_dump_callback(callback):
 
 
 
+# ---------- Menu navigation key injection ----------
+# BeamNG's in-menu navigation is driven by the game engine, not by DOM events:
+# the UI only emits *untrusted* echo keydown events after the engine has already
+# moved the crossfire focus, so synthetic DOM keys (or .focus()) cannot drive it.
+# To accelerate list navigation we therefore inject *real* OS-level numpad
+# keystrokes, which the game reads as genuine input. The UI hook (app.js) detects
+# a held direction in a dropdown and asks us to inject N extra steps.
+#
+# Numpad scan codes (Set 1, non-extended): Numpad2 = 0x50 (down/next),
+# Numpad8 = 0x48 (up/prev). Non-extended is what distinguishes the numpad keys
+# from the arrow keys, which is exactly what BeamNG binds menu navigation to.
+_NAV_SCAN_DOWN = 0x50  # Numpad 2
+_NAV_SCAN_UP = 0x48    # Numpad 8
+# Space presses out so the engine registers each as a discrete menu step rather
+# than coalescing a same-frame burst (the game samples input ~per frame).
+_NAV_INJECT_SPACING = 0.018
+_NAV_INJECT_MAX = 40
+
+
+def _inject_nav_keys(direction, count):
+    scan = _NAV_SCAN_DOWN if direction > 0 else _NAV_SCAN_UP
+    try:
+        n = int(count)
+    except (TypeError, ValueError):
+        return
+    n = max(0, min(n, _NAV_INJECT_MAX))
+    if n <= 0:
+        return
+
+    def _run():
+        try:
+            import keyboard
+        except Exception as e:  # pragma: no cover - keyboard always present at runtime
+            logger.error(f"[nav_inject] keyboard import failed: {e}")
+            return
+        for _ in range(n):
+            try:
+                keyboard.press(scan)
+                keyboard.release(scan)
+            except Exception as e:
+                logger.error(f"[nav_inject] key send failed: {e}")
+                return
+            time.sleep(_NAV_INJECT_SPACING)
+
+    threading.Thread(target=_run, name="nav-inject", daemon=True).start()
+
+
 # ---------- Core helpers ----------
-def engine_offer(text: str):
+def engine_offer(text: str, interrupt: bool = True):
     global _SPEAK_LAST
     t = (text or "").strip()
     if not t:
@@ -55,11 +102,14 @@ def engine_offer(text: str):
     if _looks_like_css(t):
         logger.info("[bnvda] Suppressed CSS-like text from UI hook.")
         return
-    if t == _SPEAK_LAST:
+    # Only dedup against the last utterance for interrupting speech. A queued
+    # follow-up (interrupt=False, e.g. a tuning hint) is intentionally a second
+    # utterance and must not be swallowed by this guard.
+    if interrupt and t == _SPEAK_LAST:
         return
     _SPEAK_LAST = t
     try:
-        _SPEAK_FUNC(t)
+        _SPEAK_FUNC(t, interrupt)
     except Exception as e:
         logger.error(f"speak error: {e}")
 
@@ -103,11 +153,15 @@ def handle_ws_message(data):
         if not isinstance(text_val, str):
             logger.warning(f"[UNSPEAKABLE] speak text is {type(text_val).__name__}, not str: {text_val!r}")
             text_val = str(text_val) if text_val is not None else ""
-        engine_offer(text_val)
+        # interrupt defaults to True; a queued follow-up sets interrupt:false so
+        # it plays after the current utterance instead of cutting it off.
+        engine_offer(text_val, bool(data.get("interrupt", True)))
     elif msg_type == "log":
         level = str(data.get("level", "INFO")).lower()
         msg = str(data.get("msg", ""))
         getattr(logger, level, logger.info)(msg)
+    elif msg_type == "nav_inject":
+        _inject_nav_keys(data.get("dir", 1), data.get("count", 1))
     elif msg_type == "hover":
         hover_on(
             data.get("text", ""), item_id=data.get("id"), delay_ms=data.get("delay_ms")

@@ -93,6 +93,9 @@ DEFAULT_CONFIG = {
     "announce_gear": True,
     "scanner_distance_callout_enabled": False,
     "scanner_distance_callout_interval": 10,
+    "scanner_steer_tone_enabled": True,
+    "scanner_base_freq_hz": 1000.0,
+    "scanner_pitch_offset_oct": 1.0,
     "ai_describer_api_key": "",
     "ai_describer_model": "models/gemini-3-flash-preview",
     "ai_describer_disable_ui_toggle": False,
@@ -265,6 +268,9 @@ def load_config():
         _coerce("announce_gear", bool, True)
         _coerce("scanner_distance_callout_enabled", bool, False)
         _coerce("scanner_distance_callout_interval", int, 10)
+        _coerce("scanner_steer_tone_enabled", bool, True)
+        _coerce("scanner_base_freq_hz", float, 1000.0)
+        _coerce("scanner_pitch_offset_oct", float, 1.0)
         _coerce("preferred_device_name", str, "")
         _coerce("audio_poll_interval_sec", float, 2.0)
         _coerce("ai_describer_api_key", str, "")
@@ -290,6 +296,11 @@ def load_config():
             merged["speed_announce_interval"] = 25
         if merged["scanner_distance_callout_interval"] not in (5, 10, 15, 20, 30, 45, 60):
             merged["scanner_distance_callout_interval"] = 10
+        merged["scanner_base_freq_hz"] = max(100.0, min(8000.0, merged["scanner_base_freq_hz"]))
+        # Offset is in octaves, quantised to whole semitones (1/12 oct), clamped to [0.5, 2.0].
+        semis = round(merged["scanner_pitch_offset_oct"] * 12.0)
+        semis = max(6, min(24, semis))
+        merged["scanner_pitch_offset_oct"] = semis / 12.0
 
         for key in ["shift_tone_level_dbfs", "check_engine_buzzer_level_dbfs", "oil_chime_level_dbfs",
                     "pitch_roll_max_dbfs", "pitch_roll_min_dbfs", "compass_click_level_dbfs",

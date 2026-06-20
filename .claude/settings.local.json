@@ -71,7 +71,8 @@
       "Bash(uv run:*)",
       "Bash(uv pip:*)",
       "Bash(unzip -p \"D:/Steam/steamapps/common/BeamNG.drive/content/vehicles/fullsize.zip\" \"vehicles/fullsize/info.json\")",
-      "Bash(unzip -p \"D:/Steam/steamapps/common/BeamNG.drive/content/vehicles/autobello.zip\" \"vehicles/autobello/info.json\")"
+      "Bash(unzip -p \"D:/Steam/steamapps/common/BeamNG.drive/content/vehicles/autobello.zip\" \"vehicles/autobello/info.json\")",
+      "Bash(findstr /n \"bnvdahook LOCALAPPDATA beamtel path os.path getenv expanduser join filename\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\bcros\\AppData\\Local\\BeamNG\\BeamNG.drive\\current\\mods\\unpacked\\bng_screenreader_mod"

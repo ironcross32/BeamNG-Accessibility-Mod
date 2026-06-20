@@ -35,9 +35,15 @@ The modal is opened with F11 and uses these keys while open (all suppressed):
 
 Arrangement screen (opened via G):
     Up/Down    — move between rows: Type / Variant / Spacing / Apply Queue / Arrange Active
-    Left/Right — change value of current row
-    Enter      — activate the selected button row
+    Left/Right — change value of the Type / Variant rows
+    Enter      — on Spacing: open the distance editor; on a button row: activate it
     Escape     — return to previous screen
+
+Distance editor (wizard distance screen, and the arrangement Spacing row):
+    A 5-digit odometer (0..99999 feet, default 15). Left/Right move the cursor
+    between digit positions (wrapping); Up/Down cycle the current digit 0-9
+    (wrapping). Each digit change speaks the new value (leading zeros stripped);
+    moving the cursor speaks the digit at the new position. Enter confirms.
 """
 
 from __future__ import annotations
@@ -64,7 +70,6 @@ except Exception:
 DATA_PORT = 4460   # receive from Lua
 CMD_PORT  = 4461   # send to Lua
 
-DISTANCE_STEPS_FT = list(range(5, 101, 5))   # 5..100 by 5
 SIDES = ["front", "back", "left", "right"]
 SIDE_PHRASES = {
     "front": "in front of",
@@ -87,8 +92,6 @@ FILTER_CATEGORIES = [
     ("propulsion", "Propulsion"),
     ("country",    "Country"),
 ]
-
-ARRANGE_SPACING_STEPS_FT = list(range(10, 101, 5))   # 10..100 by 5, default index 3 = 25 ft
 
 # (type_key, display_label, [(variant_key, variant_label), ...])
 ARRANGE_TYPES: list[tuple[str, str, list[tuple[str, str]]]] = [
@@ -150,7 +153,7 @@ _filters: dict[str, set[str]] = {}
 _filter_draft: dict[str, set[str]] | None = None   # snapshot used while in filter dialog
 
 # Per-screen cursors
-_screen = "main"        # main | configs | to_spawn | manage | filter | side | distance | ref | mark_picker | replace_slot
+_screen = "main"        # main | configs | to_spawn | manage | filter | side | distance | ref | mark_picker | replace_slot | arrange | spacing_edit
 _idx_main = 0
 _idx_configs = 0
 _idx_to_spawn = 0
@@ -195,7 +198,6 @@ _pending_manage_announce: bool = False
 # Arrangement screen state
 _arrange_type_idx: int = 0
 _arrange_variant_idx: int = 0
-_arrange_spacing_idx: int = 3       # default index → 25 ft
 _idx_arrange: int = 0               # cursor over 5 rows: type/variant/spacing/queue_btn/active_btn
 _arrange_return_screen: str = "main"
 _player_veh_id: int | None = None   # updated from PLAYER_VEH_ID: Lua response
@@ -204,6 +206,73 @@ _player_veh_id: int | None = None   # updated from PLAYER_VEH_ID: Lua response
 # =============================================================================
 #  Utilities
 # =============================================================================
+
+class _DigitField:
+    """Five-digit odometer-style numeric editor for distances in feet.
+
+    Left/Right move the cursor between digit positions (wrapping at the ends);
+    Up/Down cycle the digit under the cursor through 0-9 (wrapping). Represents
+    values from 0 to 99999 feet. Position 0 is the most significant (leftmost)
+    digit.
+    """
+    NDIGITS = 5
+
+    def __init__(self, value: int = 15):
+        self.cursor = 0
+        self.set_value(value)
+
+    def set_value(self, value: int):
+        try:
+            value = int(value)
+        except (TypeError, ValueError):
+            value = 0
+        value = max(0, min(value, 10 ** self.NDIGITS - 1))
+        s = str(value).rjust(self.NDIGITS, "0")
+        self.digits = [int(c) for c in s]
+
+    def value(self) -> int:
+        n = 0
+        for d in self.digits:
+            n = n * 10 + d
+        return n
+
+    def move_left(self):
+        self.cursor = (self.cursor - 1) % self.NDIGITS
+
+    def move_right(self):
+        self.cursor = (self.cursor + 1) % self.NDIGITS
+
+    def home(self):
+        self.cursor = 0
+
+    def end(self):
+        self.cursor = self.NDIGITS - 1
+
+    def inc(self):
+        self.digits[self.cursor] = (self.digits[self.cursor] + 1) % 10
+
+    def dec(self):
+        self.digits[self.cursor] = (self.digits[self.cursor] - 1) % 10
+
+    def current_digit(self) -> int:
+        return self.digits[self.cursor]
+
+    def spoken_value(self) -> str:
+        # str(int) drops leading zeros so the screen reader pronounces the
+        # number naturally ("150 feet", not "zero zero one five zero feet").
+        return str(self.value())
+
+
+# Reused digit editors. The wizard distance is seeded from the queued item each
+# time the screen is entered; the arrangement spacing field persists its value
+# across openings so the user's last spacing choice is remembered.
+_distance_field = _DigitField(15)
+_spacing_field = _DigitField(15)
+
+
+def _active_digit_field() -> _DigitField:
+    return _spacing_field if _screen == "spacing_edit" else _distance_field
+
 
 def _say_safe(text: str):
     if _say is not None:
@@ -653,7 +722,7 @@ def _arrange_validate() -> tuple[bool, bool, str]:
 def _speak_arrange_item(idx: int):
     type_key, type_label, variants = ARRANGE_TYPES[_arrange_type_idx]
     variant_key, variant_label = variants[min(_arrange_variant_idx, len(variants) - 1)]
-    spacing_ft = ARRANGE_SPACING_STEPS_FT[_arrange_spacing_idx]
+    spacing_ft = _spacing_field.value()
     queue_ok, active_ok, status = _arrange_validate()
 
     _ARRANGE_TOTAL = 5
@@ -662,7 +731,7 @@ def _speak_arrange_item(idx: int):
     elif idx == 1:
         content = f"Variant: {variant_label}"
     elif idx == 2:
-        content = f"Spacing: {spacing_ft} feet"
+        content = f"Spacing: {spacing_ft} feet, press enter to edit"
     elif idx == 3:
         content = "Apply to spawn queue"
         if not queue_ok:
@@ -821,9 +890,9 @@ def _speak_current():
         _speak_position(_idx_side, len(SIDES), SIDE_PHRASES[SIDES[_idx_side]])
         return
 
-    if _screen == "distance":
-        _idx_distance = max(0, min(_idx_distance, len(DISTANCE_STEPS_FT) - 1))
-        _speak_position(_idx_distance, len(DISTANCE_STEPS_FT), f"{DISTANCE_STEPS_FT[_idx_distance]} feet")
+    if _screen in ("distance", "spacing_edit"):
+        f = _active_digit_field()
+        _say_with_prefix(f"{f.spoken_value()} feet")
         return
 
     if _screen == "ref":
@@ -889,6 +958,11 @@ def _on_up(event):
         _idx_arrange = max(0, _idx_arrange - 1)
         _speak_current()
         return
+    if _screen in ("distance", "spacing_edit"):
+        f = _active_digit_field()
+        f.inc()
+        _say_safe(f"{f.spoken_value()} feet")
+        return
     with _state_lock:
         if _screen == "main":
             _idx_main = max(0, _idx_main - 1)
@@ -902,8 +976,6 @@ def _on_up(event):
             _idx_filter = max(0, _idx_filter - 1)
         elif _screen == "side":
             _idx_side = max(0, _idx_side - 1)
-        elif _screen == "distance":
-            _idx_distance = max(0, _idx_distance - 1)
         elif _screen == "ref":
             _idx_ref = max(0, _idx_ref - 1)
         elif _screen == "mark_picker":
@@ -920,6 +992,11 @@ def _on_down(event):
     if _screen == "arrange":
         _idx_arrange = min(4, _idx_arrange + 1)
         _speak_current()
+        return
+    if _screen in ("distance", "spacing_edit"):
+        f = _active_digit_field()
+        f.dec()
+        _say_safe(f"{f.spoken_value()} feet")
         return
     with _state_lock:
         if _screen == "main":
@@ -939,8 +1016,6 @@ def _on_down(event):
             _idx_filter = min(max(0, n - 1), _idx_filter + 1)
         elif _screen == "side":
             _idx_side = min(len(SIDES) - 1, _idx_side + 1)
-        elif _screen == "distance":
-            _idx_distance = min(len(DISTANCE_STEPS_FT) - 1, _idx_distance + 1)
         elif _screen == "ref":
             n = len(_ref_options())
             _idx_ref = min(max(0, n - 1), _idx_ref + 1)
@@ -955,7 +1030,12 @@ def _on_down(event):
 
 
 def _on_left(event):
-    global _arrange_type_idx, _arrange_variant_idx, _arrange_spacing_idx
+    global _arrange_type_idx, _arrange_variant_idx
+    if _screen in ("distance", "spacing_edit"):
+        f = _active_digit_field()
+        f.move_left()
+        _say_safe(str(f.current_digit()))
+        return
     if _screen == "arrange":
         if _idx_arrange == 0:
             _arrange_type_idx = (_arrange_type_idx - 1) % len(ARRANGE_TYPES)
@@ -963,8 +1043,6 @@ def _on_left(event):
         elif _idx_arrange == 1:
             variants = ARRANGE_TYPES[_arrange_type_idx][2]
             _arrange_variant_idx = (_arrange_variant_idx - 1) % len(variants)
-        elif _idx_arrange == 2:
-            _arrange_spacing_idx = max(0, _arrange_spacing_idx - 1)
         _speak_current()
         return
     if _screen == "configs":
@@ -972,7 +1050,12 @@ def _on_left(event):
 
 
 def _on_right(event):
-    global _arrange_type_idx, _arrange_variant_idx, _arrange_spacing_idx
+    global _arrange_type_idx, _arrange_variant_idx
+    if _screen in ("distance", "spacing_edit"):
+        f = _active_digit_field()
+        f.move_right()
+        _say_safe(str(f.current_digit()))
+        return
     if _screen == "arrange":
         if _idx_arrange == 0:
             _arrange_type_idx = (_arrange_type_idx + 1) % len(ARRANGE_TYPES)
@@ -980,8 +1063,6 @@ def _on_right(event):
         elif _idx_arrange == 1:
             variants = ARRANGE_TYPES[_arrange_type_idx][2]
             _arrange_variant_idx = (_arrange_variant_idx + 1) % len(variants)
-        elif _idx_arrange == 2:
-            _arrange_spacing_idx = min(len(ARRANGE_SPACING_STEPS_FT) - 1, _arrange_spacing_idx + 1)
         _speak_current()
         return
     if _screen == "main":
@@ -1044,10 +1125,17 @@ def _on_enter(event):
     global _mark_target_idx
     global _pending_replace_item, _replace_editing_idx, _idx_replace_slot
     if _screen == "arrange":
-        if _idx_arrange == 3:
+        if _idx_arrange == 2:
+            _spacing_field.home()
+            _enter_screen("spacing_edit", header="Spacing, in feet")
+        elif _idx_arrange == 3:
             _do_arrange_queue()
         elif _idx_arrange == 4:
             _do_arrange_active()
+        return
+
+    if _screen == "spacing_edit":
+        _enter_screen("arrange")
         return
     if _screen == "main":
         _drill_into_selected()
@@ -1067,10 +1155,10 @@ def _on_enter(event):
             "model": v.get("model"),
             "config": cfg.get("key", ""),
             "displayName": display,
-            # Default placement: 10 ft right of previous spawn in batch (or player vehicle
+            # Default placement: 15 ft right of previous spawn in batch (or player vehicle
             # for the first item, or camera+ground if no player vehicle exists).
             "side": "right",
-            "distFt": 10,
+            "distFt": 15,
             "refMode": "auto",
             "refVehId": None,
             "replaceSlot": None,
@@ -1129,11 +1217,18 @@ def _on_enter(event):
 
     if _screen == "side":
         _wizard_side = SIDES[_idx_side]
-        _enter_screen("distance", header=f"Distance from reference, in feet")
+        # Seed the digit editor from the item's current distance (default 15 ft).
+        cur = 15
+        with _state_lock:
+            if _wizard_target_idx is not None and 0 <= _wizard_target_idx < len(_to_spawn):
+                cur = _to_spawn[_wizard_target_idx].get("distFt") or 15
+        _distance_field.set_value(cur)
+        _distance_field.home()
+        _enter_screen("distance", header="Distance from reference, in feet")
         return
 
     if _screen == "distance":
-        _wizard_distance = DISTANCE_STEPS_FT[_idx_distance]
+        _wizard_distance = _distance_field.value()
         _enter_screen("ref", header="Reference vehicle")
         return
 
@@ -1211,6 +1306,9 @@ def _commit_wizard(ref_mode: str, ref_veh_id: int | None, ref_name: str | None =
 
 def _on_escape(event):
     global _filter_draft, _drill_vehicle, _pending_replace_item, _replace_editing_idx
+    if _screen == "spacing_edit":
+        _enter_screen("arrange")
+        return
     if _screen == "arrange":
         _enter_screen(_arrange_return_screen)
         return
@@ -1338,7 +1436,7 @@ def _add_random_config(v: dict[str, Any], cfg: dict[str, Any]):
         "config": cfg.get("key", ""),
         "displayName": display,
         "side": "right",
-        "distFt": 10,
+        "distFt": 15,
         "refMode": "auto",
         "refVehId": None,
     }
@@ -1399,6 +1497,11 @@ def _on_home(event):
         _idx_arrange = 0
         _speak_current()
         return
+    if _screen in ("distance", "spacing_edit"):
+        f = _active_digit_field()
+        f.home()
+        _say_safe(str(f.current_digit()))
+        return
     with _state_lock:
         if _screen == "main":
             _idx_main = 0
@@ -1422,6 +1525,11 @@ def _on_end(event):
     if _screen == "arrange":
         _idx_arrange = 4
         _speak_current()
+        return
+    if _screen in ("distance", "spacing_edit"):
+        f = _active_digit_field()
+        f.end()
+        _say_safe(str(f.current_digit()))
         return
     with _state_lock:
         if _screen == "main":
@@ -1600,7 +1708,7 @@ def _do_arrange_queue():
 
     type_key, _, variants = ARRANGE_TYPES[_arrange_type_idx]
     variant_key = variants[min(_arrange_variant_idx, len(variants) - 1)][0]
-    spacing_m = ARRANGE_SPACING_STEPS_FT[_arrange_spacing_idx] * 0.3048
+    spacing_m = _spacing_field.value() * 0.3048
 
     replacements = [it for it in items if it.get("replaceVehId") is not None]
     additions    = [it for it in items if it.get("replaceVehId") is None]
@@ -1642,7 +1750,7 @@ def _do_arrange_active():
 
     type_key, _, variants = ARRANGE_TYPES[_arrange_type_idx]
     variant_key = variants[min(_arrange_variant_idx, len(variants) - 1)][0]
-    spacing_m = ARRANGE_SPACING_STEPS_FT[_arrange_spacing_idx] * 0.3048
+    spacing_m = _spacing_field.value() * 0.3048
 
     veh_ids = [vid for vid, _ in avs]
     arrangement = {

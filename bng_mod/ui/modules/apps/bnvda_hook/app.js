@@ -703,6 +703,14 @@ angular.module('beamng.apps')
           }
           
           // ========== Specialized handler for Vehicle Tuning Sliders (Vue.js version) ==========
+          // Timer for the deferred tuning hint so navigating to a new control
+          // cancels a still-pending description from the previous one.
+          var _tuningHintTimer = null;
+          // Last spoken section grouping, so a category/subcategory heading
+          // (e.g. "Tires", "Front") is announced only the first time focus
+          // enters it and not repeated until focus moves into a different one.
+          var _lastTuningCategory = null;
+          var _lastTuningSubcategory = null;
           function speakTuningControl(focusedElement, src) {
             var row = closest(focusedElement, '.input-container');
             if (!row) return false;
@@ -714,7 +722,44 @@ angular.module('beamng.apps')
               var value = valueInput.value;
               var unit = cleanText(unitEl.innerText);
               var finalText = name + ", " + value + " " + unit;
+              // Announce the enclosing section grouping when it changes. The
+              // subcategory heading is omitted by the game for the "Other" bucket,
+              // so subName is simply empty there and nothing extra is read.
+              var catEl = closest(row, '.tuning-category');
+              var catNameEl = catEl ? catEl.querySelector('.category-name') : null;
+              var catName = catNameEl ? cleanText(catNameEl.innerText) : '';
+              var subEl = closest(row, '.tuning-subcategory');
+              var subNameEl = subEl ? subEl.querySelector('.subcategory-name') : null;
+              var subName = subNameEl ? cleanText(subNameEl.innerText) : '';
+              var catChanged = catName !== _lastTuningCategory;
+              var subChanged = subName !== _lastTuningSubcategory;
+              _lastTuningCategory = catName;
+              _lastTuningSubcategory = subName;
+              var groupParts = [];
+              if (catChanged && catName) groupParts.push(catName);
+              if ((catChanged || subChanged) && subName) groupParts.push(subName);
+              if (groupParts.length) finalText = groupParts.join(', ') + '. ' + finalText;
               scheduleSpeak(finalText, src);
+              // Speak the tuning hint (the in-game tooltip that describes what the
+              // control does) shortly after, so the name and value are heard first.
+              // BeamNG's v-bng-tooltip directive stashes the description on the
+              // .input-container element itself as el.__bngTooltip.text — always
+              // present, regardless of whether the floating tooltip is rendered.
+              if (_tuningHintTimer) { try { clearTimeout(_tuningHintTimer); } catch (e) {} _tuningHintTimer = null; }
+              var tip = row.__bngTooltip;
+              var hint = (tip && tip.text) ? cleanText(String(tip.text)) : '';
+              if (hint && hint.toLowerCase() !== name.toLowerCase()) {
+                // Queue the hint after the control speech instead of interrupting
+                // it (interrupt:false). This makes ordering independent of the
+                // user's speech rate — on slow speech the value is no longer cut
+                // off; the hint simply plays once the control finishes. The short
+                // delay only ensures this message is dispatched after the control's
+                // debounced send, so it lands behind it in the speech queue.
+                _tuningHintTimer = setTimeout(function () {
+                  _tuningHintTimer = null;
+                  send({ type: "speak", text: hint, interrupt: false });
+                }, 250);
+              }
               return true;
             }
             return false;
@@ -1535,6 +1580,328 @@ angular.module('beamng.apps')
             }, 200);
           }
 
+          // ========== TUNING SLIDER ACCELERATION ==========
+          // BeamNG's vehicle tuning sliders (BngSlider with the property-slider class)
+          // change by a single `step` per D-pad repeat (~10/sec after a 400ms hold).
+          // Mods can define tiny steps over wide ranges, so a change like final drive
+          // 4.1 -> 3.55 takes many seconds of held input. This module watches the
+          // focused slider and, while a direction is held, injects extra steps so the
+          // effective increment grows the longer the control is held. It also speaks
+          // the value as it changes, since the game gives no audio feedback while
+          // adjusting and acceleration would otherwise make overshooting easy.
+          //
+          // The D-pad path updates the slider through a Vue directive (callback -> ref)
+          // and fires NO DOM 'input' event, so we poll the focused range input rather
+          // than listen. To apply our own change we set the range value and dispatch a
+          // native 'input' event, which drives the slider's v-model + notify() exactly
+          // like a real interaction (updating the Vue ref and committing the change).
+          var TUNE_POLL_MS = 40;
+          var TUNE_IDLE_RESET_TICKS = 6;   // ~240ms with no change ends a "hold"
+          var TUNE_HOLD_GAP_TICKS = 4;     // <=160ms gap still counts as the same hold
+          var TUNE_SPEAK_INTERVAL = 150;   // min ms between spoken value updates
+          // Step multiplier keyed by consecutive held repeats (extra = mult - 1).
+          function tuneMultiplier(count) {
+            if (count < 3) return 1;
+            if (count < 8) return 2;
+            if (count < 15) return 4;
+            if (count < 25) return 8;
+            if (count < 40) return 16;
+            return 32;
+          }
+          var _tune = {
+            input: null, lastValue: null, lastDir: 0, count: 0,
+            idleTicks: 0, pendingFinal: false, lastSpeakTs: 0, lastSpokenVal: null
+          };
+          function tuneRoundToStep(val, step) {
+            var s = String(step);
+            var dot = s.indexOf('.');
+            var decimals = dot >= 0 ? (s.length - dot - 1) : 0;
+            var p = Math.pow(10, decimals);
+            return Math.round(val * p) / p;
+          }
+          function tuneSetRangeValue(el, val) {
+            try {
+              var desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+              if (desc && desc.set) desc.set.call(el, String(val));
+              else el.value = String(val);
+            } catch (e) { el.value = String(val); }
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+          function tuneFocusedRange() {
+            var cont = document.querySelector('.bng-slider-container.property-slider.focus-visible');
+            if (cont) return cont.querySelector('input.bng-slider[type="range"]');
+            // In some states focus-visible lands on the inner range input itself.
+            return document.querySelector('.property-slider input.bng-slider.focus-visible');
+          }
+          function tuneAnnounce(el, force) {
+            var step = parseFloat(el.step) || 0;
+            var raw = parseFloat(el.value);
+            if (isNaN(raw)) return;
+            var disp = step > 0 ? tuneRoundToStep(raw, step) : raw;
+            if (disp === _tune.lastSpokenVal) return; // never repeat the same value
+            var now = nowTS();
+            if (!force && (now - _tune.lastSpeakTs) < TUNE_SPEAK_INTERVAL) return;
+            _tune.lastSpeakTs = now;
+            _tune.lastSpokenVal = disp;
+            var cont = closest(el, '.bng-slider-container');
+            var suffixEl = cont ? cont.querySelector('[data-testid="suffix"]') : null;
+            var unit = suffixEl ? cleanText(suffixEl.innerText) : '';
+            var txt = unit ? (disp + ' ' + unit) : String(disp);
+            scheduleSpeak(cleanText(txt), P.CONTROLLER);
+          }
+          function tuneReset(el) {
+            _tune.input = el || null;
+            _tune.lastValue = el ? parseFloat(el.value) : null;
+            _tune.lastDir = 0;
+            _tune.count = 0;
+            _tune.idleTicks = 0;
+            _tune.pendingFinal = false;
+          }
+          function startTuningSliderAcceleration() {
+            setInterval(function () {
+              try {
+                var el = tuneFocusedRange();
+                if (!el) { if (_tune.input) tuneReset(null); return; }
+                if (el !== _tune.input) { tuneReset(el); return; }
+
+                var v = parseFloat(el.value);
+                if (isNaN(v)) return;
+
+                if (v === _tune.lastValue) {
+                  _tune.idleTicks++;
+                  if (_tune.idleTicks >= TUNE_IDLE_RESET_TICKS) {
+                    if (_tune.pendingFinal) { tuneAnnounce(el, true); _tune.pendingFinal = false; }
+                    _tune.count = 0;
+                    _tune.lastDir = 0;
+                  }
+                  return;
+                }
+
+                // Value moved since the last poll.
+                var dir = v > _tune.lastValue ? 1 : -1;
+                if (dir === _tune.lastDir && _tune.idleTicks <= TUNE_HOLD_GAP_TICKS) {
+                  _tune.count++;
+                } else {
+                  _tune.count = 0; // direction change or a fresh tap after release
+                }
+                _tune.lastDir = dir;
+                _tune.idleTicks = 0;
+                _tune.lastValue = v;
+                _tune.pendingFinal = true;
+
+                var step = parseFloat(el.step) || 0;
+                if (step > 0) {
+                  var mult = tuneMultiplier(_tune.count);
+                  var min = el.min !== '' ? parseFloat(el.min) : -Infinity;
+                  var max = el.max !== '' ? parseFloat(el.max) : Infinity;
+                  // Cap so one tick never crosses more than ~1/15 of the range.
+                  if (isFinite(min) && isFinite(max) && max > min) {
+                    var cap = Math.max(1, Math.round(Math.abs((max - min) / step) / 15));
+                    if (mult > cap) mult = cap;
+                  }
+                  var extra = mult - 1;
+                  if (extra > 0) {
+                    var target = v + dir * step * extra;
+                    if (target < min) target = min;
+                    if (target > max) target = max;
+                    target = tuneRoundToStep(target, step);
+                    if (target !== v) {
+                      tuneSetRangeValue(el, target);
+                      _tune.lastValue = target;
+                    }
+                  }
+                }
+                tuneAnnounce(el, false);
+              } catch (e) {
+                log('info', '[TUNE] accel error: ' + e.message);
+              }
+            }, TUNE_POLL_MS);
+            log('info', '[bnvda] Tuning slider acceleration started.');
+          }
+
+          // ========== DROPDOWN LIST ACCELERATION ==========
+          // BeamNG's parts/config dropdowns (.bng-dropdown-content, e.g. the wheel
+          // and tire selectors) can hold hundreds of options. The D-pad moves the
+          // navigation focus one option per repeat (~10/sec), so reaching a wheel
+          // near the end of a 225-item list takes many seconds. This mirrors the
+          // tuning-slider acceleration: while a direction is held, we advance the
+          // focused option by an increasing number of steps the longer it's held.
+          //
+          // All options live in the DOM as flat .dropdown-option siblings (each
+          // tabindex=0, the focused one carries .focus-visible). We poll the
+          // focused option's index; when a direction is sustained we move native
+          // focus several options ahead (and keep .focus-visible in sync so the
+          // highlight and our own detection follow). Speech is throttled to the
+          // landing option via speakDropdownOption so flying through the list does
+          // not produce a wall of chatter.
+          var DROP_POLL_MS = 40;
+          var DROP_IDLE_RESET_TICKS = 6;   // ~240ms with no change ends a "hold"
+          var DROP_HOLD_GAP_TICKS = 4;     // <=160ms gap still counts as the same hold
+          var DROP_SPEAK_INTERVAL = 150;   // min ms between spoken option updates
+          function dropMultiplier(count) {
+            if (count < 3) return 1;   // ~first 300ms held: normal single-step
+            if (count < 8) return 2;
+            if (count < 15) return 4;
+            if (count < 25) return 8;
+            return 16;
+          }
+          var _drop = { container: null, index: -1, lastDir: 0, count: 0, idleTicks: 0, pending: 0, diag: 0 };
+          function dropFocusedOption() {
+            return document.querySelector('.bng-dropdown-content .dropdown-option.focus-visible');
+          }
+          function dropIndexOf(opts, el) {
+            for (var i = 0; i < opts.length; i++) { if (opts[i] === el) return i; }
+            return -1;
+          }
+          function dropResetState(cont, idx) {
+            _drop.container = cont || null;
+            _drop.index = (idx === undefined) ? -1 : idx;
+            _drop.lastDir = 0;
+            _drop.count = 0;
+            _drop.idleTicks = 0;
+            _drop.pending = 0;
+            _drop.diag = 0;
+          }
+          // Ask Python to advance the dropdown by `count` steps. We do NOT move
+          // focus ourselves and do NOT dispatch DOM key events: BeamNG's crossfire
+          // navigation is driven by the game engine, not the DOM. The UI only emits
+          // *untrusted* echo keydown events AFTER the engine has already moved, so a
+          // synthetic DOM key (or .focus()) can never drive it. Instead Python
+          // injects real OS-level numpad keystrokes, which the game reads as genuine
+          // input. dir 1 = down/next, -1 = up/prev.
+          function dropSendNav(dir, count) {
+            send({ type: 'nav_inject', dir: dir > 0 ? 1 : -1, count: count });
+          }
+          // Leading + trailing throttle so held/accelerated navigation speaks at
+          // most every DROP_SPEAK_INTERVAL ms but always announces the final
+          // option the user lands on. Returns true to claim the focus event.
+          var _dropSpeak = { lastTs: 0, timer: null };
+          function speakDropdownOption(element, src) {
+            var opt = closest(element, '.dropdown-option');
+            if (!opt || !closest(opt, '.bng-dropdown-content')) return false;
+            var txt = cleanText(opt.innerText || '');
+            if (!txt) return true; // it's a dropdown option, just nothing to say yet
+            var now = nowTS();
+            if (_dropSpeak.timer) { try { clearTimeout(_dropSpeak.timer); } catch (e) {} _dropSpeak.timer = null; }
+            if (now - _dropSpeak.lastTs >= DROP_SPEAK_INTERVAL) {
+              _dropSpeak.lastTs = now;
+              scheduleSpeak(txt, src);
+            } else {
+              // Trailing edge: speak whatever option is focused once we settle.
+              _dropSpeak.timer = setTimeout(function () {
+                _dropSpeak.timer = null;
+                _dropSpeak.lastTs = nowTS();
+                var f = dropFocusedOption();
+                scheduleSpeak(f ? cleanText(f.innerText || '') : txt, src);
+              }, DROP_SPEAK_INTERVAL);
+            }
+            return true;
+          }
+          // TEMP PROBE: log real keyboard events while a dropdown is open so we can
+          // see exactly what a genuine nav keystroke looks like (and whether menu
+          // navigation produces DOM key events at all). Capped to avoid spam.
+          var _dropProbe = 0;
+          function startDropdownKeyProbe() {
+            window.addEventListener('keydown', function (e) {
+              try {
+                if (_dropProbe >= 20) return;
+                if (!document.querySelector('.bng-dropdown-content')) return;
+                _dropProbe++;
+                var t = e.target;
+                log('info', '[DROPKEY] key=' + e.key + ' code=' + e.code +
+                  ' keyCode=' + e.keyCode + ' which=' + e.which + ' loc=' + e.location +
+                  ' trusted=' + e.isTrusted + ' tgt=' +
+                  (t && t.tagName ? t.tagName + '.' + (t.className || '').toString().split(' ')[0] : t));
+              } catch (err) {}
+            }, true);
+            log('info', '[bnvda] Dropdown key probe installed.');
+          }
+          function startDropdownListAcceleration() {
+            setInterval(function () {
+              try {
+                var el = dropFocusedOption();
+                if (!el) { if (_drop.container) dropResetState(null); return; }
+                var cont = closest(el, '.bng-dropdown-content');
+                if (!cont) return;
+                var opts = cont.querySelectorAll('.dropdown-option');
+                if (!opts.length) return;
+
+                var idx = dropIndexOf(opts, el);
+                if (idx < 0) return;
+
+                if (cont !== _drop.container) {
+                  dropResetState(cont, idx);
+                  log('info', '[DROP] dropdown opened: opts=' + opts.length + ' startIdx=' + idx);
+                  return;
+                }
+
+                if (idx === _drop.index) {
+                  _drop.idleTicks++;
+                  if (_drop.idleTicks >= DROP_IDLE_RESET_TICKS) {
+                    _drop.count = 0; _drop.lastDir = 0; _drop.pending = 0;
+                  }
+                  return;
+                }
+
+                // Focus moved since the last poll.
+                var jump = idx - _drop.index;
+                var absJump = jump < 0 ? -jump : jump;
+                var dir = jump > 0 ? 1 : -1;
+
+                // Echoes of our own injected steps: consume them against `pending`
+                // and do NOT count them as held input (otherwise the injected motion
+                // would feed back and runaway-accelerate). The engine applies our
+                // injected keys asynchronously, so they arrive over several polls.
+                if (_drop.pending > 0) {
+                  _drop.pending -= absJump;
+                  if (_drop.pending < 0) _drop.pending = 0;
+                  _drop.lastDir = dir;
+                  _drop.idleTicks = 0;
+                  _drop.index = idx;
+                  return;
+                }
+
+                // Natural user move.
+                var prevIdle = _drop.idleTicks;
+                if (dir === _drop.lastDir && _drop.idleTicks <= DROP_HOLD_GAP_TICKS) {
+                  _drop.count++;
+                } else {
+                  _drop.count = 0; // direction change or a fresh tap after release
+                }
+                _drop.lastDir = dir;
+                _drop.idleTicks = 0;
+                _drop.index = idx;
+
+                var mult = dropMultiplier(_drop.count);
+                // Never jump more than ~1/12 of the list in a single tick, so even
+                // at full speed the user can stop within a screen of their target.
+                var cap = Math.max(1, Math.round(opts.length / 12));
+                if (mult > cap) mult = cap;
+                var extra = mult - 1;
+                // Don't inject past the ends of the list.
+                if (extra > 0) {
+                  var room = dir > 0 ? (opts.length - 1 - idx) : idx;
+                  if (extra > room) extra = room;
+                }
+
+                var diagOn = _drop.diag < 24;
+                if (diagOn) {
+                  _drop.diag++;
+                  log('info', '[DROP] move idx=' + idx + ' dir=' + dir + ' gapTicks=' +
+                    prevIdle + ' count=' + _drop.count + ' mult=' + mult + ' extra=' + extra);
+                }
+
+                if (extra > 0) {
+                  dropSendNav(dir, extra);
+                  _drop.pending = extra;
+                }
+              } catch (e) {
+                log('info', '[DROP] accel error: ' + e.message);
+              }
+            }, DROP_POLL_MS);
+            log('info', '[bnvda] Dropdown list acceleration started.');
+          }
+
           // ---------- Non-Invasive Observer for UI Changes ----------
           var mainObserver = null;
           var lastFocusedElement = null;
@@ -1557,6 +1924,7 @@ angular.module('beamng.apps')
                 if (!element || element === lastFocusedElement) return;
                 lastFocusedElement = element;
                 if (speakTuningControl(element, src)) return;
+                if (speakDropdownOption(element, src)) return;
                 if (speakPartRow(element, src)) return;
                 if (speakCheckboxRow(element, src)) return;
                 if (speakSliderRow(element, src)) return;
@@ -1575,6 +1943,7 @@ angular.module('beamng.apps')
                 if (!element || element === lastFocusedElement) return;
                 lastFocusedElement = element;
                 if (speakTuningControl(element, src)) return;
+                if (speakDropdownOption(element, src)) return;
                 if (speakPartRow(element, src)) return;
                 if (speakCheckboxRow(element, src)) return;
                 if (speakSliderRow(element, src)) return;
@@ -1758,6 +2127,58 @@ angular.module('beamng.apps')
               }
             }
 
+            // ---- Targeted dropdown enumeration ----
+            // The main walker skips zero-size ancestors, so a teleported/overlay
+            // dropdown list often never appears above. When a dropdown is open,
+            // dump its container, every option, and the focused option's ancestor
+            // chain so list navigation can be implemented from real structure.
+            try {
+              var opts = document.querySelectorAll('.dropdown-option');
+              if (opts.length) {
+                lines.push('');
+                lines.push('=== DROPDOWN OPTIONS (' + opts.length + ') ===');
+                var foc = document.querySelector('.dropdown-option.focus-visible') || focused;
+                // Ancestor chain of the focused option (tag + id + classes).
+                if (foc) {
+                  lines.push('-- focused option ancestor chain --');
+                  var chain = [];
+                  var p = foc;
+                  while (p && p !== document.body && chain.length < 15) {
+                    var pc = (p.className || '').toString().trim();
+                    var pr = p.getBoundingClientRect ? p.getBoundingClientRect() : null;
+                    var sz = pr ? (Math.round(pr.width) + 'x' + Math.round(pr.height)) : '?';
+                    var ov = '';
+                    try {
+                      var cs = window.getComputedStyle(p);
+                      ov = ' overflow=' + cs.overflow + '/' + cs.overflowY;
+                    } catch (e2) {}
+                    chain.push('  <' + p.tagName.toLowerCase() +
+                      (p.id ? ' id="' + p.id + '"' : '') +
+                      (pc ? ' class="' + pc.substring(0, 90) + '"' : '') +
+                      '> [' + sz + ']' + ov);
+                    p = p.parentElement;
+                  }
+                  for (var ci = 0; ci < chain.length; ci++) lines.push(chain[ci]);
+                }
+                lines.push('-- options (in document order) --');
+                for (var oi = 0; oi < opts.length; oi++) {
+                  var o = opts[oi];
+                  var ocls = (o.className || '').toString().trim();
+                  var otxt = (o.innerText || '').replace(/\s+/g, ' ').trim().substring(0, 60);
+                  var marks = [];
+                  if (o.classList.contains('focus-visible')) marks.push('FOCUSED');
+                  if (o.getAttribute && o.getAttribute('aria-selected') === 'true') marks.push('selected');
+                  if (o.hasAttribute && o.hasAttribute('tabindex')) marks.push('tabindex=' + o.getAttribute('tabindex'));
+                  lines.push('  [' + oi + '] class="' + ocls.substring(0, 70) + '"' +
+                    (marks.length ? ' {' + marks.join(',') + '}' : '') +
+                    ' "' + otxt + '"');
+                }
+                lines.push('=== END DROPDOWN OPTIONS ===');
+              }
+            } catch (eDrop) {
+              lines.push('[dropdown enum error] ' + eDrop.message);
+            }
+
             lines.push('=== END DOM DUMP (' + lines.length + ' lines) ===');
 
             // Send back as dom_dump_result
@@ -1833,6 +2254,9 @@ angular.module('beamng.apps')
             attachMainObserver();
             startRadialMenuWatcher();
             startSelectCloseWatcher();
+            startTuningSliderAcceleration();
+            startDropdownKeyProbe();
+            startDropdownListAcceleration();
 
           }
 
