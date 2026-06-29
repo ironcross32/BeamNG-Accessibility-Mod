@@ -6,10 +6,17 @@
 # nuitka-project: --include-package=sral
 # nuitka-project: --include-data-file=SRAL.dll=SRAL.dll
 # nuitka-project: --include-data-file=nvdaControllerClient.dll=nvdaControllerClient.dll
-# nuitka-project: --include-data-file=mit_kemar_normal_pinna.sofa=mit_kemar_normal_pinna.sofa
-# nuitka-project: --include-package=h5py
-# nuitka-project: --include-package-data=h5py
+# nuitka-project: --include-data-file=hrtf_kemar_horizontal.npz=hrtf_kemar_horizontal.npz
 # nuitka-project: --include-package=mss
+# nuitka-project: --nofollow-import-to=h5py
+# nuitka-project: --nofollow-import-to=pygame
+# nuitka-project: --nofollow-import-to=scipy
+# nuitka-project: --nofollow-import-to=matplotlib
+# nuitka-project: --nofollow-import-to=tkinter
+# nuitka-project: --nofollow-import-to=PIL
+# nuitka-project: --nofollow-import-to=pytest
+# nuitka-project: --nofollow-import-to=setuptools
+# nuitka-project: --nofollow-import-to=pip
 # nuitka-project: --standalone
 # nuitka-project: --onefile
 # nuitka-project: --onefile-cache-mode=cached
@@ -4962,8 +4969,8 @@ def _run_engine():
     watcher_thread = threading.Thread(target=_config_watcher, args=(STOP,), daemon=True)
     watcher_thread.start()
 
-    sofa_path = os.path.join(HERE, "mit_kemar_normal_pinna.sofa")
-    audio_controller.load_hrtf(sofa_path)
+    hrir_path = os.path.join(HERE, "hrtf_kemar_horizontal.npz")
+    audio_controller.load_hrtf(hrir_path)
 
     _ws_thread, _ws_stop = None, lambda: None
     try:

@@ -712,13 +712,13 @@ class AudioController:
                     target=self._device_watcher_loop, daemon=True)
                 self._device_watcher_thread.start()
 
-    def load_hrtf(self, sofa_path):
-        """Load HRTF data from a SOFA file for binaural compass clicks."""
+    def load_hrtf(self, hrir_path):
+        """Load pre-baked HRIR data (.npz) for binaural compass clicks."""
         if not self._is_enabled:
             return
         try:
             from hrtf import HRTFSet
-            hrtf = HRTFSet(sofa_path, self.logger)
+            hrtf = HRTFSet(hrir_path, self.logger)
             if hrtf.is_loaded:
                 hrtf.resample(self.samplerate)
                 self._hrtf = hrtf

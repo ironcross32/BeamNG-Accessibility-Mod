@@ -131,7 +131,6 @@ dependencies = [
     { name = "aiohttp" },
     { name = "asyncio" },
     { name = "comtypes" },
-    { name = "h5py" },
     { name = "keyboard" },
     { name = "mouse" },
     { name = "mss" },
@@ -144,6 +143,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "h5py" },
     { name = "ipython", version = "9.10.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "ipython", version = "9.12.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "nuitka" },
@@ -154,7 +154,6 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.12.15" },
     { name = "asyncio", specifier = ">=4.0.0" },
     { name = "comtypes", specifier = ">=1.4.15" },
-    { name = "h5py", specifier = ">=3.8.0" },
     { name = "keyboard", specifier = ">=0.13.5" },
     { name = "mouse", specifier = ">=0.7.1" },
     { name = "mss", specifier = ">=9.0.1" },
@@ -167,6 +166,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "h5py", specifier = ">=3.8.0" },
     { name = "ipython", specifier = ">=9.10.1" },
     { name = "nuitka", specifier = ">=4.0" },
 ]

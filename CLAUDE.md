@@ -46,7 +46,7 @@ The project has two halves that communicate via UDP:
 
 - **beamtel.py** — Main entry point. UDP telemetry listener, keyboard command system (F9 hotkey + modifier combos), drives audio and speech.
 - **audio.py** — Procedural audio synthesis engine. Real-time stereo 48kHz float32 via `sounddevice` callback. Compass clicks, shift/TC/steering tones, warning buzzers, drift alerts, heading guidance, scanner beeps, obstacle detection tones.
-- **hrtf.py** — HRTF binaural panning. Loads MIT KEMAR SOFA files via h5py, interpolates impulse responses by azimuth, FFT-resamples to 48kHz. Used by audio.py for spatial compass clicks.
+- **hrtf.py** — HRTF binaural panning. Loads pre-baked MIT KEMAR horizontal-plane HRIRs from `hrtf_kemar_horizontal.npz` (numpy), interpolates impulse responses by azimuth, FFT-resamples to 48kHz. Used by audio.py for spatial compass clicks. The `.npz` is generated at build time by `bake_hrtf.py` from `mit_kemar_normal_pinna.sofa` — this keeps h5py + the HDF5 native libraries (~6.5 MB) out of the shipped build.
 - **configurator.py** — wxPython GUI for `beamtel_config.json`. SAPI voice enumeration via comtypes, real-time tone testing.
 - **sral.py** — Wrapper around native SRAL.dll for speech synthesis. Falls back to SAPI if unavailable.
 - **ai_describer.py** — AI Describer pipeline. Captures the primary monitor (`mss`), sends the image to Google Gemini's `generateContent` REST endpoint with a blind-friendly system prompt, returns the spoken description. Validates API keys via the free ListModels endpoint. Logs all descriptions and API errors to `%LOCALAPPDATA%/beamtel/ai_descriptions.log`. Invoked in-game by F10 then Space.
@@ -156,4 +156,4 @@ BeamNG.drive retail uses **LuaJIT (Lua 5.1)**:
 
 ## Dependencies
 
-numpy, sounddevice, wxpython, aiohttp, h5py, keyboard, comtypes, zstandard. Native DLLs: SRAL.dll, nvdaControllerClient.dll.
+numpy, sounddevice, wxpython, aiohttp, keyboard, comtypes, zstandard. Native DLLs: SRAL.dll, nvdaControllerClient.dll. Build-time only: h5py (used by `bake_hrtf.py` to extract the SOFA file into `hrtf_kemar_horizontal.npz`; not bundled into the executable).

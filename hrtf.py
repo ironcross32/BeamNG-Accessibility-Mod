@@ -6,51 +6,30 @@ import numpy as np
 class HRTFSet:
     """Loads a SOFA file (MIT KEMAR) and provides interpolated HRIR lookup by azimuth."""
 
-    def __init__(self, sofa_path, logger):
+    def __init__(self, hrir_path, logger):
         self.logger = logger
         self._azimuths = None   # sorted 1-D float array of measured azimuths (degrees)
         self._irs_left = None   # shape (M, N) — M positions, N samples per IR
         self._irs_right = None
-        self._samplerate = 44100.0  # native rate of the SOFA file
+        self._samplerate = 44100.0  # native rate of the baked HRIR set
 
+        # The horizontal-plane HRIRs are pre-extracted from the MIT KEMAR SOFA file
+        # into a compressed .npz at build time (see bake_hrtf.py). This avoids
+        # bundling h5py + the HDF5 native libraries (~6.5 MB) just to parse a static
+        # data file at startup.
         try:
-            import h5py
-        except ImportError:
-            logger.warning("h5py not installed — HRTF disabled.")
-            return
+            with np.load(hrir_path) as data:
+                self._azimuths = data["azimuths"].astype(np.float64)
+                self._irs_left = data["irs_left"].astype(np.float32)
+                self._irs_right = data["irs_right"].astype(np.float32)
+                self._samplerate = float(data["samplerate"])
 
-        try:
-            with h5py.File(sofa_path, "r") as f:
-                # SOFA datasets
-                positions = f["SourcePosition"][:]       # (M, 3): azimuth, elevation, distance
-                irs = f["Data.IR"][:]                    # (M, R, N): measurements × receivers × samples
-                sr = f["Data.SamplingRate"][()]           # scalar or (1,)
-
-                if hasattr(sr, "__len__"):
-                    sr = float(sr[0])
-                else:
-                    sr = float(sr)
-                self._samplerate = sr
-
-                # Filter to horizontal plane (elevation ≈ 0°)
-                elev = positions[:, 1]
-                horiz_mask = np.abs(elev) < 1.0  # within ±1° of horizontal
-                horiz_pos = positions[horiz_mask]
-                horiz_irs = irs[horiz_mask]
-
-                # Sort by azimuth
-                azimuths = horiz_pos[:, 0] % 360.0
-                order = np.argsort(azimuths)
-                self._azimuths = azimuths[order].astype(np.float64)
-                self._irs_left = horiz_irs[order, 0, :].astype(np.float32)   # receiver 0 = left
-                self._irs_right = horiz_irs[order, 1, :].astype(np.float32)  # receiver 1 = right
-
-                logger.info(
-                    f"HRTF loaded: {len(self._azimuths)} positions, "
-                    f"{self._irs_left.shape[1]} samples/IR at {int(sr)} Hz"
-                )
+            logger.info(
+                f"HRTF loaded: {len(self._azimuths)} positions, "
+                f"{self._irs_left.shape[1]} samples/IR at {int(self._samplerate)} Hz"
+            )
         except Exception as e:
-            logger.warning(f"Failed to load HRTF from '{sofa_path}': {e}")
+            logger.warning(f"Failed to load HRTF from '{hrir_path}': {e}")
             self._azimuths = None
 
     @property
