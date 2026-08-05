@@ -339,8 +339,65 @@ def _on_loading_state_changed(active, focus_text=""):
 
 
 def _write_config(path, cfg):
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2, ensure_ascii=False)
+    """Write the config atomically.
+
+    beamtel.py and configurator.py share this file, and beamtel polls it once a
+    second to hot-reload. `open(path, "w")` truncates in place, so a reader could
+    land on a half-written file, fail to parse it, and take load_config's
+    corruption branch -- which renames the real config to .bak and replaces it
+    with defaults. A truncating write is also unrecoverable if the process dies
+    partway through. Writing to a temp file and renaming means a reader always
+    sees either the whole old file or the whole new one.
+    """
+    directory = os.path.dirname(path) or "."
+    try:
+        os.makedirs(directory, exist_ok=True)
+    except OSError:
+        pass
+    tmp = "%s.%d.tmp" % (path, os.getpid())
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
+        # os.replace is atomic on Windows as well, but Windows refuses a rename
+        # onto a file another process currently has open, so this can lose a
+        # race with a reader. That is transient -- back off and retry rather
+        # than dropping the user's settings on the floor.
+        delay = 0.02
+        for attempt in range(10):
+            try:
+                os.replace(tmp, path)
+                return
+            except PermissionError:
+                if attempt == 9:
+                    raise
+                time.sleep(delay)
+                delay = min(delay * 2, 0.25)
+    finally:
+        try:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+        except OSError:
+            pass
+
+
+def _read_config_raw(path):
+    """Return (parsed, os_error). Retries briefly on transient OS errors.
+
+    A sharing violation, or a read arriving mid-rename, is not corruption. The
+    caller must keep the two apart: the corruption path destroys user settings,
+    so it must never fire just because the file was momentarily unavailable.
+    """
+    last_os_error = None
+    for attempt in range(5):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f), None
+        except OSError as e:
+            last_os_error = e
+            time.sleep(0.05)
+    return None, last_os_error
 
 
 def load_config():
@@ -348,8 +405,16 @@ def load_config():
         _write_config(CONFIG_PATH, DEFAULT_CONFIG)
         return DEFAULT_CONFIG.copy()
     try:
-        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-            user = json.load(f)
+        user, os_error = _read_config_raw(CONFIG_PATH)
+        if os_error is not None:
+            # Unreadable right now, most likely because configurator.py is
+            # mid-save. Fall back to defaults for this call only and leave the
+            # file alone -- it is almost certainly intact.
+            logger.warning(
+                f"Config temporarily unreadable ({os_error}); "
+                "using defaults for this load without rewriting it."
+            )
+            return DEFAULT_CONFIG.copy()
         if not isinstance(user, dict):
             raise ValueError("Config root is not an object")
         merged = DEFAULT_CONFIG.copy()

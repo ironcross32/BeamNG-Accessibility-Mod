@@ -2463,40 +2463,57 @@ class AudioController:
         except Exception: return "Unknown Device"
 
     def _restart_audio_stream(self, new_device_index):
+        # Tearing a stream down must happen OUTSIDE self.lock. PortAudio's
+        # Pa_StopStream (what Stream.stop() calls) blocks until the stream
+        # callback has returned, and _audio_callback takes self.lock. Holding the
+        # lock across stop()/close() therefore deadlocks the two against each
+        # other: this thread waits for the callback to finish, the callback waits
+        # for the lock it can never get. That hangs the device watcher and the
+        # PortAudio callback thread for good, so audio never comes back after an
+        # output device change. Detach the stream under the lock, tear it down
+        # after releasing it.
         with self.lock:
             if self._current_device_index == new_device_index and self._audio_stream:
                 return
-            if self._audio_stream:
-                try:
-                    self._audio_stream.stop()
-                    self._audio_stream.close()
-                except Exception as e:
-                    self.logger.warning(f"Error closing old audio stream: {e}")
+            old_stream = self._audio_stream
             self._audio_stream = None
 
+        if old_stream is not None:
             try:
-                device_info = sd.query_devices(new_device_index)
-                new_samplerate = device_info.get("default_samplerate", DEFAULT_SR)
+                old_stream.stop()
+                old_stream.close()
+            except Exception as e:
+                self.logger.warning(f"Error closing old audio stream: {e}")
 
+        try:
+            device_info = sd.query_devices(new_device_index)
+            new_samplerate = device_info.get("default_samplerate", DEFAULT_SR)
+
+            # No stream is running here, so nothing can be reading these.
+            with self.lock:
                 if self.samplerate != new_samplerate:
                     self.samplerate = new_samplerate
                     self._regenerate_waveforms()
                     self._phase_inc_shift = self.shift_freq / self.samplerate
 
-                stream = sd.OutputStream(
-                    samplerate=self.samplerate,
-                    channels=2,
-                    dtype="float32",
-                    device=new_device_index,
-                    callback=self._audio_callback
-                )
-                stream.start()
+            stream = sd.OutputStream(
+                samplerate=self.samplerate,
+                channels=2,
+                dtype="float32",
+                device=new_device_index,
+                callback=self._audio_callback
+            )
+            # start() also outside the lock: it makes the callback live, and the
+            # first invocation wants self.lock immediately.
+            stream.start()
+            with self.lock:
                 self._audio_stream = stream
                 self._current_device_index = new_device_index
                 self._current_device_name = device_info.get("name", "Unknown")
-                self.logger.info(f"Audio stream started on device: '{self._current_device_name}' at {int(self.samplerate)} Hz.")
-            except Exception as e:
-                self.logger.error(f"Failed to start audio stream on device index {new_device_index}: {e}")
+            self.logger.info(f"Audio stream started on device: '{self._current_device_name}' at {int(self.samplerate)} Hz.")
+        except Exception as e:
+            self.logger.error(f"Failed to start audio stream on device index {new_device_index}: {e}")
+            with self.lock:
                 self._audio_stream, self._current_device_index = None, None
 
     def _device_watcher_loop(self):
@@ -2537,12 +2554,15 @@ class AudioController:
         if self._device_watcher_thread:
             self._device_watcher_thread.join(timeout=self._audio_poll_interval)
         with self.lock:
-            if self._audio_stream:
-                try:
-                    self._audio_stream.stop()
-                    self._audio_stream.close()
-                except Exception: pass
+            stream = self._audio_stream
             self._audio_stream = None
+        # Outside the lock, for the same reason as _restart_audio_stream: stop()
+        # waits on the callback and the callback waits on self.lock.
+        if stream is not None:
+            try:
+                stream.stop()
+                stream.close()
+            except Exception: pass
         if self._scanner_diag is not None:
             self._scanner_diag.stop()
         self.logger.info("Audio system stopped.")
