@@ -426,6 +426,7 @@ local function setupSockets()
 end
 
 function M.onExtensionLoaded()
+  setExtensionUnloadMode(M, "manual")
   csLog('info', "Accessible clickspot detection extension loaded.")
   -- Bind sockets here so Ctrl+L Lua reload re-opens them.
   setupSockets()

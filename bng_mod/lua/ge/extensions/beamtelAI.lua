@@ -178,6 +178,7 @@ local function setupSockets()
 end
 
 function M.onExtensionLoaded()
+  setExtensionUnloadMode(M, "manual")
   aiLog('info', "AI control extension loaded.")
   -- Bind sockets here so Ctrl+L Lua reload re-opens them.
   setupSockets()

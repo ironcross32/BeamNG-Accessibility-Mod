@@ -1,41 +1,14 @@
-# Nuitka stuff
-# nuitka-project: --nofollow-import-to=IPython
-# nuitka-project: --plugin-enable=anti-bloat
-# nuitka-project: --output-dir=build
-# nuitka-project: --remove-output
-# nuitka-project: --include-package=sral
-# nuitka-project: --include-data-file=SRAL.dll=SRAL.dll
-# nuitka-project: --include-data-file=nvdaControllerClient.dll=nvdaControllerClient.dll
-# nuitka-project: --include-data-file=hrtf_kemar_horizontal.npz=hrtf_kemar_horizontal.npz
-# nuitka-project: --include-package=mss
-# nuitka-project: --nofollow-import-to=h5py
-# nuitka-project: --nofollow-import-to=pygame
-# nuitka-project: --nofollow-import-to=scipy
-# nuitka-project: --nofollow-import-to=matplotlib
-# nuitka-project: --nofollow-import-to=tkinter
-# nuitka-project: --nofollow-import-to=PIL
-# nuitka-project: --nofollow-import-to=pytest
-# nuitka-project: --nofollow-import-to=setuptools
-# nuitka-project: --nofollow-import-to=pip
-# nuitka-project: --standalone
-# nuitka-project: --onefile
-# nuitka-project: --onefile-cache-mode=cached
-# nuitka-project: --onefile-tempdir-spec="{PROGRAM_DIR}/.appdata"
-# nuitka-project: --assume-yes-for-downloads
-# nuitka-project: --jobs=12
-# nuitka-project: --windows-console-mode=disable
-# nuitka-project: --windows-uac-admin
-
 import math
 import socket
 import struct
 import time
 import threading
 import logging
+import re
 from nvda_ws_speaker import (
     start_server_in_thread,
-    register_details_callbacks,
     register_dom_dump_callback,
+    register_loading_state_callback,
     broadcast,
 )
 import signal
@@ -172,6 +145,15 @@ except Exception as e:
 SR_INSTANCE = None
 SPEECH_BUFFER = deque(maxlen=100)
 
+# Loading lifecycle state is driven by the UI's official screen-cover state.
+_loading_active = False
+_loading_settling = False
+_loading_focus_text = ""
+_loading_pending_vehicle = ""
+_loading_generation = 0
+_telemetry_baseline_pending = False
+_loading_lock = threading.Lock()
+
 
 def sral_init():
     global SR_INSTANCE
@@ -192,9 +174,53 @@ def sral_init():
     return SR_INSTANCE
 
 
-def say(text: str, interrupt: bool = True, exclude_from_buffer: bool = False):
-    t = (text or "").strip()
+def _normalize_speech_value(value, source="python"):
+    """Return a scalar speech value, suppressing ambiguous containers."""
+    original = value
+    while isinstance(value, (list, dict)):
+        try:
+            logger.warning(
+                "[LUA_TABLE_SPEECH] source=%s count=%d contents=%r",
+                source,
+                len(value),
+                value,
+            )
+        except Exception:
+            pass
+        if len(value) != 1:
+            return None
+        value = next(iter(value.values())) if isinstance(value, dict) else value[0]
+    if not isinstance(value, (str, int, float, bool)):
+        if original is not None:
+            logger.warning(
+                "[LUA_TABLE_SPEECH] source=%s unsupported_type=%s",
+                source,
+                type(value).__name__,
+            )
+        return None
+    text = str(value)
+    if re.match(r"^table:\s*0x[0-9a-f]+$", text.strip(), re.IGNORECASE):
+        logger.warning(
+            "[LUA_TABLE_SPEECH] source=%s collapsed_pointer=%r contents_lost_upstream",
+            source,
+            text,
+        )
+        return None
+    return text
+
+
+def say(text: str, interrupt: bool = True, exclude_from_buffer: bool = False, source="python"):
+    normalized = _normalize_speech_value(text, source)
+    if normalized is None:
+        return
+    t = normalized.strip()
     if not t:
+        return
+
+    with _loading_lock:
+        suppress_for_loading = _loading_active or _loading_settling
+    if suppress_for_loading and not _command_context and source != "loading_lifecycle":
+        logger.info("Suppressed speech during loading: source=%s text=%r", source, t)
         return
 
     if _command_context:
@@ -239,6 +265,54 @@ def stop_speech():
             inst.stop()
         except Exception:
             pass
+
+
+def _finish_loading_settle(generation):
+    global _loading_settling, _loading_pending_vehicle, _speech_protected_until
+    with _loading_lock:
+        if generation != _loading_generation or _loading_active:
+            return
+        vehicle = _loading_pending_vehicle.strip()
+        focus = _loading_focus_text.strip()
+        _loading_pending_vehicle = ""
+        _loading_settling = False
+    ready_text = vehicle or focus or "Ready"
+    _speech_protected_until = time.monotonic() + SPEECH_PROTECT_S
+    logger.info("Loading lifecycle ready: generation=%d cue=%r", generation, ready_text)
+    say(ready_text, exclude_from_buffer=True, source="loading_lifecycle")
+
+
+def _on_loading_state_changed(active, focus_text=""):
+    global _loading_active, _loading_settling, _loading_focus_text
+    global _loading_pending_vehicle, _loading_generation, _telemetry_baseline_pending
+    active = bool(active)
+    with _loading_lock:
+        if active == _loading_active and (active or _loading_settling):
+            return
+        _loading_generation += 1
+        generation = _loading_generation
+        _loading_focus_text = (focus_text or "").strip()
+        if active:
+            _loading_active = True
+            _loading_settling = False
+            _loading_pending_vehicle = ""
+            _telemetry_baseline_pending = True
+        else:
+            _loading_active = False
+            _loading_settling = True
+    logger.info(
+        "Loading lifecycle changed: active=%s generation=%d focus=%r",
+        active,
+        generation,
+        focus_text,
+    )
+    if active:
+        stop_speech()
+        say("Loading", exclude_from_buffer=True, source="loading_lifecycle")
+    else:
+        timer = threading.Timer(1.0, _finish_loading_settle, args=(generation,))
+        timer.daemon = True
+        timer.start()
 
 
 def _write_config(path, cfg):
@@ -323,16 +397,27 @@ def ui_listener(stop_event):
                 payload = json.loads(line[len("BEAMTEL_UI ") :])
             except Exception:
                 continue
+            if not isinstance(payload, dict):
+                _normalize_speech_value(payload, "ui_udp.payload")
+                continue
             kind = payload.get("kind")
             d = payload.get("data") or {}
+            if not isinstance(d, dict):
+                _normalize_speech_value(d, f"ui_udp.{kind}.data")
+                continue
             if kind == "toastr":
-                title = (d.get("title") or "").strip()
-                msg = (d.get("msg") or "").strip()
+                title = _normalize_speech_value(d.get("title") or "", "ui_udp.toastr.title")
+                msg = _normalize_speech_value(d.get("msg") or "", "ui_udp.toastr.msg")
+                title = title.strip() if title is not None else ""
+                msg = msg.strip() if msg is not None else ""
                 text = f"{title} {msg}".strip() or msg or title
             elif kind == "message":
-                text = (d.get("msg") or "").strip()
+                text = _normalize_speech_value(d.get("msg") or "", "ui_udp.message.msg")
+                text = text.strip() if text is not None else ""
+            else:
+                text = ""
             if text:
-                say(text)
+                say(text, source=f"ui_udp.{kind}")
     finally:
         try:
             sock.close()
@@ -350,7 +435,8 @@ def scanner_listener(audio_controller, stop_event):
         last_scanner_approach_deg, \
         last_scanner_bearing, \
         _last_vehicle_switch_ts, \
-        _speech_protected_until
+        _speech_protected_until, \
+        _loading_pending_vehicle
     SCANNER_PACKET_FORMAT = "<ff"
     SCANNER_PACKET_SIZE = struct.calcsize(SCANNER_PACKET_FORMAT)
 
@@ -519,8 +605,15 @@ def scanner_listener(audio_controller, stop_event):
                             last_scanner_target_name = ""
                             last_scanner_distance = float("inf")
                         _last_vehicle_switch_ts = time.monotonic()
-                        _speech_protected_until = time.monotonic() + SPEECH_PROTECT_S
-                        say(name, exclude_from_buffer=True)
+                        with _loading_lock:
+                            loading_or_settling = _loading_active or _loading_settling
+                            if loading_or_settling:
+                                _loading_pending_vehicle = name
+                        if loading_or_settling:
+                            logger.info("Queued loading ready vehicle: %r", name)
+                        else:
+                            _speech_protected_until = time.monotonic() + SPEECH_PROTECT_S
+                            say(name, exclude_from_buffer=True, source="vehicle_switch")
                     elif text.startswith("AI_STATUS_ALL:"):
                         _speak_status_all_response(text[len("AI_STATUS_ALL:") :])
                     elif text.startswith("AI_STATUS:"):
@@ -1522,8 +1615,6 @@ _vbrowser_active = False
 _vbrowser_on_enter = None
 _vbrowser_entry_data = []
 
-# Vehicle Details State
-_vehicle_selector_open = False
 audio_controller_ref = None
 
 # Vehicle spawner module reference (set in main() after import)
@@ -1950,27 +2041,6 @@ def close_virtual_browser(speak_exit=True):
     _vbrowser_index = 0
     if speak_exit:
         say("Exit", exclude_from_buffer=True)
-
-
-def _on_vehicle_details_received(lines):
-    filtered = [l.strip() for l in lines if isinstance(l, str) and l.strip()]
-    if not filtered:
-        return
-    if _vehicle_selector_open:
-        open_virtual_browser(filtered)
-    if audio_controller_ref:
-        audio_controller_ref.trigger_details_tone()
-
-
-def _on_vehicle_selector_state(is_open):
-    global _vehicle_selector_open
-    if is_open == _vehicle_selector_open:
-        return
-    _vehicle_selector_open = is_open
-    if is_open:
-        pass  # Browser opens when details arrive via _on_vehicle_details_received
-    else:
-        close_virtual_browser(speak_exit=False)
 
 
 SCANNER_CMD_PORT = 4448  # UDP port to send ON/OFF commands to vehicle scanner
@@ -3914,6 +3984,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
         last_lightbar, \
         last_fog
     global last_gear_byte, last_gear_str, last_bucket, last_speed_announce_ts
+    global _telemetry_baseline_pending
     global drift_alert_active, last_drift_check_ts, drift_baseline_heading, drift_pan_direction  # NEW
     global drift_rate_val  # NEW
     global \
@@ -4109,6 +4180,9 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
             shift_active_frame, tc_active_frame, showLights = False, False, 0
 
             with state_lock:
+                baseline_frame = _telemetry_baseline_pending
+                if baseline_frame:
+                    _telemetry_baseline_pending = False
                 if protocol_mode == "extended":
                     showLights = unpacked[13]
                     (
@@ -4187,7 +4261,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     last_signal_left_input = cur_left
                     last_signal_right_input = cur_right
                     last_hazard_enabled = cur_hazard
-                    if announce_turn_signals and (
+                    if not baseline_frame and announce_turn_signals and (
                         cur_hazard != prev_hazard
                         or cur_left != prev_left
                         or cur_right != prev_right
@@ -4205,7 +4279,9 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     cur_lightbar = int(lightbar_raw)
                     if cur_lightbar != last_lightbar:
                         last_lightbar = cur_lightbar
-                        if cur_lightbar == 0:
+                        if baseline_frame:
+                            pass
+                        elif cur_lightbar == 0:
                             say("Lightbar off")
                         elif cur_lightbar == 1:
                             say("Lightbar on")
@@ -4216,7 +4292,8 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     cur_fog = int(fog_raw)
                     if cur_fog != last_fog:
                         last_fog = cur_fog
-                        say("Fog lights on" if cur_fog else "Fog lights off")
+                        if not baseline_frame:
+                            say("Fog lights on" if cur_fog else "Fog lights off")
                 else:  # outgauge
                     showLights = unpacked[13]
                     speed_ms, rpm, turbo, engtemp, fuel, oil_pressure, oiltemp = (
@@ -4253,7 +4330,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         unpacked[1].decode("utf-8", errors="ignore").strip("\x00")
                     )
                     if gear_str != last_gear_str:
-                        if announce_gear:
+                        if announce_gear and not baseline_frame:
                             phrase = extended_gear_to_phrase(gear_str)
                             if (gear_str or "").strip().upper() == "N":
                                 say("neutral", exclude_from_buffer=True)
@@ -4263,7 +4340,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                 else:  # outgauge
                     gear_byte = unpacked[3]
                     if gear_byte != last_gear_byte:
-                        if announce_gear:
+                        if announce_gear and not baseline_frame:
                             phrase = gear_to_phrase(gear_byte)
                             if gear_byte == NEUTRAL:
                                 say("neutral", exclude_from_buffer=True)
@@ -4273,7 +4350,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
 
                 current_bucket = get_speed_bucket(speed_ms)
                 if current_bucket != last_bucket:
-                    if announce_speed and now - last_speed_announce_ts >= cooldown_sec:
+                    if not baseline_frame and announce_speed and now - last_speed_announce_ts >= cooldown_sec:
                         spd_val, spd_unit = fmt_speed(speed_ms)
                         say(f"{spd_val} {spd_unit}", exclude_from_buffer=True)
                         last_speed_announce_ts = now
@@ -4514,7 +4591,7 @@ class BeamTelFrame(wx.Frame):
         btn_install_mod = wx.Button(main_panel, label="&Install Mod")
         btn_install_mod.SetName("Install Mod")
         btn_install_mod.SetToolTip(
-            "Copy bng_screenreader_mod.zip into the BeamNG.drive mods directory."
+            "Install the BeamNG.drive mod and activate its screen-reader UI app."
         )
         bottom_btn_sizer.Add(btn_install_mod, 0, wx.RIGHT, 5)
         bottom_btn_sizer.AddStretchSpacer()
@@ -4975,13 +5052,13 @@ def _run_engine():
     _ws_thread, _ws_stop = None, lambda: None
     try:
         _ws_thread, _ws_stop = start_server_in_thread(
-            lambda text, interrupt=True: say(text, interrupt)
+            lambda text, interrupt=True: say(text, interrupt, source="ui_bridge")
         )
     except Exception as _e:
         logger.error(f"Failed to start NVDA WS/HTTP bridge: {_e}")
 
-    register_details_callbacks(_on_vehicle_details_received, _on_vehicle_selector_state)
     register_dom_dump_callback(_on_dom_dump_received)
+    register_loading_state_callback(_on_loading_state_changed)
 
     if cfg.get("launch_beamng", False):
         try:

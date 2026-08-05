@@ -2,7 +2,7 @@
 # WebSocket-Only version
 # Designed to be embedded: start_server_in_thread(lambda text: say(text))
 
-import asyncio, json, os, re, threading, time
+import asyncio, json, os, re, threading
 from aiohttp import web, WSMsgType
 from bnh_logger import get_logger
 
@@ -17,80 +17,36 @@ def _looks_like_css(t: str) -> bool:
 
 HOST = os.getenv("BNVDA_HOST", "127.0.0.1")
 WS_PORT = int(os.getenv("BNVDA_WS_PORT", "8765"))
+TCP_PORT = int(os.getenv("BNVDA_TCP_PORT", "8766"))
 
 # Initialize the shared logger
 logger = get_logger()
 
 # ---------- Global state ----------
 _LOOP: asyncio.AbstractEventLoop | None = None
+_RUNNER: web.AppRunner | None = None
+_TCP_SERVER: asyncio.AbstractServer | None = None
 _SPEAK_FUNC = None
 _SPEAK_LAST = ""
 _HOVER_TASK: asyncio.Task | None = None
 _HOVER_TOKEN = None
-_DETAILS_CALLBACK = None
-_VEHICLE_SELECTOR_CALLBACK = None
 _DOM_DUMP_CALLBACK = None
+_LOADING_STATE_CALLBACK = None
 
 _CLIENTS: set = set()  # connected WebSocket instances
-
-
-def register_details_callbacks(on_details, on_selector_state):
-    global _DETAILS_CALLBACK, _VEHICLE_SELECTOR_CALLBACK
-    _DETAILS_CALLBACK = on_details
-    _VEHICLE_SELECTOR_CALLBACK = on_selector_state
+_TCP_CLIENTS: set = set()  # connected GE Lua newline-delimited JSON clients
 
 
 def register_dom_dump_callback(callback):
     global _DOM_DUMP_CALLBACK
     _DOM_DUMP_CALLBACK = callback
 
+def register_loading_state_callback(callback):
+    """Register the application-level loading lifecycle handler."""
+    global _LOADING_STATE_CALLBACK
+    _LOADING_STATE_CALLBACK = callback
 
 
-# ---------- Menu navigation key injection ----------
-# BeamNG's in-menu navigation is driven by the game engine, not by DOM events:
-# the UI only emits *untrusted* echo keydown events after the engine has already
-# moved the crossfire focus, so synthetic DOM keys (or .focus()) cannot drive it.
-# To accelerate list navigation we therefore inject *real* OS-level numpad
-# keystrokes, which the game reads as genuine input. The UI hook (app.js) detects
-# a held direction in a dropdown and asks us to inject N extra steps.
-#
-# Numpad scan codes (Set 1, non-extended): Numpad2 = 0x50 (down/next),
-# Numpad8 = 0x48 (up/prev). Non-extended is what distinguishes the numpad keys
-# from the arrow keys, which is exactly what BeamNG binds menu navigation to.
-_NAV_SCAN_DOWN = 0x50  # Numpad 2
-_NAV_SCAN_UP = 0x48    # Numpad 8
-# Space presses out so the engine registers each as a discrete menu step rather
-# than coalescing a same-frame burst (the game samples input ~per frame).
-_NAV_INJECT_SPACING = 0.018
-_NAV_INJECT_MAX = 40
-
-
-def _inject_nav_keys(direction, count):
-    scan = _NAV_SCAN_DOWN if direction > 0 else _NAV_SCAN_UP
-    try:
-        n = int(count)
-    except (TypeError, ValueError):
-        return
-    n = max(0, min(n, _NAV_INJECT_MAX))
-    if n <= 0:
-        return
-
-    def _run():
-        try:
-            import keyboard
-        except Exception as e:  # pragma: no cover - keyboard always present at runtime
-            logger.error(f"[nav_inject] keyboard import failed: {e}")
-            return
-        for _ in range(n):
-            try:
-                keyboard.press(scan)
-                keyboard.release(scan)
-            except Exception as e:
-                logger.error(f"[nav_inject] key send failed: {e}")
-                return
-            time.sleep(_NAV_INJECT_SPACING)
-
-    threading.Thread(target=_run, name="nav-inject", daemon=True).start()
 
 
 # ---------- Core helpers ----------
@@ -160,26 +116,12 @@ def handle_ws_message(data):
         level = str(data.get("level", "INFO")).lower()
         msg = str(data.get("msg", ""))
         getattr(logger, level, logger.info)(msg)
-    elif msg_type == "nav_inject":
-        _inject_nav_keys(data.get("dir", 1), data.get("count", 1))
     elif msg_type == "hover":
         hover_on(
             data.get("text", ""), item_id=data.get("id"), delay_ms=data.get("delay_ms")
         )
     elif msg_type == "hover_cancel":
         hover_cancel()
-    elif msg_type == "vehicle_details":
-        if _DETAILS_CALLBACK:
-            try:
-                _DETAILS_CALLBACK(data.get("lines", []))
-            except Exception as e:
-                logger.error(f"vehicle_details callback error: {e}")
-    elif msg_type == "vehicle_selector_state":
-        if _VEHICLE_SELECTOR_CALLBACK:
-            try:
-                _VEHICLE_SELECTOR_CALLBACK(data.get("open", False))
-            except Exception as e:
-                logger.error(f"vehicle_selector_state callback error: {e}")
     elif msg_type == "dom_dump_result":
         if _DOM_DUMP_CALLBACK:
             try:
@@ -187,20 +129,44 @@ def handle_ws_message(data):
             except Exception as e:
                 logger.error(f"dom_dump_result callback error: {e}")
 
+    elif msg_type == "loading_state":
+        if _LOADING_STATE_CALLBACK:
+            try:
+                _LOADING_STATE_CALLBACK(
+                    bool(data.get("active", False)),
+                    str(data.get("focusText", "") or ""),
+                )
+            except Exception as e:
+                logger.error(f"loading_state callback error: {e}")
 
 # ---------- WebSocket Server Logic ----------
 async def ws_handler(request: web.Request):
+    logger.info(
+        "[bnvda] WebSocket handshake attempt from %s origin=%r",
+        request.remote,
+        request.headers.get("Origin"),
+    )
     ws = web.WebSocketResponse(heartbeat=30)
-    await ws.prepare(request)
+    ws.headers["Access-Control-Allow-Origin"] = "*"
+    ws.headers["Access-Control-Allow-Private-Network"] = "true"
+    try:
+        await ws.prepare(request)
+    except Exception as e:
+        logger.error(f"[bnvda] WebSocket handshake failed: {e}")
+        raise
     _CLIENTS.add(ws)
     logger.info("WebSocket client connected.")
     try:
         async for msg in ws:
             if msg.type == WSMsgType.TEXT:
                 try:
-                    handle_ws_message(json.loads(msg.data))
-                except Exception:
-                    pass
+                    data = json.loads(msg.data)
+                    if data.get("type") == "transport_ping":
+                        await ws.send_json({"type": "transport_pong", "transport": "direct-websocket"})
+                    else:
+                        handle_ws_message(data)
+                except Exception as e:
+                    logger.warning(f"[bnvda] Invalid WebSocket message: {e}")
             elif msg.type == WSMsgType.ERROR:
                 logger.error(f"ws error: {ws.exception()}")
     except Exception as e:
@@ -215,10 +181,54 @@ async def ws_handler(request: web.Request):
     return ws
 
 
+async def health_handler(request: web.Request):
+    """A CEF-readable probe which is deliberately independent of WebSockets."""
+    logger.info(
+        "[bnvda] HTTP health probe from %s origin=%r",
+        request.remote,
+        request.headers.get("Origin"),
+    )
+    return web.json_response(
+        {"ok": True, "service": "bnvda", "websocket_clients": len(_CLIENTS)},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Private-Network": "true",
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+async def tcp_handler(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+    peer = writer.get_extra_info("peername")
+    _TCP_CLIENTS.add(writer)
+    logger.info(f"[bnvda] Lua TCP relay connected from {peer}.")
+    try:
+        while line := await reader.readline():
+            try:
+                data = json.loads(line.decode("utf-8"))
+                if data.get("type") == "transport_ping":
+                    writer.write(b'{"type":"transport_pong","transport":"lua-tcp"}\n')
+                    await writer.drain()
+                else:
+                    handle_ws_message(data)
+            except (UnicodeDecodeError, json.JSONDecodeError) as e:
+                logger.warning(f"[bnvda] Invalid Lua TCP relay message: {e}")
+    except Exception as e:
+        logger.error(f"[bnvda] Lua TCP relay error: {e}")
+    finally:
+        _TCP_CLIENTS.discard(writer)
+        writer.close()
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
+        logger.info(f"[bnvda] Lua TCP relay disconnected from {peer}.")
+
+
 # ---------- Broadcast to connected clients ----------
 def broadcast(msg_dict: dict):
     """Send a JSON message to all connected WebSocket clients (thread-safe)."""
-    if not _LOOP or not _CLIENTS:
+    if not _LOOP or (not _CLIENTS and not _TCP_CLIENTS):
         return
     payload = json.dumps(msg_dict)
     async def _send_all():
@@ -227,18 +237,31 @@ def broadcast(msg_dict: dict):
                 await ws.send_str(payload)
             except Exception:
                 pass
+        wire = payload.encode("utf-8") + b"\n"
+        for writer in list(_TCP_CLIENTS):
+            try:
+                writer.write(wire)
+                await writer.drain()
+            except Exception:
+                _TCP_CLIENTS.discard(writer)
     _LOOP.call_soon_threadsafe(asyncio.ensure_future, _send_all())
 
 
 # ---------- Boot / Thread ----------
 async def _start_all(host: str, ws_port: int):
+    global _RUNNER, _TCP_SERVER
     app = web.Application()
-    app.add_routes([web.get("/", ws_handler)])
+    app.add_routes([web.get("/", ws_handler), web.get("/health", health_handler)])
     runner = web.AppRunner(app)
+    _RUNNER = runner
     await runner.setup()
     site = web.TCPSite(runner, host, ws_port)
     await site.start()
     logger.info(f"BNVDA WebSocket server listening on ws://{host}:{ws_port}/")
+    _TCP_SERVER = await asyncio.start_server(
+        tcp_handler, host, TCP_PORT, limit=16 * 1024 * 1024
+    )
+    logger.info(f"BNVDA Lua TCP relay listening on {host}:{TCP_PORT}")
 
 
 def _thread_target(host: str, ws_port: int):
@@ -260,7 +283,19 @@ def start_server_in_thread(speak_func, host: str = HOST, ws_port: int = WS_PORT)
     def stop():
         try:
             if _LOOP:
-                _LOOP.call_soon_threadsafe(_LOOP.stop)
+                async def _shutdown():
+                    for ws in list(_CLIENTS):
+                        await ws.close()
+                    for writer in list(_TCP_CLIENTS):
+                        writer.close()
+                    if _TCP_SERVER:
+                        _TCP_SERVER.close()
+                        await _TCP_SERVER.wait_closed()
+                    if _RUNNER:
+                        await _RUNNER.cleanup()
+                    _LOOP.stop()
+
+                asyncio.run_coroutine_threadsafe(_shutdown(), _LOOP)
         except Exception:
             pass
 

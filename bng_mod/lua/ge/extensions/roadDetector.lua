@@ -287,6 +287,7 @@ local function rearm(reason)
 end
 
 function M.onExtensionLoaded()
+  setExtensionUnloadMode(M, "manual")
   rdLog('info', "Road detector extension loaded.")
   setupSockets()
   rearm("extension load")

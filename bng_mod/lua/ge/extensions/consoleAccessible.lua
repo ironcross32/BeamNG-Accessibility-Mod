@@ -420,6 +420,7 @@ local function setupSockets()
 end
 
 function M.onExtensionLoaded()
+  setExtensionUnloadMode(M, "manual")
   caLog('info', "Accessible console extension loaded.")
   -- Bind sockets here so a Ctrl+L Lua reload re-opens them.
   setupSockets()

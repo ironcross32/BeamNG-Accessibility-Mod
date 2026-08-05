@@ -224,6 +224,7 @@ local function setupSockets()
 end
 
 function M.onExtensionLoaded()
+  setExtensionUnloadMode(M, "manual")
   slotLog('info', "Vehicle slot tracker loaded.")
   -- Bind sockets here so Ctrl+L Lua reload re-opens them.
   setupSockets()

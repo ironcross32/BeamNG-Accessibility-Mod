@@ -45,6 +45,21 @@ REQUIRED_BUILD_INPUTS = (
 SCRATCH_SUFFIXES = (".dist", ".build", ".onefile-build")
 SCRATCH_NAMES = {".appdata", "__pycache__"}
 
+# --- Machine-specific build tuning (edit per machine) ---
+# These used to live as "# nuitka-project:" pragmas at the top of beamtel.py, but the
+# ones below differ between machines, so they are surfaced here instead.
+#
+# Compiler backend: "clang" -> pass --clang; "msvc" -> Nuitka's default MSVC (no flag).
+COMPILER = "clang"
+
+# UPX executable compression. If USE_UPX is True but UPX_BINARY does not exist,
+# UPX is skipped with a warning instead of failing the build.
+USE_UPX = True
+UPX_BINARY = r"C:\upx-5.2.0-win64\upx.exe"
+
+# Parallel Nuitka jobs.
+NUITKA_JOBS = 12
+
 
 def beamng_mod_target() -> Path:
     """Standard per-user location of the unpacked screen-reader mod.
@@ -154,8 +169,56 @@ def build_exe() -> bool:
     if not check_build_inputs():
         return False
 
+    nuitka_args = [
+        "--nofollow-import-to=IPython",
+        "--noinclude-unittest-mode=error",
+        "--noinclude-pytest-mode=error",
+        "--noinclude-setuptools-mode=error",
+        "--output-dir=build",
+        "--remove-output",
+        "--lto=yes",
+        "--include-package=sral",
+        "--include-data-file=SRAL.dll=SRAL.dll",
+        "--include-data-file=nvdaControllerClient.dll=nvdaControllerClient.dll",
+        "--include-data-file=hrtf_kemar_horizontal.npz=hrtf_kemar_horizontal.npz",
+        "--include-package=mss",
+        "--nofollow-import-to=h5py",
+        "--nofollow-import-to=pygame",
+        "--nofollow-import-to=scipy",
+        "--nofollow-import-to=matplotlib",
+        "--nofollow-import-to=tkinter",
+        "--nofollow-import-to=PIL",
+        "--nofollow-import-to=pytest",
+        "--nofollow-import-to=setuptools",
+        "--nofollow-import-to=pip",
+        "--standalone",
+        "--onefile",
+        "--onefile-no-compression",
+        "--onefile-cache-mode=cached",
+        "--onefile-tempdir-spec={PROGRAM_DIR}/.appdata",
+        "--assume-yes-for-downloads",
+        f"--jobs={NUITKA_JOBS}",
+        "--windows-console-mode=disable",
+        "--windows-uac-admin",
+    ]
+
+    # Machine-specific: compiler backend. "msvc" uses Nuitka's Windows default (no flag).
+    if COMPILER == "clang":
+        nuitka_args.append("--clang")
+
+    # Machine-specific: UPX compression. Skip (rather than fail) if the binary is missing.
+    if USE_UPX:
+        if Path(UPX_BINARY).exists():
+            nuitka_args.append("--plugin-enable=upx")
+            nuitka_args.append(f"--upx-binary={UPX_BINARY}")
+        else:
+            print(
+                f"WARNING: USE_UPX is set but UPX binary not found at {UPX_BINARY};\n"
+                "         building without UPX compression."
+            )
+
     result = subprocess.run(
-        ["uv", "run", "nuitka", "beamtel.py"],
+        ["uv", "run", "nuitka", *nuitka_args, "beamtel.py"],
         cwd=PROJECT_DIR,
     )
     if result.returncode != 0:

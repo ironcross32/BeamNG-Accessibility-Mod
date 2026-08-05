@@ -57,6 +57,7 @@ local function applyCommand(cmd)
 end
 
 function M.onExtensionLoaded()
+  setExtensionUnloadMode(M, "manual")
   utLog('info', "UI toggle extension loaded.")
   setupSockets()
 end

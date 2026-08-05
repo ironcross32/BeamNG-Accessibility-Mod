@@ -2,8 +2,11 @@
 # UI components for BeamTel configuration.
 # Extracted from configurator.py so the panel can be embedded in the unified app.
 
+import datetime
+import json
 import os
 import shutil
+import tempfile
 import wx
 from configurator import (
     load_config,
@@ -20,19 +23,98 @@ from configurator import (
 
 _AUTO_SAVE_DELAY_MS = 2000
 
+_MOD_ZIP = "bng_screenreader_mod.zip"
+_BNVDA_APP_NAME = "bnvdaHook"
+
+
+def _freeroam_layout_path(local_appdata):
+    return os.path.join(
+        local_appdata,
+        "BeamNG",
+        "BeamNG.drive",
+        "current",
+        "settings",
+        "ui_apps",
+        "layouts",
+        "default",
+        "freeroam.uilayout.json",
+    )
+
+
+def _load_bnvda_layout(layout_path):
+    """Load a freeroam layout and count obsolete BNVDA app entries."""
+    with open(layout_path, "r", encoding="utf-8-sig") as layout_file:
+        layout = json.load(layout_file)
+
+    if not isinstance(layout, dict):
+        raise ValueError("The layout's top-level JSON value is not an object.")
+    apps = layout.get("apps")
+    if not isinstance(apps, list):
+        raise ValueError("The layout does not contain an 'apps' list.")
+
+    entry_count = sum(
+        1
+        for app in apps
+        if isinstance(app, dict) and app.get("appName") == _BNVDA_APP_NAME
+    )
+    return layout, entry_count
+
+
+def _remove_bnvda_layout_entries(layout):
+    """Remove every obsolete BNVDA app entry from a validated layout."""
+    layout["apps"] = [
+        app
+        for app in layout["apps"]
+        if not (isinstance(app, dict) and app.get("appName") == _BNVDA_APP_NAME)
+    ]
+
+
+def _write_layout_with_backup(layout_path, layout):
+    """Back up and atomically replace a validated BeamNG UI layout."""
+    layout_dir = os.path.dirname(layout_path)
+    layout_name = os.path.basename(layout_path)
+    timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    backup_path = f"{layout_path}.pre-bnvda-removal-{timestamp}.bak"
+    temp_path = None
+
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            newline="\n",
+            prefix=f"{layout_name}.",
+            suffix=".tmp",
+            dir=layout_dir,
+            delete=False,
+        ) as temp_file:
+            temp_path = temp_file.name
+            json.dump(layout, temp_file, ensure_ascii=False, indent=2)
+            temp_file.write("\n")
+            temp_file.flush()
+            os.fsync(temp_file.fileno())
+
+        shutil.copy2(layout_path, backup_path)
+        os.replace(temp_path, layout_path)
+        temp_path = None
+        return backup_path
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except OSError:
+                pass
+
 
 def install_mod_interactive(parent):
     """Run the mod installation flow, showing wx dialogs as needed. Call from any wx context."""
-    MOD_ZIP = "bng_screenreader_mod.zip"
-
     # Step 1 (registry check removed): installation is confirmed by the mods
     # directory existing in step 3.
 
     # Step 2: Locate the zip alongside this program.
-    src_zip = os.path.join(_get_program_dir(), MOD_ZIP)
+    src_zip = os.path.join(_get_program_dir(), _MOD_ZIP)
     if not os.path.isfile(src_zip):
         wx.MessageBox(
-            f"'{MOD_ZIP}' was not found in the program directory:\n{os.path.dirname(src_zip)}\n\n"
+            f"'{_MOD_ZIP}' was not found in the program directory:\n{os.path.dirname(src_zip)}\n\n"
             "Installation cannot proceed.",
             "Mod File Not Found",
             wx.OK | wx.ICON_ERROR,
@@ -54,8 +136,9 @@ def install_mod_interactive(parent):
         return
 
     # Step 4: Decide whether to copy.
-    dst_zip = os.path.join(mods_dir, MOD_ZIP)
+    dst_zip = os.path.join(mods_dir, _MOD_ZIP)
     do_copy = False
+    mod_result = "kept the existing installed file"
     if not os.path.isfile(dst_zip):
         do_copy = True
     else:
@@ -71,8 +154,6 @@ def install_mod_interactive(parent):
             )
             if ans == wx.YES:
                 do_copy = True
-            else:
-                return
         elif src_mtime > dst_mtime:
             do_copy = True
         else:
@@ -85,8 +166,6 @@ def install_mod_interactive(parent):
             )
             if ans == wx.YES:
                 do_copy = True
-            else:
-                return
 
     # Perform the copy.
     if do_copy:
@@ -102,14 +181,7 @@ def install_mod_interactive(parent):
             return
 
         # Step 5: Verify the result.
-        if os.path.isfile(dst_zip):
-            wx.MessageBox(
-                "The mod was installed successfully.\n\n" + dst_zip,
-                "Installation Complete",
-                wx.OK | wx.ICON_INFORMATION,
-                parent,
-            )
-        else:
+        if not os.path.isfile(dst_zip):
             wx.MessageBox(
                 "The copy appeared to succeed but the destination file cannot be found.\n"
                 "Installation may have failed.",
@@ -117,6 +189,71 @@ def install_mod_interactive(parent):
                 wx.OK | wx.ICON_WARNING,
                 parent,
             )
+            return
+        mod_result = "copied the mod file"
+
+    # Step 6: Offer to remove the obsolete HUD app from the freeroam layout.
+    layout_path = _freeroam_layout_path(local_appdata)
+    layout_result = "layout file was not found; no cleanup was needed"
+    backup_path = None
+    if os.path.isfile(layout_path):
+        try:
+            layout, entry_count = _load_bnvda_layout(layout_path)
+        except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as e:
+            layout_result = "could not inspect the layout; it was not changed"
+            wx.MessageBox(
+                f"The mod file was {mod_result}, but the BeamNG.drive freeroam UI "
+                f"layout could not be read:\n{layout_path}\n\n{e}\n\n"
+                "The layout was not changed.",
+                "Invalid Freeroam Layout",
+                wx.OK | wx.ICON_WARNING,
+                parent,
+            )
+        else:
+            if entry_count == 0:
+                layout_result = "obsolete BNVDA Hook entry was not present"
+            else:
+                noun = "entry" if entry_count == 1 else "entries"
+                answer = wx.MessageBox(
+                    f"The freeroam UI layout contains {entry_count} obsolete BNVDA "
+                    f"Hook {noun}. The mod now starts automatically when the game "
+                    "starts, so these HUD entries are no longer needed.\n\n"
+                    "Do you want to back up the layout and remove them?",
+                    "Remove Obsolete HUD App",
+                    wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
+                    parent,
+                )
+                if answer == wx.YES:
+                    _remove_bnvda_layout_entries(layout)
+                    try:
+                        backup_path = _write_layout_with_backup(layout_path, layout)
+                    except Exception as e:
+                        layout_result = "cleanup failed; the original layout was preserved"
+                        wx.MessageBox(
+                            f"The mod file was {mod_result}, but the obsolete BNVDA "
+                            "Hook layout entry could not be removed:\n"
+                            f"{layout_path}\n\n{e}\n\n"
+                            "The original layout was preserved.",
+                            "Layout Cleanup Failed",
+                            wx.OK | wx.ICON_WARNING,
+                            parent,
+                        )
+                    else:
+                        layout_result = f"removed {entry_count} obsolete {noun}"
+                else:
+                    layout_result = f"kept {entry_count} obsolete {noun} at your request"
+
+    backup_detail = f"\nLayout backup: {backup_path}" if backup_path else ""
+
+    wx.MessageBox(
+        "The mod installation is complete.\n\n"
+        f"Mod file: {mod_result}.\n"
+        f"Freeroam layout: {layout_result}.\n\n"
+        f"{dst_zip}{backup_detail}",
+        "Installation Complete",
+        wx.OK | wx.ICON_INFORMATION,
+        parent,
+    )
 
 
 class LabelAccessible(wx.Accessible):

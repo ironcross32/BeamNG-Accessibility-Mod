@@ -344,6 +344,7 @@ local function setupSockets()
 end
 
 function M.onExtensionLoaded()
+  setExtensionUnloadMode(M, "manual")
   detLog('info', "Obstacle detector extension loaded.")
   -- Bind sockets here so Ctrl+L Lua reload re-opens them.
   setupSockets()

@@ -367,6 +367,7 @@ local function setupSockets()
 end
 
 function M.onExtensionLoaded()
+  setExtensionUnloadMode(M, "manual")
   ngLog('info', "Accessible node grabber extension loaded.")
   -- Bind sockets here so Ctrl+L Lua reload re-opens them; onWorldReadyState
   -- doesn't fire on a hot reload.

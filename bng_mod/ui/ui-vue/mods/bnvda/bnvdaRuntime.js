@@ -1,52 +1,144 @@
-angular.module('beamng.apps')
-.directive('bnvdaHook', ['$rootScope', function ($rootScope) {
-  return {
-    template: '<div style="width:1px;height:1px;opacity:0;pointer-events:none;"></div>',
-    replace: true,
-    restrict: 'EA',
-    link: function (scope, element, attrs) {
-      if (window.__BNvDA_INSTALLED__) return;
-      window.__BNvDA_INSTALLED__ = true;
+export function installBNVDA($rootScope, dependencies) {
+  if (typeof window.__BNvDA_INSTALLED__ === 'function') return window.__BNvDA_INSTALLED__;
 
-      try {
-        (function () {
+  var disposed = false;
+  var cleanupTasks = [];
+  var timeoutIds = new Set();
+  var intervalIds = new Set();
+  var animationIds = new Set();
+  var observerInstances = [];
+  function onCleanup(task) { if (typeof task === 'function') cleanupTasks.push(task); return task; }
+  function trackedSetTimeout(callback, delay) {
+    var args = Array.prototype.slice.call(arguments, 2);
+    var id = window.setTimeout(function () { timeoutIds.delete(id); if (!disposed) callback.apply(this, args); }, delay);
+    timeoutIds.add(id); return id;
+  }
+  function trackedSetInterval(callback, delay) {
+    var args = Array.prototype.slice.call(arguments, 2);
+    var id = window.setInterval(function () { if (!disposed) callback.apply(this, args); }, delay);
+    intervalIds.add(id); return id;
+  }
+  function trackedRequestAnimationFrame(callback) {
+    var id = window.requestAnimationFrame(function (timestamp) { animationIds.delete(id); if (!disposed) callback(timestamp); });
+    animationIds.add(id); return id;
+  }
+  function trackedMutationObserver(callback) {
+    var observer = new window.MutationObserver(function (mutations, instance) { if (!disposed) callback(mutations, instance); });
+    observerInstances.push(observer); return observer;
+  }
+  function listen(target, type, handler, options) {
+    target.addEventListener(type, handler, options);
+    onCleanup(function () { target.removeEventListener(type, handler, options); });
+    return handler;
+  }
+  function subscribe(scope, eventName, handler) {
+    if (!scope || typeof scope.$on !== 'function') return function () {};
+    return onCleanup(scope.$on(eventName, handler));
+  }
+  function uninstall() {
+    if (disposed) return;
+    disposed = true;
+    timeoutIds.forEach(function (id) { window.clearTimeout(id); });
+    intervalIds.forEach(function (id) { window.clearInterval(id); });
+    animationIds.forEach(function (id) { window.cancelAnimationFrame(id); });
+    observerInstances.forEach(function (observer) { observer.disconnect(); });
+    timeoutIds.clear(); intervalIds.clear(); animationIds.clear(); observerInstances.length = 0;
+    while (cleanupTasks.length) { try { cleanupTasks.pop()(); } catch (error) { console.error('[bnvda] Cleanup failed.', error); } }
+    if (window.__BNvDA_INSTALLED__ === uninstall) delete window.__BNvDA_INSTALLED__;
+    console.info('[bnvda] Runtime cleanup complete.');
+  }
+  window.__BNvDA_INSTALLED__ = uninstall;
+
+  try {
+    (function () {
           "use strict";
 
+          dependencies = dependencies || {};
+          var Controls = dependencies.controls || null;
+          var iconCatalog = dependencies.icons || null;
+          var loadingScreen = dependencies.loadingScreen || null;
+          var vueWatch = dependencies.watch || null;
+          var loadingActive = false;
+          var loadingSettleTimer = null;
+          var suppressNextCameraEvent = true;
+          var sawLoadingStart = false;
+
           // ---------- CONFIG ----------
-          var WS_URL = "ws://127.0.0.1:8765";
           var DEBOUNCE_MS = 50;
           var CONTROLLER_DOMINANCE_MS = 900;
           var MIN_CHARS = 2;
           var MAX_LEN = 160;
           var DEBUG = !!window.BNVDA_DEBUG;
 
-          // ---------- WS ----------
-          var ws = null;
-          function send(obj) {
-            if (ws && ws.readyState === 1) {
-              try { ws.send(JSON.stringify(obj)); } catch (e) {}
+          // ---------- TRANSPORTS ----------
+          var activeTransport = null;
+          function receiveTransportMessage(data) {
+            if (!data) return;
+            if (data.type === 'transport_pong') {
+              if (loadingActive) send({ type: 'loading_state', active: true, focusText: '' });
+              return;
             }
+            if (data.type === 'context_action') handleContextAction(data.action);
+            else if (data.type === 'dom_dump') performDomDump();
           }
-          function log(level, msg) { send({ type: "log", level: level, msg: msg }); }
-          function connectWS() {
-            try {
-              ws = new WebSocket(WS_URL);
-              ws.onopen = function () { window._bnvdaWS = ws; log("info", "[bnvda] WebSocket connected."); };
-              ws.onclose = function () { if (window._bnvdaWS === ws) window._bnvdaWS = null; setTimeout(connectWS, 2000); };
-              ws.onerror = function () { log("error", "[bnvda] WebSocket connection error."); };
-              ws.onmessage = function (evt) {
-                try {
-                  var data = JSON.parse(evt.data);
-                  if (data.type === 'context_action') {
-                    handleContextAction(data.action);
-                  } else if (data.type === 'dom_dump') {
-                    performDomDump();
-                  }
-                } catch (e) {}
-              };
-            } catch (e) { setTimeout(connectWS, 2500); }
+          function activateTransport(transport) {
+            if (activeTransport && activeTransport !== transport) activeTransport.shutdown();
+            activeTransport = transport;
+            console.info('[bnvda] Active transport: ' + transport.name);
+            transport.send({type: 'log', level: 'info', msg: '[bnvda] Active transport: ' + transport.name});
           }
-          
+          function send(obj) {
+            if (activeTransport) activeTransport.send(obj);
+          }
+          function log(level, msg) {
+            console[level === 'error' ? 'error' : 'info'](msg);
+            send({ type: "log", level: level, msg: msg });
+          }
+          function speechValue(value, source) {
+            while (value !== null && typeof value === 'object') {
+              var keys = Object.keys(value);
+              if (DEBUG) {
+                var serialized;
+                try { serialized = JSON.stringify(value); } catch (e) { serialized = '[unserializable: ' + String(e) + ']'; }
+                try { log('warn', '[LUA_TABLE_SPEECH] source=' + source + ' count=' + keys.length + ' contents=' + serialized); } catch (e) {}
+              }
+              if (keys.length !== 1) return null;
+              value = value[keys[0]];
+            }
+            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value);
+            return null;
+          }
+
+          function createLuaTCPTransport() {
+            var stopped = false;
+            var transport = {
+              name: 'lua-tcp',
+              start: function () { activateTransport(transport); },
+              send: function (obj) {
+                if (stopped || !window.bngApi || !bngApi.engineLua) return;
+                var payload = JSON.stringify(obj);
+                var luaValue = bngApi.serializeToLua ? bngApi.serializeToLua(payload) : JSON.stringify(payload);
+                bngApi.engineLua('extensions.bnvdaBridge.sendFromUI(' + luaValue + ')');
+              },
+              shutdown: function () { stopped = true; }
+            };
+            onCleanup(function () { transport.shutdown(); if (activeTransport === transport) activeTransport = null; });
+            return transport;
+          }
+
+          function startTransportSelection() {
+            // The engine bridge is already available when this UI app loads and
+            // keeps transport work outside CEF. Avoid redundant HTTP probes and
+            // two five-second WebSocket attempts on every UI recreation.
+            createLuaTCPTransport().start();
+          }
+
+          if ($rootScope && typeof $rootScope.$on === 'function') {
+            subscribe($rootScope, 'BNVDATransportMessage', function (_event, data) {
+              if (activeTransport && activeTransport.name === 'lua-tcp') receiveTransportMessage(data);
+            });
+          }
+
           function logFocusedElementDetails(element, eventType) {
             if (!element) return;
             var details = "BNVDA Focus Event (" + eventType + "):\n" +
@@ -90,7 +182,7 @@ angular.module('beamng.apps')
                 lastRan = Date.now();
               } else {
                 clearTimeout(lastFunc);
-                lastFunc = setTimeout(function() {
+                lastFunc = trackedSetTimeout(function() {
                   if ((Date.now() - lastRan) >= limit) {
                     func.apply(context, args);
                     lastRan = Date.now();
@@ -116,11 +208,20 @@ angular.module('beamng.apps')
             if (!el || !el.closest) return null;
             return el.closest(selector);
           }
+          function isHidden(el) {
+            for (var node = el; node && node.nodeType === 1; node = node.parentElement) {
+              if (node.hidden || (node.getAttribute && node.getAttribute('aria-hidden') === 'true')) return true;
+              var style = null;
+              try { style = window.getComputedStyle(node); } catch (e) {}
+              if (style && (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity || '1') <= 0.01)) return true;
+            }
+            return false;
+          }
+
           function q(el, sel) { try { return el.querySelector(sel); } catch (e) { return null; } }
 
           var P = { POINTER: 1, KEYBOARD: 2, CONTROLLER: 3, SYSTEM: 4 };
           var lastSpoken = "", lastSource = 0, lastSpeakTs = 0, lastControllerTs = 0, speakTimer = null;
-          var _lastOpenedSelect = null;
 
 
           function hasNonAscii(s) {
@@ -141,6 +242,7 @@ angular.module('beamng.apps')
 
           function scheduleSpeak(txt, src) {
             if (!txt) return;
+            if (loadingActive) return;
             if (looksLikeCss(txt)) return;
             if (DEBUG && hasNonAscii(txt)) {
               log('info', '[GLYPH] "' + txt + '" chars=' + charDump(txt));
@@ -150,7 +252,7 @@ angular.module('beamng.apps')
             if (src === P.POINTER && (t - lastControllerTs) < CONTROLLER_DOMINANCE_MS) return;
             if (txt === lastSpoken && src <= lastSource && (t - lastSpeakTs) < 400) return;
             if (speakTimer) try { clearTimeout(speakTimer); } catch (e) {}
-            speakTimer = setTimeout(function () {
+            speakTimer = trackedSetTimeout(function () {
               lastSpoken = txt;
               lastSource = src;
               lastSpeakTs = nowTS();
@@ -158,7 +260,7 @@ angular.module('beamng.apps')
               if (DEBUG) log("info", "speak(" + src + "): " + txt);
             }, DEBOUNCE_MS);
           }
-          
+
           function locateScope() {
             var md = firstVisible(".md-select-menu-container.md-active"); if (md) return md;
             var dlg = firstVisible("[role='dialog'], md-dialog-container, .md-dialog-container, .modal, .modal-content, [class*='dialog'], [class*='popup']"); if (dlg) return dlg;
@@ -166,11 +268,12 @@ angular.module('beamng.apps')
             return document;
           }
           function getInteractiveAncestor(el) {
-            return closest(el, "[role='option'],[role='menuitem'],[role='treeitem'],[role='tab'],[role='button'],md-option,md-tab-item,button,a,[tabindex],[class*='vehicle'],[class*='variant'],[class*='config'],[class*='part'],[class*='slot'],[class*='item'],[class*='entry'],[class*='tile'],[class*='card']");
+            return closest(el, "input,select,textarea,button,a[href],[role='option'],[role='menuitem'],[role='treeitem'],[role='tab'],[role='button'],[role='checkbox'],[role='switch'],[role='slider'],md-option,md-tab-item,[bng-nav-item],.bng-row,.dropdown-option,.pause-button,.pause-menu-button,.pause-menu-tile,.category-button,[tabindex]");
           }
-          
+
           function extractText(el) {
             if (!el) return "";
+            if (isHidden(el) || closest(el, '.loading-screen, .loadingBackground')) return "";
             // Known Vue buttons that only show a hotkey glyph
             if (el.matches && el.matches('button.pause-button')) return 'Pause';
             var targetElement = el.querySelector('[bng-translate], [ng-bind]') || el;
@@ -199,7 +302,23 @@ angular.module('beamng.apps')
             }
             var inter = getInteractiveAncestor(el) || el;
             var mdSel = closest(inter, "md-select, .md-select-menu-container");
+            var appHost = closest(inter, '.ui-app-host');
+            if (appHost && !getInteractiveAncestor(el)) return "";
             if (mdSel) {
+            var downloadRow = closest(inter, '.download-item, .download-row, [data-download-id]');
+            if (downloadRow) {
+              var filenameNode = q(downloadRow, '.filename, .download-name, [data-filename]');
+              var stateNode = q(downloadRow, '.state, .download-state, .status');
+              var filename = cleanText(
+                downloadRow.getAttribute('data-filename') ||
+                (filenameNode && (filenameNode.innerText || filenameNode.textContent)) || ''
+              );
+              var downloadState = cleanText(
+                (stateNode && (stateNode.innerText || stateNode.textContent)) ||
+                downloadRow.getAttribute('data-state') || ''
+              );
+              if (filename) return [filename, downloadState].filter(Boolean).join(', ');
+            }
               var scope = locateScope();
               var isMd = scope !== document && (scope.matches ? scope.matches(".md-select-menu-container") : false);
               if (isMd) {
@@ -215,10 +334,6 @@ angular.module('beamng.apps')
             var attr = (inter.getAttribute && (inter.getAttribute("aria-label") || inter.title || inter.alt || inter.getAttribute("data-name") || inter.getAttribute("data-label"))) || "";
             if (attr) { var s2 = cleanText(attr); if (s2) return s2; }
             var t2 = cleanText((inter.innerText || inter.textContent || "")); if (t2 && t2.length >= MIN_CHARS && t2.length <= MAX_LEN) return t2;
-            var n = inter.parentElement, hops = 0;
-            while (n && hops < 2) {
-              var via = cleanText((n.innerText || n.textContent || "")); if (via) return via; n = n.parentElement; hops++;
-            }
             return "";
           }
 
@@ -439,7 +554,7 @@ angular.module('beamng.apps')
                 var tooltipKeyMatch = tooltip.innerHTML.match(/['"](ui\.options\.[^'"]+)['"]/);
                 if (tooltipKeyMatch && tooltipKeyMatch[1]) {
                     var translatedHelp = translator(tooltipKeyMatch[1]);
-                    if (translatedHelp && translatedHelp.length > 2) { setTimeout(function() { send({ type: "speak", text: cleanText(translatedHelp) }); }, 750); }
+                    if (translatedHelp && translatedHelp.length > 2) { trackedSetTimeout(function() { send({ type: "speak", text: cleanText(translatedHelp) }); }, 750); }
                 }
             }
             return true;
@@ -453,7 +568,7 @@ angular.module('beamng.apps')
               log('info', '[bnvda] Options screen module attached.');
             }
           }
-          
+
           // ---------- TOASTER SERVICE PATCHER ----------
           var toasterInterval;
           var toasterPatched = false;
@@ -470,6 +585,9 @@ angular.module('beamng.apps')
                     return originalAdd.apply(this, arguments);
                   };
                   toasterService.add.__bnvdaPatched = true;
+                  onCleanup(function () {
+                    if (toasterService.add && toasterService.add.__bnvdaPatched) toasterService.add = originalAdd;
+                  });
                   toasterPatched = true;
                   clearInterval(toasterInterval);
                   log('info', '[bnvda] MessageToasterService patched successfully.');
@@ -477,7 +595,7 @@ angular.module('beamng.apps')
               }
             } catch (e) { /* Fails silently */ }
           }
-          
+
           // ---------- CENTRALIZED MESSAGE PROCESSOR ----------
           var lastCameraSwitchTs = 0;
           // Translation keys for the recurring "engine is off" stall messages — these
@@ -498,7 +616,7 @@ angular.module('beamng.apps')
               // Try translating dot-delimited keys (e.g. "vehicle.engine.oilLevelCritical.true")
               if (/^[\w]+\.[\w.]+$/.test(payload)) {
                 var translator = findTranslateFunc();
-                var translated = translator(payload);
+                var translated = speechValue(translator(payload), 'Message.translation');
                 if (translated && translated !== payload) {
                   finalText = translated;
                 } else {
@@ -509,6 +627,9 @@ angular.module('beamng.apps')
               }
             }
             else if (typeof payload === 'object' && payload !== null && payload.txt) {
+              if (DEBUG) {
+                try { log('warn', '[LUA_TABLE_SPEECH] source=Message.localization_descriptor count=' + Object.keys(payload).length + ' contents=' + JSON.stringify(payload)); } catch (e) {}
+              }
               var translator = findTranslateFunc();
               // Pre-translate context values that are translation keys (e.g. "ui.xxx")
               // and provide both "key" and "key | translate" variants so angular-translate's
@@ -522,28 +643,17 @@ angular.module('beamng.apps')
                   ctx[k + ' | translate'] = translated;
                 }
               }
-              finalText = translator(payload.txt, ctx);
+              finalText = speechValue(translator(payload.txt, ctx), 'Message.descriptor.translation');
             }
-            else if (typeof payload === 'object' && payload !== null) { log('warn', '[UNSPEAKABLE] object without .txt: ' + JSON.stringify(payload)); return; }
+            else if (typeof payload === 'object' && payload !== null) {
+              finalText = speechValue(payload, 'Message.payload');
+              if (finalText === null) return;
+            }
             else { log('warn', '[UNSPEAKABLE] unexpected payload type (' + typeof payload + '): ' + String(payload)); return; }
-            // Replace [action=XXX] tokens with friendly action names
+            if (finalText === null) return;
+            // Follow the device most recently used, like BngBinding does.
             finalText = finalText.replace(/\[action=([^\]]+)\]/g, function(match, actionName) {
-              // Try translation key first (e.g. ui.inputActions.vehicle.clutch.title)
-              var translator = findTranslateFunc();
-              var segments = actionName.split('.');
-              var candidates = [
-                'ui.inputActions.vehicle.' + actionName + '.title',
-                'ui.inputActions.' + actionName + '.title'
-              ];
-              for (var i = 0; i < candidates.length; i++) {
-                var result = translator(candidates[i]);
-                if (result && result !== candidates[i]) return result;
-              }
-              // Fallback: humanize camelCase (e.g. "activateStarterMotor" -> "Activate Starter Motor")
-              var humanized = actionName.replace(/([a-z])([A-Z])/g, '$1 $2');
-              // Also split on dots and take last segment
-              if (humanized.indexOf('.') !== -1) humanized = humanized.substring(humanized.lastIndexOf('.') + 1);
-              return humanized.charAt(0).toUpperCase() + humanized.slice(1);
+              return formatActionBinding(actionName);
             });
             finalText = cleanText(finalText);
             if (finalText.toLowerCase() === 'switched' && (nowTS() - lastCameraSwitchTs) < 250) { return; }
@@ -551,20 +661,83 @@ angular.module('beamng.apps')
             else if (payload && !finalText) { log('warn', '[UNSPEAKABLE] empty after processing: ' + JSON.stringify(payload)); }
           }
 
+
+          // ---------- DOWNLOAD MILESTONES ----------
+          var observedDownloads = new Set();
+          var completedDownloads = new Set();
+          var repositoryErrors = new Set();
+
+          function downloadField(item, names) {
+            if (!item || typeof item !== 'object') return '';
+            for (var i = 0; i < names.length; i++) {
+              if (item[names[i]] !== undefined && item[names[i]] !== null) return cleanText(item[names[i]]);
+            }
+            return '';
+          }
+
+          function downloadIdentity(item) {
+            return downloadField(item, ['id', 'downloadId', 'uri', 'url', 'filename', 'fileName', 'name']);
+          }
+
+          function downloadFilename(item) {
+            var name = downloadField(item, ['filename', 'fileName', 'name', 'title', 'uri', 'url']);
+            return name.replace(/^.*[\\/]/, '').replace(/[?#].*$/, '');
+          }
+
+          subscribe($rootScope, 'downloadStatesChanged', function (_event, payload) {
+            var states = payload && (payload.states || payload.downloads || payload);
+            var items = Array.isArray(states) ? states : Object.keys(states || {}).map(function (key) { return states[key]; });
+            for (var i = 0; i < items.length; i++) {
+              var item = items[i];
+              var identity = downloadIdentity(item);
+              if (!identity || observedDownloads.has(identity)) continue;
+              observedDownloads.add(identity);
+              var filename = downloadFilename(item) || 'download';
+              scheduleSpeak('Downloading ' + filename, P.SYSTEM);
+            }
+          });
+
+          subscribe($rootScope, 'downloadStateChanged', function (_event, item) {
+            var state = downloadField(item, ['state', 'status']).toLowerCase();
+            if (!/^(complete|completed|finished|success|succeeded)$/.test(state)) return;
+            var identity = downloadIdentity(item) || downloadFilename(item);
+            if (!identity || completedDownloads.has(identity)) return;
+            completedDownloads.add(identity);
+            scheduleSpeak((downloadFilename(item) || 'Download') + ' complete', P.SYSTEM);
+          });
+
+          subscribe($rootScope, 'repoError', function (_event, payload) {
+            var message = cleanText(downloadField(payload, ['message', 'msg', 'error', 'reason']) || payload || 'Repository download failed');
+            if (repositoryErrors.has(message)) return;
+            repositoryErrors.add(message);
+            scheduleSpeak(message, P.SYSTEM);
+          });
+
+          onCleanup(function () {
+            observedDownloads.clear();
+            completedDownloads.clear();
+            repositoryErrors.clear();
+          });
           // ---------- GLOBAL EVENT LISTENERS ----------
-          $rootScope.$on('Message', function (event, args) {
+          subscribe($rootScope, 'Message', function (event, args) {
             if (!args || !args.msg) return;
             try { var injector = angular.element(document.body).injector(); if (injector) { var toasterService = injector.get('MessageToasterService'); if (toasterService.activeCategories.includes(args.category)) return false; } } catch (e) {}
             processAndSpeakMessage(args.msg);
           });
-          $rootScope.$on('DamageMessage', function (event, args) {
+          subscribe($rootScope, 'DamageMessage', function (event, args) {
             if (!args || !args.damageText) return;
             var translator = findTranslateFunc();
-            var translatedText = translator(args.damageText);
+            var damageText = speechValue(args.damageText, 'DamageMessage.damageText');
+            if (damageText === null) return;
+            var translatedText = speechValue(translator(damageText), 'DamageMessage.translation');
             if (translatedText && translatedText.length >= MIN_CHARS) { scheduleSpeak(cleanText(translatedText), P.SYSTEM); }
           });
-          $rootScope.$on('onCameraNameChanged', function (event, data) {
+          subscribe($rootScope, 'onCameraNameChanged', function (event, data) {
             if (data && data.name) {
+              if (suppressNextCameraEvent) {
+                suppressNextCameraEvent = false;
+                return;
+              }
               lastCameraSwitchTs = nowTS();
               var cameraName = data.name.charAt(0).toUpperCase() + data.name.slice(1);
               var message = 'Camera: ' + cameraName;
@@ -578,7 +751,7 @@ angular.module('beamng.apps')
           var _ccWasEnabled = false;
           var _ccLastSpokenSpeed = 0;
 
-          $rootScope.$on('SettingsChanged', function (event, data) {
+          subscribe($rootScope, 'SettingsChanged', function (event, data) {
             if (data && data.values && data.values.uiUnitLength) {
               if (data.values.uiUnitLength === 'metric') {
                 _ccUnitMultiplier = 3.6;
@@ -590,7 +763,7 @@ angular.module('beamng.apps')
             }
           });
 
-          $rootScope.$on('CruiseControlState', function (event, data) {
+          subscribe($rootScope, 'CruiseControlState', function (event, data) {
             if (!data) return;
             var isEnabled = !!data.isEnabled;
             var speedDisplay = Math.round(data.targetSpeed * _ccUnitMultiplier);
@@ -624,8 +797,7 @@ angular.module('beamng.apps')
             if (!checkboxEl && row) checkboxEl = row.querySelector('md-checkbox');
             if (!checkboxEl) return false;
             if (!row) {
-              // Bare <div> consent rows (online/telemetry): delegate to speakOptionRow
-              // which knows how to walk a <div> container for labels.
+              // Angular controls outside the Vue pause/options screens only.
               return false;
             }
             var parts = [];
@@ -701,7 +873,7 @@ angular.module('beamng.apps')
             }
             return false;
           }
-          
+
           // ========== Specialized handler for Vehicle Tuning Sliders (Vue.js version) ==========
           // Timer for the deferred tuning hint so navigating to a new control
           // cancels a still-pending description from the previous one.
@@ -755,7 +927,7 @@ angular.module('beamng.apps')
                 // off; the hint simply plays once the control finishes. The short
                 // delay only ensures this message is dispatched after the control's
                 // debounced send, so it lands behind it in the speech queue.
-                _tuningHintTimer = setTimeout(function () {
+                _tuningHintTimer = trackedSetTimeout(function () {
                   _tuningHintTimer = null;
                   send({ type: "speak", text: hint, interrupt: false });
                 }, 250);
@@ -764,47 +936,6 @@ angular.module('beamng.apps')
             }
             return false;
           }
-
-          // ========== Specialized handler for Vehicle Parts Screen ==========
-          var _partsExpandHinted = false;
-          function speakPartRow(focusedElement, src) {
-            var row = closest(focusedElement, '.bng-accitem');
-            if (!row) return false;
-            if (!closest(row, '.parts-browser')) return false;
-            var slotNameEl = row.querySelector('.bng-accitem-caption-content');
-            var equippedPartEl = row.querySelector('.dropdown-display');
-            var visibilityButton = row.querySelector('.visibility-toggle');
-            if (slotNameEl) {
-              var parts = [];
-              parts.push(cleanText(slotNameEl.innerText));
-              if (equippedPartEl) {
-                var equippedText = cleanText(equippedPartEl.innerText);
-                if (equippedText.toLowerCase() === 'empty') {
-                  parts.push("slot is empty");
-                } else {
-                  parts.push("currently equipped: " + equippedText);
-                }
-              }
-              if (visibilityButton) {
-                var isVisible = visibilityButton.classList.contains('visibility-toggle-on');
-                parts.push(isVisible ? "visible" : "hidden");
-              }
-              var isExpandable = row.classList.contains('bng-accitem-expandable');
-              if (isExpandable) {
-                var isExpanded = row.classList.contains('bng-accitem-expanded');
-                parts.push(isExpanded ? "expanded" : "collapsed");
-                if (!_partsExpandHinted) {
-                  _partsExpandHinted = true;
-                  parts.push("press Y to expand or collapse");
-                }
-              }
-              var finalText = parts.join(', ');
-              scheduleSpeak(finalText, src);
-              return true;
-            }
-            return false;
-          }
-
 
           // ========== Handler for menu accordion items (e.g. radial menu config) ==========
           function speakMenuAccordionItem(focusedElement, src) {
@@ -960,7 +1091,7 @@ angular.module('beamng.apps')
           function buildGlyphMap() {
             _glyphToName = {};
             try {
-              var icons = window.bngVue && window.bngVue.icons;
+              var icons = iconCatalog || (window.bngVue && window.bngVue.icons);
               if (!icons) return;
               var keys = Object.keys(icons);
               for (var i = 0; i < keys.length; i++) {
@@ -1001,6 +1132,95 @@ angular.module('beamng.apps')
             return result.replace(/\s+/g, ' ').trim();
           }
 
+          function replaceKnownGlyphs(text) {
+            if (!text) return '';
+            if (!_glyphToName) buildGlyphMap();
+            var result = String(text);
+            if (_glyphToName) Object.keys(_glyphToName).forEach(function(glyph) {
+              result = result.split(glyph).join(' ' + _glyphToName[glyph] + ' ');
+            });
+            result = cleanKeyboardText(result);
+            return result.replace(/[\uE000-\uF8FF]/g, '').replace(/\s+/g, ' ').trim();
+          }
+
+          function friendlyControlName(value) {
+            var raw = replaceKnownGlyphs(value);
+            var known = {
+              btn_a: 'A button', btn_b: 'B button', btn_x: 'X button', btn_y: 'Y button',
+              btn_l: 'Left bumper', btn_r: 'Right bumper', triggerl: 'Left trigger', triggerr: 'Right trigger',
+              btn_back: 'View button', btn_start: 'Menu button',
+              upov: 'D-pad up', dpov: 'D-pad down', lpov: 'D-pad left', rpov: 'D-pad right'
+            };
+            var key = raw.toLowerCase();
+            if (known[key]) return known[key];
+            raw = raw.replace(/_/g, ' ');
+            return raw.replace(/(^|[ +])([a-z])/g, function(_match, prefix, letter) {
+              return prefix + letter.toUpperCase();
+            });
+          }
+
+          function friendlyIconName(iconName) {
+            if (!iconName) return '';
+            if (ICON_FRIENDLY_NAMES[iconName]) return ICON_FRIENDLY_NAMES[iconName];
+            var icon = (iconCatalog || (window.bngVue && window.bngVue.icons) || {})[iconName];
+            if (icon && icon.glyph) {
+              var byGlyph = replaceKnownGlyphs(icon.glyph);
+              if (byGlyph) return byGlyph;
+            }
+            return '';
+          }
+
+          function viewerBindingText(value, seen) {
+            if (value === null || value === undefined) return '';
+            if (typeof value === 'string' || typeof value === 'number') return replaceKnownGlyphs(String(value));
+            if (typeof value !== 'object') return '';
+            seen = seen || [];
+            if (seen.indexOf(value) !== -1) return '';
+            seen.push(value);
+            if (Array.isArray(value)) return value.map(function(item) { return viewerBindingText(item, seen); }).filter(Boolean).join(' + ');
+            if (value.multiControls && value.multiControls.length) {
+              return viewerBindingText(value.multiControls, seen);
+            }
+            if (value.special || value.ownIcon) {
+              var iconText = friendlyIconName(value.ownIcon || value.icon);
+              if (iconText) return iconText;
+            }
+            var preferred = ['bindingText', 'displayName', 'label', 'controlName', 'control', 'key', 'glyph'];
+            for (var i = 0; i < preferred.length; i++) if (value[preferred[i]] !== undefined) {
+              var text = (preferred[i] === 'control' || preferred[i] === 'key')
+                ? friendlyControlName(String(value[preferred[i]]))
+                : viewerBindingText(value[preferred[i]], seen);
+              if (text && text.toLowerCase() !== 'title') return text;
+            }
+            var collections = ['value', 'parts', 'controls', 'bindings', 'binding', 'modifiers'];
+            for (var j = 0; j < collections.length; j++) if (value[collections[j]] !== undefined) {
+              var joined = viewerBindingText(value[collections[j]], seen);
+              if (joined && joined.toLowerCase() !== 'title') return joined;
+            }
+            return '';
+          }
+
+          function translatedActionName(actionName) {
+            var translator = findTranslateFunc();
+            var candidates = ['ui.inputActions.vehicle.' + actionName + '.title', 'ui.inputActions.' + actionName + '.title'];
+            for (var i = 0; i < candidates.length; i++) {
+              var result = speechValue(translator(candidates[i]), 'Action.translation');
+              if (result && result !== candidates[i] && result.toLowerCase() !== 'title') return cleanText(result);
+            }
+            var leaf = actionName.substring(actionName.lastIndexOf('.') + 1).replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ');
+            return leaf.charAt(0).toUpperCase() + leaf.slice(1);
+          }
+
+          function formatActionBinding(actionName) {
+            try {
+              if (Controls && typeof Controls.makeViewerObj === 'function') {
+                var binding = viewerBindingText(Controls.makeViewerObj({ action: actionName, useLastDevice: true }));
+                if (binding && binding.toLowerCase() !== 'title') return binding;
+              }
+            } catch (e) { log('info', '[BINDING] Unable to resolve ' + actionName + ': ' + e.message); }
+            return translatedActionName(actionName);
+          }
+
           // Resolve a single binding part: a <kbd> (keyboard-style) or <div> (special glyph-only)
           function resolveSingleBindingPart(partEl) {
             if (!partEl) return '';
@@ -1032,10 +1252,39 @@ angular.module('beamng.apps')
             return cleanText(text);
           }
 
+          function bindingContainerFriendlyName(container) {
+            // Keyboard modifiers can be wrapped one level deeper than the main
+            // key. Scan the whole variant while keeping only outer binding parts
+            // so icons nested inside a <kbd> are not announced twice.
+            var candidates = container.querySelectorAll('kbd, .bng-binding-icon');
+            var parts = toArray(candidates).filter(function(part) {
+              var parentPart = part.parentElement && part.parentElement.closest('kbd, .bng-binding-icon');
+              return !parentPart || !container.contains(parentPart);
+            });
+            var names = [];
+            for (var i = 0; i < parts.length; i++) {
+              var name = resolveSingleBindingPart(parts[i]);
+              if (name) names.push(name);
+            }
+            if (names.length) return names.join(' + ');
+            return resolveSingleBindingPart(container);
+          }
+
           function getBindingFriendlyName(bindingEl) {
             try {
               if (!_glyphToName) buildGlyphMap();
-              // Check for modifier combo: multiple <kbd>/<div> children inside the binding
+              // Current Vue BngBinding renders one binding-container per variant.
+              // Combo containers contain each modifier/key/icon as separate parts;
+              // reading the wrapper as one string stops at the first icon glyph.
+              var containers = bindingEl.matches && bindingEl.matches('.binding-container')
+                ? [bindingEl]
+                : toArray(bindingEl.querySelectorAll(':scope > .binding-container'));
+              if (containers.length) {
+                var variants = containers.map(bindingContainerFriendlyName).filter(Boolean);
+                if (variants.length) return variants.join(' or ');
+              }
+
+              // Legacy Angular bindings put their parts directly under the wrapper.
               var parts = bindingEl.querySelectorAll(':scope > kbd, :scope > div');
               if (parts.length > 1) {
                 var names = [];
@@ -1045,7 +1294,6 @@ angular.module('beamng.apps')
                 }
                 if (names.length > 0) return names.join(' + ');
               }
-              // Single binding: try the whole element
               return resolveSingleBindingPart(bindingEl);
             } catch (e) {
               log('info', '[BINDING] getBindingFriendlyName error: ' + e.message);
@@ -1097,7 +1345,7 @@ angular.module('beamng.apps')
             }
             return false;
           }
-          
+
           // ========== BINDING EDIT PANEL WATCHER ==========
           // After a binding is captured, the edit panel shows the assigned control
           // and any conflicts. This watcher speaks the result and makes conflicts
@@ -1106,11 +1354,13 @@ angular.module('beamng.apps')
           var _bindingEditHandled = false;
 
           function startBindingEditWatcher() {
-            setInterval(function() {
+            function pollBindingEdit() {
+              var nextDelay = 1000;
               try {
                 // The edit panel lives in [ui-view="edit"] and has .controls-edit
                 var editPanel = document.querySelector('[ui-view="edit"] .controls-edit');
                 var isOpen = !!editPanel;
+                if (isOpen) nextDelay = 200;
 
                 if (isOpen && !_bindingEditWasOpen) {
                   _bindingEditWasOpen = true;
@@ -1119,20 +1369,27 @@ angular.module('beamng.apps')
                 if (!isOpen && _bindingEditWasOpen) {
                   _bindingEditWasOpen = false;
                   _bindingEditHandled = false;
-                  return;
                 }
-                if (!isOpen || _bindingEditHandled) return;
+                if (isOpen) {
+                  // Keep patching while open because axis options can be mounted
+                  // later or replaced when the user switches option tabs.
+                  var cancelBtn = document.getElementById('binding_edit_cancel');
+                  patchEditPanelNavigation(editPanel, cancelBtn);
 
-                // Wait until capture is done: cancel button is visible
-                var cancelBtn = document.getElementById('binding_edit_cancel');
-                if (!cancelBtn) return;
-
-                _bindingEditHandled = true;
-                handleBindingEditResult(editPanel, cancelBtn);
+                  // Result/conflict speech remains one-shot per editor opening.
+                  // Wait until capture is done: cancel button is visible.
+                  if (!_bindingEditHandled && cancelBtn) {
+                    _bindingEditHandled = true;
+                    handleBindingEditResult(editPanel, cancelBtn);
+                  }
+                }
               } catch (e) {
                 log('info', '[BIND-EDIT] Watcher error: ' + e.message);
+              } finally {
+                trackedSetTimeout(pollBindingEdit, nextDelay);
               }
-            }, 200);
+            }
+            pollBindingEdit();
           }
 
           function patchEditPanelNavigation(editPanel, cancelBtn) {
@@ -1224,12 +1481,12 @@ angular.module('beamng.apps')
               if (assignedName) msg = 'Assigned to ' + assignedName + '. ' + msg;
               scheduleSpeak(msg, P.SYSTEM);
 
-              setTimeout(function() {
+              trackedSetTimeout(function() {
                 if (firstConflictP) firstConflictP.focus();
               }, 100);
             } else {
               cancelBtn.focus();
-              setTimeout(function() {
+              trackedSetTimeout(function() {
                 var msg = assignedName
                   ? 'Assigned to ' + assignedName + '. No conflicts.'
                   : 'Binding assigned. No conflicts.';
@@ -1351,85 +1608,6 @@ angular.module('beamng.apps')
             return false;
           }
 
-          // ========== Vehicle Details Watcher ==========
-          // Watches for .details-content inside the Vue vehicle selector,
-          // parses children into structured lines, and sends them via WS
-          // for arrow-key browsing in beamtel.py. Also detects vehicle
-          // selector open/close state via breadcrumbs.
-          var _detailsCheckInterval = null;
-          var _lastDetailLines = [];
-          var _vehicleSelectorWasOpen = false;
-          var _detailsSendTimer = null;
-
-          function arraysEqual(a, b) {
-            if (a.length !== b.length) return false;
-            for (var i = 0; i < a.length; i++) {
-              if (a[i] !== b[i]) return false;
-            }
-            return true;
-          }
-
-          var _detailsFilterWords = ['spawn new', 'cancel', 'spawn', 'select'];
-          function parseDetailLines(detailsEl) {
-            var raw = (detailsEl.innerText || '').trim();
-            if (!raw) return [];
-            var split = raw.split(/\n/);
-            var lines = [];
-            for (var i = 0; i < split.length; i++) {
-              var line = split[i].replace(/\s+/g, ' ').trim();
-              if (!line || line.length < 2) continue;
-              var lower = line.toLowerCase();
-              var dominated = false;
-              for (var f = 0; f < _detailsFilterWords.length; f++) {
-                if (lower === _detailsFilterWords[f]) { dominated = true; break; }
-              }
-              if (!dominated) lines.push(line);
-            }
-            return lines;
-          }
-
-          function isVehicleSelectorOpen() {
-            try {
-              var bc = document.querySelector('.bng-path.header-breadcrumbs');
-              if (bc && bc.innerText && bc.innerText.indexOf('Vehicle Selector') !== -1) return true;
-            } catch (e) {}
-            return false;
-          }
-
-          function startVehicleDetailsWatcher() {
-            if (_detailsCheckInterval) return;
-            _detailsCheckInterval = setInterval(function() {
-              try {
-                var selectorOpen = isVehicleSelectorOpen();
-                if (selectorOpen !== _vehicleSelectorWasOpen) {
-                  _vehicleSelectorWasOpen = selectorOpen;
-                  send({ type: "vehicle_selector_state", open: selectorOpen });
-                  if (!selectorOpen) {
-                    _lastDetailLines = [];
-                  }
-                }
-                if (!selectorOpen) return;
-
-                var detailsEl = document.querySelector('.details-content');
-                if (!detailsEl) {
-                  if (_lastDetailLines.length > 0) _lastDetailLines = [];
-                  return;
-                }
-                var lines = parseDetailLines(detailsEl);
-                if (lines.length > 0 && !arraysEqual(lines, _lastDetailLines)) {
-                  _lastDetailLines = lines;
-                  if (_detailsSendTimer) clearTimeout(_detailsSendTimer);
-                  var snapshot = lines.slice();
-                  _detailsSendTimer = setTimeout(function() {
-                    send({ type: "vehicle_details", lines: snapshot });
-                  }, 500);
-                }
-              } catch (e) {
-                log('info', '[bnvda] Vehicle details watcher error: ' + e.message);
-              }
-            }, 1000);
-          }
-
           // ========== RADIAL MENU SPEECH MODULE ==========
           var _radialMenuWasOpen = false;
           var _radialLastSpokenItem = '';
@@ -1468,7 +1646,7 @@ angular.module('beamng.apps')
               var wrap = findRadialWrap(container);
               if (!wrap) {
                 attempts++;
-                if (attempts < 10) { _radialAttachTimer = setTimeout(tryAttach, 100); }
+                if (attempts < 10) { _radialAttachTimer = trackedSetTimeout(tryAttach, 100); }
                 else { log('info', '[RADIAL] Gave up finding wrap after ' + attempts + ' attempts'); }
                 return;
               }
@@ -1485,13 +1663,13 @@ angular.module('beamng.apps')
                 var catText = cleanText(selectedCat.textContent);
                 if (catText) {
                   _radialLastCategory = catText;
-                  setTimeout(function() { send({ type: "speak", text: catText }); }, 100);
+                  trackedSetTimeout(function() { send({ type: "speak", text: catText }); }, 100);
                 }
               }
 
               // Poll for changes — Vue's virtual DOM patching doesn't reliably
               // trigger MutationObserver, so we poll every 80ms instead.
-              _radialPollTimer = setInterval(function() {
+              _radialPollTimer = trackedSetInterval(function() {
                 if (!_radialWrap) return;
                 // Self-check: if the radial menu has been removed from the DOM
                 // (e.g., outer watcher was paused or missed the close), tear
@@ -1563,10 +1741,12 @@ angular.module('beamng.apps')
           }
 
           function startRadialMenuWatcher() {
-            setInterval(function() {
+            function pollRadialMenu() {
+              var nextDelay = 1000;
               try {
                 var container = document.querySelector('.radial-menu');
                 var isOpen = !!container;
+                if (isOpen) nextDelay = 200;
                 if (isOpen && !_radialMenuWasOpen) {
                   _radialMenuWasOpen = true;
                   radialMenuOnOpen(container);
@@ -1577,148 +1757,1011 @@ angular.module('beamng.apps')
               } catch (e) {
                 log('info', '[bnvda] Radial menu watcher error: ' + e.message);
               }
-            }, 200);
+              trackedSetTimeout(pollRadialMenu, nextDelay);
+            }
+            pollRadialMenu();
           }
 
-          // ========== TUNING SLIDER ACCELERATION ==========
-          // BeamNG's vehicle tuning sliders (BngSlider with the property-slider class)
-          // change by a single `step` per D-pad repeat (~10/sec after a 400ms hold).
-          // Mods can define tiny steps over wide ranges, so a change like final drive
-          // 4.1 -> 3.55 takes many seconds of held input. This module watches the
-          // focused slider and, while a direction is held, injects extra steps so the
-          // effective increment grows the longer the control is held. It also speaks
-          // the value as it changes, since the game gives no audio feedback while
-          // adjusting and acceleration would otherwise make overshooting easy.
-          //
-          // The D-pad path updates the slider through a Vue directive (callback -> ref)
-          // and fires NO DOM 'input' event, so we poll the focused range input rather
-          // than listen. To apply our own change we set the range value and dispatch a
-          // native 'input' event, which drives the slider's v-model + notify() exactly
-          // like a real interaction (updating the Vue ref and committing the change).
-          var TUNE_POLL_MS = 40;
-          var TUNE_IDLE_RESET_TICKS = 6;   // ~240ms with no change ends a "hold"
-          var TUNE_HOLD_GAP_TICKS = 4;     // <=160ms gap still counts as the same hold
-          var TUNE_SPEAK_INTERVAL = 150;   // min ms between spoken value updates
-          // Step multiplier keyed by consecutive held repeats (extra = mult - 1).
-          function tuneMultiplier(count) {
-            if (count < 3) return 1;
-            if (count < 8) return 2;
-            if (count < 15) return 4;
-            if (count < 25) return 8;
-            if (count < 40) return 16;
-            return 32;
-          }
-          var _tune = {
-            input: null, lastValue: null, lastDir: 0, count: 0,
-            idleTicks: 0, pendingFinal: false, lastSpeakTs: 0, lastSpokenVal: null
-          };
-          function tuneRoundToStep(val, step) {
-            var s = String(step);
-            var dot = s.indexOf('.');
-            var decimals = dot >= 0 ? (s.length - dot - 1) : 0;
-            var p = Math.pow(10, decimals);
-            return Math.round(val * p) / p;
-          }
-          function tuneSetRangeValue(el, val) {
-            try {
-              var desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
-              if (desc && desc.set) desc.set.call(el, String(val));
-              else el.value = String(val);
-            } catch (e) { el.value = String(val); }
-            el.dispatchEvent(new Event('input', { bubbles: true }));
-          }
-          function tuneFocusedRange() {
-            var cont = document.querySelector('.bng-slider-container.property-slider.focus-visible');
-            if (cont) return cont.querySelector('input.bng-slider[type="range"]');
-            // In some states focus-visible lands on the inner range input itself.
-            return document.querySelector('.property-slider input.bng-slider.focus-visible');
-          }
-          function tuneAnnounce(el, force) {
-            var step = parseFloat(el.step) || 0;
-            var raw = parseFloat(el.value);
-            if (isNaN(raw)) return;
-            var disp = step > 0 ? tuneRoundToStep(raw, step) : raw;
-            if (disp === _tune.lastSpokenVal) return; // never repeat the same value
-            var now = nowTS();
-            if (!force && (now - _tune.lastSpeakTs) < TUNE_SPEAK_INTERVAL) return;
-            _tune.lastSpeakTs = now;
-            _tune.lastSpokenVal = disp;
-            var cont = closest(el, '.bng-slider-container');
-            var suffixEl = cont ? cont.querySelector('[data-testid="suffix"]') : null;
-            var unit = suffixEl ? cleanText(suffixEl.innerText) : '';
-            var txt = unit ? (disp + ' ' + unit) : String(disp);
-            scheduleSpeak(cleanText(txt), P.CONTROLLER);
-          }
-          function tuneReset(el) {
-            _tune.input = el || null;
-            _tune.lastValue = el ? parseFloat(el.value) : null;
-            _tune.lastDir = 0;
-            _tune.count = 0;
-            _tune.idleTicks = 0;
-            _tune.pendingFinal = false;
-          }
-          function startTuningSliderAcceleration() {
-            setInterval(function () {
-              try {
-                var el = tuneFocusedRange();
-                if (!el) { if (_tune.input) tuneReset(null); return; }
-                if (el !== _tune.input) { tuneReset(el); return; }
+          // ========== CURRENT VUE PAUSE / OPTIONS SCREENS ==========
+          var VUE_TARGET_SELECTOR = "input,select,textarea,button,a[href],[role='option'],[role='menuitem'],[role='treeitem'],[role='tab'],[role='button'],[role='checkbox'],[role='switch'],[role='slider'],[bng-nav-item],.bng-row,.dropdown-option,.pause-button,.pause-menu-button,.pause-menu-tile,.category-button,[tabindex]";
+          var _vueWatchTimer = null;
+          var _vueWatchScreen = null;
+          var _vueWatchSignature = '';
+          var _vueWatchElement = null;
+          var _vueConfigFocusEntry = true;
+          var _vueOptionsOkDown = false;
+          var _vueOptionsActivation = 0;
+          var _vueOptionsCategory = '';
+          var _vueOptionsCategoryTimer = null;
+          var _vueOptionsCategoryGeneration = 0;
+          var _vueOptionsCategoryEchoElement = null;
+          var _vueOptionsCategoryEchoUntil = 0;
+          var PARTS_DROPDOWN_ACTIVATION_TIMEOUT_MS = 1500;
+          var _partsDropdownActivation = null;
+          var _partsDropdownActivationTimer = null;
+          var _partsDropdownBlockedDirections = {};
+          var _partsDropdownPopup = null;
+          var VUE_HINT_IDLE_MS = 3000;
+          var _vueHintTimer = null;
+          var _vueHintSignature = '';
+          var _vueHintAnnounced = {};
+          var _vueHintGeneration = 0;
 
-                var v = parseFloat(el.value);
-                if (isNaN(v)) return;
+          function isVehicleSelectorRoute() {
+            var route = ((location.hash || '') + ' ' + (location.pathname || '')).toLowerCase();
+            return /vehicle[-_/]?selector|vehicleselect/.test(route);
+          }
 
-                if (v === _tune.lastValue) {
-                  _tune.idleTicks++;
-                  if (_tune.idleTicks >= TUNE_IDLE_RESET_TICKS) {
-                    if (_tune.pendingFinal) { tuneAnnounce(el, true); _tune.pendingFinal = false; }
-                    _tune.count = 0;
-                    _tune.lastDir = 0;
-                  }
-                  return;
-                }
+          function isVehicleConfigRoute() {
+            var route = ((location.hash || '') + ' ' + (location.pathname || '')).toLowerCase();
+            return /\/vehicle-config(?:\/|\b)|\/pause\/vehicle(?:\/|\b)|\/pause\/vehicle\/configurationcombined(?:\/|\b)/.test(route);
+          }
 
-                // Value moved since the last poll.
-                var dir = v > _tune.lastValue ? 1 : -1;
-                if (dir === _tune.lastDir && _tune.idleTicks <= TUNE_HOLD_GAP_TICKS) {
-                  _tune.count++;
-                } else {
-                  _tune.count = 0; // direction change or a fresh tap after release
-                }
-                _tune.lastDir = dir;
-                _tune.idleTicks = 0;
-                _tune.lastValue = v;
-                _tune.pendingFinal = true;
+          function isMainMenuRoute() {
+            var hash = (location.hash || '').toLowerCase();
+            var path = (location.pathname || '').toLowerCase();
+            return /mainmenu|main-menu/.test(hash + ' ' + path) ||
+              /^#\/(?:menu)?(?:\/|$)/.test(hash);
+          }
 
-                var step = parseFloat(el.step) || 0;
-                if (step > 0) {
-                  var mult = tuneMultiplier(_tune.count);
-                  var min = el.min !== '' ? parseFloat(el.min) : -Infinity;
-                  var max = el.max !== '' ? parseFloat(el.max) : Infinity;
-                  // Cap so one tick never crosses more than ~1/15 of the range.
-                  if (isFinite(min) && isFinite(max) && max > min) {
-                    var cap = Math.max(1, Math.round(Math.abs((max - min) / step) / 15));
-                    if (mult > cap) mult = cap;
-                  }
-                  var extra = mult - 1;
-                  if (extra > 0) {
-                    var target = v + dir * step * extra;
-                    if (target < min) target = min;
-                    if (target > max) target = max;
-                    target = tuneRoundToStep(target, step);
-                    if (target !== v) {
-                      tuneSetRangeValue(el, target);
-                      _tune.lastValue = target;
-                    }
-                  }
-                }
-                tuneAnnounce(el, false);
-              } catch (e) {
-                log('info', '[TUNE] accel error: ' + e.message);
+          function focusedVueMainMenuItem(root) {
+            if (!root || !isMainMenuRoute()) return null;
+            var selectors = [
+              '.mainmenu-button:hover', '.menu-button-simple:hover',
+              '.focus-visible',
+              '[aria-current="true"]', '[aria-current="page"]',
+              '[aria-selected="true"]',
+              '[bng-nav-item].selected', '[bng-nav-item].active',
+              '.selected[bng-nav-item]', '.active[bng-nav-item]',
+              '[bng-scoped-nav-autofocus]',
+              '[bng-nav-item][tabindex="0"]'
+            ];
+            for (var i = 0; i < selectors.length; i++) {
+              var candidates = toArray(root.querySelectorAll(selectors[i]));
+              for (var j = 0; j < candidates.length; j++) {
+                var candidate = closest(candidates[j], VUE_TARGET_SELECTOR) || candidates[j];
+                if (visibleVueElement(candidate) && cleanText(extractText(candidate))) return candidate;
               }
-            }, TUNE_POLL_MS);
-            log('info', '[bnvda] Tuning slider acceleration started.');
+            }
+            return null;
           }
 
+          function vueScreenRoot() {
+            var configMarker = document.querySelector('.pause-tab-combined, .vehcfg, .parts-browser, .innerTuningCard, .paint-acc-wrapper, .saveload, .parts-packs, .mirrors-card, .adjustment-container, [class*="configuration-combined"], [class*="vehicle-configuration"]');
+            if (configMarker && (isVehicleConfigRoute() || closest(configMarker, '.vehcfg, .mirrors-card, [class*="configuration-combined"], [class*="vehicle-configuration"]'))) {
+              return closest(configMarker, '.pause-tab-combined, .vehcfg, .mirrors-card, [class*="configuration-combined"], [class*="vehicle-configuration"], #vue-app, .vue-app, main, [role="main"]') || configMarker;
+            }
+            var vehicleMarker = document.querySelector('.vehicle-grid, .grid-selector-screen-content, .grid-content');
+            if (vehicleMarker && (isVehicleSelectorRoute() || closest(vehicleMarker, '.grid-selector-screen-content'))) {
+              return closest(vehicleMarker, '#vue-app, .vue-app, main, [role="main"]') ||
+                closest(vehicleMarker, '.grid-selector-screen-content') || document.body;
+            }
+            var optionMarker = document.querySelector('.options-view, .options-item-label-text, .options-categories, .options-category-button, .options-category-side, .options-content-wrapper, .options-toc, .options-category, .settings-category, #binding_list, .binding-item-row, .binding-item-rail-content');
+            if (optionMarker) return closest(optionMarker, '#vue-app, .vue-app, .options-container, .options-screen, .settings-container, main, [role="main"]') || document.body;
+            var pauseMarker = document.querySelector('.pause-menu, .pause-screen, .pause-tabs, button.pause-button');
+            if (pauseMarker) return closest(pauseMarker, '#vue-app, .vue-app, .pause-menu, .pause-screen, main, [role="main"]') || document.body;
+
+            // The 0.39 main menu has no pause/options/vehicle marker. Treat the
+            // Vue application as a screen whenever BeamNG's navigation system
+            // exposes a focused item. This also covers new Vue screens without
+            // coupling accessibility to each screen's private CSS class names.
+            var vueRoot = document.querySelector('#vue-app, .vue-app');
+            if (vueRoot) {
+              if (isMainMenuRoute()) return vueRoot;
+              var focused = vueRoot.querySelector('.focus-visible');
+              var active = document.activeElement;
+              if ((focused && visibleVueElement(focused)) ||
+                  (active && active !== document.body && vueRoot.contains(active))) {
+                return vueRoot;
+              }
+            }
+            return null;
+          }
+
+          function vueOwnLabel(el) {
+            if (!el) return '';
+            var attr = el.getAttribute && (el.getAttribute('aria-label') || el.getAttribute('data-label') || el.title);
+            if (attr) return cleanText(attr);
+            var label = el.querySelector && el.querySelector('.options-item-label-text, .binding-label, .action-title, .item-label, .button-label, .title, .label');
+            return cleanText((label && label.innerText) || el.innerText || '');
+          }
+
+          function visibleVueElement(el) {
+            if (!el || !el.isConnected || !el.getBoundingClientRect) return false;
+            var rect = el.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) return false;
+            try {
+              var style = window.getComputedStyle(el);
+              if (style.display === 'none' || style.visibility === 'hidden') return false;
+            } catch (e) {}
+            return true;
+          }
+
+          function vuePartsDropdown() {
+            var dropdowns = toArray(document.querySelectorAll('.bng-dropdown-content'));
+            for (var i = 0; i < dropdowns.length; i++) {
+              if (visibleVueElement(dropdowns[i]) && dropdowns[i].querySelector('.dropdown-option, [role=option]')) return dropdowns[i];
+            }
+            return null;
+          }
+
+          function focusedVuePartsDropdownOption(dropdown) {
+            if (!dropdown) return null;
+            var options = toArray(dropdown.querySelectorAll('.dropdown-option.focus-visible, [role=option].focus-visible'));
+            var active = document.activeElement;
+            if (active && dropdown.contains(active)) {
+              var activeOption = closest(active, '.dropdown-option, [role=option]');
+              if (activeOption) options.unshift(activeOption);
+            }
+            for (var i = 0; i < options.length; i++) if (visibleVueElement(options[i])) return options[i];
+            return null;
+          }
+
+          function activeVuePartsDropdown() {
+            if (_partsDropdownPopup && visibleVueElement(_partsDropdownPopup)) return _partsDropdownPopup;
+            _partsDropdownPopup = null;
+            return null;
+          }
+
+          function focusedVuePartsRow() {
+            var browser = document.querySelector('.parts-browser');
+            if (!browser || !visibleVueElement(browser)) return null;
+            var marked = toArray(browser.querySelectorAll('.focus-visible'));
+            if (browser.contains(document.activeElement)) marked.push(document.activeElement);
+            for (var i = 0; i < marked.length; i++) {
+              var row = closest(marked[i], '.parts-browser .bng-accitem');
+              if (row && visibleVueElement(row)) return row;
+            }
+            return null;
+          }
+
+          function vuePartsRowCanOpenDropdown(row) {
+            if (!row || !row.isConnected || !row.querySelector('.dropdown-display')) return false;
+            return !(row.disabled || row.getAttribute('aria-disabled') === 'true' ||
+              row.classList.contains('disabled') || row.classList.contains('is-disabled') ||
+              row.classList.contains('bng-accitem-disabled'));
+          }
+
+          function clearPartsDropdownActivation(clearDirectionLatch) {
+            if (_partsDropdownActivationTimer) clearTimeout(_partsDropdownActivationTimer);
+            _partsDropdownActivationTimer = null;
+            _partsDropdownActivation = null;
+            if (clearDirectionLatch) {
+              _partsDropdownBlockedDirections = {};
+              _partsDropdownPopup = null;
+            }
+          }
+
+          function armPartsDropdownActivation(row) {
+            clearPartsDropdownActivation(true);
+            _partsDropdownActivation = {
+              row: row,
+              route: (location.hash || '') + '|' + (location.pathname || ''),
+              dropdownSeen: false
+            };
+            _partsDropdownActivationTimer = trackedSetTimeout(function() {
+              clearPartsDropdownActivation(true);
+            }, PARTS_DROPDOWN_ACTIVATION_TIMEOUT_MS);
+          }
+
+          function partsDirectionName(action) {
+            var name = String(action || '').toLowerCase().replace(/[-\s]+/g, '_');
+            var match = name.match(/(?:^|_)(up|down|left|right)$/);
+            return match ? match[1] : '';
+          }
+
+          function navigationValuePressed(value) {
+            return value === true || value === '1' || (typeof value === 'number' && Math.abs(value) > 0.01);
+          }
+
+          function discardPartsDropdownDirection(event, action, value) {
+            var direction = partsDirectionName(action);
+            if (!direction) return false;
+            var pressed = navigationValuePressed(value);
+            if (_partsDropdownActivation && pressed) _partsDropdownBlockedDirections[direction] = true;
+            var discard = !!_partsDropdownActivation || !!_partsDropdownBlockedDirections[direction];
+            if (!pressed) delete _partsDropdownBlockedDirections[direction];
+            if (!discard) return false;
+            if (event) {
+              if (typeof event.preventDefault === 'function') event.preventDefault();
+              if (typeof event.stopPropagation === 'function') event.stopPropagation();
+            }
+            return true;
+          }
+
+          function updatePartsDropdownActivation(root) {
+            if (!_partsDropdownActivation) return null;
+            var activation = _partsDropdownActivation;
+            var route = (location.hash || '') + '|' + (location.pathname || '');
+            if (!root || route !== activation.route || !activation.row.isConnected ||
+                !closest(activation.row, '.parts-browser')) {
+              clearPartsDropdownActivation(true);
+              return null;
+            }
+            var dropdown = vuePartsDropdown();
+            if (dropdown) {
+              activation.dropdownSeen = true;
+              _partsDropdownPopup = dropdown;
+            }
+            else if (activation.dropdownSeen) {
+              clearPartsDropdownActivation(true);
+              return null;
+            }
+            var option = focusedVuePartsDropdownOption(dropdown);
+            if (option) {
+              // Direction presses made during activation stay latched until release.
+              clearPartsDropdownActivation(false);
+              return option;
+            }
+            return null;
+          }
+
+          function resetVueHintLifecycle() {
+            if (_vueHintTimer) clearTimeout(_vueHintTimer);
+            _vueHintTimer = null;
+            _vueHintSignature = '';
+            _vueHintAnnounced = {};
+            _vueHintGeneration++;
+          }
+
+          function vuePauseHintSet(root) {
+            if (!root || !root.querySelectorAll) return null;
+            var footers = toArray(root.querySelectorAll('.info-bar-buttons'));
+            for (var i = 0; i < footers.length; i++) {
+              var footer = footers[i];
+              if (!visibleVueElement(footer)) continue;
+              var hints = toArray(footer.querySelectorAll('.hint'));
+              var pairs = [];
+              for (var j = 0; j < hints.length; j++) {
+                var hint = hints[j];
+                if (!visibleVueElement(hint)) continue;
+                var actionEl = hint.querySelector('.hint-text');
+                if (!actionEl || !visibleVueElement(actionEl)) continue;
+                var action = cleanText(actionEl.innerText || actionEl.textContent || '');
+                var containers = toArray(hint.querySelectorAll('.binding-container')).filter(visibleVueElement);
+                var bindings = containers.map(getBindingFriendlyName).filter(Boolean);
+                if (!bindings.length || !action) continue;
+                pairs.push({ button: bindings.join(' or '), action: action });
+              }
+              if (!pairs.length) continue;
+              return {
+                signature: pairs.map(function(pair) {
+                  return (pair.button + '|' + pair.action).toLowerCase().replace(/\s+/g, ' ').trim();
+                }).join('||'),
+                speech: pairs.map(function(pair) { return pair.button + ', ' + pair.action; }).join('. ') + '.'
+              };
+            }
+            return null;
+          }
+
+          function updateVuePauseHints(root, activityChanged) {
+            var hintSet = vuePauseHintSet(root);
+            if (!hintSet) {
+              if (_vueHintSignature || _vueHintTimer) resetVueHintLifecycle();
+              return;
+            }
+            var signatureChanged = hintSet.signature !== _vueHintSignature;
+            if (signatureChanged) {
+              if (_vueHintTimer) clearTimeout(_vueHintTimer);
+              _vueHintTimer = null;
+              _vueHintSignature = hintSet.signature;
+              _vueHintGeneration++;
+            } else if (activityChanged && _vueHintTimer) {
+              clearTimeout(_vueHintTimer);
+              _vueHintTimer = null;
+              _vueHintGeneration++;
+            }
+            if (_vueHintAnnounced[hintSet.signature] || _vueHintTimer) return;
+            var generation = _vueHintGeneration;
+            _vueHintTimer = trackedSetTimeout(function() {
+              _vueHintTimer = null;
+              if (generation !== _vueHintGeneration) return;
+              var currentRoot = vueScreenRoot();
+              var current = vuePauseHintSet(currentRoot);
+              if (!current || current.signature !== hintSet.signature) return;
+              _vueHintAnnounced[hintSet.signature] = true;
+              scheduleSpeak(current.speech, P.CONTROLLER);
+            }, VUE_HINT_IDLE_MS);
+          }
+
+          function selectedVueOptionsCategory(root) {
+            if (!root || !root.querySelector) return null;
+            var selectors = [
+              '.options-categories .options-category-button.selected',
+              '.options-toc [aria-selected=true]',
+              '.options-toc [aria-current=page]',
+              '.options-toc .category-button.router-link-active',
+              '.options-toc .category-button.selected',
+              '.options-toc .category-button.active',
+              '.options-toc .category-button.current',
+              '.options-toc [role=tab].selected',
+              '.options-toc [role=tab].active',
+              '.options-toc [role=tab].current',
+              '.options-toc .router-link-active',
+              '.options-toc .selected',
+              '.options-toc .active',
+              '.options-toc .current',
+              '.options-category[aria-selected=true]',
+              '.options-category.selected',
+              '.options-category.active',
+              '.settings-category[aria-selected=true]',
+              '.settings-category.selected',
+              '.settings-category.active'
+            ];
+            for (var i = 0; i < selectors.length; i++) {
+              var category = root.querySelector(selectors[i]);
+              if (category) {
+                category = closest(category, '.options-category-button, .category-button, [role=tab], .options-category, .settings-category, [bng-nav-item], button, a') || category;
+              }
+              if (category && visibleVueElement(category)) return category;
+            }
+            return null;
+          }
+
+          function vueOptionsCategoryLabel(root) {
+            var category = selectedVueOptionsCategory(root);
+            return cleanText(vueOwnLabel(category));
+          }
+
+          function isVueOptionsCategoryControl(el) {
+            return !!closest(el, '.options-toc, .options-category, .settings-category, .category-button, [role=tab]');
+          }
+
+          function focusedVueOptionsItem(root) {
+            if (!root || !root.querySelectorAll) return null;
+            var focused = toArray(root.querySelectorAll('.focus-visible'));
+            if (root.contains(document.activeElement)) focused.push(document.activeElement);
+            for (var i = 0; i < focused.length; i++) {
+              if (visibleVueElement(focused[i]) && !isVueOptionsCategoryControl(focused[i])) return focused[i];
+            }
+            var candidates = toArray(root.querySelectorAll(
+              '.options-item .bng-row, .options-item [bng-nav-item], ' +
+              '.options-item input, .options-item select, .options-item button, ' +
+              '.binding-item-row, #binding_list [bng-nav-item]'
+            ));
+            for (var j = 0; j < candidates.length; j++) {
+              if (visibleVueElement(candidates[j]) && !isVueOptionsCategoryControl(candidates[j])) return candidates[j];
+            }
+            return null;
+          }
+
+          function announceVueOptionsCategory(categoryLabel) {
+            var generation = ++_vueOptionsCategoryGeneration;
+            if (_vueOptionsCategoryTimer) clearTimeout(_vueOptionsCategoryTimer);
+            _vueOptionsCategoryTimer = trackedSetTimeout(function () {
+              _vueOptionsCategoryTimer = null;
+              if (generation !== _vueOptionsCategoryGeneration) return;
+              var root = vueScreenRoot();
+              if (!root || vueOptionsCategoryLabel(root) !== categoryLabel) return;
+              var item = focusedVueOptionsItem(root);
+              var itemText = '';
+              if (item) {
+                _vueOptionsCategoryEchoElement = item;
+                _vueOptionsCategoryEchoUntil = nowTS() + 500;
+                var row = closest(item, '.bng-row, .options-item, .binding-row, .binding-item, .binding-item-row') || item;
+                var labelEl = row.querySelector && row.querySelector('.options-item-label-text');
+                var label = cleanText((labelEl && labelEl.innerText) || vueOwnLabel(item));
+                var state = vueControlState(closest(item, VUE_TARGET_SELECTOR) || item, row);
+                itemText = [label, state].filter(Boolean).join(', ');
+                _vueWatchElement = item;
+                _vueWatchSignature = vueFocusSignature(item, root);
+              }
+              scheduleSpeak(categoryLabel + (itemText ? '. ' + itemText : ''), P.CONTROLLER);
+            }, 100);
+          }
+
+          function isVueOptionsCategoryEcho(element) {
+            if (!element || nowTS() >= _vueOptionsCategoryEchoUntil) return false;
+            if (element === _vueOptionsCategoryEchoElement) return true;
+            var side = closest(element, '.options-category-side');
+            var echoedSide = closest(_vueOptionsCategoryEchoElement, '.options-category-side');
+            return !!side && side === echoedSide;
+          }
+
+          function vueControlState(control, row) {
+            var out = [];
+            if (!control) control = row;
+            var role = control && control.getAttribute ? control.getAttribute('role') : '';
+            var checked = control && control.getAttribute ? control.getAttribute('aria-checked') : null;
+            if (checked === null && control && (control.type === 'checkbox' || control.type === 'radio')) checked = control.checked ? 'true' : 'false';
+            if (checked === null && row && row.querySelector && closest(row, '.options-item-checkbox')) {
+              var optionsToggle = row.querySelector('.options-checkbox-toggle, .bng-switch-on');
+              if (optionsToggle) {
+                checked = (optionsToggle.classList.contains('is-checked') ||
+                  optionsToggle.classList.contains('bng-switch-on')) ? 'true' : 'false';
+              }
+            }
+            if (checked !== null) out.push(checked === 'true' ? 'on' : 'off');
+            var expanded = control && control.getAttribute ? control.getAttribute('aria-expanded') : null;
+            if (expanded !== null) out.push(expanded === 'true' ? 'expanded' : 'collapsed');
+            var selected = control && control.getAttribute ? control.getAttribute('aria-selected') : null;
+            if (selected === 'true' || (control.classList && control.classList.contains('selected'))) out.push('selected');
+            var value = '';
+            if (control) {
+              if (control.value !== undefined && control.value !== '' && control.type !== 'checkbox' && control.type !== 'radio') value = control.value;
+              if (!value && control.getAttribute) value = control.getAttribute('aria-valuetext') || control.getAttribute('aria-valuenow') || '';
+            }
+            if (!value && row && row.querySelector) {
+              var valueEl = row.querySelector('.dropdown-display, .options-item-value, .current-value, .value, output, input, select, [aria-valuetext], [aria-valuenow]');
+              if (valueEl) value = valueEl.value !== undefined && valueEl.value !== '' ? valueEl.value : (valueEl.getAttribute('aria-valuetext') || valueEl.getAttribute('aria-valuenow') || valueEl.innerText || '');
+            }
+            value = cleanText(value);
+            if (value) out.push(value);
+            if ((control && control.disabled) || (control && control.getAttribute && control.getAttribute('aria-disabled') === 'true') || (row && row.getAttribute && row.getAttribute('aria-disabled') === 'true')) out.push('disabled');
+            if ((control && control.getAttribute && control.getAttribute('aria-busy') === 'true') || (row && row.getAttribute && row.getAttribute('aria-busy') === 'true')) out.push('busy');
+            if (role === 'slider' && !value) out.push('slider');
+            return out.join(', ');
+          }
+
+          function vueOptionsCheckboxState(row) {
+            if (!row || !row.querySelector) return null;
+            var toggle = row.querySelector('.options-checkbox-toggle, .bng-switch-on');
+            if (!toggle) return null;
+            return toggle.classList.contains('is-checked') || toggle.classList.contains('bng-switch-on');
+          }
+
+          function vueOptionsCheckboxUnavailable(row) {
+            var item = row && row.parentElement;
+            var toggle = row && row.querySelector && row.querySelector('.options-checkbox-toggle, .bng-switch-on');
+            if (!row || !item) return true;
+            return !!(row.disabled || item.disabled || (toggle && toggle.disabled) ||
+              row.getAttribute('aria-disabled') === 'true' || item.getAttribute('aria-disabled') === 'true' ||
+              (toggle && toggle.getAttribute('aria-disabled') === 'true') ||
+              row.getAttribute('aria-busy') === 'true' || item.getAttribute('aria-busy') === 'true' ||
+              (toggle && toggle.getAttribute('aria-busy') === 'true') ||
+              row.classList.contains('disabled') || row.classList.contains('is-disabled') ||
+              item.classList.contains('disabled') || item.classList.contains('is-disabled') ||
+              row.classList.contains('busy') || row.classList.contains('is-busy') ||
+              item.classList.contains('busy') || item.classList.contains('is-busy'));
+          }
+
+          function focusedVueOptionsCheckboxRow() {
+            var focused = document.querySelector('.focus-visible') || document.activeElement;
+            var row = closest(focused, '.options-item-checkbox > .bng-row');
+            if (!row || !row.parentElement || !row.parentElement.classList.contains('options-item-checkbox')) return null;
+            return row;
+          }
+
+          function vehicleConfigRoot(root) {
+            var selector = '.pause-tab-combined, .vehcfg, .parts-browser, .innerTuningCard, .paint-acc-wrapper, .saveload, .parts-packs, .mirrors-card, .adjustment-container, [class*="configuration-combined"], [class*="vehicle-configuration"]';
+            return root && ((root.matches && root.matches(selector)) || (root.querySelector && root.querySelector(selector)));
+          }
+
+          function vehicleConfigLabel(el) {
+            if (!el) return '';
+            var attr = el.getAttribute && (el.getAttribute('aria-label') || el.getAttribute('data-label') || el.getAttribute('data-name') || el.getAttribute('data-tooltip') || el.title);
+            if (attr) return cleanText(attr);
+            if (el.__bngTooltip && el.__bngTooltip.text) return cleanText(el.__bngTooltip.text);
+            var label = el.querySelector && el.querySelector('.bng-row-label, .bng-accitem-caption-content, .pack-title, .tile-label, .label, label, .variable-title, .saveload-metadata-caption, .bng-card-heading');
+            return cleanText((label && label.innerText) || vueOwnLabel(el));
+          }
+
+          function speakVueVehicleConfig(element, src, root, focusEntry) {
+            if (!vehicleConfigRoot(root)) return false;
+            var target = closest(element, VUE_TARGET_SELECTOR) || element;
+            var out = [];
+
+            var combined = closest(target, '.pause-tab-combined') || (root.matches && root.matches('.pause-tab-combined') ? root : null);
+            var search = combined && closest(target, 'input[type="search"], input.search-input, .search input, [class*="search"] input');
+            if (search) {
+              scheduleSpeak('Search, edit; press Enter to return to Parts.', src);
+              return true;
+            }
+
+            var pack = closest(target, '.folder-button, .pack-button, .folder-item, [class*="pack-item"]');
+            if (pack && closest(pack, '.parts-packs')) {
+              var packTitle = q(pack, '.pack-title');
+              var packDescription = q(pack, '.pack-description');
+              out.push(cleanText((packTitle && packTitle.innerText) || vehicleConfigLabel(pack)));
+              if (packDescription) out.push(cleanText(packDescription.innerText));
+              if (pack.classList.contains('selected') || pack.classList.contains('pack-selected') || pack.getAttribute('aria-selected') === 'true') out.push('selected');
+              var path = q(closest(pack, '.parts-packs'), '.path-label');
+              if (path) out.push(cleanText(path.innerText));
+            }
+
+            var partRow = closest(target, '.parts-browser .bng-accitem');
+            if (partRow && !out.length) {
+              out.push(vehicleConfigLabel(partRow));
+              var equipped = q(partRow, '.dropdown-display');
+              var equippedText = cleanText(equipped && equipped.innerText);
+              if (equippedText) out.push(equippedText.toLowerCase() === 'empty' ? 'slot is empty' : 'currently equipped: ' + equippedText);
+              var visibility = q(partRow, '.visibility-toggle');
+              if (visibility) out.push(visibility.classList.contains('visibility-toggle-on') ? 'visible' : 'hidden');
+              if (partRow.classList.contains('changed') || partRow.classList.contains('is-changed') || partRow.classList.contains('bng-accitem-changed')) out.push('changed');
+              if (partRow.classList.contains('disabled') || partRow.classList.contains('is-disabled') || partRow.classList.contains('bng-accitem-disabled') || partRow.getAttribute('aria-disabled') === 'true') out.push('disabled');
+              if (partRow.classList.contains('bng-accitem-expandable')) out.push(partRow.classList.contains('bng-accitem-expanded') ? 'expanded' : 'collapsed');
+            }
+
+            var tuningRow = closest(target, '.innerTuningCard .input-container');
+            if (tuningRow && !out.length) {
+              var category = closest(tuningRow, '.tuning-category');
+              var subcategory = closest(tuningRow, '.tuning-subcategory');
+              var categoryName = cleanText((q(category, '.category-name') || {}).innerText);
+              var subcategoryName = cleanText((q(subcategory, '.subcategory-name') || {}).innerText);
+              if (categoryName !== _lastTuningCategory && categoryName) out.push(categoryName);
+              if ((categoryName !== _lastTuningCategory || subcategoryName !== _lastTuningSubcategory) && subcategoryName) out.push(subcategoryName);
+              _lastTuningCategory = categoryName;
+              _lastTuningSubcategory = subcategoryName;
+              out.push(vehicleConfigLabel(tuningRow));
+              var tuningInput = q(tuningRow, 'input[data-testid="input"], input[type="range"], input[type="number"]');
+              var tuningValue = tuningInput ? cleanText(tuningInput.value) : '';
+              var tuningUnit = cleanText((q(tuningRow, '[data-testid="suffix"], .suffix, .unit') || {}).innerText);
+              if (tuningValue) out.push(tuningValue + (tuningUnit ? ' ' + tuningUnit : ''));
+              if ((tuningInput && tuningInput.disabled) || tuningRow.getAttribute('aria-disabled') === 'true') out.push('disabled');
+              if (focusEntry) {
+                if (_tuningHintTimer) clearTimeout(_tuningHintTimer);
+                var tip = tuningRow.__bngTooltip;
+                var hint = cleanText(tip && tip.text);
+                if (hint && hint.toLowerCase() !== vehicleConfigLabel(tuningRow).toLowerCase()) {
+                  _tuningHintTimer = trackedSetTimeout(function () { _tuningHintTimer = null; send({ type: 'speak', text: hint, interrupt: false }); }, 250);
+                }
+              }
+            }
+
+            var paintTile = closest(target, '.multi-paint-setup-item, .paint-preset, [class*="paint-tile"]');
+            if (paintTile && !out.length) {
+              out.push(vehicleConfigLabel(paintTile) || 'paint preset');
+              if (paintTile.classList.contains('selected') || paintTile.getAttribute('aria-selected') === 'true') out.push('selected');
+            }
+            var mirrorTile = closest(target, '.mirror-button, .mirror-tile');
+            if (mirrorTile && !out.length) out.push(vehicleConfigLabel(mirrorTile));
+
+            if (!out.length) {
+              var row = closest(target, '.bng-row, .saveload-row, .saveload-option, .bng-accitem, .paint-acc-container, .adjustment-container') || target;
+              out.push(vehicleConfigLabel(target) || vehicleConfigLabel(row));
+              var state = vueControlState(target, row);
+              if (state) out.push(state);
+              var prefix = row.querySelector && row.querySelector('[data-testid="prefix"], .prefix');
+              var suffix = row.querySelector && row.querySelector('[data-testid="suffix"], .suffix, .unit');
+              var affixes = cleanText(((prefix && prefix.innerText) || '') + ' ' + ((suffix && suffix.innerText) || ''));
+              if (affixes) out.push(affixes);
+              var status = row.querySelector && row.querySelector('.saveload-thumbnail-status, .saveload-save-status, .saveload-paint-validation, .validation-message, .packs-empty');
+              if (status) out.push(cleanText(status.innerText));
+            }
+            var text = out.filter(Boolean).join(', ');
+            if (text) scheduleSpeak(text, src);
+            return true;
+          }
+
+          // BngRow normally handles controller activation. Some OptionsCheckbox
+          // rows receive the event without invoking their registered control, so
+          // fall back to the row's normal click path only if native handling did
+          // not change its state after two rendered frames.
+          function handleVueOptionsOk(value) {
+            var pressed = value === true || (typeof value === 'number' && value > 0) || value === '1';
+            if (!pressed) {
+              _vueOptionsOkDown = false;
+              return;
+            }
+            if (_vueOptionsOkDown) return;
+            _vueOptionsOkDown = true;
+
+            var partsRow = focusedVuePartsRow();
+            if (vuePartsRowCanOpenDropdown(partsRow)) armPartsDropdownActivation(partsRow);
+
+            var row = focusedVueOptionsCheckboxRow();
+            if (!row || vueOptionsCheckboxUnavailable(row)) return;
+            var before = vueOptionsCheckboxState(row);
+            if (before === null) return;
+            var route = (location.hash || '') + '|' + (location.pathname || '');
+            var activation = ++_vueOptionsActivation;
+
+            trackedRequestAnimationFrame(function () {
+              trackedRequestAnimationFrame(function () {
+                if (activation !== _vueOptionsActivation) return;
+                if (!row.isConnected || route !== ((location.hash || '') + '|' + (location.pathname || ''))) return;
+                if (focusedVueOptionsCheckboxRow() !== row || vueOptionsCheckboxUnavailable(row)) return;
+                if (vueOptionsCheckboxState(row) !== before) return;
+                row.click();
+              });
+            });
+          }
+
+          subscribe($rootScope, 'UINavigation', function (_event, action, value) {
+            if (discardPartsDropdownDirection(_event, action, value)) return;
+            if (action === 'ok') handleVueOptionsOk(value);
+          });
+
+          function bindingChipName(chip) {
+            return getBindingFriendlyName(chip) || replaceKnownGlyphs((chip && (chip.innerText || chip.textContent)) || '');
+          }
+
+          // The Vue binding editor overlays the controls list, whose stale
+          // .focus-visible marker can remain behind the active popup.
+          function vueBindingEditorPopup() {
+            var popup = document.querySelector('[bng-ui-scope=options-edit-binding-popup]');
+            return popup && visibleVueElement(popup) ? popup : null;
+          }
+
+          function vueBindingEditorFocused(popup) {
+            if (!popup) return null;
+            // Scoped controller navigation moves this marker without always
+            // moving document.activeElement. It is the authoritative target.
+            var focused = toArray(popup.querySelectorAll('.focus-visible'));
+            for (var i = 0; i < focused.length; i++) if (visibleVueElement(focused[i])) return focused[i];
+            var active = document.activeElement;
+            if (active && popup.contains(active) && active !== popup && visibleVueElement(active)) return active;
+            return null;
+          }
+
+          function vueBindingEditorDisabled(control, row) {
+            var nodes = [control, row];
+            for (var i = 0; i < nodes.length; i++) {
+              var node = nodes[i];
+              if (node && (node.disabled || node.getAttribute('aria-disabled') === 'true' ||
+                  node.classList.contains('disabled') || node.classList.contains('is-disabled'))) return true;
+            }
+            return false;
+          }
+
+          function vueBindingEditorRow(control, popup) {
+            var row = closest(control, '.bng-row, .options-item, .binding-edit-row, .binding-editor-row, ' +
+              '.conflict-row, [class*=conflict-row], .smart-select, [class*=smart-select], [class*=setting-row]');
+            return row && popup.contains(row) ? row : control;
+          }
+
+          function vueBindingEditorLabel(row, control) {
+            var label = row && row.querySelector && row.querySelector('.options-item-label-text, .bng-row-label, ' +
+              '.binding-label, .setting-label, .label, label, [class*=label], [class*=title]');
+            return cleanText((label && label.innerText) || vueOwnLabel(control));
+          }
+
+          function vueBindingEditorValue(control, row) {
+            var value = control && control.value !== undefined && control.value !== '' ? control.value : '';
+            if (!value && control && control.getAttribute) value = control.getAttribute('aria-valuetext') || control.getAttribute('aria-valuenow') || '';
+            if (!value && row && row.querySelector) {
+              var valueEl = row.querySelector('.dropdown-display, .current-value, .options-item-value, output, ' +
+                'input[type=number], input[type=range], select, [aria-valuetext], [aria-valuenow]');
+              if (valueEl) value = valueEl.value !== undefined && valueEl.value !== '' ? valueEl.value :
+                (valueEl.getAttribute('aria-valuetext') || valueEl.getAttribute('aria-valuenow') || valueEl.innerText || '');
+            }
+            return cleanText(value);
+          }
+
+          // Basic Info, Axis Options, and FFB Options share these row shapes.
+          function vueBindingEditorInfo(element, popup) {
+            if (!element || !popup || !popup.contains(element)) return null;
+            var control = closest(element, VUE_TARGET_SELECTOR) || element;
+            var row = vueBindingEditorRow(control, popup);
+            var label = vueBindingEditorLabel(row, control);
+            var state = '';
+            var role = 'control';
+            var position = 0;
+            // Vue often puts focus-visible/bng-nav-item on a component wrapper
+            // while its semantic input or button is nested inside it.
+            var button = closest(control, 'button, [role=button]') ||
+              (control.querySelector && control.querySelector('button, [role=button]'));
+
+            var tab = closest(control, '[role=tab], .bng-tab, [class*=tab-button]') ||
+              (control.querySelector && control.querySelector('[role=tab], .bng-tab, [class*=tab-button]'));
+            if (tab && popup.contains(tab)) {
+              role = 'tab'; label = vueOwnLabel(tab) || label || 'Binding options'; state = vueControlState(tab, tab);
+              position = toArray((tab.parentElement || popup).querySelectorAll('[role=tab], .bng-tab, [class*=tab-button]')).indexOf(tab);
+              return { role: role, label: label, state: state, position: position };
+            }
+            var tabBar = closest(control, '[role=tablist], .bng-tabs, [class*=tab-list], [class*=tabs]');
+            if (tabBar && button) {
+              var tabButtons = toArray(tabBar.querySelectorAll('button, [role=button]'));
+              position = tabButtons.indexOf(button); role = position <= 0 ? 'previous-tab' : 'next-tab';
+              label = role === 'previous-tab' ? 'Previous tab' : 'Next tab';
+              state = vueBindingEditorDisabled(button, tabBar) ? 'disabled' : '';
+              return { role: role, label: label, state: state, position: position };
+            }
+
+            var buttonText = cleanText(vueOwnLabel(button));
+            var buttonLower = buttonText.toLowerCase();
+            if (button && (/^cancel\b/.test(buttonLower) || /^apply\b/.test(buttonLower))) {
+              role = /^cancel\b/.test(buttonLower) ? 'cancel' : 'apply'; label = role === 'cancel' ? 'Cancel' : 'Apply';
+              state = vueBindingEditorDisabled(button, row) ? 'disabled' : '';
+              return { role: role, label: label, state: state, position: 0 };
+            }
+
+            var conflict = closest(control, '.conflict-row, [class*=conflict-row], [class*=conflict-item], [class*=conflict]');
+            if (conflict) {
+              var conflictLabel = vueBindingEditorLabel(conflict, control) || cleanText(conflict.innerText);
+              position = button ? toArray(conflict.querySelectorAll('button, [role=button]')).indexOf(button) : 0;
+              role = button ? 'conflict-remove' : 'conflict';
+              label = button ? 'Remove' + (conflictLabel ? ' ' + conflictLabel : ' conflict') :
+                'Conflict' + (conflictLabel ? ': ' + conflictLabel : '');
+              state = vueBindingEditorDisabled(control, conflict) ? 'disabled' : '';
+              return { role: role, label: label, state: state, position: position };
+            }
+
+            // DOM order is Reassign followed by Delete in the assigned row.
+            var assignedRow = closest(control, '.bng-row, [class*=row]');
+            var binding = assignedRow && assignedRow.querySelector('.binding-container, .bng-binding, [class*=binding-container]');
+            if (assignedRow && binding && popup.contains(assignedRow)) {
+              var assignedName = getBindingFriendlyName(binding) || cleanText(binding.innerText || binding.textContent);
+              var actions = toArray(assignedRow.querySelectorAll('button, [role=button]'));
+              if (button && actions.indexOf(button) >= 0) {
+                position = actions.indexOf(button); role = position === 0 ? 'reassign' : 'delete';
+                label = role === 'reassign' ? 'Reassign' : 'Delete'; state = assignedName ? 'currently ' + assignedName : '';
+              } else { role = 'assigned-control'; label = 'Assigned control'; state = assignedName || 'unassigned'; }
+              return { role: role, label: label, state: state, position: position };
+            }
+
+            var slider = closest(control, 'input[type=range], [role=slider]') ||
+              (control.querySelector && control.querySelector('input[type=range], [role=slider]'));
+            if (slider) {
+              role = 'slider'; state = vueBindingEditorValue(slider, row);
+              if (vueBindingEditorDisabled(slider, row)) state = [state, 'disabled'].filter(Boolean).join(', ');
+              return { role: role, label: label || 'Slider', state: state, position: 0 };
+            }
+            var toggle = closest(control, 'input[type=checkbox], [role=checkbox], [role=switch]') ||
+              (control.querySelector && control.querySelector('input[type=checkbox], [role=checkbox], [role=switch]'));
+            if (toggle) {
+              role = 'toggle'; var checked = toggle.getAttribute('aria-checked');
+              if (checked === null && toggle.checked !== undefined) checked = toggle.checked ? 'true' : 'false';
+              state = checked === 'true' ? 'on' : 'off';
+              if (vueBindingEditorDisabled(toggle, row)) state += ', disabled';
+              return { role: role, label: label || 'Toggle', state: state, position: 0 };
+            }
+
+            var smart = closest(control, '.smart-select, [class*=smart-select]');
+            var select = closest(control, 'select, [role=combobox], [class*=select]') ||
+              (control.querySelector && control.querySelector('select, [role=combobox], [class*=select]'));
+            if (smart || select) {
+              smart = smart || row; var smartButtons = toArray(smart.querySelectorAll('button, [role=button]'));
+              if (button && smartButtons.indexOf(button) >= 0) {
+                position = smartButtons.indexOf(button); role = position === 0 ? 'select-previous' : 'select-next';
+                label = (label || 'Value') + (role === 'select-previous' ? ', previous' : ', next');
+              } else role = 'select';
+              state = vueBindingEditorValue(select || control, smart);
+              if (vueBindingEditorDisabled(control, smart)) state = [state, 'disabled'].filter(Boolean).join(', ');
+              return { role: role, label: label || 'Select', state: state, position: position };
+            }
+
+            if (button) { role = 'button'; label = buttonText || label || 'Button'; state = vueBindingEditorDisabled(button, row) ? 'disabled' : ''; }
+            else state = vueControlState(control, row);
+            return { role: role, label: label, state: state, position: position };
+          }
+
+          function speakVueBindingEditor(element, src, popup) {
+            var info = vueBindingEditorInfo(element, popup || vueBindingEditorPopup());
+            if (!info) return false;
+            var text = [info.label, info.state].filter(Boolean).join(', ');
+            if (text) scheduleSpeak(text, src);
+            return true;
+          }
+
+          function vueBindingEditorSignature(element, popup) {
+            var info = vueBindingEditorInfo(element, popup);
+            return info ? ['binding-editor', info.role, info.position, info.label, info.state].join('|') : '';
+          }
+
+          function selectedBindingChip(rail) {
+            if (!rail) return null;
+            return rail.querySelector('.binding-item-chip-selected, .binding-item-chip.focus-visible, .binding-item.focus-visible, .binding-chip.focus-visible, [aria-selected="true"], .selected, .active') ||
+              (rail.matches('.focus-visible') ? rail.querySelector('.binding-item-chip, .binding-item, .binding-chip, [class*="binding"]') : null);
+          }
+
+          function speakVueBinding(element, src) {
+            var row = closest(element, '.binding-item-row');
+            var rail = closest(element, '.binding-item-rail-content');
+            if (!row && rail) row = closest(rail, '.binding-item-row') || rail.parentElement;
+            if (!row) return false;
+            var titleEl = row.querySelector('.bng-row-label, .binding-item-title, .binding-title, .action-title, [class*="action-name"], [class*="title"]');
+            var title = cleanText((titleEl && titleEl.innerText) || row.getAttribute('aria-label') || 'Action');
+            if (rail || closest(element, '.binding-item-chip, .binding-chip, .binding-item-rail-content .binding-item')) {
+              rail = rail || row.querySelector('.binding-item-rail-content');
+              var chips = toArray(rail ? rail.querySelectorAll('.binding-item-chip, .binding-chip, .binding-item') : []);
+              var selected = selectedBindingChip(rail) || closest(element, '.binding-item-chip, .binding-chip, .binding-item');
+              var position = chips.indexOf(selected);
+              var name = bindingChipName(selected) || 'Unassigned';
+              var parts = [name];
+              if (position >= 0 && chips.length) parts.push((position + 1) + ' of ' + chips.length);
+              parts.push('Activate to edit', 'Back to actions');
+              scheduleSpeak(parts.join(', '), src);
+              return true;
+            }
+            var rowChips = toArray(row.querySelectorAll('.binding-item-rail-content .binding-item-chip, .binding-item-rail-content .binding-chip, .binding-item-rail-content .binding-item'));
+            var names = rowChips.map(bindingChipName).filter(Boolean);
+            scheduleSpeak([title, names.length ? 'assigned to ' + names.join(', ') : 'unassigned',
+              names.length ? 'Activate to select bindings' : 'Activate to add binding'].join(', '), src);
+            return true;
+          }
+
+          function speakVueOptions(element, src, root) {
+            if (!root || !root.querySelector('.options-view, .options-item-label-text, .options-categories, .options-category-button, .options-category-side, .options-content-wrapper, .options-toc, .options-category, .settings-category, #binding_list, .binding-item-row')) return false;
+            if (speakVueBinding(element, src)) return true;
+            var option = closest(element, '.dropdown-option, [role="option"]');
+            if (option) {
+              var optionText = vueOwnLabel(option);
+              var optionState = vueControlState(option, option);
+              scheduleSpeak([optionText, optionState].filter(Boolean).join(', '), src);
+              return true;
+            }
+            var category = closest(element, '.category-button, [role="tab"]');
+            if (category) {
+              scheduleSpeak([vueOwnLabel(category), vueControlState(category, category)].filter(Boolean).join(', '), src);
+              return true;
+            }
+            var row = closest(element, '.bng-row, .options-item, .binding-row, .binding-item, .binding-chip, .accordion-heading, .bng-accitem-caption');
+            var target = closest(element, VUE_TARGET_SELECTOR) || element;
+            if (!row) row = target;
+            var labelEl = row.querySelector && row.querySelector('.options-item-label-text');
+            var label = cleanText((labelEl && labelEl.innerText) || vueOwnLabel(target));
+            var state = vueControlState(target, row);
+            var text = [label, state].filter(Boolean).join(', ');
+            if (text) scheduleSpeak(text, src);
+            return true;
+          }
+
+          function speakVuePause(element, src, root) {
+            if (!root || !root.querySelector('.pause-menu, .pause-screen, .pause-tabs, button.pause-button')) return false;
+            var target = closest(element, VUE_TARGET_SELECTOR);
+            if (!target) return true;
+            var row = closest(target, '.bng-row') || target;
+            var text = [vueOwnLabel(target), vueControlState(target, row)].filter(Boolean).join(', ');
+            if (text) scheduleSpeak(text, src);
+            return true;
+          }
+
+          function vehicleTileState(tile) {
+            var out = [];
+            var classes = tile && tile.classList;
+            var disabled = tile && (tile.disabled || tile.getAttribute('aria-disabled') === 'true' ||
+              (classes && (classes.contains('disabled') || classes.contains('is-disabled'))));
+            var selected = tile && (tile.getAttribute('aria-selected') === 'true' || tile.getAttribute('aria-current') === 'true' ||
+              (classes && (classes.contains('selected') || classes.contains('is-selected') || classes.contains('current'))) ||
+              tile.querySelector('[aria-current="true"], .is-current'));
+            var favourite = tile && ((classes && (classes.contains('favourite') || classes.contains('favorite') || classes.contains('is-favourite') || classes.contains('is-favorite'))) ||
+              tile.querySelector('.favourite.active, .favorite.active, .is-favourite, .is-favorite, [aria-label*="avourite" i][aria-pressed="true"], [aria-label*="avorite" i][aria-pressed="true"]'));
+            if (disabled) out.push('disabled');
+            if (selected) out.push('selected');
+            if (favourite) out.push('favourite');
+            return out;
+          }
+
+          function vehicleTileCount(tile) {
+            if (!tile) return '';
+            var attr = tile.getAttribute('data-count') || tile.getAttribute('data-config-count') || tile.getAttribute('data-sub-element-count');
+            var countEl = tile.querySelector('.sub-element-count, .subelement-count, .config-count, .configuration-count, .item-count');
+            var raw = cleanText(attr || (countEl && countEl.innerText) || '');
+            if (!raw) return '';
+            var match = raw.match(/\d+/);
+            if (!match) return raw;
+            var count = parseInt(match[0], 10);
+            return count + (count === 1 ? ' configuration' : ' configurations');
+          }
+
+          function speakVueVehicleSelector(element, src, root) {
+            if (!root || !root.querySelector('.vehicle-grid, .grid-selector-screen-content, .grid-content')) return false;
+            var tile = closest(element, '[bng-nav-item]');
+            if (tile && tile.querySelector('.item-name')) {
+              var name = cleanText(tile.querySelector('.item-name').innerText || '');
+              var text = [name, vehicleTileCount(tile)].concat(vehicleTileState(tile)).filter(Boolean).join(', ');
+              if (text) scheduleSpeak(text, src);
+              return true;
+            }
+            var target = closest(element, VUE_TARGET_SELECTOR) || element;
+            var row = closest(target, '.bng-row') || target;
+            var genericText = [vueOwnLabel(target), vueControlState(target, row)].filter(Boolean).join(', ');
+            if (genericText) scheduleSpeak(genericText, src);
+            return true;
+          }
+
+          function speakVueScreen(element, src) {
+            var bindingPopup = vueBindingEditorPopup();
+            if (bindingPopup && speakVueBindingEditor(element, src, bindingPopup)) return true;
+            var root = vueScreenRoot();
+            if (!root) return false;
+            if (speakVueVehicleConfig(element, src, root, _vueConfigFocusEntry)) return true;
+            if (speakVueVehicleSelector(element, src, root)) return true;
+            if (speakVueOptions(element, src, root)) return true;
+            return speakVuePause(element, src, root);
+          }
+
+          function vueFocusSignature(el, root) {
+            if (!el) return '';
+            var bindingPopup = vueBindingEditorPopup();
+            if (bindingPopup && bindingPopup.contains(el)) return vueBindingEditorSignature(el, bindingPopup);
+            var screenKind = vehicleConfigRoot(root) ? 'vehicle-config' :
+              (root.querySelector('.vehicle-grid, .grid-selector-screen-content, .grid-content') ? 'vehicle-selector' :
+              (root.querySelector('.options-view, .options-categories, .options-category-button, .options-content-wrapper, .options-item-label-text, .options-toc, #binding_list, .binding-item-row') ? 'options' : 'pause'));
+            if (screenKind === 'vehicle-config') {
+              var configRow = closest(el, '.input-container, .bng-accitem, .bng-row, .folder-button, .pack-button, .multi-paint-setup-item, .mirror-button, .saveload-row') || el;
+              var accitem = closest(el, '.bng-accitem');
+              var accitemState = accitem ? ((accitem.className || '').toString() + '|' + (accitem.getAttribute('aria-expanded') || '')) : '';
+              return screenKind + '|' + vehicleConfigLabel(configRow) + '|' + vueControlState(el, configRow) + '|' + (el.className || '').toString() + '|' + accitemState;
+            }
+            var row = closest(el, '.bng-row, .options-item, .binding-row, .binding-item, .binding-item-row') || el;
+            var tile = screenKind === 'vehicle-selector' ? closest(el, '[bng-nav-item]') : null;
+            var label = tile && tile.querySelector('.item-name') ? cleanText(tile.querySelector('.item-name').innerText || '') : vueOwnLabel(el);
+            var rail = closest(el, '.binding-item-rail-content') || (row.querySelector && row.querySelector('.binding-item-rail-content'));
+            var selectedChip = selectedBindingChip(rail);
+            var chipSignature = selectedChip ? bindingChipName(selectedChip) + '|' + toArray(rail.querySelectorAll('.binding-item-chip, .binding-chip, .binding-item')).indexOf(selectedChip) : '';
+            return screenKind + '|' + label + '|' + vueControlState(el, row) + '|' + (el.className || '').toString() + '|' + chipSignature;
+          }
+
+          function startVueFocusWatcher() {
+            if (_vueWatchTimer) return;
+            function scheduleVuePoll(delay) {
+              if (_vueWatchTimer) clearTimeout(_vueWatchTimer);
+              _vueWatchTimer = trackedSetTimeout(pollVueFocus, delay);
+            }
+            function pollVueFocus() {
+              // Keep a low-frequency fallback armed so one unexpected DOM shape
+              // cannot permanently stop accessibility polling.
+              scheduleVuePoll(1000);
+              var nextDelay = 1000;
+              var root = vueScreenRoot();
+              if (!root) {
+                clearPartsDropdownActivation(true);
+                resetVueHintLifecycle();
+                _vueWatchScreen = null; _vueWatchSignature = ''; _vueWatchElement = null;
+                _vueOptionsCategory = '';
+                _vueOptionsCategoryGeneration++;
+                if (_vueOptionsCategoryTimer) { clearTimeout(_vueOptionsCategoryTimer); _vueOptionsCategoryTimer = null; }
+                scheduleVuePoll(nextDelay);
+                return;
+              }
+              nextDelay = 120;
+              var bindingPopup = vueBindingEditorPopup();
+              var optionsCategory = bindingPopup ? '' : vueOptionsCategoryLabel(root);
+              if (optionsCategory && optionsCategory !== _vueOptionsCategory) {
+                _vueOptionsCategory = optionsCategory;
+                _vueOptionsCategoryEchoElement = focusedVueOptionsItem(root);
+                _vueOptionsCategoryEchoUntil = nowTS() + 500;
+                _vueWatchSignature = '';
+                _vueWatchElement = null;
+                lastFocusedElement = null;
+                announceVueOptionsCategory(optionsCategory);
+                updateVuePauseHints(root, true);
+                scheduleVuePoll(nextDelay);
+                return;
+              }
+              if (!optionsCategory) _vueOptionsCategory = '';
+              var dialog = root.querySelector('[role="dialog"], .bng-dialog, .modal');
+              var activeTab = root.querySelector('[role="tab"][aria-selected="true"], .bng-tab.active, .bng-tab.selected');
+              var subScreen = root.querySelector('.adjustment-container, .parts-packs, .parts-browser, .innerTuningCard, .paint-acc-wrapper, .saveload');
+              var screenKey = (location.hash || '') + '|' + (location.pathname || '') + '|' +
+                cleanText(activeTab && activeTab.innerText) + '|' + (subScreen ? subScreen.className.toString() : '') + '|' +
+                (dialog ? ((dialog.id || '') + ':' + (dialog.className || '').toString()) : 'screen');
+              if (screenKey !== _vueWatchScreen) {
+                if (_vueWatchScreen !== null) clearPartsDropdownActivation(true);
+                resetVueHintLifecycle();
+                _vueWatchScreen = screenKey; _vueWatchSignature = ''; _vueWatchElement = null; lastFocusedElement = null;
+                _lastTuningCategory = null; _lastTuningSubcategory = null;
+                if (_tuningHintTimer) { clearTimeout(_tuningHintTimer); _tuningHintTimer = null; }
+              }
+              var activatedDropdownFocused = updatePartsDropdownActivation(root);
+              var dropdownFocused = focusedVuePartsDropdownOption(activeVuePartsDropdown());
+              var focused = vueBindingEditorFocused(bindingPopup) || activatedDropdownFocused || dropdownFocused || focusedVueMainMenuItem(root) || root.querySelector('.focus-visible') ||
+                (root.contains(document.activeElement) ? document.activeElement : null) ||
+                document.querySelector('.bng-dropdown-content .dropdown-option.focus-visible');
+              if (!focused) {
+                updateVuePauseHints(root, false);
+                scheduleVuePoll(nextDelay);
+                return;
+              }
+              _vueConfigFocusEntry = focused !== _vueWatchElement;
+              var signature = vueFocusSignature(focused, root);
+              var focusChanged = !!(signature && signature !== _vueWatchSignature);
+              if (focusChanged) {
+                _vueWatchSignature = signature;
+                _vueWatchElement = focused;
+                lastFocusedElement = null;
+                processFocusChange(focused, P.CONTROLLER);
+              }
+              updateVuePauseHints(root, focusChanged);
+              scheduleVuePoll(nextDelay);
+            }
+            scheduleVuePoll(0);
+          }
+
+          // Dropdown speech observes native Vue focus only. BeamNG remains solely
+          // responsible for moving focus and applying controller repeat behavior.
+          function speakDropdownOption(element, src) {
+            var opt = closest(element, '.dropdown-option, [role="option"]');
+            if (!opt) return false;
+            var text = [vueOwnLabel(opt), vueControlState(opt, opt)].filter(Boolean).join(', ');
+            if (text) scheduleSpeak(text, src);
+            return true;
+          }
+
+          /* Legacy dropdown acceleration removed: native scoped navigation owns movement. */
+          /*
           // ========== DROPDOWN LIST ACCELERATION ==========
           // BeamNG's parts/config dropdowns (.bng-dropdown-content, e.g. the wheel
           // and tire selectors) can hold hundreds of options. The D-pad moves the
@@ -1770,7 +2813,7 @@ angular.module('beamng.apps')
           // injects real OS-level numpad keystrokes, which the game reads as genuine
           // input. dir 1 = down/next, -1 = up/prev.
           function dropSendNav(dir, count) {
-            send({ type: 'nav_inject', dir: dir > 0 ? 1 : -1, count: count });
+            // Removed: native Vue navigation must never be synthesized.
           }
           // Leading + trailing throttle so held/accelerated navigation speaks at
           // most every DROP_SPEAK_INTERVAL ms but always announces the final
@@ -1788,7 +2831,7 @@ angular.module('beamng.apps')
               scheduleSpeak(txt, src);
             } else {
               // Trailing edge: speak whatever option is focused once we settle.
-              _dropSpeak.timer = setTimeout(function () {
+              _dropSpeak.timer = trackedSetTimeout(function () {
                 _dropSpeak.timer = null;
                 _dropSpeak.lastTs = nowTS();
                 var f = dropFocusedOption();
@@ -1802,7 +2845,7 @@ angular.module('beamng.apps')
           // navigation produces DOM key events at all). Capped to avoid spam.
           var _dropProbe = 0;
           function startDropdownKeyProbe() {
-            window.addEventListener('keydown', function (e) {
+            listen(window, 'keydown', function (e) {
               try {
                 if (_dropProbe >= 20) return;
                 if (!document.querySelector('.bng-dropdown-content')) return;
@@ -1817,7 +2860,7 @@ angular.module('beamng.apps')
             log('info', '[bnvda] Dropdown key probe installed.');
           }
           function startDropdownListAcceleration() {
-            setInterval(function () {
+            trackedSetInterval(function () {
               try {
                 var el = dropFocusedOption();
                 if (!el) { if (_drop.container) dropResetState(null); return; }
@@ -1902,6 +2945,7 @@ angular.module('beamng.apps')
             log('info', '[bnvda] Dropdown list acceleration started.');
           }
 
+          */
           // ---------- Non-Invasive Observer for UI Changes ----------
           var mainObserver = null;
           var lastFocusedElement = null;
@@ -1909,47 +2953,38 @@ angular.module('beamng.apps')
           var kbFocusDebounceTimer = null; // keyboard path
           function processFocusChange(element, src) {
             src = (src !== undefined) ? src : P.CONTROLLER;
-            // Track the most recently focused md-select so the dropdown-close
-            // watcher can re-speak the new value after the user picks one.
-            if (element) {
-              var sel = closest(element, 'md-select');
-              if (sel) _lastOpenedSelect = sel;
-            }
 
             if (src === P.CONTROLLER) {
               // Controller wins: cancel any pending keyboard debounce as well.
               clearTimeout(focusDebounceTimer);
               clearTimeout(kbFocusDebounceTimer);
-              focusDebounceTimer = setTimeout(function() {
+              focusDebounceTimer = trackedSetTimeout(function() {
+                if (isVueOptionsCategoryEcho(element)) return;
                 if (!element || element === lastFocusedElement) return;
                 lastFocusedElement = element;
-                if (speakTuningControl(element, src)) return;
+                if (speakVueScreen(element, src)) return;
                 if (speakDropdownOption(element, src)) return;
-                if (speakPartRow(element, src)) return;
                 if (speakCheckboxRow(element, src)) return;
                 if (speakSliderRow(element, src)) return;
                 if (speakBindingEditItem(element, src)) return;
                 if (speakBindingElement(element, src)) return;
-                if (optionsObserverAttached && speakOptionRow(element, src)) return;
                 if (speakMenuAccordionItem(element, src)) return;
                 scheduleSpeak(extractText(element), src);
               }, 75);
             } else {
               // Keyboard path: separate timer, does not cancel controller timer.
               clearTimeout(kbFocusDebounceTimer);
-              kbFocusDebounceTimer = setTimeout(function() {
+              kbFocusDebounceTimer = trackedSetTimeout(function() {
                 // If a controller became active during the debounce window, yield.
                 if ((nowTS() - lastControllerTs) < CONTROLLER_DOMINANCE_MS) return;
                 if (!element || element === lastFocusedElement) return;
                 lastFocusedElement = element;
-                if (speakTuningControl(element, src)) return;
+                if (speakVueScreen(element, src)) return;
                 if (speakDropdownOption(element, src)) return;
-                if (speakPartRow(element, src)) return;
                 if (speakCheckboxRow(element, src)) return;
                 if (speakSliderRow(element, src)) return;
                 if (speakBindingEditItem(element, src)) return;
                 if (speakBindingElement(element, src)) return;
-                if (optionsObserverAttached && speakOptionRow(element, src)) return;
                 if (speakMenuAccordionItem(element, src)) return;
                 scheduleSpeak(extractText(element), src);
               }, 75);
@@ -1986,9 +3021,8 @@ angular.module('beamng.apps')
               }
             };
 
-            mainObserver = new MutationObserver(callback);
+            mainObserver = trackedMutationObserver(callback);
             mainObserver.observe(targetNode, observerConfig);
-            startVehicleDetailsWatcher();
             log('info', '[bnvda] Attached main passive MutationObserver to UI.');
           }
 
@@ -2040,7 +3074,7 @@ angular.module('beamng.apps')
             } catch (e) {}
 
             // Find the focused element
-            var focused = document.querySelector('.focus-visible');
+            var focused = document.querySelector('.focus-visible') || document.activeElement;
             if (focused) {
               lines.push('Focused: <' + focused.tagName.toLowerCase() + '> class="' +
                 (focused.className || '').toString().substring(0, 120) + '" text="' +
@@ -2058,8 +3092,9 @@ angular.module('beamng.apps')
               // Skip invisible, script, style elements
               if (tag === 'script' || tag === 'style' || tag === 'link') return;
               var rect = node.getBoundingClientRect ? node.getBoundingClientRect() : null;
-              if (rect && (rect.width === 0 || rect.height === 0)) return;
-              if (node.style && node.style.display === 'none') return;
+              var computed = null;
+              try { computed = window.getComputedStyle(node); } catch (eStyle) {}
+              if (computed && (computed.display === 'none' || computed.visibility === 'hidden')) return;
 
               var indent = '';
               for (var d = 0; d < depth; d++) indent += '  ';
@@ -2077,6 +3112,11 @@ angular.module('beamng.apps')
                 attrs.push('ng-bind-html="' + node.getAttribute('ng-bind-html').substring(0, 60) + '"');
               if (node.hasAttribute && node.hasAttribute('bng-nav-item'))
                 attrs.push('bng-nav-item');
+              ['bng-no-nav', 'bng-no-child-nav', 'bng-ui-scope', 'bng-scoped-nav-autofocus',
+                'data-bng-ui-scope', 'data-scope-id', 'data-nav-scope', 'aria-expanded',
+                'aria-selected', 'aria-disabled'].forEach(function(name) {
+                if (node.hasAttribute && node.hasAttribute(name)) attrs.push(name + '="' + node.getAttribute(name) + '"');
+              });
               if (node.hasAttribute && node.hasAttribute('tabindex'))
                 attrs.push('tabindex="' + node.getAttribute('tabindex') + '"');
               if (node.hasAttribute && node.hasAttribute('role'))
@@ -2105,6 +3145,8 @@ angular.module('beamng.apps')
                 var line = indent + '<' + tag;
                 if (attrs.length > 0) line += ' ' + attrs.join(' ');
                 line += '>';
+                if (rect) line += ' [' + Math.round(rect.left) + ',' + Math.round(rect.top) + ' ' + Math.round(rect.width) + 'x' + Math.round(rect.height) + ']';
+                if (computed) line += ' {display=' + computed.display + ' visibility=' + computed.visibility + ' overflow=' + computed.overflow + '/' + computed.overflowY + '}';
                 if (directText) line += ' "' + directText + '"';
                 lines.push(line);
               }
@@ -2117,6 +3159,73 @@ angular.module('beamng.apps')
                 }
               }
             }
+
+            function describeDiagnosticNode(node) {
+              if (!node || !node.tagName) return '<none>';
+              var r = node.getBoundingClientRect ? node.getBoundingClientRect() : null;
+              var cs = null;
+              try { cs = window.getComputedStyle(node); } catch (e) {}
+              var names = ['bng-nav-item', 'bng-no-nav', 'bng-no-child-nav', 'bng-ui-scope',
+                'bng-scoped-nav-autofocus', 'data-bng-ui-scope', 'data-scope-id', 'data-nav-scope',
+                'tabindex', 'role', 'aria-expanded', 'aria-selected', 'aria-disabled'];
+              var a = [];
+              names.forEach(function(name) { if (node.hasAttribute && node.hasAttribute(name)) a.push(name + '="' + node.getAttribute(name) + '"'); });
+              return '<' + node.tagName.toLowerCase() + (node.id ? ' id="' + node.id + '"' : '') +
+                (node.className ? ' class="' + node.className.toString().substring(0, 120) + '"' : '') +
+                (a.length ? ' ' + a.join(' ') : '') + '> [' + (r ? Math.round(r.left) + ',' + Math.round(r.top) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height) : '?') + ']' +
+                (cs ? ' {display=' + cs.display + ' visibility=' + cs.visibility + ' overflow=' + cs.overflow + '/' + cs.overflowY + '}' : '');
+            }
+
+            lines.push('');
+            lines.push('=== ACTIVE ELEMENT AND ANCESTORS ===');
+            var active = document.activeElement;
+            lines.push('activeElement: ' + describeDiagnosticNode(active));
+            var ancestor = focused;
+            while (ancestor && ancestor !== document.documentElement) {
+              lines.push('  ' + describeDiagnosticNode(ancestor));
+              ancestor = ancestor.parentElement;
+            }
+
+            lines.push('');
+            lines.push('=== PARTS TREES ===');
+            var partRows = document.querySelectorAll('.parts-browser .bng-accitem, .pause-tab-combined .bng-accitem');
+            for (var pi = 0; pi < partRows.length; pi++) {
+              var pr = partRows[pi], prRect = pr.getBoundingClientRect(), prStyle = window.getComputedStyle(pr);
+              if (prStyle.display === 'none' || prStyle.visibility === 'hidden' || prRect.width === 0) continue;
+              var caption = cleanText(((q(pr, '.bng-accitem-caption-content') || {}).innerText) || '');
+              var value = cleanText(((q(pr, '.dropdown-display') || {}).innerText) || '');
+              lines.push('[' + pi + '] caption="' + caption + '" value="' + value + '" expanded=' +
+                (pr.classList.contains('bng-accitem-expanded') || pr.getAttribute('aria-expanded') === 'true') +
+                ' focused=' + !!(pr === focused || pr.contains(focused)) + ' navigable=' +
+                !!(pr.hasAttribute('bng-nav-item') || pr.querySelector('[bng-nav-item], [tabindex]')) + ' ' + describeDiagnosticNode(pr));
+            }
+
+            lines.push('');
+            lines.push('=== VUE SCOPES AND DIRECT NAV TARGETS ===');
+            var scopes = document.querySelectorAll('[bng-ui-scope], [bng-scoped-nav-autofocus], [data-bng-ui-scope], [data-scope-id], [data-nav-scope]');
+            for (var si = 0; si < scopes.length; si++) {
+              lines.push('scope[' + si + '] ' + describeDiagnosticNode(scopes[si]));
+              var direct = scopes[si].children;
+              for (var di = 0; di < direct.length; di++) {
+                if (direct[di].matches && direct[di].matches(VUE_TARGET_SELECTOR + ', [bng-ui-scope], [bng-no-nav], [bng-no-child-nav]')) lines.push('  target ' + describeDiagnosticNode(direct[di]));
+              }
+            }
+
+            lines.push('');
+            lines.push('=== ACTIVE SCOPED NAVIGATION ===');
+            var activeScope = closest(focused, '[bng-ui-scope], [data-bng-ui-scope], [data-scope-id], [data-nav-scope]');
+            lines.push('focused: ' + describeDiagnosticNode(focused));
+            lines.push('scope: ' + describeDiagnosticNode(activeScope));
+
+            lines.push('');
+            lines.push('=== COMBINED CONFIGURATION AREAS ===');
+            var combinedAreas = document.querySelectorAll('.pause-tab-combined, .pause-tab-combined .parts-browser, .pause-tab-combined .innerTuningCard, .pause-tab-combined .paint-acc-wrapper, .pause-tab-combined .options-container, .pause-tab-combined [class*="search"], .pause-tab-combined [role="dialog"]');
+            for (var cai = 0; cai < combinedAreas.length; cai++) lines.push('[' + cai + '] ' + describeDiagnosticNode(combinedAreas[cai]));
+
+            lines.push('');
+            lines.push('=== DIALOGS ===');
+            var dialogs = document.querySelectorAll('[role="dialog"], .bng-dialog, .modal, .modal-content');
+            for (var dgi = 0; dgi < dialogs.length; dgi++) lines.push('[' + dgi + '] ' + describeDiagnosticNode(dialogs[dgi]));
 
             // Start from body, but skip our own invisible hook element
             var body = document.body;
@@ -2204,10 +3313,10 @@ angular.module('beamng.apps')
           function startSelectCloseWatcher() {
             if (selectCloseObserver) return;
             // Track md-select interaction via pointer or keyboard.
-            document.addEventListener('click', function(e) {
+            listen(document, 'click', function(e) {
               rememberOpenedSelect(e.target);
             }, true);
-            document.addEventListener('keydown', function(e) {
+            listen(document, 'keydown', function(e) {
               if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
               rememberOpenedSelect(e.target);
             }, true);
@@ -2218,7 +3327,7 @@ angular.module('beamng.apps')
             // the parts selector). The previous implementation also called
             // querySelector on each removed subtree, which walks tens of
             // thousands of nodes when a big panel is dismissed.
-            selectCloseObserver = new MutationObserver(function(muts) {
+            selectCloseObserver = trackedMutationObserver(function(muts) {
               for (var i = 0; i < muts.length; i++) {
                 var removed = muts[i].removedNodes;
                 for (var j = 0; j < removed.length; j++) {
@@ -2226,7 +3335,7 @@ angular.module('beamng.apps')
                   if (n && n.nodeType === 1 && n.classList &&
                       n.classList.contains('md-select-menu-container')) {
                     var target = _lastOpenedSelect;
-                    setTimeout(function(sel) {
+                    trackedSetTimeout(function(sel) {
                       return function() {
                         if (!sel || !document.body.contains(sel)) return;
                         lastFocusedElement = null;
@@ -2245,47 +3354,107 @@ angular.module('beamng.apps')
           // ---------- EVENT HOOKS AND INITIALIZATION ----------
           function initializeModules() {
             log("info", "[bnvda] Page loaded. Initializing modules...");
-            optionsInterval = setInterval(attachOptionsObserver, 1000);
-            toasterInterval = setInterval(attachToasterPatcher, 1000);
-            setInterval(patchBindingsNavigation, 2000);
-            setInterval(patchOptionsNavigation, 1500);
-            setInterval(pollActiveElementForOptions, 250);
+            toasterInterval = trackedSetInterval(attachToasterPatcher, 1000);
             startBindingEditWatcher();
             attachMainObserver();
             startRadialMenuWatcher();
-            startSelectCloseWatcher();
-            startTuningSliderAcceleration();
-            startDropdownKeyProbe();
-            startDropdownListAcceleration();
+            startVueFocusWatcher();
+            trackedSetTimeout(function () {
+              var navNodes = toArray(document.querySelectorAll('[bng-nav-item], [tabindex], [aria-selected], [aria-current]'));
+              var samples = [];
+              for (var i = 0; i < navNodes.length && samples.length < 8; i++) {
+                if (!visibleVueElement(navNodes[i])) continue;
+                samples.push(navNodes[i].tagName.toLowerCase() + '.' + cleanText(navNodes[i].className || '') + '="' + cleanText(extractText(navNodes[i])) + '"');
+              }
+              log('info', '[bnvda] Initial UI route=' + location.pathname + location.hash +
+                ' active=' + (document.activeElement && document.activeElement.tagName) +
+                ' focusVisible=' + document.querySelectorAll('.focus-visible').length +
+                ' nav=' + navNodes.length + ' samples=[' + samples.join(' | ') + ']');
+            }, 1000);
+            trackedSetTimeout(function () {
+              var focused = document.activeElement;
+              if (focused && focused !== document.body) processFocusChange(focused, P.SYSTEM);
+            }, 0);
 
           }
 
-          connectWS();
 
-          addEventListener("focusin", function (e) {
+          function currentMeaningfulFocusText() {
+            var focused = document.querySelector('.focus-visible') || document.activeElement;
+            if (!focused || focused === document.body) return '';
+            return extractText(focused);
+          }
+
+          function loadingShown() {
+            if (!loadingScreen) return false;
+            var shown = loadingScreen.shown;
+            return !!(shown && typeof shown === 'object' && 'value' in shown ? shown.value : shown);
+          }
+
+          function handleLoadingState(shown) {
+            if (loadingSettleTimer) {
+              window.clearTimeout(loadingSettleTimer);
+              timeoutIds.delete(loadingSettleTimer);
+              loadingSettleTimer = null;
+            }
+            if (shown) {
+              sawLoadingStart = true;
+              loadingActive = true;
+              suppressNextCameraEvent = true;
+              if (speakTimer) {
+                window.clearTimeout(speakTimer);
+                timeoutIds.delete(speakTimer);
+                speakTimer = null;
+              }
+              lastFocusedElement = null;
+              lastSpoken = '';
+              send({ type: 'hover_cancel' });
+              send({ type: 'loading_state', active: true, focusText: '' });
+              log('info', '[bnvda] Loading lifecycle started; automatic speech suspended.');
+              return;
+            }
+            if (!sawLoadingStart) return;
+            // Keep suppression through the visual cover fade before Python's
+            // one-second ready settling window begins.
+            loadingSettleTimer = trackedSetTimeout(function () {
+              loadingSettleTimer = null;
+              var focusText = currentMeaningfulFocusText();
+              send({ type: 'loading_state', active: false, focusText: focusText });
+              loadingActive = false;
+              lastFocusedElement = null;
+              log('info', '[bnvda] Loading lifecycle ended; focus=' + JSON.stringify(focusText));
+            }, 250);
+          }
+
+          startTransportSelection();
+
+          if (loadingScreen && typeof vueWatch === 'function') {
+            var stopLoadingWatch = vueWatch(loadingShown, handleLoadingState, { immediate: true });
+            onCleanup(function () { if (typeof stopLoadingWatch === 'function') stopLoadingWatch(); });
+          } else {
+            log('error', '[bnvda] Official loadingScreen state or Vue watch is unavailable.');
+          }
+
+          listen(window, "focusin", function (e) {
             processFocusChange(e.target, P.KEYBOARD);
           }, true);
 
-          addEventListener("mouseover", throttle(function (e) {
+          listen(window, "mouseover", throttle(function (e) {
             if ((nowTS() - lastControllerTs) < CONTROLLER_DOMINANCE_MS) return;
             scheduleSpeak(extractText(e.target), P.POINTER);
           }, 150), true);
-          var pointerMoveHandler = throttle(function (e) {
-            if ((nowTS() - lastControllerTs) < CONTROLLER_DOMINANCE_MS) return;
-            var el = document.elementFromPoint(e.clientX, e.clientY);
-            scheduleSpeak(extractText(el), P.POINTER);
-          }, 150);
-          addEventListener("pointermove", pointerMoveHandler, { passive: true, capture: true });
-
           if (document.readyState === 'complete') {
             initializeModules();
           } else {
-            window.addEventListener('load', initializeModules, { once: true });
+            listen(window, 'load', initializeModules, { once: true });
           }
-        
-        })();
-      } catch (e) { log('error', '[bnvda] Main script error: ' + e); }
 
-    }
-  };
-}]);
+    })();
+    console.info('[bnvda] Runtime installed.');
+    return uninstall;
+  } catch (e) {
+    uninstall();
+    console.error('[bnvda] Runtime startup failed.', e);
+    return function () {};
+  }
+}

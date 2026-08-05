@@ -91,6 +91,28 @@ local function scannerLog(level, msg)
   log(level, 'VehicleScanner', msg)
 end
 
+local function normalizeSpeechValue(value, source)
+  while type(value) == "table" do
+    local count, only = 0, nil
+    for _, item in pairs(value) do count = count + 1; only = item end
+    local contents = "<unserializable>"
+    pcall(function() contents = jsonEncode(value) end)
+    pcall(function() scannerLog('warn', string.format("[LUA_TABLE_SPEECH] source=%s count=%d contents=%s", source, count, contents)) end)
+    if count ~= 1 then return nil end
+    value = only
+  end
+  local kind = type(value)
+  if kind == "string" then
+    if value:match("^table:%s*0x[%da-fA-F]+$") then
+      scannerLog('warn', "[LUA_TABLE_SPEECH] source=" .. source .. " collapsed pointer; contents lost upstream")
+      return nil
+    end
+    return value
+  end
+  if kind == "number" or kind == "boolean" then return tostring(value) end
+  return nil
+end
+
 local function areCouplerTagsCompatible(tag1, tag2)
   if tag1 == "" or tag2 == "" then return false end
   local t1, t2 = tag1:lower(), tag2:lower()
@@ -311,8 +333,21 @@ local function cycleTarget(direction)  -- direction: 1 = next, -1 = prev
   local fallback = newVeh:getJBeamFilename() or "unknown"
   newVeh:queueLuaCommand(string.format([[
     local info = (v.data and v.data.information) or {}
-    local brand = tostring(info.brand or "")
-    local model = tostring(info.name or %q)
+    local function speechValue(value, source)
+      while type(value) == "table" do
+        local count, only = 0, nil
+        for _, item in pairs(value) do count = count + 1; only = item end
+        local contents = "<unserializable>"; pcall(function() contents = jsonEncode(value) end)
+        pcall(function() log('W', 'vehicleScanner', '[LUA_TABLE_SPEECH] source=' .. source .. ' count=' .. count .. ' contents=' .. contents) end)
+        if count ~= 1 then return nil end
+        value = only
+      end
+      local kind = type(value)
+      if kind == "string" or kind == "number" or kind == "boolean" then return tostring(value) end
+      return nil
+    end
+    local brand = speechValue(info.brand, "cycleTarget.information.brand") or ""
+    local model = speechValue(info.name, "cycleTarget.information.name") or %q
     local display = brand ~= "" and (brand .. " " .. model) or model
     obj:queueGameEngineLua(string.format(
       "extensions.vehicleScanner.onTargetNameReady(%%q)", display
@@ -356,8 +391,9 @@ local function targetClosest()
   local newVeh = scenetree.findObjectById(closestID)
   if newVeh and extensions and extensions.vehicleNaming and extensions.vehicleNaming.describe then
     local ok, name = pcall(extensions.vehicleNaming.describe, newVeh)
-    if ok and type(name) == "string" and name ~= "" then
-      udpSend:send("TARGET_NAME:" .. name)
+    local normalized = ok and normalizeSpeechValue(name, "targetClosest.vehicleNaming.describe") or nil
+    if normalized and normalized ~= "" then
+      udpSend:send("TARGET_NAME:" .. normalized)
       return
     end
   end
@@ -405,8 +441,21 @@ local function scanAndSendVehicleData()
       local fallback = autoVeh:getJBeamFilename() or "unknown"
       autoVeh:queueLuaCommand(string.format([[
         local info = (v.data and v.data.information) or {}
-        local brand = tostring(info.brand or "")
-        local model = tostring(info.name or %q)
+        local function speechValue(value, source)
+          while type(value) == "table" do
+            local count, only = 0, nil
+            for _, item in pairs(value) do count = count + 1; only = item end
+            local contents = "<unserializable>"; pcall(function() contents = jsonEncode(value) end)
+            pcall(function() log('W', 'vehicleScanner', '[LUA_TABLE_SPEECH] source=' .. source .. ' count=' .. count .. ' contents=' .. contents) end)
+            if count ~= 1 then return nil end
+            value = only
+          end
+          local kind = type(value)
+          if kind == "string" or kind == "number" or kind == "boolean" then return tostring(value) end
+          return nil
+        end
+        local brand = speechValue(info.brand, "autoTarget.information.brand") or ""
+        local model = speechValue(info.name, "autoTarget.information.name") or %q
         local display = brand ~= "" and (brand .. " " .. model) or model
         obj:queueGameEngineLua(string.format(
           "extensions.vehicleScanner.onTargetNameReady(%%q)", display
@@ -479,6 +528,7 @@ local function setupSockets()
 end
 
 function M.onExtensionLoaded()
+  setExtensionUnloadMode(M, "manual")
   scannerLog('info', "Vehicle scanner extension loaded.")
   -- Bind sockets here so Ctrl+L Lua reload re-opens them.
   setupSockets()
@@ -563,8 +613,21 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
             _ds:setpeername("127.0.0.1", 4447)
             -- Send vehicle name first
             local info = (v.data and v.data.information) or {}
-            local brand = tostring(info.brand or "")
-            local model = tostring(info.name or %q)
+            local function speechValue(value, source)
+              while type(value) == "table" do
+                local count, only = 0, nil
+                for _, item in pairs(value) do count = count + 1; only = item end
+                local contents = "<unserializable>"; pcall(function() contents = jsonEncode(value) end)
+                pcall(function() log('W', 'vehicleScanner', '[LUA_TABLE_SPEECH] source=' .. source .. ' count=' .. count .. ' contents=' .. contents) end)
+                if count ~= 1 then return nil end
+                value = only
+              end
+              local kind = type(value)
+              if kind == "string" or kind == "number" or kind == "boolean" then return tostring(value) end
+              return nil
+            end
+            local brand = speechValue(info.brand, "damage.information.brand") or ""
+            local model = speechValue(info.name, "damage.information.name") or %q
             local vehName = brand ~= "" and (brand .. " " .. model) or model
             _ds:send("NAME:" .. vehName)
             local found = false
@@ -683,7 +746,7 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
               for partPath, _ in pairs(detachedParts) do
                 local name = nil
                 if apd and apd[partPath] and apd[partPath].information and apd[partPath].information.name then
-                  name = apd[partPath].information.name
+                  name = speechValue(apd[partPath].information.name, "damage.part.information.name")
                 end
                 if not name or name == "" then
                   name = friendlyName(partPath)
@@ -1068,7 +1131,7 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
       local display = nil
       if extensions and extensions.vehicleNaming and extensions.vehicleNaming.describe then
         local ok, name = pcall(extensions.vehicleNaming.describe, player)
-        if ok and type(name) == "string" and name ~= "" then display = name end
+        if ok then display = normalizeSpeechValue(name, "vehicleSwitch.vehicleNaming.describe") end
       end
       if not display then
         local f = player:getJBeamFilename() or "unknown"
@@ -1346,13 +1409,15 @@ end
 
 function M.onTargetNameReady(displayName)
   if udpSend then
-    udpSend:send("TARGET_NAME:" .. displayName)
+    local normalized = normalizeSpeechValue(displayName, "onTargetNameReady")
+    if normalized then udpSend:send("TARGET_NAME:" .. normalized) end
   end
 end
 
 function M.onVehicleNameReady(displayName)
   if udpSend then
-    udpSend:send("SWITCHED:" .. displayName)
+    local normalized = normalizeSpeechValue(displayName, "onVehicleNameReady")
+    if normalized then udpSend:send("SWITCHED:" .. normalized) end
   end
 end
 

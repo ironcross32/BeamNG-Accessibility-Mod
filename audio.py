@@ -159,11 +159,6 @@ HYDRO_STEER_DEADZONE   = 0.05    # |actual_steering| below this = silent (wheels
 HYDRO_STEER_FULL       = 0.35    # |actual_steering| at which full amplitude is reached
 HYDRO_STEER_INPUT_DEAD = 0.08    # |steering_input| below this = "driver not actively steering"
 
-# Vehicle Details "info available" tone
-DETAILS_TONE_FREQ_HZ = 261.63
-DETAILS_TONE_DUR_MS = 100
-DETAILS_TONE_AMP_DB = -14.0
-
 # Node Grabber Hover Beep
 NODE_BEEP_BASE_FREQ_HZ = 800.0   # Base frequency at height 0.5
 NODE_BEEP_LOW_FREQ_HZ = 600.0    # Frequency at underside (height 0.0)
@@ -244,7 +239,6 @@ class AudioController:
         self.ROAD_CHIME_BACK_WAVEFORM = None # C5 orientation chime tone (backward-ish direction)
         self.CAM_CLICK_WAVEFORM = None
         self.CAM_HIGHLIGHT_CLICK_WAVEFORM = None
-        self.DETAILS_TONE_WAVEFORM = None
         self.NODE_BEEP_WAVEFORM = None  # Node grabber hover beep
         self.CLICKSPOT_BEEP_WAVEFORM = None      # Clickspot hover beep (forward)
         self.CLICKSPOT_BEEP_REV_WAVEFORM = None  # Clickspot hover beep (reverse/leaving)
@@ -296,7 +290,6 @@ class AudioController:
         self._click_request = threading.Event()
         self._highlight_click_request = threading.Event()
         self._scanner_playback_pos = -1.0
-        self._details_tone_playback_pos = -1.0
         self._node_beep_playback_pos = -1.0
         self._node_beep_freq = NODE_BEEP_BASE_FREQ_HZ
         self._node_beep_reverse = False
@@ -858,10 +851,6 @@ class AudioController:
         if self._is_enabled:
             self._chime_playback_pos = 0.0
 
-    def trigger_details_tone(self):
-        if self._is_enabled:
-            self._details_tone_playback_pos = 0.0
-
     def trigger_node_hover_beep(self, height_normalized, reverse=False):
         """Trigger a short beep with pitch varying by node height on the vehicle.
         height_normalized: 0.0 (underside) to 1.0 (top). reverse=True plays backwards."""
@@ -928,7 +917,6 @@ class AudioController:
         self.LS_CLICK_WAVEFORM = self._generate_lowspeed_click()
         self.CAM_CLICK_WAVEFORM = self._generate_cam_click()
         self.CAM_HIGHLIGHT_CLICK_WAVEFORM = self._generate_cam_highlight_click()
-        self.DETAILS_TONE_WAVEFORM = self._generate_details_tone()
         self.NODE_BEEP_WAVEFORM = self._generate_node_beep()
         self.NODE_BEEP_REV_WAVEFORM = self._generate_node_beep_reverse()
         self.CLICKSPOT_BEEP_WAVEFORM = self._generate_clickspot_beep()
@@ -1240,23 +1228,6 @@ class AudioController:
         amp = float(10.0 ** (NODE_BEEP_AMP_DB / 20.0))
         return (wave * amp).astype(np.float32)
 
-    def _generate_details_tone(self):
-        dur_samples = int(self.samplerate * DETAILS_TONE_DUR_MS / 1000.0)
-        t = np.linspace(0, DETAILS_TONE_DUR_MS / 1000.0, dur_samples, endpoint=False)
-        phase = (DETAILS_TONE_FREQ_HZ * t) % 1.0
-        wave = 2.0 * np.abs(2.0 * phase - 1.0) - 1.0
-        # ~2ms linear attack ramp
-        attack_samples = int(self.samplerate * 0.002)
-        if attack_samples > 0:
-            wave[:attack_samples] *= np.linspace(0, 1, attack_samples)
-        # Sharp cubic fade out starting at 30ms
-        fade_start = int(self.samplerate * 0.030)
-        fade_len = dur_samples - fade_start
-        if fade_len > 0:
-            wave[fade_start:] *= np.linspace(1, 0, fade_len) ** 3
-        amp = float(10.0 ** (DETAILS_TONE_AMP_DB / 20.0))
-        return (wave * amp).astype(np.float32)
-
     def _audio_callback(self, outdata, frames, time_info, status):
         if self._click_request.is_set():
             with self.lock:
@@ -1341,7 +1312,6 @@ class AudioController:
             ('_tc_playback_pos', self.TC_TONE_WAVEFORM),
             ('_buzzer_playback_pos', self.CHECK_ENGINE_BUZZER_WAVEFORM),
             ('_chime_playback_pos', self.OIL_CHIME_WAVEFORM),
-            ('_details_tone_playback_pos', self.DETAILS_TONE_WAVEFORM),
             ('_describe_error_playback_pos', self.DESCRIBE_ERROR_WAVEFORM),
         ]
         for pos_attr, waveform in playback_states:

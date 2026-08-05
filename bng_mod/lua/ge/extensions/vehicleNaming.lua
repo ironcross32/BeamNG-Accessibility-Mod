@@ -159,6 +159,7 @@ end
 -- =================================================================================================
 
 function M.onExtensionLoaded()
+  setExtensionUnloadMode(M, "manual")
   log('I', 'VehicleNaming', "Vehicle naming helper loaded.")
 end
 
