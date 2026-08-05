@@ -418,15 +418,37 @@ local function handleSpawnBatchArranged(items, arrangement)
 
     local replaceId = item.replaceVehId
     if replaceId and type(replaceId) == "number" and replaceId >= 0 then
-      local ok, err = pcall(core_vehicles.replaceVehicle, math.floor(replaceId), {config = item.config or ""})
-      if ok then successes = successes + 1
-      else failures[#failures+1] = tostring(item.model or "?") .. ": " .. tostring(err) end
+      -- First parameter is the MODEL NAME, not a vehicle id -- the vehicle being
+      -- replaced goes in the third slot. Passing the id made prepareConfigData
+      -- fail, so replaceVehicle returned nil and this reported success for a
+      -- replacement that never occurred.
+      local oldVeh = be:getObjectByID(math.floor(replaceId))
+      if not oldVeh then
+        failures[#failures+1] = tostring(item.model or "?") .. ": replacement target not found"
+      else
+        local model = item.model or oldVeh.JBeam
+        local ok, newVeh = pcall(core_vehicles.replaceVehicle, model,
+          {config = item.config or ""}, oldVeh)
+        if not ok then
+          failures[#failures+1] = tostring(model or "?") .. ": " .. tostring(newVeh)
+        elseif not newVeh then
+          -- Declined rather than raised; see the note above.
+          failures[#failures+1] = tostring(model or "?") .. ": replaceVehicle declined"
+        else
+          successes = successes + 1
+        end
+      end
     else
       local opts = {pos = pos, rot = irot, cling = true, autoEnterVehicle = false}
       if item.config and item.config ~= "" then opts.config = item.config end
-      local ok, err = pcall(core_vehicles.spawnNewVehicle, item.model, opts)
-      if ok then successes = successes + 1
-      else failures[#failures+1] = tostring(item.model or "?") .. ": " .. tostring(err) end
+      local ok, newVeh = pcall(core_vehicles.spawnNewVehicle, item.model, opts)
+      if not ok then
+        failures[#failures+1] = tostring(item.model or "?") .. ": " .. tostring(newVeh)
+      elseif not newVeh then
+        failures[#failures+1] = tostring(item.model or "?") .. ": spawn declined"
+      else
+        successes = successes + 1
+      end
     end
 
     ::continueArrangeSpawn::
@@ -497,7 +519,10 @@ local function handleTeleportArrange(jsonStr)
     elseif not pd then
       failures[#failures+1] = tostring(id) .. ": no position"
     else
-      local r, err = pcall(spawn.safeTeleport, veh, pd.pos, pd.rot, nil, true)
+      -- No 5th argument: that slot is visibilityPoint and must be a vec3, so the
+      -- boolean that used to be here threw inside spawn.lua. pcall swallowed it,
+      -- so every arrange silently failed to move anything.
+      local r, err = pcall(spawn.safeTeleport, veh, pd.pos, pd.rot)
       if r then successes = successes + 1
       else failures[#failures+1] = tostring(id) .. ": " .. tostring(err) end
     end
@@ -559,9 +584,15 @@ local function handleSpawnBatch(jsonStr)
       local frame = frameFromVehicle(oldVeh)
       local options = {}
       if item.config and item.config ~= "" then options.config = item.config end
-      local ok, err = pcall(core_vehicles.replaceVehicle, item.model, options, oldVeh)
+      -- replaceVehicle returns nil on failure without raising, so pcall succeeding
+      -- is not enough to call this a success.
+      local ok, newVeh = pcall(core_vehicles.replaceVehicle, item.model, options, oldVeh)
       if not ok then
-        failures[#failures + 1] = tostring(item.model) .. ": " .. tostring(err)
+        failures[#failures + 1] = tostring(item.model) .. ": " .. tostring(newVeh)
+        return false
+      end
+      if not newVeh then
+        failures[#failures + 1] = tostring(item.model) .. ": replaceVehicle declined"
         return false
       end
       successes = successes + 1
@@ -713,8 +744,14 @@ local function handleReload(idsStr)
     if veh then
       local model = veh.JBeam
       local config = veh.partConfig
-      local r, err = pcall(core_vehicles.replaceVehicle, model, { config = config }, veh)
-      if r then ok = ok + 1 else fail = fail + 1; vsLog('warn', "reload failed: " .. tostring(err)) end
+      -- Same here: a nil return means it declined, and pcall reports that as true.
+      local r, newVeh = pcall(core_vehicles.replaceVehicle, model, { config = config }, veh)
+      if r and newVeh then
+        ok = ok + 1
+      else
+        fail = fail + 1
+        vsLog('warn', "reload failed: " .. (r and "replaceVehicle declined" or tostring(newVeh)))
+      end
     else
       fail = fail + 1
     end

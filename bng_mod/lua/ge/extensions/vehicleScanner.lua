@@ -256,7 +256,13 @@ local function _tryCompleteCouplerSetup()
     tostring(isFifthWheel), (pi.ny or 0)))
 
   local rot = quatFromDir(awayDir, vec3(0, 0, 1))
-  spawn.safeTeleport(player, alignPos, rot, nil, true)
+  -- 4th/5th params are checkOnlyStatics and visibilityPoint. visibilityPoint must
+  -- be a vec3: spawn.lua feeds it to getVisibilityStatus, which does
+  -- `randPoint - intendedPos`, so a boolean there throws inside LuaVec3.__sub
+  -- and the alignment teleport never happened. The defaults are what the game
+  -- itself uses, including resetVehicle, which settles physics at the new spot --
+  -- exactly what the fifth-wheel coupling below waits for.
+  spawn.safeTeleport(player, alignPos, rot)
 
   if isFifthWheel then
     -- Delay auto-coupling to let physics settle after teleport.
