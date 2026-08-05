@@ -276,6 +276,30 @@ export function installBNVDA($rootScope, dependencies) {
             return closest(el, "input,select,textarea,button,a[href],[role='option'],[role='menuitem'],[role='treeitem'],[role='tab'],[role='button'],[role='checkbox'],[role='switch'],[role='slider'],md-option,md-tab-item,[bng-nav-item],.bng-row,.dropdown-option,.pause-button,.pause-menu-button,.pause-menu-tile,.category-button,[tabindex]");
           }
 
+          // Hover fires for whatever the cursor happens to cross, including
+          // full-panel layout containers. Passing those straight to extractText
+          // announced the entire panel ("System Freeroam Vehicle Environment
+          // 03:14 PM <user> One moment...", "Loading... Loading... Loading...").
+          // Resolving to an interactive ancestor is not enough on its own: in
+          // 0.39 the full-screen .menu-screen wrapper carries bng-nav-item, and
+          // .bng-tabs-root carries tabindex="-1", so both satisfy
+          // getInteractiveAncestor. Reject anything that aggregates text from
+          // more than a few element children -- a real control draws its label
+          // from itself or a couple of inline spans, a container from many.
+          var HOVER_MAX_TEXTY_CHILDREN = 3;
+          function hoverAnnouncementText(el) {
+            var target = getInteractiveAncestor(el);
+            if (!target) return "";
+            if (target.getAttribute && target.getAttribute("tabindex") === "-1") return "";
+            var kids = target.children || [];
+            var texty = 0;
+            for (var i = 0; i < kids.length; i++) {
+              if (cleanText(kids[i].innerText || kids[i].textContent || "")) texty++;
+              if (texty > HOVER_MAX_TEXTY_CHILDREN) return "";
+            }
+            return extractText(target);
+          }
+
           function extractText(el) {
             if (!el) return "";
             if (isHidden(el) || closest(el, '.loading-screen, .loadingBackground')) return "";
@@ -2839,7 +2863,8 @@ export function installBNVDA($rootScope, dependencies) {
 
           listen(window, "mouseover", throttle(function (e) {
             if ((nowTS() - lastControllerTs) < CONTROLLER_DOMINANCE_MS) return;
-            scheduleSpeak(extractText(e.target), P.POINTER);
+            var hoverText = hoverAnnouncementText(e.target);
+            if (hoverText) scheduleSpeak(hoverText, P.POINTER);
           }, 150), true);
           if (document.readyState === 'complete') {
             initializeModules();
