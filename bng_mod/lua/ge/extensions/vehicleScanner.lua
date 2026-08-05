@@ -471,26 +471,26 @@ local function scanAndSendVehicleData()
     return
   end
 
-  -- Calculate bearing (positive = right of forward, negative = left) and live distance
+  -- Calculate bearing (positive = LEFT of forward, negative = right) and live distance
   local targetPos      = targetVehicle:getPosition()
   currentTargetDist    = playerPos:distance(targetPos)
   local toTargetVec    = (targetPos - playerPos):normalized()
   local cosAngle       = playerForwardVec:dot(toTargetVec)
   local angleRadians   = math.acos(math.max(-1, math.min(1, cosAngle)))
-  local playerRightVec = playerUpVec:cross(playerForwardVec)
-  local dot            = playerRightVec:dot(toTargetVec)
+  local playerLeftVec  = playerUpVec:cross(playerForwardVec) -- up x fwd = left, see note above
+  local dot            = playerLeftVec:dot(toTargetVec)
   local bearingDegrees = math.deg(angleRadians) * (dot < 0 and -1 or 1)
 
   -- Approach angle from target's frame: which face of the target is the player nearest to?
   -- 0 = player is in front of target, ±180 = player is behind target,
-  -- positive = player is to target's right, negative = player is to target's left
+  -- positive = player is to target's LEFT, negative = player is to target's right
   local targetFwdVec   = targetVehicle:getDirectionVector()
   local targetUpVec    = targetVehicle:getDirectionVectorUp()
   local toPlayerVec    = (playerPos - targetPos):normalized()
   local cosApproach    = targetFwdVec:dot(toPlayerVec)
   local approachRad    = math.acos(math.max(-1, math.min(1, cosApproach)))
-  local targetRightVec = targetUpVec:cross(targetFwdVec)
-  local approachDeg    = math.deg(approachRad) * (targetRightVec:dot(toPlayerVec) < 0 and -1 or 1)
+  local targetLeftVec  = targetUpVec:cross(targetFwdVec) -- left, as above
+  local approachDeg    = math.deg(approachRad) * (targetLeftVec:dot(toPlayerVec) < 0 and -1 or 1)
 
   -- Send as plain text "bearing,distance,approachDeg" — parsed by Python with split(',')
   local packet = string.format("%.4f,%.4f,%.4f", bearingDegrees, currentTargetDist, approachDeg)
@@ -1170,8 +1170,8 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
         local toTarget  = (tPos - pPos):normalized()
         local cosAngle  = math.max(-1, math.min(1, rearDir:dot(toTarget)))
         local angleRad  = math.acos(cosAngle)
-        local rightVec  = playerUp:cross(playerFwd)
-        local dot       = rightVec:dot(toTarget)
+        local leftVec   = playerUp:cross(playerFwd) -- left, as above
+        local dot       = leftVec:dot(toTarget)
         local bearing   = math.deg(angleRad) * (dot < 0 and -1 or 1)
 
         local inRange = dist <= COUPLER_RANGE_M and 1 or 0

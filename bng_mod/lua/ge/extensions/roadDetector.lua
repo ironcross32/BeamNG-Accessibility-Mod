@@ -72,8 +72,8 @@ local function closestPointOnSegment2D(p, a, b)
 end
 
 -- =================================================================================================
---  Compute the bearing (deg, signed; +right) from playerFwd to a target direction in the xy plane.
---  Same sign convention as obstacleDetector: positive = right of the vehicle when viewed from above.
+--  Compute the bearing (deg, signed; +LEFT) from playerFwd to a target direction in the xy plane.
+--  Same sign convention as obstacleDetector and vehicleScanner: positive = left of the vehicle.
 -- =================================================================================================
 
 local function bearingToDir(playerFwd, playerUp, dirVec)

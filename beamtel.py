@@ -2938,7 +2938,7 @@ def _on_next_key_press(event, audio_controller):
             if dist == float("inf"):
                 say("No target", exclude_from_buffer=True)
             else:
-                direction = "right" if brg >= 0 else "left"
+                direction = "left" if brg >= 0 else "right"
                 say(f"{abs(brg):.0f} degrees {direction}", exclude_from_buffer=True)
     elif name == "d" and not (
         _capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]
@@ -2970,10 +2970,10 @@ def _on_next_key_press(event, audio_controller):
                     side = "front"
                 elif ap > 135:
                     side = "rear"
-                elif approach > 0:
-                    side = "right side"
-                else:
+                elif approach > 0:  # positive = player is off the target's left
                     side = "left side"
+                else:
+                    side = "right side"
                 if UNITS_MODE == "imperial":
                     dist_str = f"{dist * 3.28084:.0f} feet"
                 else:

@@ -169,7 +169,7 @@ local function performScan()
   local playerPos   = player:getPosition()
   local playerFwd   = player:getDirectionVector()
   local playerUp    = player:getDirectionVectorUp()
-  local playerRight = playerUp:cross(playerFwd)
+  local playerLeft = playerUp:cross(playerFwd) -- up x fwd = left (mathlib cross is right-handed)
 
   -- Compute vehicle speed (m/s) from velocity vector
   local vel = player:getVelocity()
@@ -203,7 +203,7 @@ local function performScan()
     local rayDir = rotateVectorAroundAxis(playerFwd, playerUp, angleDeg)
 
     -- Tilt ray slightly upward to avoid hitting flat ground
-    rayDir = rotateVectorAroundAxis(rayDir, playerRight, -RAY_UPWARD_ANGLE)
+    rayDir = rotateVectorAroundAxis(rayDir, playerLeft, -RAY_UPWARD_ANGLE) -- negative about left = upward
     rayDir = rayDir:normalized()
 
     -- Cast low ray first — cheap rejection if nothing is there at all.
@@ -217,7 +217,7 @@ local function performScan()
       local highConfirms = (hitHigh > 0 and hitHigh < (hitLow + CLEARANCE_TOLERANCE))
       local closeOverride = (hitLow < CLOSE_OBSTACLE_DIST)
       if highConfirms or closeOverride then
-        -- Convert ray angle to signed bearing (-180 to +180, positive = right)
+        -- Convert ray angle to signed bearing (-180 to +180, positive = LEFT).
         local bearing = angleDeg
         if bearing > 180 then bearing = bearing - 360 end
 
