@@ -1588,14 +1588,29 @@ export function installBNVDA($rootScope, dependencies) {
             return null;
           }
 
+          // 0.39 renders the parts tree from two different components:
+          //   vehicleConfig/components/Parts.vue          -> .parts-browser
+          //     (the standalone vehicle config screen)
+          //   pause/components/PauseVehicleConfigurationCombined.vue
+          //     -> .pause-tab-combined-parts
+          //     (Pause > Vehicle > Configuration Combined)
+          // Only .parts-browser used to be matched, so the combined tab read
+          // nothing and fell through to the generic label path. Keep every
+          // parts lookup going through these two constants.
+          var PARTS_CONTAINER_SELECTOR = '.parts-browser, .pause-tab-combined-parts';
+          var PARTS_ROW_SELECTOR = '.parts-browser .bng-accitem, .pause-tab-combined-parts .bng-accitem';
+
           function focusedVuePartsRow() {
-            var browser = document.querySelector('.parts-browser');
-            if (!browser || !visibleVueElement(browser)) return null;
-            var marked = toArray(browser.querySelectorAll('.focus-visible'));
-            if (browser.contains(document.activeElement)) marked.push(document.activeElement);
-            for (var i = 0; i < marked.length; i++) {
-              var row = closest(marked[i], '.parts-browser .bng-accitem');
-              if (row && visibleVueElement(row)) return row;
+            var browsers = toArray(document.querySelectorAll(PARTS_CONTAINER_SELECTOR));
+            for (var b = 0; b < browsers.length; b++) {
+              var browser = browsers[b];
+              if (!visibleVueElement(browser)) continue;
+              var marked = toArray(browser.querySelectorAll('.focus-visible'));
+              if (browser.contains(document.activeElement)) marked.push(document.activeElement);
+              for (var i = 0; i < marked.length; i++) {
+                var row = closest(marked[i], PARTS_ROW_SELECTOR);
+                if (row && visibleVueElement(row)) return row;
+              }
             }
             return null;
           }
@@ -1659,7 +1674,7 @@ export function installBNVDA($rootScope, dependencies) {
             var activation = _partsDropdownActivation;
             var route = (location.hash || '') + '|' + (location.pathname || '');
             if (!root || route !== activation.route || !activation.row.isConnected ||
-                !closest(activation.row, '.parts-browser')) {
+                !closest(activation.row, PARTS_CONTAINER_SELECTOR)) {
               clearPartsDropdownActivation(true);
               return null;
             }
@@ -1944,7 +1959,7 @@ export function installBNVDA($rootScope, dependencies) {
               if (path) out.push(cleanText(path.innerText));
             }
 
-            var partRow = closest(target, '.parts-browser .bng-accitem');
+            var partRow = closest(target, PARTS_ROW_SELECTOR);
             if (partRow && !out.length) {
               out.push(vehicleConfigLabel(partRow));
               var equipped = q(partRow, '.dropdown-display');
@@ -2005,7 +2020,12 @@ export function installBNVDA($rootScope, dependencies) {
             }
             var text = out.filter(Boolean).join(', ');
             if (text) scheduleSpeak(text, src);
-            return true;
+            // Report handled only when something was actually spoken. Returning
+            // true unconditionally swallowed the rest of the dispatch chain
+            // (dropdown / checkbox / slider / extractText), so any selector that
+            // drifted out of date turned into silence instead of a degraded
+            // announcement.
+            return !!text;
           }
 
           // BngRow normally handles controller activation. Some OptionsCheckbox
@@ -2399,7 +2419,7 @@ export function installBNVDA($rootScope, dependencies) {
               if (!optionsCategory) _vueOptionsCategory = '';
               var dialog = root.querySelector('[role="dialog"], .bng-dialog, .modal');
               var activeTab = root.querySelector('[role="tab"][aria-selected="true"], .bng-tab.active, .bng-tab.selected');
-              var subScreen = root.querySelector('.adjustment-container, .parts-packs, .parts-browser, .innerTuningCard, .paint-acc-wrapper, .saveload');
+              var subScreen = root.querySelector('.adjustment-container, .parts-packs, .parts-browser, .pause-tab-combined-parts, .innerTuningCard, .paint-acc-wrapper, .saveload');
               var screenKey = (location.hash || '') + '|' + (location.pathname || '') + '|' +
                 cleanText(activeTab && activeTab.innerText) + '|' + (subScreen ? subScreen.className.toString() : '') + '|' +
                 (dialog ? ((dialog.id || '') + ':' + (dialog.className || '').toString()) : 'screen');
