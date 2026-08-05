@@ -41,6 +41,30 @@ local function csLog(level, msg)
 end
 
 -- =================================================================================================
+--  Pick the one action string to present, and to fire, for a trigger.
+--
+--  A trigger's links are keyed by action string: triggerEventLinksDict[id][actionStr].
+--  Those are separate interactions, not one compound action -- the game maps the
+--  triggerAction0/1/2 input to a single 'action0'/'action1'/'action2' and calls
+--  core_vehicleTriggers.triggerEvent with only that one (core/vehicleTriggers.lua,
+--  onActionEvent). action0 is the primary click, so prefer it.
+--
+--  The fallback is the lowest-sorted key rather than "whatever pairs() yields
+--  first": Lua leaves pairs() order unspecified, so the previous code could cache
+--  and announce a different action from one session to the next.
+-- =================================================================================================
+
+local function pickActionStr(actionMap)
+  if type(actionMap) ~= 'table' then return nil end
+  if actionMap.action0 ~= nil then return "action0" end
+  local best = nil
+  for aStr in pairs(actionMap) do
+    if best == nil or aStr < best then best = aStr end
+  end
+  return best
+end
+
+-- =================================================================================================
 --  Trigger Enumeration
 -- =================================================================================================
 
@@ -125,31 +149,29 @@ local function buildTriggerCache()
     local namespace = "vehicle"
     local hasLinks = false
 
-    if linksDict[triggerId] then
-      for aStr, linkTable in pairs(linksDict[triggerId]) do
-        for _, lnk in pairs(linkTable) do
-          hasLinks = true
-          actionStr = aStr
-          if lnk.inputAction then
-            actionName = lnk.inputAction
-            namespace = lnk.namespace or "vehicle"
+    local chosenActionStr = pickActionStr(linksDict[triggerId])
+    if chosenActionStr then
+      for _, lnk in pairs(linksDict[triggerId][chosenActionStr]) do
+        hasLinks = true
+        actionStr = chosenActionStr
+        if lnk.inputAction then
+          actionName = lnk.inputAction
+          namespace = lnk.namespace or "vehicle"
 
-            -- Try to get a friendlier title from the inputAction
-            local act = inputActions[lnk.inputAction]
-            if act and act.title then
-              local ok2, actTitle = pcall(function()
-                return translateLanguage(act.title, act.title, true)
-              end)
-              if ok2 and actTitle and actTitle ~= "" and actTitle ~= act.title then
-                actionName = actTitle
-              end
+          -- Try to get a friendlier title from the inputAction
+          local act = inputActions[lnk.inputAction]
+          if act and act.title then
+            local ok2, actTitle = pcall(function()
+              return translateLanguage(act.title, act.title, true)
+            end)
+            if ok2 and actTitle and actTitle ~= "" and actTitle ~= act.title then
+              actionName = actTitle
             end
-          elseif lnk.targetEvent and lnk.targetEvent.name then
-            actionName = lnk.targetEvent.name
           end
-          break  -- take first link
+        elseif lnk.targetEvent and lnk.targetEvent.name then
+          actionName = lnk.targetEvent.name
         end
-        break  -- take first action string
+        break  -- take first link
       end
     end
 
@@ -356,12 +378,30 @@ local function handleExecute(cacheIndex, actionValue)
   local vData = extensions.core_vehicle_manager.getVehicleData(vehId)
   if not vData or not vData.vdata then return end
 
-  local linksDict = vData.vdata.triggerEventLinksDict or {}
-  local links = linksDict[trgInfo.triggerId]
-  if not links then return end
+  local actionStr = trgInfo.actionStr or "action0"
 
-  -- Execute all links for this trigger
-  for actionStr, linkTable in pairs(links) do
+  -- Fire exactly ONE action, the way the game does.
+  --
+  -- This used to iterate every key of triggerEventLinksDict[triggerId] and fire
+  -- all of them, so activating a single clickspot triggered every interaction
+  -- the trigger had. The game never does that: onActionEvent in
+  -- core/vehicleTriggers.lua resolves the input to one 'actionN' string and
+  -- passes just that to triggerEvent.
+  --
+  -- Delegate to that same triggerEvent rather than keeping our own copy of the
+  -- v2 / common / legacy link branches, which can only drift from the original.
+  local gameTriggers = core_vehicleTriggers
+  if gameTriggers and gameTriggers.triggerEvent then
+    gameTriggers.triggerEvent(actionStr, actionValue, trgInfo.triggerId, vehId, vData.vdata)
+  else
+    -- Fallback if the stock extension is not loaded: same logic, but still
+    -- restricted to the single selected action string.
+    csLog('warn', "core_vehicleTriggers unavailable; using local link execution")
+    local linksDict = vData.vdata.triggerEventLinksDict or {}
+    local links = linksDict[trgInfo.triggerId]
+    local linkTable = links and links[actionStr]
+    if not linkTable then return end
+
     for _, lnk in pairs(linkTable) do
       local value = actionValue
       if lnk.isInverted then value = -value end
@@ -391,8 +431,8 @@ local function handleExecute(cacheIndex, actionValue)
     end
   end
 
-  csLog('info', string.format("Executed trigger %d (%s) with value %s",
-    trgInfo.triggerId, trgInfo.name, tostring(actionValue)))
+  csLog('info', string.format("Executed trigger %d (%s) action %s with value %s",
+    trgInfo.triggerId, trgInfo.name, actionStr, tostring(actionValue)))
 end
 
 -- =================================================================================================
