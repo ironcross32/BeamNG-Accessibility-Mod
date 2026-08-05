@@ -110,9 +110,17 @@ local function performScan()
   local playerFwd = player:getDirectionVector()
   local playerUp  = player:getDirectionVectorUp()
 
-  local n1id, n2id, dist2D = map.findBestRoad(playerPos, playerFwd)
-  if not n1id then
-    -- Fallback: try a wider radius search
+  -- map.findBestRoad indexes the edge kd-tree with no nil check (lua/ge/map.lua, cf. its
+  -- sibling findClosestRoad which does guard it), so it throws on a map with no nav graph
+  -- and during the window before the graph finishes building. The GE onUpdate hook chain
+  -- runs without pcall, so an uncaught throw here would take out every other extension.
+  local n1id, n2id, dist2D
+  local ok, bestN1, bestN2, bestDist = pcall(map.findBestRoad, playerPos, playerFwd)
+  if ok then
+    n1id, n2id, dist2D = bestN1, bestN2, bestDist
+  end
+  if not n1id and map.findClosestRoad then
+    -- Fallback: wider radius search. This one is nil-safe on its own.
     n1id, n2id, dist2D = map.findClosestRoad(playerPos, SEARCH_RADIUS_M)
   end
 

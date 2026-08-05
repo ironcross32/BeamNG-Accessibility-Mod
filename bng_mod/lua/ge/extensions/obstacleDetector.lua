@@ -254,6 +254,9 @@ end
 --  Terrain Height Sampling (drop-offs and hills)
 -- =================================================================================================
 
+-- Latch so the "this map has no terrain" note reaches the log once, not at scan rate forever.
+local terrainWarned = false
+
 local function sampleTerrain()
   if not udpSend then return end
 
@@ -269,8 +272,22 @@ local function sampleTerrain()
   -- Scale terrain sample distances: at higher speed, sample farther ahead
   local speedScale = math.max(1.0, speedMps / 10.0)  -- 1x at <=10m/s, 2x at 20m/s, etc.
 
-  -- Get terrain height at vehicle position
+  -- Get terrain height at vehicle position.
+  -- Terrain queries need a TerrainBlock in the scene. Maps built on a flat ground plane
+  -- (smallgrid and friends) have none, and core_terrain.getTerrainHeight returns nil there.
+  -- The arithmetic below would then throw, and the GE onUpdate hook chain is dispatched
+  -- WITHOUT pcall (lua/common/extensions.lua, hookProfiled), so one throw here silently
+  -- stops every extension loaded after this one in modScript.lua.
+  if not core_terrain or not core_terrain.getTerrainHeight then return end
   local baseHeight = core_terrain.getTerrainHeight(playerPos)
+  if not baseHeight then
+    if not terrainWarned then
+      terrainWarned = true
+      detLog('info', "No terrain on this map - skipping drop-off/hill sampling. Ray obstacles still active.")
+    end
+    return
+  end
+  terrainWarned = false
 
   local worstDrop = 0
   local worstRise = 0
@@ -281,14 +298,17 @@ local function sampleTerrain()
     local sampleDist = baseDist * speedScale
     local samplePos = playerPos + playerFwd * sampleDist
     local sampleHeight = core_terrain.getTerrainHeight(samplePos)
-    local diff = sampleHeight - baseHeight
+    -- A sample point past the edge of the terrain block reads nil; skip it, don't throw.
+    if sampleHeight then
+      local diff = sampleHeight - baseHeight
 
-    if diff < -DROPOFF_THRESHOLD and diff < worstDrop then
-      worstDrop = diff
-      worstDropDist = sampleDist
-    elseif diff > HILL_THRESHOLD and diff > worstRise then
-      worstRise = diff
-      worstRiseDist = sampleDist
+      if diff < -DROPOFF_THRESHOLD and diff < worstDrop then
+        worstDrop = diff
+        worstDropDist = sampleDist
+      elseif diff > HILL_THRESHOLD and diff > worstRise then
+        worstRise = diff
+        worstRiseDist = sampleDist
+      end
     end
   end
 
