@@ -3,6 +3,7 @@ import socket
 import struct
 import time
 import threading
+import queue
 import logging
 import re
 from nvda_ws_speaker import (
@@ -143,6 +144,8 @@ except Exception as e:
     )
 
 SR_INSTANCE = None
+_sral_lock = threading.Lock()
+_sral_tried = False
 SPEECH_BUFFER = deque(maxlen=100)
 
 # Loading lifecycle state is driven by the UI's official screen-cover state.
@@ -156,22 +159,42 @@ _loading_lock = threading.Lock()
 
 
 def sral_init():
-    global SR_INSTANCE
-    if SR_INSTANCE is not None:
-        return SR_INSTANCE
+    """Return the shared SRAL instance, constructing it at most once.
+
+    Called from every thread that speaks (telemetry, scanner, keyboard worker,
+    timers, the wx UI, the WebSocket bridge). Without the lock two threads can
+    both see SR_INSTANCE as None and each build an Sral, which calls
+    SRAL_Initialize twice; whichever instance loses the assignment race is then
+    garbage collected, and Sral.__del__ fires SRAL_Uninitialize on the shared
+    library, silently killing speech for the instance that survived.
+
+    Loading SRAL.dll is also slow enough to matter, so callers on latency
+    sensitive paths should make sure it is already warm (see install_hotkeys).
+    """
+    global SR_INSTANCE, _sral_tried
+    inst = SR_INSTANCE
+    if inst is not None:
+        return inst
     if not SRAL_OK:
-        SR_INSTANCE = None
         return None
-    try:
+    with _sral_lock:
+        if SR_INSTANCE is not None:
+            return SR_INSTANCE
+        if _sral_tried:
+            # A previous attempt failed; don't retry the DLL load on every
+            # utterance, that would put a multi-millisecond stall on each one.
+            return None
+        _sral_tried = True
         try:
-            os.chdir(HERE)
-        except Exception:
-            pass
-        SR_INSTANCE = sral.Sral(32)
-    except Exception as e:
-        logger.warning(f"Failed to initialize SRAL: {e}")
-        SR_INSTANCE = None
-    return SR_INSTANCE
+            try:
+                os.chdir(HERE)
+            except Exception:
+                pass
+            SR_INSTANCE = sral.Sral(32)
+        except Exception as e:
+            logger.warning(f"Failed to initialize SRAL: {e}")
+            SR_INSTANCE = None
+        return SR_INSTANCE
 
 
 def _normalize_speech_value(value, source="python"):
@@ -1633,11 +1656,206 @@ except Exception:
         "keyboard module unavailable – 'pip install keyboard' and run as Administrator for key suppression."
     )
 
-next_key_hook_press, next_key_hook_release, next_key_timer = None, None, None
+next_key_timer = None
 command_timeout_sec = 4.0
 _capture_mods = {"ctrl": False, "shift": False, "alt": False}
 
 _input_help_mode = False
+
+# ---------------------------------------------------------------------------
+#  Hook dispatch worker
+#
+#  A `keyboard` hook installed with suppress=True runs inside the Win32
+#  WH_KEYBOARD_LL callback, not on a worker thread: _winkeyboard.py's
+#  low_level_keyboard_handler invokes the listener's direct_callback inline and
+#  uses the value it returns to choose between `return -1` (swallow the key) and
+#  CallNextHookEx (let it through). Windows allows that callback only
+#  LowLevelHooksTimeout milliseconds (300 by default, HKCU\Control Panel\Desktop)
+#  before it stops waiting, honours the key as if the hook had never run, and
+#  after repeated offences unregisters the hook outright. The visible symptom is
+#  keys a layer meant to swallow arriving in BeamNG instead.
+#
+#  Everything the command handlers do is over that budget or can be: speech goes
+#  through SRAL.dll, several handlers take state_lock (held by the telemetry loop
+#  and the audio callback), and teardown calls keyboard.unhook.
+#
+#  So the hook callbacks below do two things only — classify the key and decide
+#  suppression — then queue the actual work here. Nothing on the queue can stall
+#  the hook, because the hook never waits for it.
+# ---------------------------------------------------------------------------
+_kb_queue = queue.Queue()
+_kb_worker_thread = None
+
+
+class _SynthKeyEvent:
+    """Stand-in for keyboard.KeyboardEvent, carrying what the handlers read.
+
+    The real event object belongs to the hook callback that is about to return;
+    handlers now run later, on the worker, so they get a snapshot instead.
+    """
+
+    __slots__ = ("name", "event_type")
+
+    def __init__(self, name, event_type="down"):
+        self.name = name
+        self.event_type = event_type
+
+
+def _kb_dispatch(fn, *args):
+    """Queue fn(*args) to run on the keyboard worker. Safe inside a hook."""
+    try:
+        _kb_queue.put_nowait((fn, args))
+    except Exception:
+        logger.exception("Failed to queue keyboard command")
+
+
+def _kb_enqueue(handler):
+    """Wrap a suppressed-hook handler so its body runs on the worker.
+
+    The wrapper returns None, which keyboard reads as "suppress this key" — the
+    same verdict every handler wrapped here already returned. Mirrors
+    vehicle_spawner._enqueue, which solved this for the F11 modal.
+    """
+
+    def wrapper(event):
+        _kb_dispatch(handler, event)
+
+    return wrapper
+
+
+def _kb_worker_loop():
+    while True:
+        fn, args = _kb_queue.get()
+        try:
+            fn(*args)
+        except Exception:
+            # A handler that raised must not take the worker down with it, or
+            # every later keystroke would be silently dropped.
+            logger.exception("Keyboard command handler raised")
+        finally:
+            _kb_queue.task_done()
+
+
+def _start_kb_worker():
+    global _kb_worker_thread
+    if _kb_worker_thread is not None:
+        return
+    _kb_worker_thread = threading.Thread(
+        target=_kb_worker_loop, name="kb-dispatch", daemon=True
+    )
+    _kb_worker_thread.start()
+
+
+# ---------------------------------------------------------------------------
+#  Shared layer hook (F9 and F10)
+#
+#  Both layers share one blocking hook rather than installing their own. Two
+#  reasons: opening F10 while F9 was still open used to leave F9's hook behind,
+#  and removing one entry from keyboard's blocking_hooks list while
+#  direct_callback iterates it (`all(hook(event) for hook in ...)`) makes the
+#  generator skip the next entry, so that hook's key escapes to the game. With a
+#  single entry there is nothing left to skip.
+#
+#  The hook exists only while a layer is open. With no layer open there is no
+#  hook installed at all, so every key reaches BeamNG untouched.
+# ---------------------------------------------------------------------------
+_kb_layer = None  # None | "f9" | "f10"
+_kb_layer_hook = None
+_kb_layer_release_hook = None
+
+# Modifier state as the hook sees it, live. Snapshotted per key-down and handed
+# to the worker, because the user may well have released the modifier by the
+# time the command runs.
+_live_mods = {"ctrl": False, "shift": False, "alt": False}
+
+_MOD_ALIASES = {
+    "ctrl": "ctrl",
+    "control": "ctrl",
+    "left ctrl": "ctrl",
+    "right ctrl": "ctrl",
+    "shift": "shift",
+    "left shift": "shift",
+    "right shift": "shift",
+    "alt": "alt",
+    "left alt": "alt",
+    "right alt": "alt",
+}
+
+
+def _kb_layer_press(event):
+    """WH_KEYBOARD_LL context. Returns True to pass the key on, False to eat it.
+
+    Keep this cheap: no speech, no locks, no I/O, no unhooking.
+    """
+    if event.event_type != "down":
+        return True  # key-ups reach the game, as they always have
+    layer = _kb_layer
+    if layer is None:
+        # Closed between this key arriving and teardown finishing.
+        return True
+    name = (event.name or "").lower()
+    mod = _MOD_ALIASES.get(name)
+    if mod is not None:
+        _live_mods[mod] = True
+        return False
+    if name == layer:  # the F9/F10 that opened the layer, repeating
+        return False
+    _kb_dispatch(_kb_run_layer_command, layer, name, dict(_live_mods))
+    return False
+
+
+def _kb_layer_release(event):
+    """Installed without suppress=True, so this runs on keyboard's own
+    processing thread and is not on the hook timeout clock."""
+    if event.event_type != "up":
+        return
+    mod = _MOD_ALIASES.get((event.name or "").lower())
+    if mod is not None:
+        _live_mods[mod] = False
+
+
+def _kb_run_layer_command(layer, name, mods):
+    """Worker context: restore the modifier snapshot, then run the layer body."""
+    if layer != _kb_layer:
+        return  # layer closed or switched while this sat in the queue
+    if layer == "f9":
+        _capture_mods.update(mods)
+        _on_next_key_press(_SynthKeyEvent(name), audio_controller_ref)
+    else:
+        _ai_mods.update(mods)
+        _on_ai_key_press(_SynthKeyEvent(name))
+
+
+def _kb_open_layer(which):
+    """Hand the keyboard to `which` layer, installing the hook if needed."""
+    global _kb_layer, _kb_layer_hook, _kb_layer_release_hook
+    _kb_layer = which
+    _live_mods["ctrl"] = _live_mods["shift"] = _live_mods["alt"] = False
+    if _kb_layer_hook is not None:
+        return  # already installed; retargeted above
+    try:
+        _kb_layer_hook = keyboard.hook(_kb_layer_press, suppress=True)
+        _kb_layer_release_hook = keyboard.on_release(_kb_layer_release)
+    except Exception:
+        logger.exception("Failed to install layer keyboard hook")
+        _kb_layer = None
+
+
+def _kb_close_layer():
+    """Release the keyboard back to the game. Never called from inside the hook."""
+    global _kb_layer, _kb_layer_hook, _kb_layer_release_hook
+    _kb_layer = None
+    press, release = _kb_layer_hook, _kb_layer_release_hook
+    _kb_layer_hook = _kb_layer_release_hook = None
+    for h in (press, release):
+        if h is None:
+            continue
+        try:
+            keyboard.unhook(h)
+        except Exception:
+            pass
+    _live_mods["ctrl"] = _live_mods["shift"] = _live_mods["alt"] = False
+
 
 # F9 command descriptions keyed by (name, ctrl, shift, alt)
 _F9_HELP = {
@@ -1748,25 +1966,11 @@ _F10_HELP[("5", False, False, True)] = "Preset: Police mode (all follow CTRL tar
 
 
 def _clear_next_key_hook(speak_exit: bool):
-    global \
-        next_key_hook_press, \
-        next_key_hook_release, \
-        next_key_timer, \
-        _command_context, \
-        _input_help_mode
+    global next_key_timer, _command_context, _input_help_mode
     _command_context = False
     _input_help_mode = False
-    try:
-        if next_key_hook_press is not None:
-            keyboard.unhook(next_key_hook_press)
-    except Exception:
-        pass
-    try:
-        if next_key_hook_release is not None:
-            keyboard.unhook(next_key_hook_release)
-    except Exception:
-        pass
-    next_key_hook_press, next_key_hook_release = None, None
+    if _kb_layer == "f9":
+        _kb_close_layer()
     if next_key_timer is not None:
         try:
             next_key_timer.cancel()
@@ -1883,7 +2087,9 @@ def toggle_status_mode():
         try:
             for key in ["up", "down", "left", "right"]:
                 status_arrow_hooks.append(
-                    keyboard.on_press_key(key, on_status_arrow_press, suppress=True)
+                    keyboard.on_press_key(
+                        key, _kb_enqueue(on_status_arrow_press), suppress=True
+                    )
                 )
         except Exception as e:
             logger.error(f"Failed to hook status mode keys: {e}")
@@ -1938,7 +2144,9 @@ def toggle_buffer_mode():
         try:
             for key in ["[", "]"]:
                 buffer_key_hooks.append(
-                    keyboard.on_press_key(key, on_buffer_nav_press, suppress=True)
+                    keyboard.on_press_key(
+                        key, _kb_enqueue(on_buffer_nav_press), suppress=True
+                    )
                 )
         except Exception as e:
             logger.error(f"Failed to hook buffer nav keys: {e}")
@@ -2008,14 +2216,22 @@ def open_virtual_browser(
         try:
             for key in ["up", "down"]:
                 _vbrowser_hooks.append(
-                    keyboard.on_press_key(key, _on_vbrowser_nav, suppress=True)
+                    keyboard.on_press_key(
+                        key, _kb_enqueue(_on_vbrowser_nav), suppress=True
+                    )
                 )
+            # Escape especially must be queued: close_virtual_browser unhooks the
+            # very list keyboard is iterating to reach this handler.
             _vbrowser_hooks.append(
-                keyboard.on_press_key("escape", _on_vbrowser_escape, suppress=True)
+                keyboard.on_press_key(
+                    "escape", _kb_enqueue(_on_vbrowser_escape), suppress=True
+                )
             )
             if on_enter is not None:
                 _vbrowser_hooks.append(
-                    keyboard.on_press_key("enter", _on_vbrowser_enter, suppress=True)
+                    keyboard.on_press_key(
+                        "enter", _kb_enqueue(_on_vbrowser_enter), suppress=True
+                    )
                 )
         except Exception as e:
             logger.error(f"Failed to hook virtual browser keys: {e}")
@@ -3089,25 +3305,10 @@ def _on_next_key_press(event, audio_controller):
     _clear_next_key_hook(speak_exit=False)
 
 
-def _on_next_key_release(event):
-    if event.event_type != "up":
-        return
-    name = (event.name or "").lower()
-    if name in ("ctrl", "control", "left ctrl", "right ctrl"):
-        _capture_mods["ctrl"] = False
-    elif name in ("shift", "left shift", "right shift"):
-        _capture_mods["shift"] = False
-    elif name in ("alt", "left alt", "right alt"):
-        _capture_mods["alt"] = False
-
-
 def _start_next_key_capture(audio_controller):
-    global next_key_hook_press, next_key_hook_release, next_key_timer
+    global next_key_timer
     _clear_next_key_hook(speak_exit=False)
-    next_key_hook_press = keyboard.on_press(
-        lambda e: _on_next_key_press(e, audio_controller), suppress=True
-    )
-    next_key_hook_release = keyboard.on_release(_on_next_key_release)
+    _kb_open_layer("f9")
     next_key_timer = threading.Timer(
         command_timeout_sec, lambda: _clear_next_key_hook(speak_exit=True)
     )
@@ -3131,8 +3332,6 @@ _AGGRESSION_MAP = {
 }
 _AVOID_CYCLE = ["auto", "on", "off"]
 
-ai_hook_press = None
-ai_hook_release = None
 ai_timer = None
 _ai_mods = {"ctrl": False, "shift": False, "alt": False}
 
@@ -3637,27 +3836,12 @@ def _trigger_preset(preset_num):
 
 
 def _clear_ai_hook(speak_exit: bool):
-    global \
-        ai_hook_press, \
-        ai_hook_release, \
-        ai_timer, \
-        _command_context, \
-        _input_help_mode, \
-        _pending_target_confirm
+    global ai_timer, _command_context, _input_help_mode, _pending_target_confirm
     _command_context = False
     _input_help_mode = False
     _pending_target_confirm = None
-    try:
-        if ai_hook_press is not None:
-            keyboard.unhook(ai_hook_press)
-    except Exception:
-        pass
-    try:
-        if ai_hook_release is not None:
-            keyboard.unhook(ai_hook_release)
-    except Exception:
-        pass
-    ai_hook_press, ai_hook_release = None, None
+    if _kb_layer == "f10":
+        _kb_close_layer()
     if ai_timer is not None:
         try:
             ai_timer.cancel()
@@ -3667,18 +3851,6 @@ def _clear_ai_hook(speak_exit: bool):
     _ai_mods["ctrl"] = _ai_mods["shift"] = _ai_mods["alt"] = False
     if speak_exit:
         say("Exit", exclude_from_buffer=True)
-
-
-def _on_ai_key_release(event):
-    if event.event_type != "up":
-        return
-    name = (event.name or "").lower()
-    if name in ("ctrl", "control", "left ctrl", "right ctrl"):
-        _ai_mods["ctrl"] = False
-    elif name in ("shift", "left shift", "right shift"):
-        _ai_mods["shift"] = False
-    elif name in ("alt", "left alt", "right alt"):
-        _ai_mods["alt"] = False
 
 
 def _on_ai_key_press(event):
@@ -3876,10 +4048,9 @@ def _on_ai_key_press(event):
 
 
 def _start_ai_capture():
-    global ai_hook_press, ai_hook_release, ai_timer
+    global ai_timer
     _clear_ai_hook(speak_exit=False)
-    ai_hook_press = keyboard.on_press(_on_ai_key_press, suppress=True)
-    ai_hook_release = keyboard.on_release(_on_ai_key_release)
+    _kb_open_layer("f10")
     ai_timer = None  # F10 layer has no timeout; stays open until a command is issued.
 
 
@@ -3900,6 +4071,16 @@ def install_hotkeys(audio_controller):
             "Command mode disabled (keyboard module not available / not elevated)."
         )
         return
+
+    _start_kb_worker()
+
+    # Force the SRAL.dll load now. on_f9/on_f10 speak the layer prompt before
+    # installing the layer hook, and they run on keyboard's event-processing
+    # thread; if the first utterance of the session had to load the DLL there,
+    # the hook would go in late and the user's next key would reach the game
+    # instead of the layer.
+    if sral_init() is None:
+        logger.warning("SRAL unavailable at hotkey install; speech may be degraded.")
 
     def on_f9():
         if not _is_beamng_focused():
