@@ -68,7 +68,12 @@ export function installBNVDA($rootScope, dependencies) {
           var CONTROLLER_DOMINANCE_MS = 900;
           var MIN_CHARS = 2;
           var MAX_LEN = 160;
-          var DEBUG = !!window.BNVDA_DEBUG;
+          // Evaluated live on every use rather than latched at install time.
+          // BNVDA_DEBUG is set from the accessible console (CEF/UI - JS context)
+          // after the runtime has already installed, and reloading the UI to
+          // re-run install resets the JS context, clearing the global before it
+          // would be read. Latching it left no sequence that could enable debug.
+          function isDebug() { return !!window.BNVDA_DEBUG; }
 
           // ---------- TRANSPORTS ----------
           var activeTransport = null;
@@ -97,7 +102,7 @@ export function installBNVDA($rootScope, dependencies) {
           function speechValue(value, source) {
             while (value !== null && typeof value === 'object') {
               var keys = Object.keys(value);
-              if (DEBUG) {
+              if (isDebug()) {
                 var serialized;
                 try { serialized = JSON.stringify(value); } catch (e) { serialized = '[unserializable: ' + String(e) + ']'; }
                 try { log('warn', '[LUA_TABLE_SPEECH] source=' + source + ' count=' + keys.length + ' contents=' + serialized); } catch (e) {}
@@ -244,7 +249,7 @@ export function installBNVDA($rootScope, dependencies) {
             if (!txt) return;
             if (loadingActive) return;
             if (looksLikeCss(txt)) return;
-            if (DEBUG && hasNonAscii(txt)) {
+            if (isDebug() && hasNonAscii(txt)) {
               log('info', '[GLYPH] "' + txt + '" chars=' + charDump(txt));
             }
             var t = nowTS();
@@ -257,7 +262,7 @@ export function installBNVDA($rootScope, dependencies) {
               lastSource = src;
               lastSpeakTs = nowTS();
               send({ type: "speak", text: txt });
-              if (DEBUG) log("info", "speak(" + src + "): " + txt);
+              if (isDebug()) log("info", "speak(" + src + "): " + txt);
             }, DEBOUNCE_MS);
           }
 
@@ -279,7 +284,7 @@ export function installBNVDA($rootScope, dependencies) {
             var targetElement = el.querySelector('[bng-translate], [ng-bind]') || el;
             var rawText = (targetElement.innerText || targetElement.textContent || "").trim();
             // Diagnose short results: log the element's context so we can improve extraction
-            if (DEBUG) {
+            if (isDebug()) {
               var cleaned0 = cleanText(rawText);
               if (cleaned0.length > 0 && cleaned0.length <= 2) {
                 var parent = el.parentElement;
@@ -417,7 +422,7 @@ export function installBNVDA($rootScope, dependencies) {
               }
             }
             else if (typeof payload === 'object' && payload !== null && payload.txt) {
-              if (DEBUG) {
+              if (isDebug()) {
                 try { log('warn', '[LUA_TABLE_SPEECH] source=Message.localization_descriptor count=' + Object.keys(payload).length + ' contents=' + JSON.stringify(payload)); } catch (e) {}
               }
               var translator = findTranslateFunc();
@@ -1369,7 +1374,7 @@ export function installBNVDA($rootScope, dependencies) {
                 var itemText = '';
                 var hotkeyText = '';
                 var catDefault = '';
-                if (DEBUG) {
+                if (isDebug()) {
                   for (var i = 0; i < children.length; i++) {
                     var t = (children[i].textContent || '').trim();
                     if (t) log('info', '[RADIAL-POLL] child[' + i + '] = "' + t.substring(0, 50) + '"');
