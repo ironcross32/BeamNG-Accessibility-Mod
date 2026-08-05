@@ -1586,8 +1586,16 @@ export function installBNVDA($rootScope, dependencies) {
             var role = control && control.getAttribute ? control.getAttribute('role') : '';
             var checked = control && control.getAttribute ? control.getAttribute('aria-checked') : null;
             if (checked === null && control && (control.type === 'checkbox' || control.type === 'radio')) checked = control.checked ? 'true' : 'false';
-            if (checked === null && row && row.querySelector && closest(row, '.options-item-checkbox')) {
-              var optionsToggle = row.querySelector('.options-checkbox-toggle, .bng-switch-on');
+            // Do not gate this on an ancestor class. It used to require
+            // closest(row, '.options-item-checkbox'), which does not exist anywhere
+            // in 0.39, so binding-editor rows (.bng-row.options-item-row
+            // .binding-option-row) never reported state -- Invert Axis, Feedback
+            // Enabled and the vibration toggles all read as bare labels. The inner
+            // query is self-validating: a row containing a switch toggle is a
+            // switch row. This matches vueOptionsCheckboxState, which was already
+            // ungated and is why the options screen did announce on/off.
+            if (checked === null && row && row.querySelector) {
+              var optionsToggle = row.querySelector('.options-checkbox-toggle, .bng-switch-toggle, .bng-switch-on');
               if (optionsToggle) {
                 checked = (optionsToggle.classList.contains('is-checked') ||
                   optionsToggle.classList.contains('bng-switch-on')) ? 'true' : 'false';
@@ -1617,7 +1625,7 @@ export function installBNVDA($rootScope, dependencies) {
 
           function vueOptionsCheckboxState(row) {
             if (!row || !row.querySelector) return null;
-            var toggle = row.querySelector('.options-checkbox-toggle, .bng-switch-on');
+            var toggle = row.querySelector('.options-checkbox-toggle, .bng-switch-toggle, .bng-switch-on');
             if (!toggle) return null;
             return toggle.classList.contains('is-checked') || toggle.classList.contains('bng-switch-on');
           }
