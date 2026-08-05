@@ -17,6 +17,22 @@ export async function onLoad() {
     await bootstrap.whenDone
     if (generation !== loadGeneration) return
 
+    // The radial menu paints its centre label onto a <canvas>, so the item name
+    // never exists as DOM text. RadialCenterCanvas.setState is the last place it
+    // is still a string. /src/modules is not in the base bundle, so this comes
+    // through the runtime module graph -- keyed by resolved id, so we get the
+    // very same class object Radial.vue imports and can wrap its prototype.
+    // Dynamic and guarded: a resolve failure must cost the radial menu, not the
+    // whole screen reader.
+    let radialCenterCanvas = null
+    try {
+      const radialModule = await import('@/modules/radial/radialCenterCanvas')
+      radialCenterCanvas = radialModule?.default || null
+    } catch (error) {
+      console.warn('[bnvda] RadialCenterCanvas unavailable; radial item names will not be spoken.', error)
+    }
+    if (generation !== loadGeneration) return
+
     console.info('[bnvda] UI bootstrap complete; installing runtime.')
     const vue = window.bngVue || {}
     const stores = vue.stores || {}
@@ -25,6 +41,7 @@ export async function onLoad() {
       controls,
       icons: vue.icons,
       loadingScreen,
+      radialCenterCanvas,
       watch,
     })
   } catch (error) {

@@ -57,6 +57,7 @@ export function installBNVDA($rootScope, dependencies) {
           var Controls = dependencies.controls || null;
           var iconCatalog = dependencies.icons || null;
           var loadingScreen = dependencies.loadingScreen || null;
+          var RadialCenterCanvas = dependencies.radialCenterCanvas || null;
           var vueWatch = dependencies.watch || null;
           var loadingActive = false;
           var loadingSettleTimer = null;
@@ -1024,148 +1025,156 @@ export function installBNVDA($rootScope, dependencies) {
           }
 
           // ========== RADIAL MENU SPEECH MODULE ==========
+          // The middle of the radial menu -- the name, price and hotkey of the
+          // item currently pointed at -- is painted onto a <canvas> by
+          // radialCenterCanvas.js. See the <canvas ref="centerCanvas"> in
+          // modules/radial/views/Radial.vue: it is even marked aria-hidden.
+          // Canvas pixels carry no text, so there is nothing in the DOM to read;
+          // the previous implementation scraped an SVG <foreignObject> that does
+          // not exist in this UI, which is why it only ever logged "Gave up
+          // finding wrap after 10 attempts" and then polled a null every 80ms.
+          //
+          // RadialCenterCanvas.prototype.setState is the last point at which the
+          // label is still a string, and Radial.vue calls it on every focus and
+          // blur whatever the input device (mouse, stick or d-pad). Wrapping it
+          // hands us exactly the text a sighted player sees, event-driven, with
+          // no polling and no dependence on markup.
+          //
+          // Everything outside the circle -- title, breadcrumbs, category tabs --
+          // is still ordinary DOM and is read from there.
           var _radialMenuWasOpen = false;
+          var _radialAnnouncedOpen = false;
           var _radialLastSpokenItem = '';
           var _radialLastCategory = '';
-          var _radialPollTimer = null;
-          var _radialAttachTimer = null;
-          var _radialWrap = null;
+          var _radialLastHeading = '';
+          var _radialLastSig = '';
+          var _radialPendingSig = null;
 
-          // Radial menu SVG foreignObject layout (5 children of wrap):
-          //   [0] svg icon  [1] empty div  [2] category/default text
-          //   [3] item name (empty until hover)  [4] hotkey text
-          // Vue replaces child nodes rather than mutating text, so we observe
-          // the wrap element and re-read children by index on each mutation.
-          function findRadialWrap(container) {
-            var svgEl = container.querySelector('.radial-svg svg');
-            if (!svgEl) { log('info', '[RADIAL] No .radial-svg svg found'); return null; }
-            var fo = svgEl.querySelector('foreignObject');
-            if (!fo) { log('info', '[RADIAL] No foreignObject in svg'); return null; }
-            var body = fo.firstElementChild;
-            if (!body) { log('info', '[RADIAL] No child in foreignObject'); return null; }
-            var wrap = body.firstElementChild;
-            if (!wrap) { log('info', '[RADIAL] No wrap element'); return null; }
-            if (wrap.children.length < 4) { log('info', '[RADIAL] wrap has only ' + wrap.children.length + ' children, need at least 4'); return null; }
-            return wrap;
+          function radialCenterText(state) {
+            if (!state) return '';
+            // cleanText strips the bngIcons private-use glyphs that Radial.vue's
+            // getHotkey() prefixes onto the control name.
+            var label = cleanText(state.label);
+            if (!label) return '';
+            var parts = [label];
+            // Price arrives as "250 <money glyph>"; cleanText drops the glyph, so
+            // say what the bare number means.
+            var price = cleanText(state.price);
+            if (price) parts.push('costs ' + price);
+            var hotkey = cleanText(state.hotkey);
+            if (hotkey) parts.push(hotkey + ' key');
+            return parts.join(', ');
           }
 
-          function radialMenuOnOpen(container) {
-            if (_radialPollTimer) { clearInterval(_radialPollTimer); _radialPollTimer = null; }
-            if (_radialAttachTimer) { clearTimeout(_radialAttachTimer); _radialAttachTimer = null; }
-            var attempts = 0;
-            function tryAttach() {
-              _radialAttachTimer = null;
-              // Bail if the menu closed during retries — avoids leaking a poll
-              // timer when the outer watcher fires open→close→open in quick succession.
-              if (!container.isConnected || !document.querySelector('.radial-menu')) return;
-              var wrap = findRadialWrap(container);
-              if (!wrap) {
-                attempts++;
-                if (attempts < 10) { _radialAttachTimer = trackedSetTimeout(tryAttach, 100); }
-                else { log('info', '[RADIAL] Gave up finding wrap after ' + attempts + ' attempts'); }
-                return;
-              }
-              _radialWrap = wrap;
-              var defaultText = (wrap.children[2] ? wrap.children[2].textContent : '').trim();
-              var openMsg = 'Radial menu';
-              if (defaultText && defaultText !== 'Select an option') {
-                openMsg += ', ' + defaultText;
-              }
-              scheduleSpeak(openMsg, P.SYSTEM);
-
-              var selectedCat = container.querySelector('.radial-category.selected .radial-category-label');
-              if (selectedCat) {
-                var catText = cleanText(selectedCat.textContent);
-                if (catText) {
-                  _radialLastCategory = catText;
-                  trackedSetTimeout(function() { send({ type: "speak", text: catText }); }, 100);
-                }
-              }
-
-              // Poll for changes — Vue's virtual DOM patching doesn't reliably
-              // trigger MutationObserver, so we poll every 80ms instead.
-              _radialPollTimer = trackedSetInterval(function() {
-                if (!_radialWrap) return;
-                // Self-check: if the radial menu has been removed from the DOM
-                // (e.g., outer watcher was paused or missed the close), tear
-                // ourselves down so we don't poll forever against a detached node.
-                if (!_radialWrap.isConnected || !document.querySelector('.radial-menu')) {
-                  _radialMenuWasOpen = false;
-                  radialMenuOnClose();
-                  return;
-                }
-                // Read all text children fresh each tick
-                var children = _radialWrap.children;
-                var itemText = '';
-                var hotkeyText = '';
-                var catDefault = '';
-                if (isDebug()) {
-                  for (var i = 0; i < children.length; i++) {
-                    var t = (children[i].textContent || '').trim();
-                    if (t) log('info', '[RADIAL-POLL] child[' + i + '] = "' + t.substring(0, 50) + '"');
-                  }
-                }
-                if (children[3]) itemText = (children[3].textContent || '').trim();
-                if (children[4]) hotkeyText = (children[4].textContent || '').trim();
-                if (children[2]) catDefault = (children[2].textContent || '').trim();
-
-                // If children[3] is empty, try children[2] as item text
-                // (some states put the item name there instead)
-                if (!itemText && catDefault && catDefault !== 'Select an option') {
-                  itemText = catDefault;
-                }
-
-                if (!itemText) {
-                  if (_radialLastSpokenItem !== '') {
-                    _radialLastSpokenItem = '';
-                    scheduleSpeak('empty', P.CONTROLLER);
-                  }
-                  return;
-                }
-                if (itemText === _radialLastSpokenItem) return;
-                _radialLastSpokenItem = itemText;
-                if (hotkeyText) {
-                  var parts = hotkeyText.split(/\s+/);
-                  hotkeyText = parts.length > 1 ? parts.slice(1).join(' ') : hotkeyText;
-                }
-                var speakText = hotkeyText ? itemText + ', ' + hotkeyText + ' key' : itemText;
-                scheduleSpeak(speakText, P.CONTROLLER);
-
-                // Check category change
-                var sel = container.querySelector('.radial-category.selected .radial-category-label');
-                if (sel) {
-                  var newCat = cleanText(sel.textContent);
-                  if (newCat && newCat !== _radialLastCategory) {
-                    _radialLastCategory = newCat;
-                    scheduleSpeak(newCat, P.CONTROLLER);
-                  }
-                }
-              }, 80);
-
-              log('info', '[bnvda] Radial menu polling started.');
+          function onRadialCenterState(state) {
+            if (!_radialMenuWasOpen) return;
+            if (!state || !state.focused) {
+              // Centre fell back to the "Select an option" placeholder, meaning
+              // the pointer sits in the dead zone between wedges. That happens
+              // every time the stick is released, so stay quiet -- but clear the
+              // de-dupe so returning to the same item speaks it again.
+              _radialLastSpokenItem = '';
+              return;
             }
-            tryAttach();
+            var text = radialCenterText(state);
+            if (!text || text === _radialLastSpokenItem) return;
+            _radialLastSpokenItem = text;
+            scheduleSpeak(text, P.CONTROLLER);
+          }
+
+          function installRadialCenterHook() {
+            if (!RadialCenterCanvas || !RadialCenterCanvas.prototype) {
+              log('error', '[bnvda] RadialCenterCanvas unavailable; radial item names will not be spoken.');
+              return;
+            }
+            var proto = RadialCenterCanvas.prototype;
+            var original = proto.setState;
+            if (typeof original !== 'function' || original.__bnvdaWrapped) return;
+            var wrapped = function (state) {
+              var result = original.apply(this, arguments);
+              // Read this.state, not the argument: setState normalizes it first,
+              // filling in the defaults. Run after the original and inside a
+              // try so a fault of ours can never stop the menu drawing.
+              try {
+                onRadialCenterState(this.state || state);
+              } catch (e) {
+                log('error', '[bnvda] Radial centre hook failed: ' + e.message);
+              }
+              return result;
+            };
+            wrapped.__bnvdaWrapped = true;
+            proto.setState = wrapped;
+            onCleanup(function () { if (proto.setState === wrapped) proto.setState = original; });
+            log('info', '[bnvda] Radial centre hook installed.');
+          }
+
+          function radialHeadingText() {
+            var title = document.querySelector('.radial-menu .radial-title');
+            var crumbs = document.querySelector('.radial-menu .radial-breadcrumbs');
+            var heading = cleanText(title && title.textContent);
+            var trail = cleanText(crumbs && crumbs.textContent);
+            // The breadcrumb trail starts with the title, so drop it when identical.
+            if (trail && trail !== heading) return heading ? heading + ', ' + trail : trail;
+            return heading;
+          }
+
+          function radialCategoryText() {
+            var sel = document.querySelector('.radial-menu .radial-category.selected .radial-category-label');
+            return cleanText(sel && sel.textContent);
+          }
+
+          // Opening the menu, descending a level and switching category all
+          // replace the whole menu, and all three are plain DOM. A two-selector
+          // read on the existing open/closed poll covers them without having to
+          // subscribe to the Lua event stream.
+          function radialMenuCheckLevel() {
+            var heading = radialHeadingText();
+            var category = radialCategoryText();
+            var sig = heading + '\u0001' + category;
+            if (sig === _radialLastSig) { _radialPendingSig = null; return; }
+            // Both flicker through placeholders ("No Actions Available") while
+            // Radial.vue's getUiData() round-trip to Lua is still in flight, so
+            // only announce a reading that survived a whole poll tick.
+            if (sig !== _radialPendingSig) { _radialPendingSig = sig; return; }
+            _radialPendingSig = null;
+            _radialLastSig = sig;
+            _radialLastSpokenItem = '';
+
+            var parts = [];
+            if (heading && heading !== _radialLastHeading) parts.push(heading);
+            if (category && category !== _radialLastCategory) parts.push(category);
+            _radialLastHeading = heading;
+            _radialLastCategory = category;
+            if (!parts.length) return;
+
+            var text = parts.join(', ');
+            if (!_radialAnnouncedOpen) {
+              _radialAnnouncedOpen = true;
+              if (!/^radial menu/i.test(text)) text = 'Radial menu, ' + text;
+            }
+            scheduleSpeak(text, P.CONTROLLER);
           }
 
           function radialMenuOnClose() {
-            if (_radialPollTimer) { clearInterval(_radialPollTimer); _radialPollTimer = null; }
-            if (_radialAttachTimer) { clearTimeout(_radialAttachTimer); _radialAttachTimer = null; }
+            _radialAnnouncedOpen = false;
             _radialLastSpokenItem = '';
             _radialLastCategory = '';
-            _radialWrap = null;
+            _radialLastHeading = '';
+            _radialLastSig = '';
+            _radialPendingSig = null;
           }
 
           function startRadialMenuWatcher() {
+            installRadialCenterHook();
             function pollRadialMenu() {
               var nextDelay = 1000;
               try {
-                var container = document.querySelector('.radial-menu');
-                var isOpen = !!container;
-                if (isOpen) nextDelay = 200;
-                if (isOpen && !_radialMenuWasOpen) {
+                var isOpen = !!document.querySelector('.radial-menu');
+                if (isOpen) {
+                  nextDelay = 200;
                   _radialMenuWasOpen = true;
-                  radialMenuOnOpen(container);
-                } else if (!isOpen && _radialMenuWasOpen) {
+                  radialMenuCheckLevel();
+                } else if (_radialMenuWasOpen) {
                   _radialMenuWasOpen = false;
                   radialMenuOnClose();
                 }
