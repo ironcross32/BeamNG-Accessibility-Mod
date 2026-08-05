@@ -326,8 +326,10 @@ local function handleSnap()
 
   -- Send SNAP packet to Python
   if udpSend then
-    local packet = string.format("SNAP:%d,%d,%d,%s,%s,%s,%.3f",
-      screenX, screenY, bestNode.cid, bestNode.name, bestNode.location, bestNode.groups, bestNode.heightNorm)
+    -- Viewport size travels with the point; see the note in clickspotAccessible.
+    local packet = string.format("SNAP:%d,%d,%d,%d,%d,%s,%s,%s,%.3f",
+      screenX, screenY, screenW, screenH,
+      bestNode.cid, bestNode.name, bestNode.location, bestNode.groups, bestNode.heightNorm)
     udpSend:send(packet)
     ngLog('info', string.format("SNAP to node %d (%s) at screen %d,%d", bestNode.cid, bestNode.name, screenX, screenY))
   end

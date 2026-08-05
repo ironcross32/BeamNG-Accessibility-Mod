@@ -351,8 +351,10 @@ local function handleSnap(cacheIndex)
     if trgInfo.actionName ~= "" and trgInfo.actionName ~= trgInfo.name then
       displayName = trgInfo.name .. ", " .. trgInfo.actionName
     end
-    udpSend:send(string.format("SNAP_OK:%d,%d,%d,%s",
-      screenX, screenY, trgInfo.triggerId, displayName))
+    -- Viewport size travels with the point: these are coordinates inside the
+    -- render area, and Python has to place that area on the desktop.
+    udpSend:send(string.format("SNAP_OK:%d,%d,%d,%d,%d,%s",
+      screenX, screenY, screenW, screenH, trgInfo.triggerId, displayName))
     csLog('info', string.format("SNAP to trigger %d (%s) at screen %d,%d",
       trgInfo.triggerId, trgInfo.name, screenX, screenY))
   end

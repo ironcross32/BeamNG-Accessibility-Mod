@@ -1147,21 +1147,19 @@ def nodegrab_listener(audio_controller, stop_event):
                     continue
 
                 if text.startswith("SNAP:"):
-                    # SNAP:<screenX>,<screenY>,<cid>,<name>,<location>,<groups>,<heightNorm>
-                    parts = text[5:].split(",", 6)
-                    if len(parts) >= 2:
+                    # SNAP:<x>,<y>,<viewW>,<viewH>,<cid>,<name>,<location>,<groups>,<heightNorm>
+                    parts = text[5:].split(",", 8)
+                    if len(parts) >= 4:
                         sx, sy = int(parts[0]), int(parts[1])
-                        try:
-                            ctypes.windll.user32.SetCursorPos(sx, sy)
-                        except Exception as e:
-                            logger.error(f"SetCursorPos failed: {e}")
+                        vw, vh = int(parts[2]), int(parts[3])
+                        warp_cursor_to_viewport(sx, sy, vw, vh)
                         # Also announce the snapped node if we have info
-                        if len(parts) >= 7:
-                            cid = int(parts[2])
-                            name = parts[3]
-                            location = parts[4]
-                            groups = parts[5]
-                            height_norm = float(parts[6])
+                        if len(parts) >= 9:
+                            cid = int(parts[4])
+                            name = parts[5]
+                            location = parts[6]
+                            groups = parts[7]
+                            height_norm = float(parts[8])
                             audio_controller.trigger_node_hover_beep(height_norm)
                             desc = f"{name}, {location}"
                             if groups:
@@ -1288,15 +1286,13 @@ def clickspot_listener(audio_controller, stop_event):
                     continue
 
                 if text.startswith("SNAP_OK:"):
-                    # SNAP_OK:<screenX>,<screenY>,<triggerId>,<displayName>
-                    parts = text[8:].split(",", 3)
-                    if len(parts) >= 4:
+                    # SNAP_OK:<x>,<y>,<viewW>,<viewH>,<triggerId>,<displayName>
+                    parts = text[8:].split(",", 5)
+                    if len(parts) >= 6:
                         sx, sy = int(parts[0]), int(parts[1])
-                        display_name = parts[3]
-                        try:
-                            ctypes.windll.user32.SetCursorPos(sx, sy)
-                        except Exception as e:
-                            logger.error(f"SetCursorPos failed: {e}")
+                        vw, vh = int(parts[2]), int(parts[3])
+                        display_name = parts[5]
+                        warp_cursor_to_viewport(sx, sy, vw, vh)
                         # No beep on menu-initiated jump — speech only
                         say(f"Jumped to {display_name}", exclude_from_buffer=True)
                     continue
@@ -4117,6 +4113,159 @@ def _start_ai_capture():
     _clear_ai_hook(speak_exit=False)
     _kb_open_layer("f10")
     ai_timer = None  # F10 layer has no timeout; stays open until a command is issued.
+
+
+# --- Cursor warping into the game viewport -----------------------------------
+# SNAP projects a world position onto BeamNG's render viewport. Those
+# coordinates are relative to the top-left of the game's client area and are in
+# physical render pixels. SetCursorPos wants desktop coordinates, and beamtel is
+# a DPI-unaware process, so Windows virtualises whatever we pass it. Sending the
+# viewport figure straight through therefore only lands correctly on a
+# fullscreen game, on the primary monitor, at 100% scaling.
+
+_user32 = ctypes.windll.user32
+# DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+_DPI_CTX_PER_MONITOR_V2 = ctypes.c_void_p(-4)
+_WNDENUMPROC = ctypes.WINFUNCTYPE(
+    ctypes.c_bool, ctypes.wintypes.HWND, ctypes.wintypes.LPARAM
+)
+
+
+def _set_thread_dpi_aware():
+    """Mark the calling thread per-monitor DPI aware; return the old context.
+
+    Scoped to the thread rather than the process on purpose: making the whole
+    process DPI aware would change how the wx windows are scaled, and this only
+    needs to be true for the moment we read window geometry and move the cursor.
+    Returns None on Windows older than 1607, where there is nothing to do and
+    nothing to restore.
+    """
+    fn = getattr(_user32, "SetThreadDpiAwarenessContext", None)
+    if fn is None:
+        return None
+    try:
+        fn.restype = ctypes.c_void_p
+        fn.argtypes = [ctypes.c_void_p]
+        return fn(_DPI_CTX_PER_MONITOR_V2)
+    except Exception:
+        return None
+
+
+def _restore_thread_dpi(previous):
+    if previous is None:
+        return
+    try:
+        _user32.SetThreadDpiAwarenessContext(previous)
+    except Exception:
+        pass
+
+
+_GAME_WINDOW_CLASS = "GameEngineMainWindow"
+_PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+
+
+def _window_process_name(hwnd):
+    """Lowercase image name of the process owning hwnd, or ""."""
+    try:
+        pid = ctypes.wintypes.DWORD()
+        _user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        if not pid.value:
+            return ""
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.OpenProcess(
+            _PROCESS_QUERY_LIMITED_INFORMATION, False, pid.value
+        )
+        if not handle:
+            return ""
+        try:
+            size = ctypes.wintypes.DWORD(260)
+            buf = ctypes.create_unicode_buffer(size.value)
+            if not kernel32.QueryFullProcessImageNameW(
+                handle, 0, buf, ctypes.byref(size)
+            ):
+                return ""
+            return os.path.basename(buf.value).lower()
+        finally:
+            kernel32.CloseHandle(handle)
+    except Exception:
+        return ""
+
+
+def _find_beamng_window():
+    """Handle of the game's render window, or None.
+
+    Not GetForegroundWindow: SNAP can be issued while the beamtel window has
+    focus, and then the foreground window is the wrong one.
+
+    Not the window title either. An Explorer window sitting on the game folder
+    is called "BeamNG.drive - File Explorer" and matches just as well, and
+    warping the cursor into that would be worse than not warping at all. Match
+    the render window's class, and fall back to a title match only when the
+    owning process is actually the game.
+    """
+    exact = []
+    fallback = []
+
+    def _cb(hwnd, _lparam):
+        try:
+            if not _user32.IsWindowVisible(hwnd):
+                return True
+            cls = ctypes.create_unicode_buffer(256)
+            _user32.GetClassNameW(hwnd, cls, 256)
+            if cls.value == _GAME_WINDOW_CLASS:
+                exact.append(hwnd)
+                return False
+            length = _user32.GetWindowTextLengthW(hwnd)
+            if length <= 0:
+                return True
+            buf = ctypes.create_unicode_buffer(length + 1)
+            _user32.GetWindowTextW(hwnd, buf, length + 1)
+            if "BeamNG" in buf.value and _window_process_name(hwnd).startswith(
+                "beamng"
+            ):
+                fallback.append(hwnd)
+        except Exception:
+            pass
+        return True
+
+    try:
+        _user32.EnumWindows(_WNDENUMPROC(_cb), 0)
+    except Exception:
+        logger.exception("EnumWindows failed while looking for the game window")
+    if exact:
+        return exact[0]
+    return fallback[0] if fallback else None
+
+
+def warp_cursor_to_viewport(view_x, view_y, view_w=0, view_h=0):
+    """Move the cursor to a point expressed in BeamNG viewport pixels."""
+    previous = _set_thread_dpi_aware()
+    try:
+        x, y = int(view_x), int(view_y)
+        hwnd = _find_beamng_window()
+        if hwnd:
+            rect = ctypes.wintypes.RECT()
+            if _user32.GetClientRect(hwnd, ctypes.byref(rect)):
+                client_w = rect.right - rect.left
+                client_h = rect.bottom - rect.top
+                # The render resolution can differ from the client area, e.g.
+                # windowed at a non-native size or with a resolution scale set.
+                if view_w > 0 and view_h > 0 and client_w > 0 and client_h > 0:
+                    x = int(round(x * client_w / float(view_w)))
+                    y = int(round(y * client_h / float(view_h)))
+            origin = ctypes.wintypes.POINT(0, 0)
+            if _user32.ClientToScreen(hwnd, ctypes.byref(origin)):
+                x += origin.x
+                y += origin.y
+        else:
+            logger.warning(
+                "No BeamNG window found; warping to raw viewport coordinates."
+            )
+        _user32.SetCursorPos(x, y)
+    except Exception as e:
+        logger.error(f"Cursor warp failed: {e}")
+    finally:
+        _restore_thread_dpi(previous)
 
 
 def _is_beamng_focused() -> bool:
