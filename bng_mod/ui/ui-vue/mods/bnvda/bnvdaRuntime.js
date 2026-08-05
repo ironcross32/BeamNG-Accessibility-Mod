@@ -426,19 +426,85 @@ export function installBNVDA($rootScope, dependencies) {
 
           // ---------- CENTRALIZED MESSAGE PROCESSOR ----------
           var lastCameraSwitchTs = 0;
-          // Translation keys for the recurring "engine is off" stall messages — these
-          // fire every ~1.8 s while ignitionLevel >= 2 and the engine isn't running,
-          // producing annoying repetitive speech.  Block them here.
+
+          // Every game message carries a category (guihooks.message's third
+          // argument). BeamNG keys its on-screen message list by that category and
+          // REPLACES the entry each time rather than appending -- see
+          // services/messagesStore.js -- so a message the vehicle re-fires every
+          // frame just sits there quietly for a sighted player. Speech has no
+          // equivalent of "still showing": without the same grouping, every
+          // refresh is a fresh interruption. The stalled-engine message re-fires
+          // about twice a second for as long as the ignition is on with the engine
+          // off, which talks over everything else.
+          //
+          // So mirror the game's own model. Say a category once, stay silent while
+          // it keeps being refreshed, and allow it again only once it has been
+          // absent long enough that the on-screen message would have expired.
+          var MESSAGE_REPEAT_GRACE_MS = 1500;
+          var MESSAGE_STATE_LIMIT = 64;
+          var _messageState = Object.create(null);
+
+          // Categories never worth speaking, whatever wording the game picks for
+          // them. Blocking by category covers every variant of a situation in one
+          // entry -- the stall message has three, chosen by gearbox mode.
+          var BLOCKED_MESSAGE_CATEGORIES = [
+            'vehicle.engine.isStalling'
+          ];
+          // Same intent, for messages that arrive without a useful category.
           var BLOCKED_TRANSLATION_KEYS = [
             'vehicle.vehicleController.stalled',
             'vehicle.vehicleController.stalledAutoClutch',
             'vehicle.vehicleController.stalledStarting'
           ];
-          function processAndSpeakMessage(payload) {
-            // Block known spammy translation keys before any processing
-            if (typeof payload === 'object' && payload !== null && payload.txt) {
-              if (BLOCKED_TRANSLATION_KEYS.indexOf(payload.txt) !== -1) return;
+
+          // A message is either a bare translation key or a { txt, context }
+          // descriptor. The realistic-mode stall message uses the bare string form,
+          // which is why testing only payload.txt never blocked it.
+          function messageTranslationKey(payload) {
+            if (typeof payload === 'string') return payload;
+            if (payload && typeof payload === 'object' && typeof payload.txt === 'string') return payload.txt;
+            return '';
+          }
+
+          // How long the game would keep this message on screen. Matches
+          // messagesStore.js: ttlMs wins, else ttl in seconds, else its 5 s default.
+          function messageWindowMs(meta) {
+            var ttlMs = typeof meta.ttlMs === 'number' ? meta.ttlMs
+              : (typeof meta.ttl === 'number' ? meta.ttl * 1000 : 5000);
+            if (!(ttlMs > 0)) ttlMs = 5000;
+            return ttlMs + MESSAGE_REPEAT_GRACE_MS;
+          }
+
+          function messageIsRepeat(category, text, meta) {
+            // Uncategorised messages fall back to their own text, so repeat
+            // suppression still applies without lumping unrelated ones together.
+            var key = category || ('\u0001text:' + text);
+            var now = nowTS();
+            var entry = _messageState[key];
+            if (entry && entry.text === text && (now - entry.lastSeen) <= entry.window) {
+              // Still on screen as far as the game is concerned. Note that we saw
+              // it, so a message refreshed forever stays suppressed forever.
+              entry.lastSeen = now;
+              return true;
             }
+            var keys = Object.keys(_messageState);
+            if (keys.length > MESSAGE_STATE_LIMIT) {
+              for (var i = 0; i < keys.length; i++) {
+                var stale = _messageState[keys[i]];
+                if ((now - stale.lastSeen) > stale.window) delete _messageState[keys[i]];
+              }
+            }
+            _messageState[key] = { text: text, lastSeen: now, window: messageWindowMs(meta) };
+            return false;
+          }
+
+          onCleanup(function () { _messageState = Object.create(null); });
+
+          function processAndSpeakMessage(payload, meta) {
+            meta = meta || {};
+            var category = typeof meta.category === 'string' ? meta.category : '';
+            if (category && BLOCKED_MESSAGE_CATEGORIES.indexOf(category) !== -1) return;
+            if (BLOCKED_TRANSLATION_KEYS.indexOf(messageTranslationKey(payload)) !== -1) return;
             var finalText = '';
             if (typeof payload === 'string') {
               // Try translating dot-delimited keys (e.g. "vehicle.engine.oilLevelCritical.true")
@@ -485,7 +551,10 @@ export function installBNVDA($rootScope, dependencies) {
             });
             finalText = cleanText(finalText);
             if (finalText.toLowerCase() === 'switched' && (nowTS() - lastCameraSwitchTs) < 250) { return; }
-            if (finalText && finalText.length >= MIN_CHARS) { scheduleSpeak(finalText, P.SYSTEM); }
+            if (finalText && finalText.length >= MIN_CHARS) {
+              if (messageIsRepeat(category, finalText, meta)) return;
+              scheduleSpeak(finalText, P.SYSTEM);
+            }
             else if (payload && !finalText) { log('warn', '[UNSPEAKABLE] empty after processing: ' + JSON.stringify(payload)); }
           }
 
@@ -550,7 +619,7 @@ export function installBNVDA($rootScope, dependencies) {
           subscribe($rootScope, 'Message', function (event, args) {
             if (!args || !args.msg) return;
             try { var injector = angular.element(document.body).injector(); if (injector) { var toasterService = injector.get('MessageToasterService'); if (toasterService.activeCategories.includes(args.category)) return false; } } catch (e) {}
-            processAndSpeakMessage(args.msg);
+            processAndSpeakMessage(args.msg, args);
           });
           subscribe($rootScope, 'DamageMessage', function (event, args) {
             if (!args || !args.damageText) return;
