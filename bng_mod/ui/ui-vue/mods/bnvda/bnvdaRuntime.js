@@ -284,20 +284,28 @@ export function installBNVDA($rootScope, dependencies) {
           // 0.39 the full-screen .menu-screen wrapper carries bng-nav-item, and
           // .bng-tabs-root carries tabindex="-1", so both satisfy
           // getInteractiveAncestor. Reject anything that aggregates text from
-          // more than a few element children -- a real control draws its label
-          // from itself or a couple of inline spans, a container from many.
-          var HOVER_MAX_TEXTY_CHILDREN = 3;
+          // more than a shallow subtree of markup.
+          //
+          // Counting only direct children with text does NOT work: a panel that
+          // nests everything under one wrapper div presents a single texty child
+          // and passes. Count total descendant elements instead, which is
+          // insensitive to nesting depth, and cap the spoken length -- a control
+          // label is short, a panel dump is not.
+          // Calibrated against a 0.39 DOM dump: a switch row has 5 descendant
+          // elements, a slider row 8-11, with labels of 11-16 chars. Panels have
+          // hundreds of descendants, and the loading screen produced a 77-char
+          // "Loading... Loading... ..." string from only ~7, so both limits earn
+          // their keep -- neither alone catches every observed case.
+          var HOVER_MAX_DESCENDANTS = 16;
+          var HOVER_MAX_CHARS = 70;
           function hoverAnnouncementText(el) {
             var target = getInteractiveAncestor(el);
             if (!target) return "";
             if (target.getAttribute && target.getAttribute("tabindex") === "-1") return "";
-            var kids = target.children || [];
-            var texty = 0;
-            for (var i = 0; i < kids.length; i++) {
-              if (cleanText(kids[i].innerText || kids[i].textContent || "")) texty++;
-              if (texty > HOVER_MAX_TEXTY_CHILDREN) return "";
-            }
-            return extractText(target);
+            if (target.querySelectorAll && target.querySelectorAll("*").length > HOVER_MAX_DESCENDANTS) return "";
+            var text = extractText(target);
+            if (text.length > HOVER_MAX_CHARS) return "";
+            return text;
           }
 
           function extractText(el) {
