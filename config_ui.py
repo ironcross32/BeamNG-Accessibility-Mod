@@ -13,8 +13,9 @@ from configurator import (
     _write_config,
     CONFIG_PATH,
     DEFAULT_CONFIG,
-    list_sapi_voices,
-    test_sapi_voice,
+    list_speech_backends,
+    list_speech_voices,
+    test_speech_voice,
     play_test_tone,
     AUDIO_TEST_OK,
     list_wasapi_output_devices,
@@ -267,13 +268,74 @@ class LabelAccessible(wx.Accessible):
         return (wx.ACC_OK, self._name)
 
 
-def _label_spin_double(ctrl, name):
-    """Set accessible Name on a SpinCtrlDouble via wx.Accessible."""
+def _label_spin(ctrl, name):
+    """Set accessible Name on a SpinCtrl or SpinCtrlDouble via wx.Accessible.
+
+    Both are native Win32 composites (an Edit plus an UpDown).  Focus lands on
+    the inner Edit, which does not inherit the wrapper's SetName, so the name
+    has to be applied to both halves or the screen reader announces nothing.
+    """
     ctrl.SetAccessible(LabelAccessible(ctrl, name))
     for child in ctrl.GetChildren():
         if isinstance(child, wx.TextCtrl):
             child.SetAccessible(LabelAccessible(child, name))
             return
+
+
+def _group(parent, label):
+    """Create a StaticBox and its sizer; returns (box, sizer).
+
+    Children MUST be created with the returned box as their parent, not with
+    `parent` -- on Windows that parenting is what makes MSAA/UIA nest the
+    controls inside the group, and nesting is how a screen reader knows to
+    announce the group name when focus enters it.  Parenting them to the panel
+    instead leaves the box a mere sibling: visible, but silent.
+    """
+    box = wx.StaticBox(parent, label=label)
+    return box, wx.StaticBoxSizer(box, wx.VERTICAL)
+
+
+def _owns_focus(ctrl):
+    """True if `ctrl` holds keyboard focus, or one of its inner windows does.
+
+    Descendants matter: SpinCtrl and SpinCtrlDouble are native composites, so
+    focus actually sits on their inner TextCtrl and never on the wrapper an
+    identity test would compare against.
+    """
+    win = wx.Window.FindFocus()
+    while win is not None:
+        if win is ctrl:
+            return True
+        win = win.GetParent()
+    return False
+
+
+def _enable(ctrl, enabled, focus_fallback=None):
+    """Enable or disable `ctrl` without ever stranding keyboard focus on it.
+
+    Disabling the focused window on Windows drops focus to the parent, or to
+    nothing at all, and a screen reader simply loses its place.  Move focus
+    somewhere deliberate first -- normally the checkbox that governs the
+    control being disabled.
+    """
+    if not enabled and focus_fallback is not None and _owns_focus(ctrl):
+        focus_fallback.SetFocus()
+    ctrl.Enable(enabled)
+
+
+def _set_row(sizer, ctrls, enabled, focus_fallback):
+    """Show/hide a dependent row and enable/disable the controls in it.
+
+    Focus is rescued *before* anything else happens.  Hiding a window drops
+    focus just as disabling one does, so guarding only the Enable call would be
+    too late -- ShowItems would already have dumped focus on the parent, and by
+    then the control no longer owns it for the guard to notice.
+    """
+    if not enabled and any(_owns_focus(c) for c in ctrls):
+        focus_fallback.SetFocus()
+    sizer.ShowItems(enabled)
+    for c in ctrls:
+        c.Enable(enabled)
 
 
 def _focusable_leaves(win):
@@ -371,46 +433,54 @@ class ConfigPanel(wx.ScrolledWindow):
         vbox = wx.BoxSizer(wx.VERTICAL)
 
         # --- Speech group ---
-        sb_speech = wx.StaticBox(self, label="Speech")
-        speech = wx.StaticBoxSizer(sb_speech, wx.VERTICAL)
-        self.chk_force_sapi = wx.CheckBox(
-            self, label="&Force SAPI (skip NVDA detection)"
-        )
-        self.chk_force_sapi.SetToolTip(
-            "When enabled, the telemetry app will use SAPI only and skip NVDA."
-        )
-        self.chk_force_sapi.SetName("Force SAPI")
-        speech.Add(self.chk_force_sapi, 0, wx.ALL, 6)
+        sb_speech, speech = _group(self, "Speech")
         grid = wx.FlexGridSizer(0, 2, 6, 8)
         grid.AddGrowableCol(1, 1)
-        lbl_voice = wx.StaticText(self, label="&SAPI Voice:")
-        self.choice_voice = wx.Choice(self)
-        self.choice_voice.SetToolTip("Select the SAPI voice to use (by display name).")
-        self.choice_voice.SetName("SAPI Voice")
+        lbl_backend = wx.StaticText(sb_speech, label="Speech Backend:")
+        self.choice_backend = wx.Choice(sb_speech)
+        self.choice_backend.SetToolTip(
+            "Which screen reader or speech engine to talk to. Auto picks the "
+            "best one that is running."
+        )
+        self.choice_backend.SetName("Speech Backend")
+        grid.Add(lbl_backend, 0, wx.ALIGN_CENTER_VERTICAL)
+        grid.Add(self.choice_backend, 1, wx.EXPAND)
+        lbl_voice = wx.StaticText(sb_speech, label="Voice:")
+        self.choice_voice = wx.Choice(sb_speech)
+        self.choice_voice.SetToolTip(
+            "Voice to use, where the backend allows choosing one. Screen "
+            "readers use their own voice settings."
+        )
+        self.choice_voice.SetName("Voice")
         grid.Add(lbl_voice, 0, wx.ALIGN_CENTER_VERTICAL)
         grid.Add(self.choice_voice, 1, wx.EXPAND)
-        lbl_rate = wx.StaticText(self, label="SAPI &Rate (-10 to 10):")
-        self.spin_rate = wx.SpinCtrl(self, min=-10, max=10)
-        self.spin_rate.SetToolTip("SAPI rate: -10 (slow) to 10 (fast).")
-        self.spin_rate.SetName("SAPI Rate")
+        lbl_rate = wx.StaticText(sb_speech, label="Rate (0 to 100):")
+        self.spin_rate = wx.SpinCtrl(sb_speech, min=0, max=100)
+        self.spin_rate.SetToolTip("Speech rate: 0 (slow) to 100 (fast).")
+        self.spin_rate.SetName("Speech Rate")
+        _label_spin(self.spin_rate, "Speech Rate")
         grid.Add(lbl_rate, 0, wx.ALIGN_CENTER_VERTICAL)
         grid.Add(self.spin_rate, 1, wx.EXPAND)
-        lbl_vol = wx.StaticText(self, label="SAPI &Volume (0 to 100):")
-        self.spin_volume = wx.SpinCtrl(self, min=0, max=100)
-        self.spin_volume.SetToolTip("SAPI volume: 0 to 100.")
-        self.spin_volume.SetName("SAPI Volume")
+        lbl_vol = wx.StaticText(sb_speech, label="Volume (0 to 100):")
+        self.spin_volume = wx.SpinCtrl(sb_speech, min=0, max=100)
+        self.spin_volume.SetToolTip("Speech volume: 0 to 100.")
+        self.spin_volume.SetName("Speech Volume")
+        _label_spin(self.spin_volume, "Speech Volume")
         grid.Add(lbl_vol, 0, wx.ALIGN_CENTER_VERTICAL)
         grid.Add(self.spin_volume, 1, wx.EXPAND)
         speech.Add(grid, 0, wx.LEFT | wx.RIGHT | wx.TOP | wx.EXPAND, 6)
+        # Says out loud what the selected backend can and cannot do, so the
+        # greyed-out controls below are explained rather than just inert.
+        self.lbl_speech_caps = wx.StaticText(sb_speech, label="")
+        self.lbl_speech_caps.SetName("Backend Capabilities")
+        speech.Add(self.lbl_speech_caps, 0, wx.LEFT | wx.RIGHT | wx.TOP, 6)
         speech_btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        btn_refresh = wx.Button(self, label="Re&fresh")
-        btn_refresh.SetToolTip("Refresh the list of installed SAPI voices.")
-        btn_refresh.SetName("Refresh Voices")
-        btn_test = wx.Button(self, label="&Test Voice")
+        btn_refresh = wx.Button(sb_speech, label="Refresh Voices")
+        btn_refresh.SetToolTip("Re-detect speech backends and voices.")
+        btn_test = wx.Button(sb_speech, label="Test Voice")
         btn_test.SetToolTip(
             "Speak a short test line with the selected voice, rate, and volume."
         )
-        btn_test.SetName("Test Voice")
         speech_btn_sizer.AddStretchSpacer()
         speech_btn_sizer.Add(btn_refresh, 0, wx.RIGHT, 5)
         speech_btn_sizer.Add(btn_test)
@@ -418,43 +488,39 @@ class ConfigPanel(wx.ScrolledWindow):
         vbox.Add(speech, 0, wx.ALL | wx.EXPAND, 10)
 
         # --- General group ---
-        sb_gen = wx.StaticBox(self, label="General")
-        gen = wx.StaticBoxSizer(sb_gen, wx.VERTICAL)
+        sb_gen, gen = _group(self, "General")
         self.rb_units = wx.RadioBox(
-            self,
-            label="&Display Units",
+            sb_gen,
+            label="Display Units",
             choices=["Imperial (mph, \u00b0F, psi)", "Metric (km/h, \u00b0C, bar)"],
             majorDimension=1,
             style=wx.RA_SPECIFY_ROWS,
         )
-        self.rb_units.SetName("Display Units")
         self.rb_units.SetToolTip("Choose how speeds, temps, and pressures are spoken.")
         gen.Add(self.rb_units, 0, wx.ALL | wx.EXPAND, 6)
         self.rb_proto = wx.RadioBox(
-            self,
-            label="&Telemetry Protocol",
+            sb_gen,
+            label="Telemetry Protocol",
             choices=["Extended", "OutGauge"],
             majorDimension=1,
             style=wx.RA_SPECIFY_ROWS,
         )
-        self.rb_proto.SetName("Telemetry Protocol")
         self.rb_proto.SetToolTip(
             "Must match the protocol selected in the BeamNG.drive UI app."
         )
         gen.Add(self.rb_proto, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 6)
         self.chk_launch_beamng = wx.CheckBox(
-            self, label="&Launch BeamNG.drive on startup"
+            sb_gen, label="Launch BeamNG.drive on startup"
         )
         self.chk_launch_beamng.SetToolTip(
             "Automatically launch BeamNG.drive via Steam when BeamTel starts."
         )
-        self.chk_launch_beamng.SetName("Launch BeamNG.drive on startup")
         gen.Add(self.chk_launch_beamng, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
         # Renderer row — visible only when launch checkbox is checked.
         self._renderer_row = wx.BoxSizer(wx.HORIZONTAL)
-        lbl_renderer = wx.StaticText(self, label="&Graphics API:")
-        self.choice_renderer = wx.Choice(self, choices=["Direct3D 11", "Vulkan"])
+        lbl_renderer = wx.StaticText(sb_gen, label="Graphics API:")
+        self.choice_renderer = wx.Choice(sb_gen, choices=["Direct3D 11", "Vulkan"])
         self.choice_renderer.SetName("Graphics API")
         self.choice_renderer.SetToolTip(
             "Which graphics API BeamNG.drive should use when launched automatically."
@@ -466,26 +532,23 @@ class ConfigPanel(wx.ScrolledWindow):
         vbox.Add(gen, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
         # --- Automatic Announcements Group ---
-        sb_auto = wx.StaticBox(self, label="Automatic announcements")
-        auto_sizer = wx.StaticBoxSizer(sb_auto, wx.VERTICAL)
+        sb_auto, auto_sizer = _group(self, "Automatic announcements")
 
-        self.chk_announce_turn_signals = wx.CheckBox(self, label="Announce &turn signals")
-        self.chk_announce_turn_signals.SetName("Announce turn signals")
+        self.chk_announce_turn_signals = wx.CheckBox(sb_auto, label="Announce turn signals")
         self.chk_announce_turn_signals.SetToolTip(
             "Speak when the left, right, or hazard turn signals are activated or deactivated."
         )
         auto_sizer.Add(self.chk_announce_turn_signals, 0, wx.ALL, 6)
 
-        self.chk_announce_speed = wx.CheckBox(self, label="&Speed announcements")
-        self.chk_announce_speed.SetName("Speed announcements")
+        self.chk_announce_speed = wx.CheckBox(sb_auto, label="Speed announcements")
         self.chk_announce_speed.SetToolTip(
             "Automatically speak the current speed each time it crosses an interval threshold."
         )
         auto_sizer.Add(self.chk_announce_speed, 0, wx.LEFT | wx.RIGHT, 6)
 
         self._speed_interval_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        lbl_interval = wx.StaticText(self, label="Announce every:")
-        self.choice_speed_interval = wx.Choice(self)
+        lbl_interval = wx.StaticText(sb_auto, label="Announce every:")
+        self.choice_speed_interval = wx.Choice(sb_auto)
         self.choice_speed_interval.SetName("Speed announcement interval")
         self.choice_speed_interval.SetToolTip(
             "How many speed units must be crossed before a speed announcement is made."
@@ -494,15 +557,13 @@ class ConfigPanel(wx.ScrolledWindow):
         self._speed_interval_sizer.Add(self.choice_speed_interval, 1, wx.EXPAND)
         auto_sizer.Add(self._speed_interval_sizer, 0, wx.ALL | wx.EXPAND, 6)
 
-        self.chk_announce_gear = wx.CheckBox(self, label="&Gear change announcements")
-        self.chk_announce_gear.SetName("Gear change announcements")
+        self.chk_announce_gear = wx.CheckBox(sb_auto, label="Gear change announcements")
         self.chk_announce_gear.SetToolTip(
             "Speak the new gear each time the vehicle changes gears."
         )
         auto_sizer.Add(self.chk_announce_gear, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
-        self.chk_scanner_callout = wx.CheckBox(self, label="Periodic scanner distance &callouts")
-        self.chk_scanner_callout.SetName("Periodic scanner distance callouts")
+        self.chk_scanner_callout = wx.CheckBox(sb_auto, label="Periodic scanner distance callouts")
         self.chk_scanner_callout.SetToolTip(
             "When the vehicle scanner is active and has a target, periodically announce "
             "the distance and direction to that target."
@@ -510,8 +571,8 @@ class ConfigPanel(wx.ScrolledWindow):
         auto_sizer.Add(self.chk_scanner_callout, 0, wx.LEFT | wx.RIGHT, 6)
 
         self._callout_interval_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        lbl_callout = wx.StaticText(self, label="Callout every:")
-        self.choice_callout_interval = wx.Choice(self)
+        lbl_callout = wx.StaticText(sb_auto, label="Callout every:")
+        self.choice_callout_interval = wx.Choice(sb_auto)
         self.choice_callout_interval.SetName("Scanner callout interval")
         self.choice_callout_interval.SetToolTip(
             "How often (in seconds) to announce the scanner target distance and direction."
@@ -523,110 +584,111 @@ class ConfigPanel(wx.ScrolledWindow):
         vbox.Add(auto_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
         # --- Compass Clicks Group ---
-        sb_compass = wx.StaticBox(self, label="Compass Clicks")
-        compass_sizer = wx.StaticBoxSizer(sb_compass, wx.VERTICAL)
+        sb_compass, compass_sizer = _group(self, "Compass Clicks")
         compass_grid = wx.FlexGridSizer(0, 2, 6, 8)
         compass_grid.AddGrowableCol(1, 1)
 
-        lbl_compass_interval = wx.StaticText(self, label="Click Interval (degrees):")
-        self.spin_compass_interval = wx.SpinCtrl(self, min=1, max=90)
+        lbl_compass_interval = wx.StaticText(sb_compass, label="Click Interval (degrees):")
+        self.spin_compass_interval = wx.SpinCtrl(sb_compass, min=1, max=90)
         self.spin_compass_interval.SetToolTip(
             "The number of degrees of rotation before a compass click is heard (1-90)."
         )
         self.spin_compass_interval.SetName("Compass Click Interval")
+        _label_spin(self.spin_compass_interval, "Compass Click Interval")
         compass_grid.Add(lbl_compass_interval, 0, wx.ALIGN_CENTER_VERTICAL)
         compass_grid.Add(self.spin_compass_interval, 0, wx.EXPAND)
 
-        self.chk_compass_highlight = wx.CheckBox(self, label="Highlight Every:")
+        self.chk_compass_highlight = wx.CheckBox(sb_compass, label="Highlight Every:")
         self.chk_compass_highlight.SetToolTip(
             "Play a distinct sound on a certain click."
         )
-        self.chk_compass_highlight.SetName("Enable Compass Highlight")
 
-        self.spin_compass_highlight_nth = wx.SpinCtrl(self, min=2, max=100)
+        self.spin_compass_highlight_nth = wx.SpinCtrl(sb_compass, min=2, max=100)
         self.spin_compass_highlight_nth.SetToolTip(
             "Play the highlight sound on every Nth click (e.g., 4 for quadrants)."
         )
-        self.spin_compass_highlight_nth.SetName("Compass Highlight Nth Click")
+        # The unit lives in a separate StaticText that focus never lands on, so
+        # fold it into the name -- otherwise the value is announced bare.
+        self.spin_compass_highlight_nth.SetName("Highlight every N clicks")
+        _label_spin(self.spin_compass_highlight_nth, "Highlight every N clicks")
 
         compass_grid.Add(self.chk_compass_highlight, 0, wx.ALIGN_CENTER_VERTICAL)
 
-        highlight_row = wx.BoxSizer(wx.HORIZONTAL)
-        highlight_row.Add(self.spin_compass_highlight_nth, 1, wx.EXPAND)
-        highlight_row.Add(
-            wx.StaticText(self, label=" clicks"),
+        self._highlight_row = wx.BoxSizer(wx.HORIZONTAL)
+        self._highlight_row.Add(self.spin_compass_highlight_nth, 1, wx.EXPAND)
+        self._highlight_row.Add(
+            wx.StaticText(sb_compass, label=" clicks"),
             0,
             wx.ALIGN_CENTER_VERTICAL | wx.LEFT,
             4,
         )
-        compass_grid.Add(highlight_row, 1, wx.EXPAND)
+        compass_grid.Add(self._highlight_row, 1, wx.EXPAND)
 
         lbl_compass_click_level = wx.StaticText(
-            self, label="Compass Click &Volume (dBFS):"
+            sb_compass, label="Compass Click Volume (dBFS):"
         )
         self.spin_compass_click_level = wx.SpinCtrlDouble(
-            self, min=-120.0, max=0.0, inc=1.0
+            sb_compass, min=-120.0, max=0.0, inc=1.0
         )
         self.spin_compass_click_level.SetDigits(1)
         self.spin_compass_click_level.SetToolTip(
             "Volume level for compass clicks. 0 is loudest, negatives are quieter."
         )
         self.spin_compass_click_level.SetName("Compass Click Volume")
-        _label_spin_double(self.spin_compass_click_level, "Compass Click Volume")
+        _label_spin(self.spin_compass_click_level, "Compass Click Volume")
         compass_grid.Add(lbl_compass_click_level, 0, wx.ALIGN_CENTER_VERTICAL)
         compass_grid.Add(self.spin_compass_click_level, 0, wx.EXPAND)
 
         lbl_lowspeed_click_level = wx.StaticText(
-            self, label="Low Speed Click Volu&me (dBFS):"
+            sb_compass, label="Low Speed Click Volume (dBFS):"
         )
         self.spin_lowspeed_click_level = wx.SpinCtrlDouble(
-            self, min=-120.0, max=0.0, inc=1.0
+            sb_compass, min=-120.0, max=0.0, inc=1.0
         )
         self.spin_lowspeed_click_level.SetDigits(1)
         self.spin_lowspeed_click_level.SetToolTip(
             "Volume level for low speed detection clicks."
         )
         self.spin_lowspeed_click_level.SetName("Low Speed Click Volume")
-        _label_spin_double(self.spin_lowspeed_click_level, "Low Speed Click Volume")
+        _label_spin(self.spin_lowspeed_click_level, "Low Speed Click Volume")
         compass_grid.Add(lbl_lowspeed_click_level, 0, wx.ALIGN_CENTER_VERTICAL)
         compass_grid.Add(self.spin_lowspeed_click_level, 0, wx.EXPAND)
 
         compass_sizer.Add(compass_grid, 0, wx.ALL | wx.EXPAND, 6)
 
         # HRTF controls
-        self.chk_hrtf_enabled = wx.CheckBox(self, label="H&RTF Binaural Processing")
+        self.chk_hrtf_enabled = wx.CheckBox(sb_compass, label="HRTF Binaural Processing")
         self.chk_hrtf_enabled.SetToolTip(
             "Enable HRTF for 3D spatial audio on compass and low speed clicks. Requires SOFA file."
         )
-        self.chk_hrtf_enabled.SetName("Enable HRTF")
         compass_sizer.Add(self.chk_hrtf_enabled, 0, wx.LEFT | wx.RIGHT, 6)
 
         self.hrtf_grid = wx.FlexGridSizer(0, 2, 6, 8)
         self.hrtf_grid.AddGrowableCol(1, 1)
 
-        lbl_hrtf_emphasis = wx.StaticText(self, label="HRTF Front &Emphasis (dB):")
+        lbl_hrtf_emphasis = wx.StaticText(sb_compass, label="HRTF Front Emphasis (dB):")
         self.spin_hrtf_front_emphasis = wx.SpinCtrlDouble(
-            self, min=-24.0, max=0.0, inc=1.0
+            sb_compass, min=-24.0, max=0.0, inc=1.0
         )
         self.spin_hrtf_front_emphasis.SetDigits(1)
         self.spin_hrtf_front_emphasis.SetToolTip(
             "Attenuation applied to sounds behind you. More negative = rear sounds quieter relative to front."
         )
         self.spin_hrtf_front_emphasis.SetName("HRTF Front Emphasis")
-        _label_spin_double(self.spin_hrtf_front_emphasis, "HRTF Front Emphasis")
+        _label_spin(self.spin_hrtf_front_emphasis, "HRTF Front Emphasis")
         self.hrtf_grid.Add(lbl_hrtf_emphasis, 0, wx.ALIGN_CENTER_VERTICAL)
         self.hrtf_grid.Add(self.spin_hrtf_front_emphasis, 0, wx.EXPAND)
 
-        lbl_hrtf_distance = wx.StaticText(self, label="HRTF &Distance Gain (dB):")
+        lbl_hrtf_distance = wx.StaticText(sb_compass, label="HRTF Distance Gain (dB):")
         self.spin_hrtf_distance_gain = wx.SpinCtrlDouble(
-            self, min=-24.0, max=6.0, inc=1.0
+            sb_compass, min=-24.0, max=6.0, inc=1.0
         )
         self.spin_hrtf_distance_gain.SetDigits(1)
         self.spin_hrtf_distance_gain.SetToolTip(
             "Additional gain after HRTF processing. Negative values make sounds appear farther away."
         )
         self.spin_hrtf_distance_gain.SetName("HRTF Distance Gain")
-        _label_spin_double(self.spin_hrtf_distance_gain, "HRTF Distance Gain")
+        _label_spin(self.spin_hrtf_distance_gain, "HRTF Distance Gain")
         self.hrtf_grid.Add(lbl_hrtf_distance, 0, wx.ALIGN_CENTER_VERTICAL)
         self.hrtf_grid.Add(self.spin_hrtf_distance_gain, 0, wx.EXPAND)
 
@@ -634,13 +696,11 @@ class ConfigPanel(wx.ScrolledWindow):
         vbox.Add(compass_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
         # --- Vehicle Scanner Group ---
-        sb_scanner = wx.StaticBox(self, label="Vehicle Scanner")
-        scanner_sizer = wx.StaticBoxSizer(sb_scanner, wx.VERTICAL)
+        sb_scanner, scanner_sizer = _group(self, "Vehicle Scanner")
 
         self.chk_scanner_steer_tone = wx.CheckBox(
-            self, label="Solid &tone while steering"
+            sb_scanner, label="Solid tone while steering"
         )
-        self.chk_scanner_steer_tone.SetName("Solid scanner tone while steering")
         self.chk_scanner_steer_tone.SetToolTip(
             "When the scanner is active and you are steering, morph the target beeps into a "
             "continuous directional tone so you can lock onto the target's direction even when "
@@ -651,19 +711,20 @@ class ConfigPanel(wx.ScrolledWindow):
         scanner_grid = wx.FlexGridSizer(0, 2, 6, 8)
         scanner_grid.AddGrowableCol(1, 1)
 
-        lbl_scan_base = wx.StaticText(self, label="Base &Frequency (Hz):")
-        self.spin_scanner_base_freq = wx.SpinCtrl(self, min=100, max=8000)
+        lbl_scan_base = wx.StaticText(sb_scanner, label="Base Frequency (Hz):")
+        self.spin_scanner_base_freq = wx.SpinCtrl(sb_scanner, min=100, max=8000)
         self.spin_scanner_base_freq.SetToolTip(
             "Resting pitch of the scanner beeps/tone (when the target is directly behind). "
             "The pitch rises toward the target."
         )
         self.spin_scanner_base_freq.SetName("Scanner Base Frequency")
+        _label_spin(self.spin_scanner_base_freq, "Scanner Base Frequency")
         scanner_grid.Add(lbl_scan_base, 0, wx.ALIGN_CENTER_VERTICAL)
         scanner_grid.Add(self.spin_scanner_base_freq, 0, wx.EXPAND)
 
-        lbl_scan_offset = wx.StaticText(self, label="Alignment Pitch &Offset (octaves):")
+        lbl_scan_offset = wx.StaticText(sb_scanner, label="Alignment Pitch Offset (octaves):")
         self.spin_scanner_offset = wx.SpinCtrlDouble(
-            self, min=0.5, max=2.0, inc=(1.0 / 12.0)
+            sb_scanner, min=0.5, max=2.0, inc=(1.0 / 12.0)
         )
         self.spin_scanner_offset.SetDigits(2)
         self.spin_scanner_offset.SetToolTip(
@@ -671,7 +732,7 @@ class ConfigPanel(wx.ScrolledWindow):
             "frequency. Steps by one semitone; minimum half an octave, maximum two octaves."
         )
         self.spin_scanner_offset.SetName("Scanner Alignment Pitch Offset")
-        _label_spin_double(self.spin_scanner_offset, "Scanner Alignment Pitch Offset")
+        _label_spin(self.spin_scanner_offset, "Scanner Alignment Pitch Offset")
         scanner_grid.Add(lbl_scan_offset, 0, wx.ALIGN_CENTER_VERTICAL)
         scanner_grid.Add(self.spin_scanner_offset, 0, wx.EXPAND)
 
@@ -679,36 +740,37 @@ class ConfigPanel(wx.ScrolledWindow):
         vbox.Add(scanner_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
         # --- Pitch & Roll Group ---
-        sb_pitchroll = wx.StaticBox(self, label="Pitch && Roll")
-        pitchroll_sizer = wx.StaticBoxSizer(sb_pitchroll, wx.VERTICAL)
+        # The doubled ampersand is an escaped literal: wx still reads a lone "&"
+        # in a label as a mnemonic marker even though this UI no longer uses any.
+        sb_pitchroll, pitchroll_sizer = _group(self, "Pitch && Roll")
+        sb_pitchroll.SetName("Pitch and Roll")
 
-        self.chk_pitch_roll_enabled = wx.CheckBox(self, label="&Pitch and Roll Tones")
+        self.chk_pitch_roll_enabled = wx.CheckBox(sb_pitchroll, label="Pitch and Roll Tones")
         self.chk_pitch_roll_enabled.SetToolTip(
             "Enable continuous tones that indicate vehicle pitch and roll angle."
         )
-        self.chk_pitch_roll_enabled.SetName("Enable Pitch and Roll Tones")
         pitchroll_sizer.Add(self.chk_pitch_roll_enabled, 0, wx.ALL, 6)
 
         pitchroll_grid = wx.FlexGridSizer(0, 2, 6, 8)
         pitchroll_grid.AddGrowableCol(1, 1)
 
-        lbl_pr_max = wx.StaticText(self, label="Ma&ximum Volume (dBFS):")
-        self.spin_pitch_roll_max = wx.SpinCtrlDouble(self, min=-120.0, max=0.0, inc=1.0)
+        lbl_pr_max = wx.StaticText(sb_pitchroll, label="Maximum Volume (dBFS):")
+        self.spin_pitch_roll_max = wx.SpinCtrlDouble(sb_pitchroll, min=-120.0, max=0.0, inc=1.0)
         self.spin_pitch_roll_max.SetDigits(1)
         self.spin_pitch_roll_max.SetToolTip("Volume level at maximum tilt angle.")
         self.spin_pitch_roll_max.SetName("Pitch Roll Maximum Volume")
-        _label_spin_double(self.spin_pitch_roll_max, "Pitch Roll Maximum Volume")
+        _label_spin(self.spin_pitch_roll_max, "Pitch Roll Maximum Volume")
         pitchroll_grid.Add(lbl_pr_max, 0, wx.ALIGN_CENTER_VERTICAL)
         pitchroll_grid.Add(self.spin_pitch_roll_max, 0, wx.EXPAND)
 
-        lbl_pr_min = wx.StaticText(self, label="Sta&bilized Volume (dBFS):")
-        self.spin_pitch_roll_min = wx.SpinCtrlDouble(self, min=-120.0, max=0.0, inc=1.0)
+        lbl_pr_min = wx.StaticText(sb_pitchroll, label="Stabilized Volume (dBFS):")
+        self.spin_pitch_roll_min = wx.SpinCtrlDouble(sb_pitchroll, min=-120.0, max=0.0, inc=1.0)
         self.spin_pitch_roll_min.SetDigits(1)
         self.spin_pitch_roll_min.SetToolTip(
             "Volume level when the vehicle is stable (faded down)."
         )
         self.spin_pitch_roll_min.SetName("Pitch Roll Stabilized Volume")
-        _label_spin_double(self.spin_pitch_roll_min, "Pitch Roll Stabilized Volume")
+        _label_spin(self.spin_pitch_roll_min, "Pitch Roll Stabilized Volume")
         pitchroll_grid.Add(lbl_pr_min, 0, wx.ALIGN_CENTER_VERTICAL)
         pitchroll_grid.Add(self.spin_pitch_roll_min, 0, wx.EXPAND)
 
@@ -718,55 +780,50 @@ class ConfigPanel(wx.ScrolledWindow):
         vbox.Add(pitchroll_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
         # --- Shift Tone Group ---
-        sb_shift = wx.StaticBox(self, label="Shift Tone")
-        shift_sizer = wx.StaticBoxSizer(sb_shift, wx.VERTICAL)
+        sb_shift, shift_sizer = _group(self, "Shift Tone")
         shift_grid = wx.FlexGridSizer(0, 3, 6, 8)
         shift_grid.AddGrowableCol(1, 1)
-        lbl_shift_freq = wx.StaticText(self, label="Shift Tone &Frequency (Hz):")
-        self.spin_freq = wx.SpinCtrlDouble(self, min=20.0, max=20000.0, inc=1.0)
+        lbl_shift_freq = wx.StaticText(sb_shift, label="Shift Tone Frequency (Hz):")
+        self.spin_freq = wx.SpinCtrlDouble(sb_shift, min=20.0, max=20000.0, inc=1.0)
         self.spin_freq.SetDigits(1)
         self.spin_freq.SetToolTip("Triangle tone frequency when shift light is on.")
         self.spin_freq.SetName("Shift Tone Frequency")
-        _label_spin_double(self.spin_freq, "Shift Tone Frequency")
+        _label_spin(self.spin_freq, "Shift Tone Frequency")
         shift_grid.Add(lbl_shift_freq, 0, wx.ALIGN_CENTER_VERTICAL)
         shift_grid.Add(self.spin_freq, 1, wx.EXPAND)
         shift_grid.Add((0, 0))
-        lbl_shift_level = wx.StaticText(self, label="Shift Tone Le&vel (dBFS):")
-        self.spin_level = wx.SpinCtrlDouble(self, min=-120.0, max=0.0, inc=1.0)
+        lbl_shift_level = wx.StaticText(sb_shift, label="Shift Tone Level (dBFS):")
+        self.spin_level = wx.SpinCtrlDouble(sb_shift, min=-120.0, max=0.0, inc=1.0)
         self.spin_level.SetDigits(1)
         self.spin_level.SetToolTip("Tone level; 0 is loudest, negatives are quieter.")
         self.spin_level.SetName("Shift Tone Level")
-        _label_spin_double(self.spin_level, "Shift Tone Level")
+        _label_spin(self.spin_level, "Shift Tone Level")
         shift_grid.Add(lbl_shift_level, 0, wx.ALIGN_CENTER_VERTICAL)
         shift_grid.Add(self.spin_level, 1, wx.EXPAND)
-        self.btn_test_tone = wx.Button(self, label="Test Shift &Tone")
+        self.btn_test_tone = wx.Button(sb_shift, label="Test Shift Tone")
         self.btn_test_tone.SetToolTip(
             "Plays the shift tone using the current frequency and level settings."
         )
-        self.btn_test_tone.SetName("Test Shift Tone")
         self.btn_test_tone.Enable(AUDIO_TEST_OK)
         shift_grid.Add(self.btn_test_tone, 0)
         shift_sizer.Add(shift_grid, 0, wx.ALL | wx.EXPAND, 6)
         vbox.Add(shift_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
         # --- Warning Sounds Group ---
-        sb_warnings = wx.StaticBox(self, label="Warning Sounds")
-        warnings_sizer = wx.StaticBoxSizer(sb_warnings, wx.VERTICAL)
+        sb_warnings, warnings_sizer = _group(self, "Warning Sounds")
 
-        self.chk_oil_chime_enabled = wx.CheckBox(self, label="&Oil Overheating Alert")
+        self.chk_oil_chime_enabled = wx.CheckBox(sb_warnings, label="Oil Overheating Alert")
         self.chk_oil_chime_enabled.SetToolTip(
             "Enable the oil warning chime when the oil pressure warning light is on."
         )
-        self.chk_oil_chime_enabled.SetName("Oil Overheating Alert")
         warnings_sizer.Add(self.chk_oil_chime_enabled, 0, wx.ALL, 6)
 
         self.chk_tc_clicks_enabled = wx.CheckBox(
-            self, label="T&C (Traction Control) Clicks"
+            sb_warnings, label="TC (Traction Control) Clicks"
         )
         self.chk_tc_clicks_enabled.SetToolTip(
             "Enable the traction control activation click sound."
         )
-        self.chk_tc_clicks_enabled.SetName("TC Clicks")
         warnings_sizer.Add(
             self.chk_tc_clicks_enabled, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6
         )
@@ -774,21 +831,21 @@ class ConfigPanel(wx.ScrolledWindow):
         warnings_grid = wx.FlexGridSizer(0, 2, 6, 8)
         warnings_grid.AddGrowableCol(1, 1)
 
-        lbl_buzzer = wx.StaticText(self, label="&Check Engine Buzzer Level (dBFS):")
-        self.spin_buzzer_level = wx.SpinCtrlDouble(self, min=-120.0, max=0.0, inc=1.0)
+        lbl_buzzer = wx.StaticText(sb_warnings, label="Check Engine Buzzer Level (dBFS):")
+        self.spin_buzzer_level = wx.SpinCtrlDouble(sb_warnings, min=-120.0, max=0.0, inc=1.0)
         self.spin_buzzer_level.SetDigits(1)
         self.spin_buzzer_level.SetToolTip("Level for the check engine warning sound.")
         self.spin_buzzer_level.SetName("Check Engine Buzzer Level")
-        _label_spin_double(self.spin_buzzer_level, "Check Engine Buzzer Level")
+        _label_spin(self.spin_buzzer_level, "Check Engine Buzzer Level")
         warnings_grid.Add(lbl_buzzer, 0, wx.ALIGN_CENTER_VERTICAL)
         warnings_grid.Add(self.spin_buzzer_level, 0, wx.EXPAND)
 
-        lbl_chime = wx.StaticText(self, label="&Oil Warning Chime Level (dBFS):")
-        self.spin_chime_level = wx.SpinCtrlDouble(self, min=-120.0, max=0.0, inc=1.0)
+        lbl_chime = wx.StaticText(sb_warnings, label="Oil Warning Chime Level (dBFS):")
+        self.spin_chime_level = wx.SpinCtrlDouble(sb_warnings, min=-120.0, max=0.0, inc=1.0)
         self.spin_chime_level.SetDigits(1)
         self.spin_chime_level.SetToolTip("Level for the oil pressure warning chime.")
         self.spin_chime_level.SetName("Oil Warning Chime Level")
-        _label_spin_double(self.spin_chime_level, "Oil Warning Chime Level")
+        _label_spin(self.spin_chime_level, "Oil Warning Chime Level")
         warnings_grid.Add(lbl_chime, 0, wx.ALIGN_CENTER_VERTICAL)
         warnings_grid.Add(self.spin_chime_level, 0, wx.EXPAND)
 
@@ -796,11 +853,9 @@ class ConfigPanel(wx.ScrolledWindow):
         vbox.Add(warnings_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
         # --- Audio Device Group ---
-        sb_audio = wx.StaticBox(self, label="Audio Device")
-        audio_sizer = wx.StaticBoxSizer(sb_audio, wx.VERTICAL)
+        sb_audio, audio_sizer = _group(self, "Audio Device")
 
-        self.chk_follow_device = wx.CheckBox(self, label="F&ollow Default Audio Device")
-        self.chk_follow_device.SetName("Follow Default Audio Device")
+        self.chk_follow_device = wx.CheckBox(sb_audio, label="Follow Default Audio Device")
         self.chk_follow_device.SetToolTip(
             "Automatically switch the audio output when the OS default device changes (recommended)."
         )
@@ -808,14 +863,13 @@ class ConfigPanel(wx.ScrolledWindow):
 
         # Fixed-device row — shown only when "Follow" is unchecked.
         self._device_row = wx.BoxSizer(wx.HORIZONTAL)
-        lbl_fixed = wx.StaticText(self, label="Fixed &Output Device:")
-        self.choice_device = wx.Choice(self)
+        lbl_fixed = wx.StaticText(sb_audio, label="Fixed Output Device:")
+        self.choice_device = wx.Choice(sb_audio)
         self.choice_device.SetName("Fixed Output Device")
         self.choice_device.SetToolTip(
             "WASAPI output device to use when not following the OS default."
         )
-        btn_refresh_device = wx.Button(self, label="Re&fresh")
-        btn_refresh_device.SetName("Refresh Devices")
+        btn_refresh_device = wx.Button(sb_audio, label="Refresh Devices")
         btn_refresh_device.SetToolTip("Re-scan for WASAPI output devices.")
         self._device_row.Add(lbl_fixed, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
         self._device_row.Add(
@@ -828,11 +882,11 @@ class ConfigPanel(wx.ScrolledWindow):
 
         poll_row = wx.FlexGridSizer(0, 2, 6, 8)
         poll_row.AddGrowableCol(1, 1)
-        lbl_poll = wx.StaticText(self, label="Device &Poll Interval (sec):")
-        self.spin_poll = wx.SpinCtrlDouble(self, min=0.1, max=10.0, inc=0.1)
+        lbl_poll = wx.StaticText(sb_audio, label="Device Poll Interval (sec):")
+        self.spin_poll = wx.SpinCtrlDouble(sb_audio, min=0.1, max=10.0, inc=0.1)
         self.spin_poll.SetDigits(1)
         self.spin_poll.SetName("Device Poll Interval")
-        _label_spin_double(self.spin_poll, "Device Poll Interval")
+        _label_spin(self.spin_poll, "Device Poll Interval")
         self.spin_poll.SetToolTip(
             "How often to check for default audio device changes (in seconds)."
         )
@@ -844,7 +898,7 @@ class ConfigPanel(wx.ScrolledWindow):
 
         # --- Buttons ---
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.btn_reset = wx.Button(self, label="&Reset to Defaults")
+        self.btn_reset = wx.Button(self, label="Reset to Defaults")
         btn_sizer.Add(self.btn_reset, 0, wx.ALL, 5)
         vbox.Add(btn_sizer, 0, wx.ALIGN_RIGHT | wx.RIGHT | wx.BOTTOM, 6)
 
@@ -865,7 +919,6 @@ class ConfigPanel(wx.ScrolledWindow):
 
         # Auto-save: bind all data controls
         for ctrl in (
-            self.chk_force_sapi,
             self.chk_launch_beamng,
             self.chk_compass_highlight,
             self.chk_hrtf_enabled,
@@ -917,14 +970,17 @@ class ConfigPanel(wx.ScrolledWindow):
             _bind_spin_double_page_keys(ctrl, self._schedule_save)
 
         self.choice_voice.Bind(wx.EVT_CHOICE, self._schedule_save)
+        self.choice_backend.Bind(wx.EVT_CHOICE, self.on_change_backend)
 
         # Populate
         self.voices = []
+        self._backends = []
         self._callout_intervals = [5, 10, 15, 20, 30, 45, 60]
         self.choice_callout_interval.AppendItems(
             [f"{v} seconds" for v in self._callout_intervals]
         )
         self.on_refresh_devices(None)  # fill device list before load_into_controls
+        self._populate_backends()  # same, for the speech backend list
         self.load_into_controls(load_config())
         self.on_toggle_highlight(None)
         self.on_toggle_hrtf(None)
@@ -934,38 +990,41 @@ class ConfigPanel(wx.ScrolledWindow):
         self.on_toggle_scanner_callout(None)
         self.on_refresh_voices(None)
 
-        # Accessibility names
-        sb_speech.SetName("Speech")
-        sb_gen.SetName("General")
-        sb_auto.SetName("Automatic announcements")
-        sb_compass.SetName("Compass Clicks")
-        sb_scanner.SetName("Vehicle Scanner")
-        sb_pitchroll.SetName("Pitch and Roll")
-        sb_shift.SetName("Shift Tone")
-        sb_warnings.SetName("Warning Sounds")
-        sb_audio.SetName("Audio Device")
+        # Every group's controls are parented to its StaticBox (see _group), so
+        # the box supplies the group name from its own label -- no SetName
+        # needed here.  The one exception is Pitch && Roll, named at creation
+        # because its label carries an escaped ampersand.
 
     # ---- Toggle handlers ----
 
     def on_toggle_highlight(self, evt):
-        is_enabled = self.chk_compass_highlight.IsChecked()
-        sizer_item = self.spin_compass_highlight_nth.GetContainingSizer()
-        if sizer_item:
-            sizer_item.Show(is_enabled)
-            self.spin_compass_highlight_nth.Enable(is_enabled)
+        # ShowItems, not Show: wx.Sizer.Show with a single argument binds to the
+        # Show(index, ...) overload, so Show(True)/Show(False) silently meant
+        # "show item 1" / "show item 0" and the row never hid at all.
+        _set_row(
+            self._highlight_row,
+            (self.spin_compass_highlight_nth,),
+            self.chk_compass_highlight.IsChecked(),
+            self.chk_compass_highlight,
+        )
         self.Layout()
 
     def on_toggle_hrtf(self, evt):
-        is_enabled = self.chk_hrtf_enabled.IsChecked()
-        self.hrtf_grid.ShowItems(is_enabled)
-        self.spin_hrtf_front_emphasis.Enable(is_enabled)
-        self.spin_hrtf_distance_gain.Enable(is_enabled)
+        _set_row(
+            self.hrtf_grid,
+            (self.spin_hrtf_front_emphasis, self.spin_hrtf_distance_gain),
+            self.chk_hrtf_enabled.IsChecked(),
+            self.chk_hrtf_enabled,
+        )
         self.Layout()
 
     def on_toggle_announce_speed(self, evt):
-        is_enabled = self.chk_announce_speed.IsChecked()
-        self._speed_interval_sizer.ShowItems(is_enabled)
-        self.choice_speed_interval.Enable(is_enabled)
+        _set_row(
+            self._speed_interval_sizer,
+            (self.choice_speed_interval,),
+            self.chk_announce_speed.IsChecked(),
+            self.chk_announce_speed,
+        )
         self.Layout()
         if evt:
             evt.Skip()
@@ -1019,13 +1078,24 @@ class ConfigPanel(wx.ScrolledWindow):
         except Exception:
             pass
 
+    def flush_pending_save(self):
+        """Write immediately if the debounce timer is still counting down.
+
+        Saving is debounced by 2 seconds, so closing the window straight after
+        an edit would otherwise discard it with no indication at all. Call this
+        from the owning frame's close handler.
+        """
+        if self._save_timer.IsRunning():
+            self._save_timer.Stop()
+            self._auto_save()
+
     # ---- Config <-> Controls ----
 
     def load_into_controls(self, cfg):
         self._loading = True
         try:
             self.cur_cfg = cfg
-            self.chk_force_sapi.SetValue(cfg.get("force_sapi", False))
+            self._select_backend(cfg.get("speech_backend", "auto"))
             self.rb_units.SetSelection(
                 1 if str(cfg.get("units", "imperial")).lower().startswith("m") else 0
             )
@@ -1034,8 +1104,8 @@ class ConfigPanel(wx.ScrolledWindow):
                 if str(cfg.get("telemetry_protocol", "extended")).lower() == "outgauge"
                 else 0
             )
-            self.spin_rate.SetValue(cfg.get("sapi_rate", 0))
-            self.spin_volume.SetValue(cfg.get("sapi_volume", 100))
+            self.spin_rate.SetValue(cfg.get("speech_rate", 50))
+            self.spin_volume.SetValue(cfg.get("speech_volume", 100))
             self.spin_freq.SetValue(cfg.get("shift_tone_frequency_hz", 880.0))
             self.spin_level.SetValue(cfg.get("shift_tone_level_dbfs", -12.0))
             self.spin_buzzer_level.SetValue(
@@ -1099,13 +1169,13 @@ class ConfigPanel(wx.ScrolledWindow):
 
     def controls_to_config(self):
         cfg = self.cur_cfg.copy()
-        cfg["force_sapi"] = self.chk_force_sapi.GetValue()
+        cfg["speech_backend"] = self._selected_backend()
         cfg["units"] = "metric" if self.rb_units.GetSelection() == 1 else "imperial"
         cfg["telemetry_protocol"] = (
             "outgauge" if self.rb_proto.GetSelection() == 1 else "extended"
         )
-        cfg["sapi_rate"] = self.spin_rate.GetValue()
-        cfg["sapi_volume"] = self.spin_volume.GetValue()
+        cfg["speech_rate"] = self.spin_rate.GetValue()
+        cfg["speech_volume"] = self.spin_volume.GetValue()
         cfg["shift_tone_frequency_hz"] = self.spin_freq.GetValue()
         cfg["shift_tone_level_dbfs"] = self.spin_level.GetValue()
         cfg["check_engine_buzzer_level_dbfs"] = self.spin_buzzer_level.GetValue()
@@ -1147,20 +1217,92 @@ class ConfigPanel(wx.ScrolledWindow):
         )
 
         sel = self.choice_voice.GetSelection()
-        cfg["sapi_voice_name"] = (
-            self.choice_voice.GetString(sel) if sel != wx.NOT_FOUND else ""
+        cfg["speech_voice_name"] = (
+            self.choice_voice.GetString(sel)
+            if sel != wx.NOT_FOUND and self.voices
+            else ""
         )
         return cfg
+
+    # ---- Speech backend helpers ----
+
+    _AUTO_BACKEND_LABEL = "Auto (best available)"
+
+    def _populate_backends(self):
+        """Fill the backend picker from Prism's registry."""
+        self._backends = list_speech_backends()
+        self.choice_backend.Clear()
+        self.choice_backend.AppendItems(
+            [self._AUTO_BACKEND_LABEL] + self._backends
+        )
+        self.choice_backend.SetSelection(0)
+
+    def _select_backend(self, name):
+        want = (name or "auto").strip()
+        idx = 0
+        if want.lower() != "auto":
+            for i, nm in enumerate(self._backends):
+                if nm.lower() == want.lower():
+                    idx = i + 1  # +1 for the Auto entry
+                    break
+        self.choice_backend.SetSelection(idx)
+
+    def _selected_backend(self):
+        sel = self.choice_backend.GetSelection()
+        if sel <= 0 or sel - 1 >= len(self._backends):
+            return "auto"
+        return self._backends[sel - 1]
+
+    def _apply_backend_capabilities(self, feats):
+        """Grey out the controls the selected backend does not implement.
+
+        Screen readers own their own voice and rate, so those controls are
+        inert for NVDA or JAWS; disabling them is more honest than accepting a
+        value that will be ignored.
+        """
+        if feats is None:
+            for ctrl in (self.choice_voice, self.spin_rate, self.spin_volume):
+                _enable(ctrl, False, self.choice_backend)
+            self.lbl_speech_caps.SetLabel("Backend not available on this machine.")
+            return
+        _enable(self.choice_voice, bool(feats.supports_set_voice), self.choice_backend)
+        _enable(self.spin_rate, bool(feats.supports_set_rate), self.choice_backend)
+        _enable(self.spin_volume, bool(feats.supports_set_volume), self.choice_backend)
+        can = [
+            label
+            for label, ok in (
+                ("voice", feats.supports_set_voice),
+                ("rate", feats.supports_set_rate),
+                ("volume", feats.supports_set_volume),
+                ("braille", feats.supports_braille),
+            )
+            if ok
+        ]
+        self.lbl_speech_caps.SetLabel(
+            "This backend supports: " + ", ".join(can)
+            if can
+            else "This backend manages its own voice, rate, and volume."
+        )
+
+    def on_change_backend(self, evt):
+        self.on_refresh_voices(None)
+        self._schedule_save(evt)
 
     # ---- Button handlers ----
 
     def on_refresh_voices(self, evt):
-        names = list_sapi_voices()
+        if evt is not None:
+            # An explicit Refresh should also re-detect readers that started
+            # since the configurator opened.
+            current = self._selected_backend()
+            self._populate_backends()
+            self._select_backend(current)
+        names, feats = list_speech_voices(self._selected_backend())
         self.voices = names[:]
         self.choice_voice.Clear()
         if names:
             self.choice_voice.AppendItems(names)
-            want = (self.cur_cfg.get("sapi_voice_name", "") or "").strip().lower()
+            want = (self.cur_cfg.get("speech_voice_name", "") or "").strip().lower()
             sel_idx = 0
             if want:
                 for i, nm in enumerate(names):
@@ -1169,18 +1311,20 @@ class ConfigPanel(wx.ScrolledWindow):
                         break
             self.choice_voice.SetSelection(sel_idx)
         else:
-            self.choice_voice.Append("No SAPI voices found")
+            self.choice_voice.Append("Backend chooses its own voice")
             self.choice_voice.SetSelection(0)
+        self._apply_backend_capabilities(feats)
 
     def on_test_voice(self, evt):
         cfg = self.controls_to_config()
-        ok, err = test_sapi_voice(
-            cfg.get("sapi_voice_name", ""),
-            cfg.get("sapi_rate", 0),
-            cfg.get("sapi_volume", 100),
+        ok, err = test_speech_voice(
+            cfg.get("speech_backend", "auto"),
+            cfg.get("speech_voice_name", ""),
+            cfg.get("speech_rate", 50),
+            cfg.get("speech_volume", 100),
         )
         if not ok and err:
-            wx.MessageBox(err, "SAPI Test", wx.OK | wx.ICON_ERROR)
+            wx.MessageBox(err, "Speech Test", wx.OK | wx.ICON_ERROR)
 
     def on_test_tone(self, evt):
         freq = self.spin_freq.GetValue()
@@ -1191,26 +1335,38 @@ class ConfigPanel(wx.ScrolledWindow):
 
     def on_toggle_launch_beamng(self, evt):
         """Show the renderer dropdown only when auto-launch is enabled."""
-        launching = self.chk_launch_beamng.IsChecked()
-        self._renderer_row.ShowItems(launching)
-        self.choice_renderer.Enable(launching)
+        _set_row(
+            self._renderer_row,
+            (self.choice_renderer,),
+            self.chk_launch_beamng.IsChecked(),
+            self.chk_launch_beamng,
+        )
         self.Layout()
         if evt:
             evt.Skip()
 
     def on_toggle_scanner_callout(self, evt):
         """Show the interval dropdown only when scanner callouts are enabled."""
-        enabled = self.chk_scanner_callout.IsChecked()
-        self._callout_interval_sizer.ShowItems(enabled)
-        self.choice_callout_interval.Enable(enabled)
+        _set_row(
+            self._callout_interval_sizer,
+            (self.choice_callout_interval,),
+            self.chk_scanner_callout.IsChecked(),
+            self.chk_scanner_callout,
+        )
         self.Layout()
         if evt:
             evt.Skip()
 
     def on_toggle_follow_device(self, evt):
         """Show the fixed-device row only when 'Follow Default' is unchecked."""
-        following = self.chk_follow_device.IsChecked()
-        self._device_row.ShowItems(not following)
+        # Match the other four toggles: hiding alone leaves the control out of
+        # the tab order, but disabling it keeps the two states consistent.
+        _set_row(
+            self._device_row,
+            (self.choice_device,),
+            not self.chk_follow_device.IsChecked(),
+            self.chk_follow_device,
+        )
         self.Layout()
         if evt:
             evt.Skip()
@@ -1229,6 +1385,17 @@ class ConfigPanel(wx.ScrolledWindow):
             self.choice_device.SetSelection(0)
 
     def on_reset(self, evt):
+        # Destructive and irreversible, and there is no save button to hesitate
+        # over -- the wipe reaches disk on its own two seconds later. Mirror
+        # _clear_api_key and ask first.
+        ans = wx.MessageBox(
+            "Reset every setting on this tab to its default value?",
+            "Reset to Defaults",
+            wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
+            self,
+        )
+        if ans != wx.YES:
+            return
         try:
             self.load_into_controls(DEFAULT_CONFIG.copy())
             self.on_refresh_voices(None)
@@ -1242,6 +1409,15 @@ class ConfigPanel(wx.ScrolledWindow):
             self._schedule_save()
         except Exception as e:
             wx.MessageBox(f"Failed to reset:\n{e}", "Error", wx.OK | wx.ICON_ERROR)
+            return
+        # Acknowledge the destructive action; without this there is no signal at
+        # all that the reset happened.
+        wx.MessageBox(
+            "All settings on this tab have been reset to their defaults.",
+            "Reset to Defaults",
+            wx.OK | wx.ICON_INFORMATION,
+            self,
+        )
 
 
 class AIDescriberPanel(wx.ScrolledWindow):
@@ -1284,24 +1460,26 @@ class AIDescriberPanel(wx.ScrolledWindow):
         vbox.Add(intro, 0, wx.ALL, 8)
 
         # ---- API key ----
-        key_box = wx.StaticBoxSizer(wx.VERTICAL, self, "Gemini API Key")
-        self.btn_api_key = wx.Button(self, label="Set API &key")
-        self.btn_api_key.SetName("Set or clear API key")
+        sb_key, key_box = _group(self, "Gemini API Key")
+        # No SetName: the label flips between "Set API key" and "Clear API key"
+        # at runtime, and a fixed name would go stale on every toggle.
+        self.btn_api_key = wx.Button(sb_key, label="Set API key")
         self.btn_api_key.Bind(wx.EVT_BUTTON, self.on_api_key_button)
         key_box.Add(self.btn_api_key, 0, wx.ALL, 6)
-        self.lbl_key_status = wx.StaticText(self, label="")
+        self.lbl_key_status = wx.StaticText(sb_key, label="")
         self.lbl_key_status.SetName("API key status")
         key_box.Add(self.lbl_key_status, 0, wx.LEFT | wx.BOTTOM, 6)
         vbox.Add(key_box, 0, wx.EXPAND | wx.ALL, 6)
 
         # ---- Model ----
-        model_box = wx.StaticBoxSizer(wx.VERTICAL, self, "Model")
+        sb_model, model_box = _group(self, "Vision Model")
         grid = wx.FlexGridSizer(1, 2, 6, 6)
         grid.AddGrowableCol(1, 1)
-        lbl_model = wx.StaticText(self, label="&Vision model:")
-        self.choice_model = wx.Choice(self, choices=[d for _n, d in self._models])
+        # The group box and this label together name the combo; a SetName on
+        # top of them made readers announce it twice.
+        lbl_model = wx.StaticText(sb_model, label="Model:")
+        self.choice_model = wx.Choice(sb_model, choices=[d for _n, d in self._models])
         self.choice_model.SetToolTip("The Gemini model used to describe the scene.")
-        self.choice_model.SetName("Vision model")
         self.choice_model.Bind(wx.EVT_CHOICE, self.on_change)
         grid.Add(lbl_model, 0, wx.ALIGN_CENTER_VERTICAL)
         grid.Add(self.choice_model, 1, wx.EXPAND)
@@ -1309,16 +1487,15 @@ class AIDescriberPanel(wx.ScrolledWindow):
         vbox.Add(model_box, 0, wx.EXPAND | wx.ALL, 6)
 
         # ---- Capture options ----
-        opt_box = wx.StaticBoxSizer(wx.VERTICAL, self, "Capture")
+        sb_opt, opt_box = _group(self, "Capture")
         self.chk_disable_ui_toggle = wx.CheckBox(
-            self, label="&Disable automatic UI hiding during capture"
+            sb_opt, label="Disable automatic UI hiding during capture"
         )
         self.chk_disable_ui_toggle.SetToolTip(
             "When unchecked, the game UI is briefly hidden while the screenshot is "
             "taken so HUD elements don't appear in the description. Check this to "
             "leave the UI visible (e.g. to have it described)."
         )
-        self.chk_disable_ui_toggle.SetName("Disable automatic UI hiding")
         self.chk_disable_ui_toggle.Bind(wx.EVT_CHECKBOX, self.on_change)
         opt_box.Add(self.chk_disable_ui_toggle, 0, wx.ALL, 6)
         vbox.Add(opt_box, 0, wx.EXPAND | wx.ALL, 6)
@@ -1372,10 +1549,10 @@ class AIDescriberPanel(wx.ScrolledWindow):
 
     def _refresh_key_button(self):
         if self._has_key():
-            self.btn_api_key.SetLabel("Clear API &key")
+            self.btn_api_key.SetLabel("Clear API key")
             self.lbl_key_status.SetLabel("An API key is configured.")
         else:
-            self.btn_api_key.SetLabel("Set API &key")
+            self.btn_api_key.SetLabel("Set API key")
             self.lbl_key_status.SetLabel("No API key configured.")
         self.Layout()
 
@@ -1429,7 +1606,11 @@ class AIDescriberPanel(wx.ScrolledWindow):
         threading.Thread(target=worker, daemon=True).start()
 
     def _on_validated(self, key, ok, err):
+        # The button was disabled while validation ran in the background, which
+        # dropped focus off the very control the user had just pressed. Put it
+        # back, so its new label ("Clear API key") is what gets announced.
         self.btn_api_key.Enable(True)
+        self.btn_api_key.SetFocus()
         if ok:
             self.cur_cfg["ai_describer_api_key"] = key
             self._save()

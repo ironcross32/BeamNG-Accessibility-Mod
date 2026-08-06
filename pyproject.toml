@@ -7,12 +7,14 @@ requires-python = ">=3.11"
 dependencies = [
     "aiohttp>=3.12.15",
     "asyncio>=4.0.0",
-    "comtypes>=1.4.15",
     "keyboard>=0.13.5",
     "mouse>=0.7.1",
     "mss>=9.0.1",
     "numpy>=2.3.3",
     "ordered-set>=4.1.0",
+    # Pinned, not floated: prismatoid is pre-1.0 and its Context/Backend API
+    # still moves between minor releases.
+    "prismatoid==0.17.3",
     "sounddevice>=0.5.2",
     "wxpython>=4.2.3",
     "zstandard>=0.25.0",

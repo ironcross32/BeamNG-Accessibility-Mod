@@ -84,10 +84,13 @@ if hasattr(signal, "SIGBREAK"):
 #  Defaults & Config
 # =========================
 DEFAULT_CONFIG = {
-    "force_sapi": False,
-    "sapi_voice_name": "",
-    "sapi_rate": 0,
-    "sapi_volume": 100,
+    # "auto" lets Prism pick by backend priority; otherwise a Prism backend
+    # name ("NVDA", "JAWS", "SAPI", "OneCore", ...). Rate and volume are
+    # percentages and only apply to backends that report supporting them.
+    "speech_backend": "auto",
+    "speech_voice_name": "",
+    "speech_rate": 50,
+    "speech_volume": 100,
     "units": "imperial",
     "shift_tone_frequency_hz": 880.0,
     "shift_tone_level_dbfs": -12.0,
@@ -133,19 +136,8 @@ DEFAULT_CONFIG = {
 # =========================
 #  Speech & Buffer
 # =========================
-try:
-    import sral
+import speech
 
-    SRAL_OK = True
-except Exception as e:
-    SRAL_OK = False
-    logger.warning(
-        "SRAL Python binding not found. Speech will fall back to other engines."
-    )
-
-SR_INSTANCE = None
-_sral_lock = threading.Lock()
-_sral_tried = False
 SPEECH_BUFFER = deque(maxlen=100)
 
 # Loading lifecycle state is driven by the UI's official screen-cover state.
@@ -156,45 +148,6 @@ _loading_pending_vehicle = ""
 _loading_generation = 0
 _telemetry_baseline_pending = False
 _loading_lock = threading.Lock()
-
-
-def sral_init():
-    """Return the shared SRAL instance, constructing it at most once.
-
-    Called from every thread that speaks (telemetry, scanner, keyboard worker,
-    timers, the wx UI, the WebSocket bridge). Without the lock two threads can
-    both see SR_INSTANCE as None and each build an Sral, which calls
-    SRAL_Initialize twice; whichever instance loses the assignment race is then
-    garbage collected, and Sral.__del__ fires SRAL_Uninitialize on the shared
-    library, silently killing speech for the instance that survived.
-
-    Loading SRAL.dll is also slow enough to matter, so callers on latency
-    sensitive paths should make sure it is already warm (see install_hotkeys).
-    """
-    global SR_INSTANCE, _sral_tried
-    inst = SR_INSTANCE
-    if inst is not None:
-        return inst
-    if not SRAL_OK:
-        return None
-    with _sral_lock:
-        if SR_INSTANCE is not None:
-            return SR_INSTANCE
-        if _sral_tried:
-            # A previous attempt failed; don't retry the DLL load on every
-            # utterance, that would put a multi-millisecond stall on each one.
-            return None
-        _sral_tried = True
-        try:
-            try:
-                os.chdir(HERE)
-            except Exception:
-                pass
-            SR_INSTANCE = sral.Sral(32)
-        except Exception as e:
-            logger.warning(f"Failed to initialize SRAL: {e}")
-            SR_INSTANCE = None
-        return SR_INSTANCE
 
 
 def _normalize_speech_value(value, source="python"):
@@ -272,22 +225,11 @@ def say(text: str, interrupt: bool = True, exclude_from_buffer: bool = False, so
     if not exclude_from_buffer:
         SPEECH_BUFFER.append(t)
 
-    inst = sral_init()
-    if inst:
-        try:
-            inst.speak(t, bool(interrupt))
-            return
-        except Exception as e:
-            logger.warning(f"SRAL speak failed: {e}")
+    speech.speak(t, bool(interrupt))
 
 
 def stop_speech():
-    inst = sral_init()
-    if inst:
-        try:
-            inst.stop()
-        except Exception:
-            pass
+    speech.stop()
 
 
 def _finish_loading_settle(generation):
@@ -417,6 +359,9 @@ def load_config():
             return DEFAULT_CONFIG.copy()
         if not isinstance(user, dict):
             raise ValueError("Config root is not an object")
+        if speech.migrate_config(user):
+            logger.info("Migrated legacy SAPI speech keys to speech_* keys.")
+            _write_config(CONFIG_PATH, user)
         merged = DEFAULT_CONFIG.copy()
         merged.update(user)
         merged["units"] = (
@@ -1737,7 +1682,7 @@ _input_help_mode = False
 #  keys a layer meant to swallow arriving in BeamNG instead.
 #
 #  Everything the command handlers do is over that budget or can be: speech goes
-#  through SRAL.dll, several handlers take state_lock (held by the telemetry loop
+#  out to a screen reader, several handlers take state_lock (held by the telemetry loop
 #  and the audio callback), and teardown calls keyboard.unhook.
 #
 #  So the hook callbacks below do two things only — classify the key and decide
@@ -4288,13 +4233,13 @@ def install_hotkeys(audio_controller):
 
     _start_kb_worker()
 
-    # Force the SRAL.dll load now. on_f9/on_f10 speak the layer prompt before
-    # installing the layer hook, and they run on keyboard's event-processing
-    # thread; if the first utterance of the session had to load the DLL there,
-    # the hook would go in late and the user's next key would reach the game
-    # instead of the layer.
-    if sral_init() is None:
-        logger.warning("SRAL unavailable at hotkey install; speech may be degraded.")
+    # Force the speech library load now. on_f9/on_f10 speak the layer prompt
+    # before installing the layer hook, and they run on keyboard's event-
+    # processing thread; if the first utterance of the session had to load the
+    # native library there, the hook would go in late and the user's next key
+    # would reach the game instead of the layer.
+    if speech.init() is None:
+        logger.warning("Speech unavailable at hotkey install; speech may be degraded.")
 
     def on_f9():
         if not _is_beamng_focused():
@@ -4963,14 +4908,11 @@ class BeamTelFrame(wx.Frame):
 
         # Log-file buttons
         log_btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        btn_app_log = wx.Button(main_panel, label="Open Application &Log")
-        btn_app_log.SetName("Open Application Log")
+        btn_app_log = wx.Button(main_panel, label="Open Application Log")
         btn_app_log.SetToolTip(f"Open {LOG_FILENAME}")
-        btn_speech_log = wx.Button(main_panel, label="Open &Speech Log")
-        btn_speech_log.SetName("Open Speech Log")
+        btn_speech_log = wx.Button(main_panel, label="Open Speech Log")
         btn_speech_log.SetToolTip(f"Open {SPEECH_LOG_PATH}")
-        btn_dom_log = wx.Button(main_panel, label="Open &DOM Dump")
-        btn_dom_log.SetName("Open DOM Dump Log")
+        btn_dom_log = wx.Button(main_panel, label="Open DOM Dump")
         btn_dom_log.SetToolTip(f"Open {DOM_DUMP_PATH}")
         for b in (btn_app_log, btn_speech_log, btn_dom_log):
             log_btn_sizer.Add(b, 0, wx.RIGHT, 5)
@@ -4983,15 +4925,13 @@ class BeamTelFrame(wx.Frame):
 
         # Bottom button row
         bottom_btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        btn_install_mod = wx.Button(main_panel, label="&Install Mod")
-        btn_install_mod.SetName("Install Mod")
+        btn_install_mod = wx.Button(main_panel, label="Install Mod")
         btn_install_mod.SetToolTip(
             "Install the BeamNG.drive mod and activate its screen-reader UI app."
         )
         bottom_btn_sizer.Add(btn_install_mod, 0, wx.RIGHT, 5)
         bottom_btn_sizer.AddStretchSpacer()
-        btn_exit = wx.Button(main_panel, label="E&xit")
-        btn_exit.SetName("Exit")
+        btn_exit = wx.Button(main_panel, label="Exit")
         bottom_btn_sizer.Add(btn_exit)
         main_sizer.Add(
             bottom_btn_sizer, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10
@@ -5010,14 +4950,16 @@ class BeamTelFrame(wx.Frame):
 
         config_panel = ConfigPanel(notebook)
         describer_panel = AIDescriberPanel(notebook)
+        # Kept so _on_close can flush its debounced save before we tear down.
+        self._config_panel = config_panel
 
         main_panel.Bind(
             wx.EVT_NAVIGATION_KEY, lambda evt: wrap_nav_key(evt, main_panel)
         )
 
-        notebook.AddPage(main_panel, "&Main")
-        notebook.AddPage(config_panel, "&Configuration")
-        notebook.AddPage(describer_panel, "&AI Describer")
+        notebook.AddPage(main_panel, "Main")
+        notebook.AddPage(config_panel, "Configuration")
+        notebook.AddPage(describer_panel, "AI Describer")
 
         self._notebook = notebook
         self._focusable_leaves = _focusable_leaves
@@ -5097,22 +5039,25 @@ class BeamTelFrame(wx.Frame):
     def _build_console_section(self, parent):
         """Build the accessible developer-console controls; returns a sizer.
 
-        Controls are parented to ``parent`` (the Main-tab panel) so the existing
-        _focusable_leaves tab-order walk picks them up automatically.
+        Controls are parented to the StaticBox, not to ``parent``: on Windows
+        that nesting is what makes a screen reader announce "Developer Console"
+        when focus enters the group.  It costs nothing in tab order, because
+        _focusable_leaves recurses through GetChildren() and descends into the
+        box like any other container.
         """
-        box = wx.StaticBoxSizer(wx.VERTICAL, parent, "Developer Console")
+        sb = wx.StaticBox(parent, label="Developer Console")
+        box = wx.StaticBoxSizer(sb, wx.VERTICAL)
 
         # Context (sandbox) selector
         ctx_row = wx.BoxSizer(wx.HORIZONTAL)
-        ctx_label = wx.StaticText(parent, label="Conte&xt:")
+        ctx_label = wx.StaticText(sb, label="Context:")
         self.console_ctx_choice = wx.Choice(
-            parent, choices=["GE - Lua", "GE - TorqueScript", "CEF/UI - JS"]
+            sb, choices=["GE - Lua", "GE - TorqueScript", "CEF/UI - JS"]
         )
         self.console_ctx_choice.SetName("Console Context")
         self.console_ctx_choice.SetSelection(0)
         self._console_ctx_indices = [0, 1, 2]
-        btn_refresh = wx.Button(parent, label="&Refresh Contexts")
-        btn_refresh.SetName("Refresh Console Contexts")
+        btn_refresh = wx.Button(sb, label="Refresh Contexts")
         ctx_row.Add(ctx_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 5)
         ctx_row.Add(self.console_ctx_choice, 1, wx.RIGHT, 5)
         ctx_row.Add(btn_refresh, 0)
@@ -5120,11 +5065,10 @@ class BeamTelFrame(wx.Frame):
 
         # Command input
         cmd_row = wx.BoxSizer(wx.HORIZONTAL)
-        cmd_label = wx.StaticText(parent, label="&Command:")
-        self.console_input = wx.TextCtrl(parent, style=wx.TE_PROCESS_ENTER)
+        cmd_label = wx.StaticText(sb, label="Command:")
+        self.console_input = wx.TextCtrl(sb, style=wx.TE_PROCESS_ENTER)
         self.console_input.SetName("Console Command")
-        btn_run = wx.Button(parent, label="R&un")
-        btn_run.SetName("Run Console Command")
+        btn_run = wx.Button(sb, label="Run")
         cmd_row.Add(cmd_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 5)
         cmd_row.Add(self.console_input, 1, wx.RIGHT, 5)
         cmd_row.Add(btn_run, 0)
@@ -5132,7 +5076,7 @@ class BeamTelFrame(wx.Frame):
 
         # Output (review with the screen reader's own reading keys)
         self.console_output = wx.TextCtrl(
-            parent,
+            sb,
             style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2 | wx.TE_DONTWRAP,
         )
         self.console_output.SetName("Console Output")
@@ -5140,13 +5084,11 @@ class BeamTelFrame(wx.Frame):
 
         # Output filter (applies to all output) + stream toggle + clear
         filt_row = wx.BoxSizer(wx.HORIZONTAL)
-        filt_label = wx.StaticText(parent, label="&Filter:")
-        self.console_filter = wx.TextCtrl(parent)
-        self.console_filter.SetName("Filter")
-        self.console_log_check = wx.CheckBox(parent, label="Stream game lo&g")
-        self.console_log_check.SetName("Stream Game Log")
-        btn_clear = wx.Button(parent, label="C&lear Output")
-        btn_clear.SetName("Clear Console Output")
+        filt_label = wx.StaticText(sb, label="Filter:")
+        self.console_filter = wx.TextCtrl(sb)
+        self.console_filter.SetName("Console Output Filter")
+        self.console_log_check = wx.CheckBox(sb, label="Stream game log")
+        btn_clear = wx.Button(sb, label="Clear Output")
         filt_row.Add(filt_label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 5)
         filt_row.Add(self.console_filter, 1, wx.RIGHT, 5)
         filt_row.Add(self.console_log_check, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 5)
@@ -5351,6 +5293,12 @@ class BeamTelFrame(wx.Frame):
     # ---- Shutdown ----
 
     def _on_close(self, evt):
+        # The Configuration tab debounces its writes by two seconds, so closing
+        # right after an edit would drop it silently. Commit it first.
+        try:
+            self._config_panel.flush_pending_save()
+        except Exception:
+            pass
         STOP.set()
         if self._engine_thread and self._engine_thread.is_alive():
             self._engine_thread.join(timeout=2.0)
@@ -5396,6 +5344,9 @@ def _apply_live_config(audio_controller):
         ai_describer_disable_ui_toggle = cfg.get("ai_describer_disable_ui_toggle", False)
     if audio_controller is not None:
         audio_controller.apply_config(cfg)
+    # Outside state_lock: rebuilding the backend can take long enough that the
+    # telemetry loop and audio callback would notice the stall.
+    speech.configure(cfg)
     logger.info("Configuration reloaded.")
 
 
@@ -5429,6 +5380,11 @@ def _run_engine():
     announce_gear = cfg.get("announce_gear", True)
     scanner_distance_callout_enabled = cfg.get("scanner_distance_callout_enabled", False)
     scanner_distance_callout_interval = cfg.get("scanner_distance_callout_interval", 10)
+
+    if speech.init(cfg) is None:
+        logger.warning("No speech backend available; callouts will be silent.")
+    else:
+        logger.info(f"Speech backend: {speech.describe_capabilities()}")
 
     global audio_controller_ref
     audio_controller = AudioController(logger)

@@ -1,14 +1,14 @@
 
 # configurator.py
 # Configuration backend for BeamTel.
-# Handles config loading, saving, validation, SAPI voice enumeration, and audio tests.
-# UI code lives in config_ui.py.
+# Handles config loading, saving, validation, speech backend/voice enumeration,
+# and audio tests. UI code lives in config_ui.py.
 
 # nuitka-project: --onefile
 # nuitka-project: --assume-yes-for-downloads
 # nuitka-project: --windows-disable-console
-# nuitka-project: --include-package=comtypes
-# nuitka-project: --include-package-data=comtypes
+# nuitka-project: --include-package=prism
+# nuitka-project: --include-package=cffi
 # nuitka-project: --include-package=numpy
 # nuitka-project: --include-package=sounddevice
 # nuitka-project: --include-module=config_ui
@@ -17,6 +17,8 @@ import json
 import os
 import sys
 import time
+
+import speech
 
 # --- Audio Test Dependencies ---
 AUDIO_TEST_OK = False
@@ -59,10 +61,10 @@ CONFIG_PATH = os.path.join(CONFIG_DIR, "beamtel_config.json")
 
 # --- Sync DEFAULT_CONFIG with beamtel.py ---
 DEFAULT_CONFIG = {
-    "force_sapi": False,
-    "sapi_voice_name": "",
-    "sapi_rate": 0,
-    "sapi_volume": 100,
+    "speech_backend": "auto",
+    "speech_voice_name": "",
+    "speech_rate": 50,
+    "speech_volume": 100,
     "units": "imperial",
     "shift_tone_frequency_hz": 880.0,
     "shift_tone_level_dbfs": -12.0,
@@ -103,15 +105,6 @@ DEFAULT_CONFIG = {
 }
 
 
-def _setup_comtypes_cache():
-    try:
-        cache_dir = os.path.join(CONFIG_DIR, "comtypes_cache")
-        os.makedirs(cache_dir, exist_ok=True)
-        os.environ.setdefault("COMTYPES_CACHE_DIR", cache_dir)
-    except Exception:
-        pass
-
-
 def list_wasapi_output_devices():
     """Return sorted list of WASAPI output device names available on this system."""
     if not AUDIO_TEST_OK:
@@ -133,62 +126,33 @@ def list_wasapi_output_devices():
         return []
 
 
-def list_sapi_voices():
-    try:
-        _setup_comtypes_cache()
-        import comtypes.client as cc
-
-        v = cc.CreateObject("SAPI.SpVoice")
-        tokens = v.GetVoices()
-        out = []
-        for i in range(tokens.Count):
-            t = tokens.Item(i)
-            try:
-                name = str(t.GetDescription())
-            except Exception:
-                name = f"Voice {i}"
-            out.append(name)
-        out.sort(key=lambda s: s.lower())
-        return out
-    except Exception:
-        return []
+def list_speech_backends():
+    """Prism backend names available on this machine, best-priority first."""
+    return speech.list_backends()
 
 
-def test_sapi_voice(display_name_exact: str, rate: int, volume: int):
-    """Speak a synchronous test with the exact display name (case-insensitive).
+def list_speech_voices(backend_name: str):
+    """(voice names, capability bits) for a backend. Either may be empty/None.
+
+    Screen reader backends own their own voice and rate, so a caller that gets
+    an empty list should disable those controls rather than treat it as an
+    error — check the returned features to tell the two cases apart.
+    """
+    names, feats = speech.list_voices(backend_name or speech.AUTO_BACKEND)
+    return sorted(names, key=lambda s: s.lower()), feats
+
+
+def test_speech_voice(backend_name: str, voice_name: str, rate: int, volume: int):
+    """Speak a test line with the pending settings.
     Returns (success: bool, error_message: str | None)."""
-    try:
-        _setup_comtypes_cache()
-        import comtypes.client as cc
-
-        rate = int(max(-10, min(10, rate)))
-        volume = int(max(0, min(100, volume)))
-
-        sp = cc.CreateObject("SAPI.SpVoice")
-        try:
-            toks = sp.GetVoices()
-            want = (display_name_exact or "").strip().lower()
-            sel = None
-            for i in range(toks.Count):
-                t = toks.Item(i)
-                try:
-                    desc = str(t.GetDescription()).strip()
-                except Exception:
-                    continue
-                if desc.lower() == want:
-                    sel = t
-                    break
-            if sel:
-                sp.Voice = sel
-        except Exception:
-            pass
-
-        sp.Rate = rate
-        sp.Volume = volume
-        sp.Speak("This is a test of the current SAPI configuration.", 0)
-        return True, None
-    except Exception as e:
-        return False, f"SAPI test failed: {e}"
+    ok, err = speech.test_speak(
+        backend_name or speech.AUTO_BACKEND,
+        voice_name,
+        rate,
+        volume,
+        "This is a test of the current speech configuration.",
+    )
+    return ok, (None if ok else f"Speech test failed: {err}")
 
 
 def play_test_tone(freq_hz, level_dbfs):
@@ -290,6 +254,8 @@ def load_config():
         if not isinstance(user, dict):
             raise ValueError("Config root is not an object")
 
+        speech.migrate_config(user)
+
         merged = DEFAULT_CONFIG.copy()
         merged.update(user)
 
@@ -299,10 +265,10 @@ def load_config():
             except (ValueError, TypeError):
                 merged[key] = fallback
 
-        _coerce("force_sapi", bool, False)
-        _coerce("sapi_voice_name", str, "")
-        _coerce("sapi_rate", int, 0)
-        _coerce("sapi_volume", int, 100)
+        _coerce("speech_backend", str, "auto")
+        _coerce("speech_voice_name", str, "")
+        _coerce("speech_rate", int, 50)
+        _coerce("speech_volume", int, 100)
         _coerce("shift_tone_frequency_hz", float, 880.0)
         _coerce("shift_tone_level_dbfs", float, -12.0)
         _coerce("check_engine_buzzer_level_dbfs", float, -12.0)
@@ -347,8 +313,8 @@ def load_config():
         except Exception:
             pass
 
-        merged["sapi_rate"] = max(-10, min(10, merged["sapi_rate"]))
-        merged["sapi_volume"] = max(0, min(100, merged["sapi_volume"]))
+        merged["speech_rate"] = max(0, min(100, merged["speech_rate"]))
+        merged["speech_volume"] = max(0, min(100, merged["speech_volume"]))
         merged["shift_tone_frequency_hz"] = max(20.0, min(20000.0, merged["shift_tone_frequency_hz"]))
 
         merged["compass_click_interval"] = max(1, min(90, merged["compass_click_interval"]))
@@ -395,6 +361,17 @@ def main():
         frm = wx.Frame(None, title="BeamTel Configurator", size=(600, 940))
         frm.SetMinSize((580, 940))
         panel = ConfigPanel(frm)
+
+        def _on_close(evt):
+            # Saves are debounced by two seconds; closing within that window
+            # would otherwise discard the user's last edit without a word.
+            try:
+                panel.flush_pending_save()
+            except Exception:
+                pass
+            evt.Skip()
+
+        frm.Bind(wx.EVT_CLOSE, _on_close)
         frm.Centre()
         frm.Show()
         app.MainLoop()

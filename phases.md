@@ -51,16 +51,22 @@ Code that looks implemented but never runs.
 - [ ] `_vehicle_selector_open` NameError — read at `beamtel.py:2118`, never
       defined anywhere; every arrow key in status mode raises before reaching
       the metric cycling. **Confirmed live.**
-- [ ] `stop_speech()` calls `inst.stop()`, but the wrapper's method is
+- [x] `stop_speech()` calls `inst.stop()`, but the wrapper's method is
       `stop_speech()` (`sral.py:38`) and there is no `stop`. Swallowed by
       `except Exception: pass`, so speech is never actually interrupted for
-      loading screens. **Confirmed live.**
+      loading screens. **Confirmed live.** Fixed by the Prism migration —
+      `speech.stop()` maps onto Prism's `Backend.stop()`, which is the real
+      method name.
 - [ ] `ai.getMode()` / `getTargetObjectID()` — AI status queries against
       methods that do not exist on the vehicle AI object
 - [ ] Hover token bug in `bnvdaRuntime.js` suppressing announcements it should
       make
-- [ ] SAPI fallback is documented and configurable but never wired up —
-      implement it or drop the config keys
+- [x] SAPI fallback is documented and configurable but never wired up —
+      implement it or drop the config keys. Implemented: the SAPI-only panel
+      is now a Prism backend picker (`speech_backend`/`speech_voice_name`/
+      `speech_rate`/`speech_volume`), beamtel applies those settings through
+      `speech.py`, and controls grey out per the backend's capability bits.
+      Old `force_sapi`/`sapi_*` keys migrate on load.
 - [ ] `translateLanguage` → `_tr` rename not followed at the call site
       (not located by a first grep; needs a proper search)
 - [ ] Vehicle-spawner filter fields moved into `info.aggregates`, so the
@@ -108,16 +114,64 @@ work with the levels decided deliberately — not folded into a bug-fix pass.
 
 ---
 
-## [ ] Phase 6 — wx accessibility
+## [x] Phase 6 — wx accessibility
 
-- [ ] `StaticBox` parenting across 9 groups
-- [ ] 5 `SpinCtrl`s missing the composite-control fix
-- [ ] `Show` → `ShowItems`
-- [ ] Save feedback
-- [ ] Focus handling when a control is disabled
-- [ ] Reset confirmation
-- [ ] Duplicated model name
-- [ ] Mnemonics
+- [x] `StaticBox` parenting — 13 groups, not 9: the 9 in `ConfigPanel`, 3 in
+      `AIDescriberPanel` and the Developer Console in `beamtel.py`. Every one
+      parented its children to the panel, leaving the box a *sibling* of the
+      controls, so MSAA/UIA never nested them and no group name was ever
+      announced. New `_group()` helper in `config_ui.py`; the `AIDescriberPanel`
+      and console groups also had to move off the one-step `StaticBoxSizer`
+      form, which keeps no box handle. Tab order is unchanged — verified 37
+      leaves on `ConfigPanel` and 14 on the Main tab, in the original order,
+      because `_focusable_leaves` recurses and descends into the box.
+- [x] 5 `SpinCtrl`s missing the composite-control fix — `_label_spin_double`
+      generalised to `_label_spin` (its body was always type-agnostic) and
+      applied to `spin_rate`, `spin_volume`, `spin_compass_interval`,
+      `spin_compass_highlight_nth`, `spin_scanner_base_freq`. The highlight
+      spin's unit lived in an orphaned StaticText, so it is now folded into the
+      name ("Highlight every N clicks").
+- [x] `Show` → `ShowItems` — `on_toggle_highlight` called `sizer.Show(bool)`,
+      which binds to the `Show(index, …)` overload: `Show(True)` meant "show
+      item 1" and `Show(False)` "show item 0", so **neither branch ever hid
+      anything**. The row was permanently visible with only `Enable()` taking
+      effect. Now `ShowItems`, against a stored `self._highlight_row` rather
+      than a `GetContainingSizer()` lookup. Verified hiding both ways.
+- [~] Save feedback — **deliberately skipped.** Both panels save on every
+      parameter change rather than behind a button, so there is no save action
+      for the user to have confirmed.
+- [x] Focus handling when a control is disabled — new `_enable()` helper moves
+      focus to the governing checkbox before disabling a control that holds it.
+      Applied to all six conditional-disable sites. The live bug was
+      `AIDescriberPanel._set_api_key`, which disabled the button the user had
+      just pressed for the duration of an async validation and never restored
+      focus; `_on_validated` now calls `SetFocus()`, so the new "Clear API key"
+      label is what gets announced.
+- [x] Reset confirmation — `on_reset` wiped every setting with no prompt, and
+      the wipe reached disk 2 s later on its own. Now confirms with `NO_DEFAULT`
+      and acknowledges on success, matching `_clear_api_key`.
+- [x] Duplicated model name — both cases. Two buttons both labelled "Re&fresh"
+      (speech and audio device) are now "Refresh Voices" / "Refresh Devices".
+      The AI Describer combo had three overlapping name sources (group box
+      "Model" + label "&Vision model:" + `SetName`); the group is now "Vision
+      Model", the label "Model:", and the `SetName` is gone.
+- [x] Mnemonics — removed entirely. ~37 accelerators over ~20 letters (O and T
+      collided 5 ways, F 4) meant Alt+key cycled rather than activated. Every
+      control is still reachable by Tab, and `wrap_nav_key` / `_on_notebook_nav`
+      already keep the notebook tab bar in the cycle. The one surviving `&&` is
+      the escaped literal in the "Pitch && Roll" box label, which keeps a
+      `SetName` so it is spoken as "Pitch and Roll".
+- [x] Redundant `SetName` pruned — ~20 calls on buttons, checkboxes and
+      radioboxes restated the visible label, *replacing* the label-derived
+      accessible name; where the two differed (checkbox "HRTF Binaural
+      Processing" named "Enable HRTF", and four others) the spoken name no
+      longer matched the screen. Names are kept on `Choice`/`SpinCtrl`, which
+      have no intrinsic label.
+- [x] Pending-save loss on close — not feedback but data loss, so fixed here.
+      The 2 s debounce was never flushed: `BeamTelFrame._on_close` destroyed the
+      window and `configurator.py` had no close handler at all, so closing
+      within 2 s of an edit discarded it silently. New
+      `ConfigPanel.flush_pending_save()`, called from both.
 
 ---
 
@@ -145,5 +199,9 @@ work with the levels decided deliberately — not folded into a bug-fix pass.
 
 - [ ] `2beee0d` — audio returns after an output device change; settings survive
       a save from `configurator.py` while `beamtel.py` is running
+- [ ] Phase 6 — with a screen reader actually running: each group announces its
+      name on entry, all 17 spin controls announce their own, and no toggle
+      strands focus. Construction, tab order, group nesting and the
+      hide/show fix were verified programmatically; MSAA announcement was not.
 - [ ] `c8743ac` — scanner left/right and approach side against a deliberately
       placed target

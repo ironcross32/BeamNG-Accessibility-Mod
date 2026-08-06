@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-The Python application is intentionally flat. `beamtel.py` is the main telemetry, keyboard, speech, and UI entry point; focused helpers such as `audio.py`, `hrtf.py`, `sral.py`, `ai_describer.py`, and `vehicle_spawner.py` handle individual subsystems. `configurator.py` and `config_ui.py` provide the wxPython configuration interface. The BeamNG mod lives under `bng_mod/`: game-engine and vehicle logic is in `lua/`, the loader is in `scripts/`, UI bridge code is in `ui/`, and sounds are in `art/`. Native/runtime assets (`*.dll`, `*.lib`, and `hrtf_kemar_horizontal.npz`) remain at the repository root. Treat `build/`, Nuitka scratch directories, logs, backups, and local configuration as generated files.
+The Python application is intentionally flat. `beamtel.py` is the main telemetry, keyboard, speech, and UI entry point; focused helpers such as `audio.py`, `hrtf.py`, `speech.py`, `ai_describer.py`, and `vehicle_spawner.py` handle individual subsystems. `configurator.py` and `config_ui.py` provide the wxPython configuration interface. The BeamNG mod lives under `bng_mod/`: game-engine and vehicle logic is in `lua/`, the loader is in `scripts/`, UI bridge code is in `ui/`, and sounds are in `art/`. `hrtf_kemar_horizontal.npz` remains at the repository root; the speech library's native payload comes from the installed `prismatoid` wheel rather than the repo. Treat `build/`, Nuitka scratch directories, logs, backups, and local configuration as generated files.
 
 ## Build, Test, and Development Commands
 

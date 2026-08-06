@@ -47,8 +47,8 @@ The project has two halves that communicate via UDP:
 - **beamtel.py** — Main entry point. UDP telemetry listener, keyboard command system (F9 hotkey + modifier combos), drives audio and speech.
 - **audio.py** — Procedural audio synthesis engine. Real-time stereo 48kHz float32 via `sounddevice` callback. Compass clicks, shift/TC/steering tones, warning buzzers, drift alerts, heading guidance, scanner beeps, obstacle detection tones.
 - **hrtf.py** — HRTF binaural panning. Loads pre-baked MIT KEMAR horizontal-plane HRIRs from `hrtf_kemar_horizontal.npz` (numpy), interpolates impulse responses by azimuth, FFT-resamples to 48kHz. Used by audio.py for spatial compass clicks. The `.npz` is generated at build time by `bake_hrtf.py` from `mit_kemar_normal_pinna.sofa` — this keeps h5py + the HDF5 native libraries (~6.5 MB) out of the shipped build.
-- **configurator.py** — wxPython GUI for `beamtel_config.json`. SAPI voice enumeration via comtypes, real-time tone testing.
-- **sral.py** — Wrapper around native SRAL.dll for speech synthesis. Falls back to SAPI if unavailable.
+- **configurator.py** — wxPython GUI for `beamtel_config.json`. Speech backend/voice enumeration via Prism, real-time tone testing.
+- **speech.py** — All speech output, backed by Prism (the `prismatoid` wheel). Picks a backend by priority (`auto`) or by configured name, re-acquires it when a screen reader starts or exits, and exposes per-backend capability bits plus a braille primitive. Replaced the old SRAL wrapper, which upstream deprecated in favour of Prism in August 2026.
 - **ai_describer.py** — AI Describer pipeline. Captures the primary monitor (`mss`), sends the image to Google Gemini's `generateContent` REST endpoint with a blind-friendly system prompt, returns the spoken description. Validates API keys via the free ListModels endpoint. Logs all descriptions and API errors to `%LOCALAPPDATA%/beamtel/ai_descriptions.log`. Invoked in-game by F10 then Space.
 - **nvda_ws_speaker.py** — aiohttp WebSocket server on port 8765. Bridges UI events to speech output.
 - **bnh_logger.py** — Rotating file logger (`bnvdahook.log`, 1MB max, 3 backups).
@@ -104,7 +104,7 @@ Entry point: `scripts/bng_screenreader_mod/modScript.lua` — loads all GE exten
 
 ```
 BeamNG.drive  --UDP:4444-->  beamtel.py  ---->  audio.py (sounddevice output)
-              --UDP:4579-->  (UI toasts)  ---->  sral.py / SAPI (speech)
+              --UDP:4579-->  (UI toasts)  ---->  speech.py / Prism (speech)
               --UDP:4445-->  (scanner)
               --UDP:4450-->  (camera)
               --UDP:4452-->  (obstacles)
@@ -142,7 +142,7 @@ Config file: `%LOCALAPPDATA%/beamtel/beamtel_config.json` (shared by beamtel.py 
 
 - **Audio callback pattern**: Check triggered events → read state under lock → generate samples → mix all sources → clip to [-0.999, 0.999] → write stereo interleaved output.
 - **Keyboard command lifecycle**: F9 → install hooks + 4-second timeout → process key → unhook. Modifier tracking (Ctrl/Shift/Alt) handled in `_on_next_key_press`.
-- **Fallback strategy**: SRAL → SAPI for speech; preferred audio device → system default; air pressure controller → electrics scan for vehicles without dedicated tanks.
+- **Fallback strategy**: configured speech backend → Prism's highest-priority available one, re-acquired on failure; preferred audio device → system default; air pressure controller → electrics scan for vehicles without dedicated tanks.
 - **Nuitka build config**: Embedded as `# nuitka-project:` pragmas at the top of `beamtel.py` and `configurator.py`. Both build as `--onefile`. beamtel requires admin (`--windows-uac-admin`) and a console; configurator disables the console.
 - **Cross-VM Lua communication**: Vehicle VM ↔ Game Engine VM via `vehicle:queueLuaCommand()` and `obj:queueGameEngineLua()`. All UDP socket I/O uses LuaSocket.
 
@@ -156,4 +156,4 @@ BeamNG.drive retail uses **LuaJIT (Lua 5.1)**:
 
 ## Dependencies
 
-numpy, sounddevice, wxpython, aiohttp, keyboard, comtypes, zstandard. Native DLLs: SRAL.dll, nvdaControllerClient.dll. Build-time only: h5py (used by `bake_hrtf.py` to extract the SOFA file into `hrtf_kemar_horizontal.npz`; not bundled into the executable).
+numpy, sounddevice, wxpython, aiohttp, keyboard, prismatoid (+cffi), zstandard. Prism's native library ships inside the prismatoid wheel (`prism/_native/`), so no DLLs are staged in the project root. Packaging it needs three explicit `--include-data-files` entries (see `prism_nuitka_args()` in `build.py`): `prism.dll` and `_prism_cffi.pyd` at `prism/_native/`, because `--include-data-dir` silently drops binaries and Nuitka cannot follow the `__path__` splicing in `prism/_native.py`; plus `python3.dll`, the stable-ABI forwarder that the abi3 extension links against and that Nuitka does not bundle. Build-time only: h5py (used by `bake_hrtf.py` to extract the SOFA file into `hrtf_kemar_horizontal.npz`; not bundled into the executable).
