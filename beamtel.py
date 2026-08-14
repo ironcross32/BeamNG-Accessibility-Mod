@@ -945,6 +945,7 @@ IMPL_PROX_LEAVE_HOLD = 0.30
 # cannot be made.
 IMPL_DOCK_LEVEL_M = 0.05    # below this an axis is called level / centred rather than numbered
 IMPL_DOCK_YAW_DEG = 8.0     # squareness is only worth saying once it would jam the tines
+IMPL_ANNOUNCE_PROBE_S = 2.0  # keep asking the mod which implement is fitted until it answers
 
 # Slam gate states -> the audio cue each fires. NONE is deliberately absent: leaving the
 # gate is not itself an event worth marking, and a cue on every exit would fire constantly
@@ -1054,6 +1055,12 @@ def implement_listener(audio_controller, stop_event):
         # feature convinced no implement is fitted until the vehicle is reset. ON is already
         # exactly the right reset on the mod side, so it needs no new command.
         _send_implement_cmd("ON")
+        # ...and keep asking until it answers. A single request at startup is lost whenever
+        # beamtel is running before BeamNG is, which is the normal way round to start them,
+        # and the mod has no way to know we are waiting. Stops on the first IMPLEMENT: line,
+        # so a machine with nothing fitted settles after one reply too.
+        implement_seen = False
+        next_probe = time.time() + IMPL_ANNOUNCE_PROBE_S
 
         impl_word = "Bucket"
         tracked = None  # name of the object currently being tracked
@@ -1073,6 +1080,7 @@ def implement_listener(audio_controller, stop_event):
                 now = time.time()
 
                 if text.startswith("IMPLEMENT:"):
+                    implement_seen = True
                     part = text.split(":", 1)[1]
                     impl_word = _implement_word(part)
                     _implement_word_current = (
@@ -1253,6 +1261,9 @@ def implement_listener(audio_controller, stop_event):
                     pending_inside = None
 
             except socket.timeout:
+                if not implement_seen and time.time() >= next_probe:
+                    _send_implement_cmd("ON")
+                    next_probe = time.time() + IMPL_ANNOUNCE_PROBE_S
                 continue
             except OSError:
                 if stop_event.is_set():
@@ -3777,9 +3788,13 @@ def _on_next_key_press(event, audio_controller):
         _capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]
     ):
         # The cane tap. One deliberate press, one complete picture, no ambient noise.
-        if not _implement_word_current:
-            say("No implement fitted", exclude_from_buffer=True)
-        elif not dock_mode_active:
+        #
+        # Deliberately does NOT short-circuit on _implement_word_current. That is this
+        # side's guess at what the mod knows, and gating on it masked the mod's own, far
+        # more specific answer — "no implement fitted" was reported for three separate
+        # underlying causes, none of which it could distinguish. Ask, and report what comes
+        # back.
+        if not dock_mode_active:
             say("Docking instrument is off", exclude_from_buffer=True)
         else:
             with state_lock:
@@ -3847,18 +3862,19 @@ def _on_next_key_press(event, audio_controller):
             # The re-announce above travels to the mod and back, and the mod scans at 10 Hz,
             # so read the answer rather than the stale value. Without this the toggle reports
             # "no implement fitted" from state it is in the middle of refreshing.
-            time.sleep(0.25)
-            if _implement_word_current:
-                # Auto-select is per target, so a fresh mode start should not inherit a band
-                # pick made against something you have since driven away from.
-                _send_implement_cmd("BANDAUTO")
-                say("Docking instrument on", exclude_from_buffer=True)
+            time.sleep(0.3)
+            # Auto-select is per target, so a fresh mode start should not inherit a band
+            # pick made against something you have since driven away from.
+            _send_implement_cmd("BANDAUTO")
+            with state_lock:
+                why = last_dock_fail
+            # Report the MOD's reason, not a guess from this side's own state. "No implement
+            # fitted" used to be said here on the strength of a Python variable, which was
+            # true for three different underlying causes and pointed at none of them.
+            if why:
+                say(f"Docking instrument on. {why}", exclude_from_buffer=True)
             else:
-                # Left on deliberately rather than refused: you may be about to climb into a
-                # machine that has one, and the readout is inert until then. It also
-                # self-heals shortly after a vehicle switch, once the mod's next heartbeat
-                # re-delivers the implement to the game-engine side.
-                say("Docking instrument on. No implement fitted", exclude_from_buffer=True)
+                say("Docking instrument on", exclude_from_buffer=True)
     elif name == "w" and not (
         _capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]
     ):

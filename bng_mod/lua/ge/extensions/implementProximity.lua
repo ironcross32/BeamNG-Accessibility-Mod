@@ -488,8 +488,9 @@ local function dockFail(reason)
   end
 end
 
-local function sendDockLine(best)
+local function sendDockLine(best, reason)
   if not dockActive then return end
+  if reason then return dockFail(reason) end
   if not implCids then return dockFail("no implement resolved") end
   if not best then
     if lastDockLine ~= "DOCKCLEAR" then
@@ -556,10 +557,25 @@ end
 
 local function scan()
   local player = be:getPlayerVehicle(0)
-  if not player then return end
+  if not player then
+    sendDockLine(nil, "no player vehicle")
+    return
+  end
 
   -- A push we haven't matched to the current vehicle is not usable.
-  if implVehID and player:getID() ~= implVehID then return end
+  --
+  -- Every one of these early returns used to be silent, which is why "no implement fitted"
+  -- was untraceable: the readout never got as far as the code that could explain itself, so
+  -- the only thing that ever spoke was Python's own guess at the state. Each one now names
+  -- what it saw, including the two vehicle ids, because "the mod holds an implement for a
+  -- vehicle you are not sitting in" and "the mod holds nothing at all" need completely
+  -- different fixes and sound identical from the seat.
+  if implVehID and player:getID() ~= implVehID then
+    sendDockLine(nil, string.format(
+      "implement belongs to vehicle %s, you are in %d",
+      tostring(implVehID), player:getID()))
+    return
+  end
 
   -- Compare the STRING we would send, not implName itself, and track whether anything has
   -- been sent at all. Comparing implName against lastSentName looks equivalent and is not:
@@ -572,7 +588,12 @@ local function scan()
     lastSentName = desiredName
     send("IMPLEMENT:" .. desiredName)
   end
-  if not implCids then return end
+  if not implCids then
+    sendDockLine(nil, string.format(
+      "mod holds no implement for vehicle %d (last push %s)",
+      player:getID(), implVehID and ("from " .. tostring(implVehID)) or "never arrived"))
+    return
+  end
 
   local pts = implementPoints(player)
   if not pts then return end
