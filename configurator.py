@@ -77,6 +77,9 @@ DEFAULT_CONFIG = {
     "pitch_roll_min_dbfs": -36.0,
     "compass_click_level_dbfs": -6.0,
     "lowspeed_click_level_dbfs": -14.0,
+    "lowspeed_stop_tone_level_dbfs": -16.0,
+    "slip_tone_level_dbfs": -18.0,
+    "placement_ping_volume_db": -12.0,
     "telemetry_protocol": "extended",
     "compass_click_interval": 15,
     "compass_highlight_enabled": True,
@@ -99,8 +102,17 @@ DEFAULT_CONFIG = {
     "scanner_steer_tone_enabled": True,
     "scanner_base_freq_hz": 1000.0,
     "scanner_pitch_offset_oct": 1.0,
+    "ui_nav_hold_suppression": True,
+    "ai_describer_provider": "gemini",
+    # Gemini's key/model keep their original names so existing configs migrate
+    # for free; every other provider is namespaced.
     "ai_describer_api_key": "",
     "ai_describer_model": "models/gemini-3-flash-preview",
+    "ai_describer_openai_api_key": "",
+    "ai_describer_openai_model": "gpt-5.6-terra",
+    "ai_describer_openai_base_url": "https://api.openai.com/v1",
+    "ai_describer_openai_reasoning_effort": "low",
+    "ai_describer_openai_detail": "auto",
     "ai_describer_disable_ui_toggle": False,
 }
 
@@ -280,6 +292,9 @@ def load_config():
         _coerce("pitch_roll_min_dbfs", float, -36.0)
         _coerce("compass_click_level_dbfs", float, -6.0)
         _coerce("lowspeed_click_level_dbfs", float, -14.0)
+        _coerce("lowspeed_stop_tone_level_dbfs", float, -16.0)
+        _coerce("slip_tone_level_dbfs", float, -18.0)
+        _coerce("placement_ping_volume_db", float, -12.0)
 
         _coerce("compass_click_interval", int, 15)
         _coerce("compass_highlight_enabled", bool, False)
@@ -299,17 +314,38 @@ def load_config():
         _coerce("scanner_steer_tone_enabled", bool, True)
         _coerce("scanner_base_freq_hz", float, 1000.0)
         _coerce("scanner_pitch_offset_oct", float, 1.0)
+        _coerce("ui_nav_hold_suppression", bool, True)
         _coerce("preferred_device_name", str, "")
         _coerce("audio_poll_interval_sec", float, 2.0)
+        _coerce("ai_describer_provider", str, "gemini")
         _coerce("ai_describer_api_key", str, "")
         _coerce("ai_describer_model", str, "models/gemini-3-flash-preview")
+        _coerce("ai_describer_openai_api_key", str, "")
+        _coerce("ai_describer_openai_model", str, "gpt-5.6-terra")
+        _coerce("ai_describer_openai_base_url", str, "https://api.openai.com/v1")
+        _coerce("ai_describer_openai_reasoning_effort", str, "low")
+        _coerce("ai_describer_openai_detail", str, "auto")
         _coerce("ai_describer_disable_ui_toggle", bool, False)
 
         try:
-            from ai_describer import VISION_MODEL_NAMES, DEFAULT_MODEL
+            import ai_describer
 
-            if merged["ai_describer_model"] not in VISION_MODEL_NAMES:
-                merged["ai_describer_model"] = DEFAULT_MODEL
+            if merged["ai_describer_provider"] not in dict(ai_describer.PROVIDERS):
+                merged["ai_describer_provider"] = ai_describer.DEFAULT_PROVIDER
+            # Validate every provider's model and extras, not just the active
+            # one — the inactive provider's settings are still on disk and will
+            # be used the moment the user switches to it.
+            for pid, _disp in ai_describer.PROVIDERS:
+                _key_cfg, model_cfg = ai_describer.config_keys_for(pid)
+                if merged.get(model_cfg) not in ai_describer.model_names_for(pid):
+                    merged[model_cfg] = ai_describer.default_model_for(pid)
+                for ex in ai_describer.extras_for(pid):
+                    val = merged.get(ex["key"])
+                    if ex["kind"] == "choice":
+                        if val not in [v for v, _d in ex["values"]]:
+                            merged[ex["key"]] = ex["default"]
+                    elif not (val or "").strip():
+                        merged[ex["key"]] = ex["default"]
         except Exception:
             pass
 
@@ -332,7 +368,9 @@ def load_config():
 
         for key in ["shift_tone_level_dbfs", "check_engine_buzzer_level_dbfs", "oil_chime_level_dbfs",
                     "pitch_roll_max_dbfs", "pitch_roll_min_dbfs", "compass_click_level_dbfs",
-                    "lowspeed_click_level_dbfs", "hrtf_front_emphasis_db"]:
+                    "lowspeed_click_level_dbfs", "lowspeed_stop_tone_level_dbfs",
+                    "slip_tone_level_dbfs", "placement_ping_volume_db",
+                    "hrtf_front_emphasis_db"]:
             db = merged.get(key, -12.0)
             merged[key] = max(-120.0, min(0.0, db))
         merged["hrtf_distance_gain_db"] = max(-24.0, min(6.0, merged.get("hrtf_distance_gain_db", 0.0)))

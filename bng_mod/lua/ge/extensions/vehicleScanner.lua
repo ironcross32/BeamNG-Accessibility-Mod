@@ -477,13 +477,64 @@ local function scanAndSendVehicleData()
     return
   end
 
-  -- Calculate bearing (positive = LEFT of forward, negative = right) and live distance
-  local targetPos      = targetVehicle:getPosition()
-  currentTargetDist    = playerPos:distance(targetPos)
-  local toTargetVec    = (targetPos - playerPos):normalized()
-  local cosAngle       = playerForwardVec:dot(toTargetVec)
+  -- Aim from the implement when there is one. An articulated loader has two frames, and
+  -- player:getDirectionVector() describes the REAR one (cab, reference nodes) while the
+  -- bucket is on the front one. Measuring from the rear frame makes lining the bucket up
+  -- close to impossible: bend the frame toward a target and the rear initially swings the
+  -- other way as the machine pivots, so the bearing OPENS while the bucket is closing on
+  -- it. Returns nil on anything that is not such a machine, which is every ordinary vehicle.
+  local originPos, forwardVec = playerPos, playerForwardVec
+  local contactPts = nil
+  if extensions and extensions.implementProximity then
+    local ip = extensions.implementProximity
+    if ip.getImplementFrame then
+      local okFrame, implFrame = pcall(ip.getImplementFrame)
+      if okFrame and implFrame then
+        originPos, forwardVec = implFrame.pos, implFrame.fwd
+      end
+    end
+    if ip.getImplementPoints then
+      local okPts, pts = pcall(ip.getImplementPoints)
+      if okPts and pts then contactPts = pts end
+    end
+  end
+
+  -- With no implement the contact set is the player's own front node band -- the same
+  -- question answered for an ordinary car. This is the whole point of the vehicleGeometry
+  -- split: the loader is a different cid list, not a different code path.
+  local geo = extensions and extensions.vehicleGeometry or nil
+  if not contactPts and geo then
+    local okC, pts = pcall(geo.contactPoints, playerID, 1)
+    if okC and pts then contactPts = pts end
+  end
+
+  -- Bearing aims at the target's box CENTRE while range measures to its nearest SURFACE.
+  -- That split looks inconsistent and is deliberate: a bearing to the nearest surface point
+  -- swings wildly at close range as the winning point hops from corner to corner, and
+  -- bearing is the number you steer with.
+  local targetPos = targetVehicle:getPosition()
+  if geo then
+    local okC, c = pcall(geo.boxCentre, currentTargetID)
+    if okC and c then targetPos = c end
+  end
+
+  -- Range is the GAP, not the centre-to-centre distance. getPosition() is the object's
+  -- reference node, so the old measurement carried half a vehicle of phantom range at each
+  -- end and -- worse -- changed with orientation, reporting the same number broadside and
+  -- nose-on to the same car. Every tier of nearestApproach falls back cleanly, ending at
+  -- exactly the old behaviour, so a vehicle whose geometry never resolves still answers.
+  local gap = nil
+  if geo and contactPts then
+    local okG, d = pcall(geo.nearestApproach, contactPts, currentTargetID)
+    if okG and d then gap = d end
+  end
+  -- Clamp: once the implement is inside the target's hull the nearest approach is still
+  -- positive, but the box tier can round through zero, and Python formats this with %.0f.
+  currentTargetDist = math.max(0, gap or originPos:distance(targetPos))
+  local toTargetVec    = (targetPos - originPos):normalized()
+  local cosAngle       = forwardVec:dot(toTargetVec)
   local angleRadians   = math.acos(math.max(-1, math.min(1, cosAngle)))
-  local playerLeftVec  = playerUpVec:cross(playerForwardVec) -- up x fwd = left, see note above
+  local playerLeftVec  = playerUpVec:cross(forwardVec) -- up x fwd = left, see note above
   local dot            = playerLeftVec:dot(toTargetVec)
   local bearingDegrees = math.deg(angleRadians) * (dot < 0 and -1 or 1)
 
@@ -492,7 +543,7 @@ local function scanAndSendVehicleData()
   -- positive = player is to target's LEFT, negative = player is to target's right
   local targetFwdVec   = targetVehicle:getDirectionVector()
   local targetUpVec    = targetVehicle:getDirectionVectorUp()
-  local toPlayerVec    = (playerPos - targetPos):normalized()
+  local toPlayerVec    = (originPos - targetPos):normalized()
   local cosApproach    = targetFwdVec:dot(toPlayerVec)
   local approachRad    = math.acos(math.max(-1, math.min(1, cosApproach)))
   local targetLeftVec  = targetUpVec:cross(targetFwdVec) -- left, as above

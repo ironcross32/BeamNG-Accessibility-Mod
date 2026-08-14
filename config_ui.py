@@ -581,6 +581,16 @@ class ConfigPanel(wx.ScrolledWindow):
         self._callout_interval_sizer.Add(self.choice_callout_interval, 1, wx.EXPAND)
         auto_sizer.Add(self._callout_interval_sizer, 0, wx.ALL | wx.EXPAND, 6)
 
+        self.chk_ui_nav_hold = wx.CheckBox(
+            sb_auto, label="Quiet menu navigation while holding a direction"
+        )
+        self.chk_ui_nav_hold.SetToolTip(
+            "When holding a direction to move quickly through a menu, list, or slider, "
+            "speak the first item and then stay silent until you stop, announcing "
+            "where you landed."
+        )
+        auto_sizer.Add(self.chk_ui_nav_hold, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+
         vbox.Add(auto_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
         # --- Compass Clicks Group ---
@@ -653,6 +663,51 @@ class ConfigPanel(wx.ScrolledWindow):
         _label_spin(self.spin_lowspeed_click_level, "Low Speed Click Volume")
         compass_grid.Add(lbl_lowspeed_click_level, 0, wx.ALIGN_CENTER_VERTICAL)
         compass_grid.Add(self.spin_lowspeed_click_level, 0, wx.EXPAND)
+
+        lbl_lowspeed_stop_level = wx.StaticText(
+            sb_compass, label="Low Speed Stop Tone Volume (dBFS):"
+        )
+        self.spin_lowspeed_stop_level = wx.SpinCtrlDouble(
+            sb_compass, min=-120.0, max=0.0, inc=1.0
+        )
+        self.spin_lowspeed_stop_level.SetDigits(1)
+        self.spin_lowspeed_stop_level.SetToolTip(
+            "Volume level for the tone that confirms the vehicle has come to a stop."
+        )
+        self.spin_lowspeed_stop_level.SetName("Low Speed Stop Tone Volume")
+        _label_spin(self.spin_lowspeed_stop_level, "Low Speed Stop Tone Volume")
+        compass_grid.Add(lbl_lowspeed_stop_level, 0, wx.ALIGN_CENTER_VERTICAL)
+        compass_grid.Add(self.spin_lowspeed_stop_level, 0, wx.EXPAND)
+
+        lbl_slip_tone_level = wx.StaticText(
+            sb_compass, label="Wheel Slip Tone Volume (dBFS):"
+        )
+        self.spin_slip_tone_level = wx.SpinCtrlDouble(
+            sb_compass, min=-120.0, max=0.0, inc=1.0
+        )
+        self.spin_slip_tone_level.SetDigits(1)
+        self.spin_slip_tone_level.SetToolTip(
+            "Volume level for the wheel lockup and wheelspin tone."
+        )
+        self.spin_slip_tone_level.SetName("Wheel Slip Tone Volume")
+        _label_spin(self.spin_slip_tone_level, "Wheel Slip Tone Volume")
+        compass_grid.Add(lbl_slip_tone_level, 0, wx.ALIGN_CENTER_VERTICAL)
+        compass_grid.Add(self.spin_slip_tone_level, 0, wx.EXPAND)
+
+        lbl_placement_ping_level = wx.StaticText(
+            sb_compass, label="Placement Ping Volume (dBFS):"
+        )
+        self.spin_placement_ping_level = wx.SpinCtrlDouble(
+            sb_compass, min=-120.0, max=0.0, inc=1.0
+        )
+        self.spin_placement_ping_level.SetDigits(1)
+        self.spin_placement_ping_level.SetToolTip(
+            "Volume level for the movement pings in the vehicle spawner's 3D placement editor."
+        )
+        self.spin_placement_ping_level.SetName("Placement Ping Volume")
+        _label_spin(self.spin_placement_ping_level, "Placement Ping Volume")
+        compass_grid.Add(lbl_placement_ping_level, 0, wx.ALIGN_CENTER_VERTICAL)
+        compass_grid.Add(self.spin_placement_ping_level, 0, wx.EXPAND)
 
         compass_sizer.Add(compass_grid, 0, wx.ALL | wx.EXPAND, 6)
 
@@ -852,6 +907,62 @@ class ConfigPanel(wx.ScrolledWindow):
         warnings_sizer.Add(warnings_grid, 0, wx.EXPAND | wx.ALL, 6)
         vbox.Add(warnings_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
+        # --- Loader Implement Group ---
+        # Only ever audible on a machine with hydraulic implement cylinders (the WL-40
+        # wheel loader and anything like it); inert on every ordinary vehicle.
+        sb_impl, impl_sizer = _group(self, "Loader Implement")
+
+        self.chk_impl_tones = wx.CheckBox(
+            sb_impl, label="Bucket / Fork Tones"
+        )
+        self.chk_impl_tones.SetToolTip(
+            "Ground proximity tone and tilt tone for a loader's bucket or forks. "
+            "Both fade out when the controls are idle."
+        )
+        impl_sizer.Add(self.chk_impl_tones, 0, wx.ALL, 6)
+
+        self.chk_impl_proximity = wx.CheckBox(
+            sb_impl, label="Announce Nearby Vehicles and Props"
+        )
+        self.chk_impl_proximity.SetToolTip(
+            "Speak the name of a vehicle or prop the bucket or forks are approaching, "
+            "and whether they are above, below or level with it."
+        )
+        impl_sizer.Add(
+            self.chk_impl_proximity, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6
+        )
+
+        impl_grid = wx.FlexGridSizer(0, 2, 6, 8)
+        impl_grid.AddGrowableCol(1, 1)
+
+        lbl_impl_ground = wx.StaticText(
+            sb_impl, label="Ground Proximity Tone Level (dBFS):"
+        )
+        self.spin_impl_ground = wx.SpinCtrlDouble(sb_impl, min=-120.0, max=0.0, inc=1.0)
+        self.spin_impl_ground.SetDigits(1)
+        self.spin_impl_ground.SetToolTip(
+            "Level of the tone that gets rougher as the bucket or forks near the ground."
+        )
+        self.spin_impl_ground.SetName("Ground Proximity Tone Level")
+        _label_spin(self.spin_impl_ground, "Ground Proximity Tone Level")
+        impl_grid.Add(lbl_impl_ground, 0, wx.ALIGN_CENTER_VERTICAL)
+        impl_grid.Add(self.spin_impl_ground, 0, wx.EXPAND)
+
+        lbl_impl_tilt = wx.StaticText(sb_impl, label="Tilt Tone Level (dBFS):")
+        self.spin_impl_tilt = wx.SpinCtrlDouble(sb_impl, min=-120.0, max=0.0, inc=1.0)
+        self.spin_impl_tilt.SetDigits(1)
+        self.spin_impl_tilt.SetToolTip(
+            "Level of the quarter-tone tilt scale. 400 Hz is level, lower is tipped "
+            "forward, higher is curled back."
+        )
+        self.spin_impl_tilt.SetName("Tilt Tone Level")
+        _label_spin(self.spin_impl_tilt, "Tilt Tone Level")
+        impl_grid.Add(lbl_impl_tilt, 0, wx.ALIGN_CENTER_VERTICAL)
+        impl_grid.Add(self.spin_impl_tilt, 0, wx.EXPAND)
+
+        impl_sizer.Add(impl_grid, 0, wx.EXPAND | wx.ALL, 6)
+        vbox.Add(impl_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
+
         # --- Audio Device Group ---
         sb_audio, audio_sizer = _group(self, "Audio Device")
 
@@ -931,6 +1042,9 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_announce_gear,
             self.chk_scanner_callout,
             self.chk_scanner_steer_tone,
+            self.chk_ui_nav_hold,
+            self.chk_impl_tones,
+            self.chk_impl_proximity,
         ):
             ctrl.Bind(wx.EVT_CHECKBOX, self._schedule_save)
 
@@ -957,8 +1071,13 @@ class ConfigPanel(wx.ScrolledWindow):
             self.spin_level,
             self.spin_buzzer_level,
             self.spin_chime_level,
+            self.spin_impl_ground,
+            self.spin_impl_tilt,
             self.spin_compass_click_level,
             self.spin_lowspeed_click_level,
+            self.spin_lowspeed_stop_level,
+            self.spin_slip_tone_level,
+            self.spin_placement_ping_level,
             self.spin_hrtf_front_emphasis,
             self.spin_hrtf_distance_gain,
             self.spin_pitch_roll_max,
@@ -1063,12 +1182,10 @@ class ConfigPanel(wx.ScrolledWindow):
             # re-read them from disk so this panel's snapshot doesn't clobber a
             # value the user just changed there.
             try:
+                import ai_describer
+
                 disk = load_config()
-                for k in (
-                    "ai_describer_api_key",
-                    "ai_describer_model",
-                    "ai_describer_disable_ui_toggle",
-                ):
+                for k in ai_describer.all_config_keys():
                     if k in disk:
                         cfg[k] = disk[k]
             except Exception:
@@ -1113,6 +1230,15 @@ class ConfigPanel(wx.ScrolledWindow):
             )
             self.spin_chime_level.SetValue(cfg.get("oil_chime_level_dbfs", -12.0))
 
+            self.chk_impl_tones.SetValue(cfg.get("implement_tones_enabled", True))
+            self.chk_impl_proximity.SetValue(
+                cfg.get("implement_proximity_speech", True)
+            )
+            self.spin_impl_ground.SetValue(
+                cfg.get("implement_ground_tone_dbfs", -16.0)
+            )
+            self.spin_impl_tilt.SetValue(cfg.get("implement_tilt_tone_dbfs", -20.0))
+
             self.spin_compass_interval.SetValue(cfg.get("compass_click_interval", 15))
             self.chk_compass_highlight.SetValue(
                 cfg.get("compass_highlight_enabled", False)
@@ -1125,6 +1251,13 @@ class ConfigPanel(wx.ScrolledWindow):
             )
             self.spin_lowspeed_click_level.SetValue(
                 cfg.get("lowspeed_click_level_dbfs", -14.0)
+            )
+            self.spin_lowspeed_stop_level.SetValue(
+                cfg.get("lowspeed_stop_tone_level_dbfs", -16.0)
+            )
+            self.spin_slip_tone_level.SetValue(cfg.get("slip_tone_level_dbfs", -18.0))
+            self.spin_placement_ping_level.SetValue(
+                cfg.get("placement_ping_volume_db", -12.0)
             )
             self.chk_hrtf_enabled.SetValue(cfg.get("hrtf_enabled", True))
             self.spin_hrtf_front_emphasis.SetValue(
@@ -1155,6 +1288,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_scanner_steer_tone.SetValue(cfg.get("scanner_steer_tone_enabled", True))
             self.spin_scanner_base_freq.SetValue(int(round(cfg.get("scanner_base_freq_hz", 1000.0))))
             self.spin_scanner_offset.SetValue(cfg.get("scanner_pitch_offset_oct", 1.0))
+            self.chk_ui_nav_hold.SetValue(cfg.get("ui_nav_hold_suppression", True))
             self._update_speed_interval_labels()
             interval_val = cfg.get("speed_announce_interval", 25)
             interval_choices = [25, 50, 75, 100]
@@ -1181,11 +1315,19 @@ class ConfigPanel(wx.ScrolledWindow):
         cfg["check_engine_buzzer_level_dbfs"] = self.spin_buzzer_level.GetValue()
         cfg["oil_chime_level_dbfs"] = self.spin_chime_level.GetValue()
 
+        cfg["implement_tones_enabled"] = self.chk_impl_tones.GetValue()
+        cfg["implement_proximity_speech"] = self.chk_impl_proximity.GetValue()
+        cfg["implement_ground_tone_dbfs"] = self.spin_impl_ground.GetValue()
+        cfg["implement_tilt_tone_dbfs"] = self.spin_impl_tilt.GetValue()
+
         cfg["compass_click_interval"] = self.spin_compass_interval.GetValue()
         cfg["compass_highlight_enabled"] = self.chk_compass_highlight.GetValue()
         cfg["compass_highlight_nth_click"] = self.spin_compass_highlight_nth.GetValue()
         cfg["compass_click_level_dbfs"] = self.spin_compass_click_level.GetValue()
         cfg["lowspeed_click_level_dbfs"] = self.spin_lowspeed_click_level.GetValue()
+        cfg["lowspeed_stop_tone_level_dbfs"] = self.spin_lowspeed_stop_level.GetValue()
+        cfg["slip_tone_level_dbfs"] = self.spin_slip_tone_level.GetValue()
+        cfg["placement_ping_volume_db"] = self.spin_placement_ping_level.GetValue()
         cfg["hrtf_enabled"] = self.chk_hrtf_enabled.GetValue()
         cfg["hrtf_front_emphasis_db"] = self.spin_hrtf_front_emphasis.GetValue()
         cfg["hrtf_distance_gain_db"] = self.spin_hrtf_distance_gain.GetValue()
@@ -1208,6 +1350,7 @@ class ConfigPanel(wx.ScrolledWindow):
         cfg["scanner_base_freq_hz"] = float(self.spin_scanner_base_freq.GetValue())
         # Snap the octave offset to whole semitones so it stays on a musical grid.
         cfg["scanner_pitch_offset_oct"] = round(self.spin_scanner_offset.GetValue() * 12.0) / 12.0
+        cfg["ui_nav_hold_suppression"] = self.chk_ui_nav_hold.GetValue()
         interval_choices = [25, 50, 75, 100]
         sel_idx = self.choice_speed_interval.GetSelection()
         cfg["speed_announce_interval"] = interval_choices[sel_idx] if 0 <= sel_idx < len(interval_choices) else 25
@@ -1421,18 +1564,17 @@ class ConfigPanel(wx.ScrolledWindow):
 
 
 class AIDescriberPanel(wx.ScrolledWindow):
-    """Configuration for the AI Describer feature (Gemini scene description).
+    """Configuration for the AI Describer feature (AI scene description).
 
-    Owns three config keys: ai_describer_api_key, ai_describer_model and
-    ai_describer_disable_ui_toggle. Writes are merged onto a fresh disk read so
-    this panel doesn't clobber settings owned by the main Configuration tab.
+    The provider dropdown drives everything below it: the API key group is
+    retitled, the model list is repopulated, and each provider's extra request
+    parameters (declared in ai_describer's registry) are shown or hidden. Every
+    provider keeps its own key and model on disk, so switching back and forth
+    never loses a setting.
+
+    Writes are merged onto a fresh disk read so this panel doesn't clobber
+    settings owned by the main Configuration tab.
     """
-
-    _AI_KEYS = (
-        "ai_describer_api_key",
-        "ai_describer_model",
-        "ai_describer_disable_ui_toggle",
-    )
 
     def __init__(self, parent):
         super().__init__(parent, style=wx.TAB_TRAVERSAL)
@@ -1441,32 +1583,50 @@ class AIDescriberPanel(wx.ScrolledWindow):
 
         self.Bind(wx.EVT_NAVIGATION_KEY, lambda evt: wrap_nav_key(evt, self))
 
-        from ai_describer import VISION_MODELS, DEFAULT_MODEL
+        import ai_describer
 
-        self._models = list(VISION_MODELS)
-        self._default_model = DEFAULT_MODEL
+        self._ai = ai_describer
+        self._providers = list(ai_describer.PROVIDERS)
+        self._provider = ai_describer.DEFAULT_PROVIDER
+        self._models = list(ai_describer.vision_models_for(self._provider))
+
+        # The base-URL field saves on a debounce rather than per keystroke;
+        # every other control here still saves eagerly.
+        self._save_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, lambda evt: self._save(), self._save_timer)
 
         vbox = wx.BoxSizer(wx.VERTICAL)
 
-        intro = wx.StaticText(
-            self,
-            label=(
-                "Press F10 then Space in-game to describe the current scene using "
-                "Google Gemini. The description is spoken and added to the speech "
-                "buffer."
-            ),
+        self.lbl_intro = wx.StaticText(self, label="")
+        vbox.Add(self.lbl_intro, 0, wx.ALL, 8)
+
+        # ---- Provider ----
+        sb_prov, prov_box = _group(self, "Provider")
+        prov_grid = wx.FlexGridSizer(1, 2, 6, 6)
+        prov_grid.AddGrowableCol(1, 1)
+        lbl_prov = wx.StaticText(sb_prov, label="Service:")
+        self.choice_provider = wx.Choice(
+            sb_prov, choices=[d for _p, d in self._providers]
         )
-        intro.Wrap(560)
-        vbox.Add(intro, 0, wx.ALL, 8)
+        self.choice_provider.SetToolTip(
+            "Which AI service describes the scene. Each service keeps its own "
+            "API key and model."
+        )
+        self.choice_provider.Bind(wx.EVT_CHOICE, self.on_change_provider)
+        prov_grid.Add(lbl_prov, 0, wx.ALIGN_CENTER_VERTICAL)
+        prov_grid.Add(self.choice_provider, 1, wx.EXPAND)
+        prov_box.Add(prov_grid, 0, wx.EXPAND | wx.ALL, 6)
+        vbox.Add(prov_box, 0, wx.EXPAND | wx.ALL, 6)
 
         # ---- API key ----
-        sb_key, key_box = _group(self, "Gemini API Key")
+        # Kept on self so the group title can name the active provider.
+        self._sb_key, key_box = _group(self, "API Key")
         # No SetName: the label flips between "Set API key" and "Clear API key"
         # at runtime, and a fixed name would go stale on every toggle.
-        self.btn_api_key = wx.Button(sb_key, label="Set API key")
+        self.btn_api_key = wx.Button(self._sb_key, label="Set API key")
         self.btn_api_key.Bind(wx.EVT_BUTTON, self.on_api_key_button)
         key_box.Add(self.btn_api_key, 0, wx.ALL, 6)
-        self.lbl_key_status = wx.StaticText(sb_key, label="")
+        self.lbl_key_status = wx.StaticText(self._sb_key, label="")
         self.lbl_key_status.SetName("API key status")
         key_box.Add(self.lbl_key_status, 0, wx.LEFT | wx.BOTTOM, 6)
         vbox.Add(key_box, 0, wx.EXPAND | wx.ALL, 6)
@@ -1479,12 +1639,24 @@ class AIDescriberPanel(wx.ScrolledWindow):
         # top of them made readers announce it twice.
         lbl_model = wx.StaticText(sb_model, label="Model:")
         self.choice_model = wx.Choice(sb_model, choices=[d for _n, d in self._models])
-        self.choice_model.SetToolTip("The Gemini model used to describe the scene.")
         self.choice_model.Bind(wx.EVT_CHOICE, self.on_change)
         grid.Add(lbl_model, 0, wx.ALIGN_CENTER_VERTICAL)
         grid.Add(self.choice_model, 1, wx.EXPAND)
         model_box.Add(grid, 0, wx.EXPAND | wx.ALL, 6)
         vbox.Add(model_box, 0, wx.EXPAND | wx.ALL, 6)
+
+        # ---- Provider-specific extras ----
+        # Build a row per extra across every provider up front, then show only
+        # the active provider's rows. Creating them once (rather than
+        # destroying and rebuilding on each switch) keeps the tab order and the
+        # screen reader's view of the panel stable.
+        self._sb_extra, self._extra_box = _group(self, "Advanced")
+        self._extra_rows = {}
+        for pid, _disp in self._providers:
+            for ex in self._ai.extras_for(pid):
+                self._build_extra_row(ex)
+        vbox.Add(self._extra_box, 0, wx.EXPAND | wx.ALL, 6)
+        self._extra_outer = vbox.GetItem(self._extra_box)
 
         # ---- Capture options ----
         sb_opt, opt_box = _group(self, "Capture")
@@ -1504,17 +1676,85 @@ class AIDescriberPanel(wx.ScrolledWindow):
 
         self.load_into_controls(self.cur_cfg)
 
+    # ---- Provider-specific extra controls ----
+
+    def _build_extra_row(self, ex):
+        """Create one labelled control for an extra-parameter descriptor.
+
+        The row lives in its own horizontal sizer so `_set_row` can show/hide
+        and enable/disable it as a unit when the provider changes.
+        """
+        row = wx.BoxSizer(wx.HORIZONTAL)
+        lbl = wx.StaticText(self._sb_extra, label=ex["label"])
+        if ex["kind"] == "choice":
+            ctrl = wx.Choice(self._sb_extra, choices=[d for _v, d in ex["values"]])
+            ctrl.Bind(wx.EVT_CHOICE, self.on_change)
+        else:
+            ctrl = wx.TextCtrl(self._sb_extra)
+            # Saving per keystroke would rewrite the config file on every
+            # character typed into the URL; debounce like the main tab does.
+            ctrl.Bind(wx.EVT_TEXT, self._on_extra_text)
+        ctrl.SetToolTip(ex["help"])
+        # The group box and this label name the control between them; a SetName
+        # on top would make readers announce it twice.
+        row.Add(lbl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
+        row.Add(ctrl, 1, wx.EXPAND)
+        self._extra_box.Add(row, 0, wx.EXPAND | wx.ALL, 6)
+        self._extra_rows[ex["key"]] = (row, ctrl, ex)
+
+    def _on_extra_text(self, evt=None):
+        self._save_timer.StartOnce(_AUTO_SAVE_DELAY_MS)
+        if evt:
+            evt.Skip()
+
+    def flush_pending_save(self):
+        """Write immediately if the debounce timer is still counting down."""
+        if self._save_timer.IsRunning():
+            self._save_timer.Stop()
+            self._save()
+
+    def _extra_value(self, ex, ctrl):
+        """Read one extra control, falling back to its default when unusable."""
+        if ex["kind"] == "choice":
+            sel = ctrl.GetSelection()
+            if 0 <= sel < len(ex["values"]):
+                return ex["values"][sel][0]
+            return ex["default"]
+        return (ctrl.GetValue() or "").strip() or ex["default"]
+
+    def _show_extras_for_provider(self):
+        """Show the active provider's extra rows and hide everyone else's."""
+        active = {ex["key"] for ex in self._ai.extras_for(self._provider)}
+        for key, (row, ctrl, _ex) in self._extra_rows.items():
+            # Hide *and* disable: hiding alone would leave the control out of
+            # the tab order in an inconsistent state.
+            _set_row(row, (ctrl,), key in active, self.choice_provider)
+        # Drop the whole group when the provider declares no extras, so its
+        # empty box doesn't sit there announcing itself.
+        has_any = bool(active)
+        self._extra_outer.Show(has_any)
+        self._sb_extra.Show(has_any)
+
     # ---- Persistence ----
 
     def _save(self):
-        """Merge this panel's keys onto a fresh disk read and write the file."""
+        """Merge this panel's keys onto a fresh disk read and write the file.
+
+        Only the active provider's key/model/extras are written; the other
+        providers' values come through untouched from the disk read.
+        """
         try:
             cfg = load_config()
         except Exception:
             cfg = self.cur_cfg.copy()
-        cfg["ai_describer_model"] = self._selected_model_name()
+        key_cfg, model_cfg = self._ai.config_keys_for(self._provider)
+        cfg[self._ai.PROVIDER_CFG_KEY] = self._provider
+        cfg[model_cfg] = self._selected_model_name()
+        cfg[key_cfg] = self.cur_cfg.get(key_cfg, "")
+        for ex in self._ai.extras_for(self._provider):
+            _row, ctrl, _ex = self._extra_rows[ex["key"]]
+            cfg[ex["key"]] = self._extra_value(ex, ctrl)
         cfg["ai_describer_disable_ui_toggle"] = self.chk_disable_ui_toggle.GetValue()
-        cfg["ai_describer_api_key"] = self.cur_cfg.get("ai_describer_api_key", "")
         try:
             _write_config(CONFIG_PATH, cfg)
             self.cur_cfg = cfg
@@ -1526,26 +1766,93 @@ class AIDescriberPanel(wx.ScrolledWindow):
         if evt:
             evt.Skip()
 
+    def on_change_provider(self, evt=None):
+        """Repoint every provider-specific control at the newly chosen service."""
+        # Flush any half-typed base URL against the *old* provider before the
+        # key names change out from under it.
+        self.flush_pending_save()
+        self._provider = self._selected_provider()
+        self._retitle_for_provider()
+        self._load_provider_controls(self.cur_cfg)
+        self._show_extras_for_provider()
+        self._refresh_key_button()
+        self._save()
+        self.Layout()
+        # ScrolledWindow: the panel just changed height, so the scroll extent
+        # has to be recomputed or the last group can become unreachable.
+        self.FitInside()
+        if evt:
+            evt.Skip()
+
+    def _selected_provider(self):
+        sel = self.choice_provider.GetSelection()
+        if 0 <= sel < len(self._providers):
+            return self._providers[sel][0]
+        return self._ai.DEFAULT_PROVIDER
+
     def _selected_model_name(self):
         sel = self.choice_model.GetSelection()
         if 0 <= sel < len(self._models):
             return self._models[sel][0]
-        return self._default_model
+        return self._ai.default_model_for(self._provider)
 
-    def load_into_controls(self, cfg):
-        self.cur_cfg = cfg
-        want = cfg.get("ai_describer_model", self._default_model)
+    def _retitle_for_provider(self):
+        """Put the provider's name on the labels that mention it."""
+        display = self._ai.provider_display_name(self._provider)
+        self._sb_key.SetLabel(f"{display} API Key")
+        self.choice_model.SetToolTip(
+            f"The {display} model used to describe the scene."
+        )
+        self.lbl_intro.SetLabel(
+            "Press F10 then Space in-game to describe the current scene using "
+            f"{display}. The description is spoken and added to the speech buffer."
+        )
+        self.lbl_intro.Wrap(560)
+
+    def _load_provider_controls(self, cfg):
+        """Fill the model dropdown and extras from the active provider's config."""
+        self._models = list(self._ai.vision_models_for(self._provider))
+        self.choice_model.Clear()
+        self.choice_model.AppendItems([d for _n, d in self._models])
+        _key_cfg, model_cfg = self._ai.config_keys_for(self._provider)
+        want = cfg.get(model_cfg, self._ai.default_model_for(self._provider))
         idx = 0
         for i, (name, _disp) in enumerate(self._models):
             if name == want:
                 idx = i
                 break
         self.choice_model.SetSelection(idx)
+
+        for ex in self._ai.extras_for(self._provider):
+            _row, ctrl, _ex = self._extra_rows[ex["key"]]
+            val = cfg.get(ex["key"], ex["default"])
+            if ex["kind"] == "choice":
+                values = [v for v, _d in ex["values"]]
+                ctrl.SetSelection(values.index(val) if val in values else
+                                  values.index(ex["default"]))
+            else:
+                ctrl.ChangeValue((val or "").strip() or ex["default"])
+
+    def load_into_controls(self, cfg):
+        self.cur_cfg = cfg
+        provider = cfg.get(self._ai.PROVIDER_CFG_KEY, self._ai.DEFAULT_PROVIDER)
+        if provider not in dict(self._providers):
+            provider = self._ai.DEFAULT_PROVIDER
+        self._provider = provider
+        self.choice_provider.SetSelection(
+            [p for p, _d in self._providers].index(provider)
+        )
+        self._retitle_for_provider()
+        self._load_provider_controls(cfg)
+        self._show_extras_for_provider()
         self.chk_disable_ui_toggle.SetValue(bool(cfg.get("ai_describer_disable_ui_toggle", False)))
         self._refresh_key_button()
+        self.Layout()
+        self.FitInside()
 
     def _has_key(self):
-        return bool((self.cur_cfg.get("ai_describer_api_key", "") or "").strip())
+        key_cfg, _model_cfg = self._ai.config_keys_for(self._provider)
+        return bool((self.cur_cfg.get(key_cfg, "") or "").strip())
 
     def _refresh_key_button(self):
         if self._has_key():
@@ -1565,22 +1872,24 @@ class AIDescriberPanel(wx.ScrolledWindow):
             self._set_api_key()
 
     def _clear_api_key(self):
+        display = self._ai.provider_display_name(self._provider)
         ans = wx.MessageBox(
-            "Remove your stored Gemini API key?",
+            f"Remove your stored {display} API key?",
             "Clear API Key",
             wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
             self,
         )
         if ans != wx.YES:
             return
-        self.cur_cfg["ai_describer_api_key"] = ""
+        key_cfg, _model_cfg = self._ai.config_keys_for(self._provider)
+        self.cur_cfg[key_cfg] = ""
         self._save()
         self._refresh_key_button()
 
     def _set_api_key(self):
         dlg = wx.TextEntryDialog(
             self,
-            "Paste your Google Gemini API key:",
+            self._ai.provider_info(self._provider)["key_help"],
             "Set API Key",
         )
         try:
@@ -1595,10 +1904,20 @@ class AIDescriberPanel(wx.ScrolledWindow):
         self.btn_api_key.Enable(False)
         self.lbl_key_status.SetLabel("Validating API key...")
 
-        def worker():
-            from ai_describer import validate_api_key
+        provider = self._provider
+        # Validate against the endpoint the describer will actually call, so a
+        # mistyped custom base URL or an out-of-reach model surfaces here rather
+        # than in-game.
+        extras = {
+            ex["arg"]: self._extra_value(ex, self._extra_rows[ex["key"]][1])
+            for ex in self._ai.extras_for(provider)
+        }
+        model = self._selected_model_name()
 
-            ok, err = validate_api_key(key)
+        def worker():
+            ok, err = self._ai.validate_api_key(
+                key, provider=provider, model=model, **extras
+            )
             wx.CallAfter(self._on_validated, key, ok, err)
 
         import threading
@@ -1612,7 +1931,8 @@ class AIDescriberPanel(wx.ScrolledWindow):
         self.btn_api_key.Enable(True)
         self.btn_api_key.SetFocus()
         if ok:
-            self.cur_cfg["ai_describer_api_key"] = key
+            key_cfg, _model_cfg = self._ai.config_keys_for(self._provider)
+            self.cur_cfg[key_cfg] = key
             self._save()
             self._refresh_key_button()
             wx.MessageBox(

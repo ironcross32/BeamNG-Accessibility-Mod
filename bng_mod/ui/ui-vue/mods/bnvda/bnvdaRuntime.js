@@ -65,16 +65,67 @@ export function installBNVDA($rootScope, dependencies) {
           var sawLoadingStart = false;
 
           // ---------- CONFIG ----------
-          var DEBOUNCE_MS = 50;
+          // The poll interval, FOCUS_DEBOUNCE_MS and DEBOUNCE_MS are serial and do
+          // not overlap, so they add up on every announcement. Keep them small.
+          var DEBOUNCE_MS = 25;
+          // Coalesces the three producers that fire for a single focus change --
+          // the MutationObserver, focusin, and the Vue poll. Those land within a
+          // few ms of each other, so this does not need to be large.
+          var FOCUS_DEBOUNCE_MS = 30;
           var CONTROLLER_DOMINANCE_MS = 900;
           var MIN_CHARS = 2;
           var MAX_LEN = 160;
+
+          // Held-navigation coalescing. Holding a direction to sweep a list, slider
+          // or dropdown otherwise speaks every item it flies past, which buries the
+          // one the user actually lands on. Instead: speak the first item, stay
+          // silent through the run, and announce the landing as soon as motion
+          // stops. The settle delay is derived from the observed repeat cadence
+          // rather than a fixed worst case, because a fixed ~500ms idle debounce
+          // makes the whole interface feel sluggish even when it is not.
+          var NAV_BURST_GAP_MS = 350;    // idle longer than this starts a new burst
+          var NAV_SETTLE_MIN_MS = 90;
+          // MUST stay >= the engine's controller repeat interval, or the settle timer
+          // fires in the gap between two repeats and flushes on every single item --
+          // which both defeats the coalescing entirely and still charges its full
+          // settle delay to every announcement. That is exactly what a 200ms ceiling
+          // did: the part selector repeats at ~240ms (measured ema 232-244), so every
+          // row was announced, each one 200ms late. Tying it to NAV_BURST_GAP_MS is
+          // the principled ceiling -- a gap longer than that already starts a new
+          // burst by definition, so settling at that boundary can never cut short a
+          // run the gap logic still considers continuous.
+          var NAV_SETTLE_MAX_MS = NAV_BURST_GAP_MS;
+          var NAV_SETTLE_FACTOR = 1.5;   // settle = clamp(ema * FACTOR, MIN, MAX)
+          var NAV_POLL_FAST_MS = 60;     // Vue focus poll interval during a burst
+          // On release the last focus move is still in flight (the poll interval plus
+          // FOCUS_DEBOUNCE_MS), so drain before announcing rather than
+          // speaking the second-to-last item and then correcting it.
+          var NAV_RELEASE_DRAIN_MS = 140;
+          // A key reported as held but with no movement for this long is treated as
+          // stale, so a release event that never arrives (focus loss, alt-tab)
+          // cannot strand the announcement. Comfortably longer than the worst
+          // uneven-repeat gap, so it never cuts a real sweep short.
+          var NAV_HOLD_STALE_MS = 500;
+          // Mirrors beamtel's ui_nav_hold_suppression. Defaults to the config
+          // default so behavior is right before the settings reply arrives.
+          var navHoldSuppression = true;
           // Evaluated live on every use rather than latched at install time.
           // BNVDA_DEBUG is set from the accessible console (CEF/UI - JS context)
           // after the runtime has already installed, and reloading the UI to
           // re-run install resets the JS context, clearing the global before it
           // would be read. Latching it left no sequence that could enable debug.
           function isDebug() { return !!window.BNVDA_DEBUG; }
+
+          // Mirror the flag to the Python side so its debug output can be toggled from
+          // the same accessible console command. Polled rather than hooked: the console
+          // assigns window.BNVDA_DEBUG directly, which fires no event we could observe.
+          var lastReportedDebug = null;
+          function reportDebugState() {
+            var state = isDebug();
+            if (state === lastReportedDebug) return;
+            lastReportedDebug = state;
+            send({ type: 'debug_state', enabled: state });
+          }
 
           // ---------- TRANSPORTS ----------
           var activeTransport = null;
@@ -86,12 +137,29 @@ export function installBNVDA($rootScope, dependencies) {
             }
             if (data.type === 'context_action') handleContextAction(data.action);
             else if (data.type === 'dom_dump') performDomDump();
+            else if (data.type === 'settings') applySettings(data);
+          }
+          function applySettings(data) {
+            if (typeof data.ui_nav_hold_suppression === 'boolean') {
+              if (navHoldSuppression !== data.ui_nav_hold_suppression) {
+                navHoldSuppression = data.ui_nav_hold_suppression;
+                if (!navHoldSuppression) navBurstReset();
+                log('info', '[bnvda] Held-navigation coalescing ' + (navHoldSuppression ? 'enabled' : 'disabled') + '.');
+              }
+            }
           }
           function activateTransport(transport) {
             if (activeTransport && activeTransport !== transport) activeTransport.shutdown();
             activeTransport = transport;
             console.info('[bnvda] Active transport: ' + transport.name);
             transport.send({type: 'log', level: 'info', msg: '[bnvda] Active transport: ' + transport.name});
+            // Re-send on a new transport: the far side has no state from the old one.
+            lastReportedDebug = null;
+            reportDebugState();
+            // Pull rather than wait for a push: beamtel broadcasts on config change,
+            // but at startup that fires before the bridge is connected and the frame
+            // would be dropped.
+            transport.send({ type: 'settings_request' });
           }
           function send(obj) {
             if (activeTransport) activeTransport.send(obj);
@@ -159,6 +227,16 @@ export function installBNVDA($rootScope, dependencies) {
 
           // ---------- HELPERS ----------
           function nowTS() { return (window.performance && performance.now) ? performance.now() : Date.now(); }
+          // A DOM `value` property is not necessarily text. Vue components and
+          // custom elements routinely expose a boolean or an object there, and
+          // cleanText stringifies whatever it is handed -- so a boolean `true`
+          // was announced as the literal word "true" inside a control's state
+          // list. The artifact was always "true" and never "false" because
+          // cleanText's leading falsy check silently maps `false` to "".
+          function scalarValue(v) {
+            return (typeof v === 'string' || typeof v === 'number') ? v : '';
+          }
+
           function cleanText(s) {
             if (!s) return "";
             // Strip bngIcons glyphs (Unicode Private Use Area U+E000-U+F8FF)
@@ -246,6 +324,125 @@ export function installBNVDA($rootScope, dependencies) {
             return parts.join('');
           }
 
+          // ---------- HELD-NAVIGATION COALESCING ----------
+          // lastTs is the time of the most recent navigation-ish signal, from either
+          // a speech request or a UINavigation press. ema tracks the repeat cadence.
+          // held names the direction actions the engine currently reports as down,
+          // which lets a release flush the pending announcement with no wait at all.
+          var _navBurst = { lastTs: 0, ema: 0, active: false, text: '', src: 0, timer: null, held: Object.create(null) };
+
+          function navBurstReset() {
+            if (_navBurst.timer) { try { clearTimeout(_navBurst.timer); } catch (e) {} }
+            _navBurst.timer = null;
+            _navBurst.active = false;
+            _navBurst.ema = 0;
+            _navBurst.text = '';
+            _navBurst.src = 0;
+            _navBurst.held = Object.create(null);
+          }
+          onCleanup(navBurstReset);
+
+          function navBurstHeldCount() {
+            var n = 0;
+            for (var k in _navBurst.held) { if (_navBurst.held[k]) n++; }
+            return n;
+          }
+
+          // The body of the original speak timer, shared by the plain debounce path
+          // and the burst settle path.
+          function emitSpeak(txt, src) {
+            lastSpoken = txt;
+            lastSource = src;
+            lastSpeakTs = nowTS();
+            send({ type: "speak", text: txt });
+            if (isDebug()) log("info", "speak(" + src + "): " + txt);
+          }
+
+          function navBurstFlush() {
+            if (_navBurst.timer) { try { clearTimeout(_navBurst.timer); } catch (e) {} }
+            _navBurst.timer = null;
+            _navBurst.active = false;
+            var txt = _navBurst.text, src = _navBurst.src;
+            _navBurst.text = '';
+            _navBurst.src = 0;
+            if (!txt || loadingActive) return;
+            // The run may have ended on the same item the leading edge announced.
+            if (txt === lastSpoken && src <= lastSource && (nowTS() - lastSpeakTs) < 400) return;
+            emitSpeak(txt, src);
+          }
+
+          function navSettleDelay() {
+            var d = _navBurst.ema * NAV_SETTLE_FACTOR;
+            if (!(d > NAV_SETTLE_MIN_MS)) return NAV_SETTLE_MIN_MS;
+            return d > NAV_SETTLE_MAX_MS ? NAV_SETTLE_MAX_MS : d;
+          }
+
+          function navBurstArm(delay) {
+            if (_navBurst.timer) { try { clearTimeout(_navBurst.timer); } catch (e) {} }
+            _navBurst.timer = trackedSetTimeout(navBurstOnSettle, delay);
+          }
+
+          // Where the engine reports key state, an uneven repeat must not be
+          // mistaken for the end of the sweep: while a direction is still down we
+          // re-arm instead of announcing, up to NAV_HOLD_STALE_MS since the last
+          // actual movement.
+          function navBurstOnSettle() {
+            _navBurst.timer = null;
+            if (navBurstHeldCount() > 0 && (nowTS() - _navBurst.lastTs) < NAV_HOLD_STALE_MS) {
+              navBurstArm(navSettleDelay());
+              return;
+            }
+            navBurstFlush();
+          }
+
+          // A request dropped by the same-text dedup below is still a movement, and
+          // during a burst it means the sweep has come back to the item that was
+          // already announced. Drop the pending text: keeping the older one would
+          // announce the wrong landing spot once the run settles.
+          // Only keyboard and controller focus moves are navigation. P.SYSTEM covers
+          // toasts, damage and cruise-control callouts, camera changes and download
+          // notices -- none of which is "held", and all of which were being delayed
+          // by the settle or, worse, dropped outright when the next focus move
+          // overwrote _navBurst.text mid-sweep.
+          function navBurstIsNavSource(src) {
+            return src === P.KEYBOARD || src === P.CONTROLLER;
+          }
+
+          function navBurstNoteRedundant(txt, src, t) {
+            if (!navHoldSuppression || !navBurstIsNavSource(src)) return;
+            _navBurst.lastTs = t;
+            if (!_navBurst.active) return;
+            _navBurst.text = '';
+            _navBurst.src = 0;
+          }
+
+          // Returns true when the request was swallowed into an in-progress burst.
+          function navBurstCapture(txt, src, t) {
+            if (!navHoldSuppression) return false;
+            // Pointer/hover speech is throttled on its own and is never "held";
+            // system notifications are not navigation at all.
+            if (!navBurstIsNavSource(src)) return false;
+            var dt = t - _navBurst.lastTs;
+            _navBurst.lastTs = t;
+            // Leading edge is decided purely on cadence, never on the held set: the
+            // first item of a hold must still speak, and a single tap must not be
+            // captured just because the key happened to still be down.
+            if (!_navBurst.active && dt > NAV_BURST_GAP_MS) {
+              _navBurst.ema = 0;
+              return false;
+            }
+            _navBurst.active = true;
+            _navBurst.ema = _navBurst.ema ? (_navBurst.ema * 0.6 + dt * 0.4) : dt;
+            _navBurst.text = txt;
+            _navBurst.src = src;
+            // Deliberately leave speakTimer alone. Anything pending there is the
+            // leading edge of this very burst, which is the one item a hold is
+            // supposed to announce; cancelling it would swallow the first item.
+            navBurstArm(navSettleDelay());
+            if (isDebug()) log('info', '[NAVBURST] held "' + txt + '" ema=' + Math.round(_navBurst.ema) + ' settle=' + Math.round(navSettleDelay()));
+            return true;
+          }
+
           function scheduleSpeak(txt, src) {
             if (!txt) return;
             if (loadingActive) return;
@@ -256,14 +453,14 @@ export function installBNVDA($rootScope, dependencies) {
             var t = nowTS();
             if (src === P.CONTROLLER) lastControllerTs = t;
             if (src === P.POINTER && (t - lastControllerTs) < CONTROLLER_DOMINANCE_MS) return;
-            if (txt === lastSpoken && src <= lastSource && (t - lastSpeakTs) < 400) return;
+            if (txt === lastSpoken && src <= lastSource && (t - lastSpeakTs) < 400) {
+              navBurstNoteRedundant(txt, src, t);
+              return;
+            }
+            if (navBurstCapture(txt, src, t)) return;
             if (speakTimer) try { clearTimeout(speakTimer); } catch (e) {}
             speakTimer = trackedSetTimeout(function () {
-              lastSpoken = txt;
-              lastSource = src;
-              lastSpeakTs = nowTS();
-              send({ type: "speak", text: txt });
-              if (isDebug()) log("info", "speak(" + src + "): " + txt);
+              emitSpeak(txt, src);
             }, DEBOUNCE_MS);
           }
 
@@ -378,10 +575,48 @@ export function installBNVDA($rootScope, dependencies) {
           // ---------- TRANSLATION HELPER ----------
           // Shared by the message processor and the bindings text formatters.
           var _translate = null;
+
+          // Last resort only, when no translator is reachable at all. Speaking the
+          // final dot-segment verbatim is how "ui.common.vehicleAccessoryOn" was
+          // announced as "vehicleAccessoryOn" and, worse, how state keys such as
+          // "vehicle.engine.oilLevelCritical.true" collapsed to the single word
+          // "true". Keep a trailing boolean attached to the concept it qualifies
+          // instead of dropping it -- dropping ".false" would invert the meaning.
+          function humanizeTranslationKey(key) {
+            if (typeof key !== 'string' || !key) return key;
+            var parts = key.split('.');
+            var leaf = parts.pop() || key;
+            if (/^(true|false)$/i.test(leaf) && parts.length) leaf = parts.pop() + ' ' + leaf.toLowerCase();
+            return leaf
+              .replace(/_/g, ' ')
+              .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+              .replace(/\s+/g, ' ')
+              .trim();
+          }
+
+          // 0.39 publishes the petite-vue-i18n instance as window.vueI18n
+          // (ui-vue/src/services/translation.js) and the legacy AngularJS
+          // $translate service as window.angular$translate (entrypoints/main/main.js).
+          // bngApi.engine.translate does not exist in 0.39 at all, and the injector
+          // probe only ever resolves on the remaining AngularJS screens -- so on
+          // every Vue screen lookups fell straight through to the humanizing
+          // fallback above and spoke raw key fragments.
           function findTranslateFunc() {
             if (_translate) return _translate;
-            if (window.bngApi && bngApi.engine && typeof bngApi.engine.translate === 'function') {
-              _translate = bngApi.engine.translate;
+            if (window.vueI18n && window.vueI18n.global && typeof window.vueI18n.global.t === 'function') {
+              // Re-resolved per call rather than bound once: initTranslation()
+              // replaces window.vueI18n outright when its variant check fails.
+              _translate = function (key, ctx) {
+                var g = window.vueI18n && window.vueI18n.global;
+                if (!g || typeof g.t !== 'function') return key;
+                try { return ctx ? g.t(key, ctx) : g.t(key); } catch (e) { return key; }
+              };
+              return _translate;
+            }
+            if (window.angular$translate && typeof window.angular$translate.instant === 'function') {
+              _translate = function (key, ctx) {
+                try { return window.angular$translate.instant(key, ctx); } catch (e) { return key; }
+              };
               return _translate;
             }
             try {
@@ -394,7 +629,10 @@ export function installBNVDA($rootScope, dependencies) {
                 }
               }
             } catch (e) {}
-            return function(key) { return key.substring(key.lastIndexOf('.') + 1).replace(/_/g, ' '); };
+            // Deliberately not cached: the real translator appears once the UI
+            // finishes booting, and caching this would freeze us on key fragments
+            // for the rest of the session.
+            return humanizeTranslationKey;
           }
 
           // ---------- TOASTER SERVICE PATCHER ----------
@@ -522,7 +760,9 @@ export function installBNVDA($rootScope, dependencies) {
             }
             else if (typeof payload === 'object' && payload !== null && payload.txt) {
               if (isDebug()) {
-                try { log('warn', '[LUA_TABLE_SPEECH] source=Message.localization_descriptor count=' + Object.keys(payload).length + ' contents=' + JSON.stringify(payload)); } catch (e) {}
+                // Informational, not a fault: {txt, context} is the normal shape
+                // for a localization descriptor and is handled below.
+                try { log('info', '[MESSAGE_DESCRIPTOR] ' + JSON.stringify(payload)); } catch (e) {}
               }
               var translator = findTranslateFunc();
               // Pre-translate context values that are translation keys (e.g. "ui.xxx")
@@ -1275,10 +1515,22 @@ export function installBNVDA($rootScope, dependencies) {
           var _partsDropdownBlockedDirections = {};
           var _partsDropdownPopup = null;
           var VUE_HINT_IDLE_MS = 3000;
+          // vuePauseHintSet is the most expensive thing the focus poll touches:
+          // nested querySelectorAll over footers/hints/binding-containers, each
+          // filtered through visibleVueElement (getBoundingClientRect +
+          // getComputedStyle -> forced layout), plus a per-character glyph scan
+          // per binding. Running that every tick reflowed the document at poll
+          // cadence to produce a signature that almost never changes. The hint is
+          // only spoken after VUE_HINT_IDLE_MS of idle, so sampling it coarsely
+          // cannot change the outcome.
+          var VUE_HINT_SCAN_MS = 400;
           var _vueHintTimer = null;
           var _vueHintSignature = '';
           var _vueHintAnnounced = {};
           var _vueHintGeneration = 0;
+          var _vueHintScanTs = 0;
+          var _vueHintScanRoot = null;
+          var _vueHintScanResult = null;
 
           function isVehicleSelectorRoute() {
             var route = ((location.hash || '') + ' ' + (location.pathname || '')).toLowerCase();
@@ -1510,6 +1762,7 @@ export function installBNVDA($rootScope, dependencies) {
             _vueHintSignature = '';
             _vueHintAnnounced = {};
             _vueHintGeneration++;
+            resetVueHintScanCache();
           }
 
           function vuePauseHintSet(root) {
@@ -1542,8 +1795,28 @@ export function installBNVDA($rootScope, dependencies) {
             return null;
           }
 
+          // Throttled view of vuePauseHintSet for the poll path. A focus change
+          // (activityChanged) always rescans, so cancelling a pending hint stays
+          // immediate; only the idle repeat-scan is coarsened.
+          function vuePauseHintSetThrottled(root, activityChanged) {
+            var t = nowTS();
+            if (!activityChanged && root === _vueHintScanRoot && (t - _vueHintScanTs) < VUE_HINT_SCAN_MS) {
+              return _vueHintScanResult;
+            }
+            _vueHintScanTs = t;
+            _vueHintScanRoot = root;
+            _vueHintScanResult = vuePauseHintSet(root);
+            return _vueHintScanResult;
+          }
+
+          function resetVueHintScanCache() {
+            _vueHintScanTs = 0;
+            _vueHintScanRoot = null;
+            _vueHintScanResult = null;
+          }
+
           function updateVuePauseHints(root, activityChanged) {
-            var hintSet = vuePauseHintSet(root);
+            var hintSet = vuePauseHintSetThrottled(root, activityChanged);
             if (!hintSet) {
               if (_vueHintSignature || _vueHintTimer) resetVueHintLifecycle();
               return;
@@ -1574,6 +1847,10 @@ export function installBNVDA($rootScope, dependencies) {
 
           function selectedVueOptionsCategory(root) {
             if (!root || !root.querySelector) return null;
+            // Cheap gate: on any screen without an options/settings category rail
+            // -- the parts selector included -- none of the 19 selectors below can
+            // match, so without this they all ran to completion on every poll tick.
+            if (!root.querySelector('.options-toc, .options-categories, .options-category, .settings-category')) return null;
             var selectors = [
               '.options-categories .options-category-button.selected',
               '.options-toc [aria-selected=true]',
@@ -1694,12 +1971,15 @@ export function installBNVDA($rootScope, dependencies) {
             if (selected === 'true' || (control.classList && control.classList.contains('selected'))) out.push('selected');
             var value = '';
             if (control) {
-              if (control.value !== undefined && control.value !== '' && control.type !== 'checkbox' && control.type !== 'radio') value = control.value;
+              if (control.type !== 'checkbox' && control.type !== 'radio') value = scalarValue(control.value);
               if (!value && control.getAttribute) value = control.getAttribute('aria-valuetext') || control.getAttribute('aria-valuenow') || '';
             }
             if (!value && row && row.querySelector) {
               var valueEl = row.querySelector('.dropdown-display, .options-item-value, .current-value, .value, output, input, select, [aria-valuetext], [aria-valuenow]');
-              if (valueEl) value = valueEl.value !== undefined && valueEl.value !== '' ? valueEl.value : (valueEl.getAttribute('aria-valuetext') || valueEl.getAttribute('aria-valuenow') || valueEl.innerText || '');
+              if (valueEl) {
+                value = scalarValue(valueEl.value);
+                if (!value) value = valueEl.getAttribute('aria-valuetext') || valueEl.getAttribute('aria-valuenow') || valueEl.innerText || '';
+              }
             }
             value = cleanText(value);
             if (value) out.push(value);
@@ -1745,11 +2025,18 @@ export function installBNVDA($rootScope, dependencies) {
 
           function vehicleConfigLabel(el) {
             if (!el) return '';
-            var attr = el.getAttribute && (el.getAttribute('aria-label') || el.getAttribute('data-label') || el.getAttribute('data-name') || el.getAttribute('data-tooltip') || el.title);
+            var attr = el.getAttribute && (el.getAttribute('aria-label') || el.getAttribute('data-label') || el.getAttribute('data-name'));
             if (attr) return cleanText(attr);
-            if (el.__bngTooltip && el.__bngTooltip.text) return cleanText(el.__bngTooltip.text);
             var label = el.querySelector && el.querySelector('.bng-row-label, .bng-accitem-caption-content, .pack-title, .tile-label, .label, label, .variable-title, .saveload-metadata-caption, .bng-card-heading');
-            return cleanText((label && label.innerText) || vueOwnLabel(el));
+            var text = cleanText((label && label.innerText) || vueOwnLabel(el));
+            if (text) return text;
+            // Tooltips are descriptions, not names -- several tuning rows share one
+            // (every gear ratio carries the same text), so they only stand in when
+            // the element offers no name of its own.
+            var tipAttr = el.getAttribute && (el.getAttribute('data-tooltip') || el.title);
+            if (tipAttr) return cleanText(tipAttr);
+            if (el.__bngTooltip && el.__bngTooltip.text) return cleanText(el.__bngTooltip.text);
+            return '';
           }
 
           function speakVueVehicleConfig(element, src, root, focusEntry) {
@@ -1798,7 +2085,11 @@ export function installBNVDA($rootScope, dependencies) {
               if ((categoryName !== _lastTuningCategory || subcategoryName !== _lastTuningSubcategory) && subcategoryName) out.push(subcategoryName);
               _lastTuningCategory = categoryName;
               _lastTuningSubcategory = subcategoryName;
-              out.push(vehicleConfigLabel(tuningRow));
+              // Name the row from its own title element. vehicleConfigLabel is only
+              // a fallback here: the row's tooltip must never stand in for the name,
+              // or every gear ratio announces the same shared description.
+              var tuningName = cleanText((q(tuningRow, '.variable-title') || {}).innerText) || vehicleConfigLabel(tuningRow);
+              out.push(tuningName);
               var tuningInput = q(tuningRow, 'input[data-testid="input"], input[type="range"], input[type="number"]');
               var tuningValue = tuningInput ? cleanText(tuningInput.value) : '';
               var tuningUnit = cleanText((q(tuningRow, '[data-testid="suffix"], .suffix, .unit') || {}).innerText);
@@ -1808,7 +2099,7 @@ export function installBNVDA($rootScope, dependencies) {
                 if (_tuningHintTimer) clearTimeout(_tuningHintTimer);
                 var tip = tuningRow.__bngTooltip;
                 var hint = cleanText(tip && tip.text);
-                if (hint && hint.toLowerCase() !== vehicleConfigLabel(tuningRow).toLowerCase()) {
+                if (hint && hint.toLowerCase() !== tuningName.toLowerCase()) {
                   _tuningHintTimer = trackedSetTimeout(function () { _tuningHintTimer = null; send({ type: 'speak', text: hint, interrupt: false }); }, 250);
                 }
               }
@@ -1878,7 +2169,35 @@ export function installBNVDA($rootScope, dependencies) {
             });
           }
 
+          // Direction-ish actions whose repeat can sweep a control. `ok`/`back` and
+          // the like are one-shot and must never gate speech.
+          var NAV_ACTION_RE = /(^|_)(up|down|left|right|prev|previous|next|scroll|tab|change)(_|$)/;
+          function navActionName(action) {
+            var name = String(action || '').toLowerCase().replace(/[-\s]+/g, '_');
+            return NAV_ACTION_RE.test(name) ? name : '';
+          }
+
+          // Track which navigation actions the engine reports as held. This is only
+          // used to end a burst early: when the last direction comes up we know the
+          // sweep is over and can announce the landing without waiting out the
+          // settle timer. Screens where the engine emits repeats but no release
+          // still settle correctly on the timer alone.
+          function trackNavigationHold(action, value) {
+            var name = navActionName(action);
+            if (!name) return;
+            if (navigationValuePressed(value)) {
+              _navBurst.held[name] = true;
+              return;
+            }
+            if (!_navBurst.held[name]) return;
+            delete _navBurst.held[name];
+            if (navBurstHeldCount() === 0 && _navBurst.active) navBurstArm(NAV_RELEASE_DRAIN_MS);
+          }
+
           subscribe($rootScope, 'UINavigation', function (_event, action, value) {
+            // Before the parts-dropdown filter: a discarded direction is still a
+            // real key movement as far as speech pacing is concerned.
+            trackNavigationHold(action, value);
             if (discardPartsDropdownDirection(_event, action, value)) return;
             if (action === 'ok') handleVueOptionsOk(value);
           });
@@ -1928,13 +2247,15 @@ export function installBNVDA($rootScope, dependencies) {
           }
 
           function vueBindingEditorValue(control, row) {
-            var value = control && control.value !== undefined && control.value !== '' ? control.value : '';
+            var value = control ? scalarValue(control.value) : '';
             if (!value && control && control.getAttribute) value = control.getAttribute('aria-valuetext') || control.getAttribute('aria-valuenow') || '';
             if (!value && row && row.querySelector) {
               var valueEl = row.querySelector('.dropdown-display, .current-value, .options-item-value, output, ' +
                 'input[type=number], input[type=range], select, [aria-valuetext], [aria-valuenow]');
-              if (valueEl) value = valueEl.value !== undefined && valueEl.value !== '' ? valueEl.value :
-                (valueEl.getAttribute('aria-valuetext') || valueEl.getAttribute('aria-valuenow') || valueEl.innerText || '');
+              if (valueEl) {
+                value = scalarValue(valueEl.value);
+                if (!value) value = valueEl.getAttribute('aria-valuetext') || valueEl.getAttribute('aria-valuenow') || valueEl.innerText || '';
+              }
             }
             return cleanText(value);
           }
@@ -2173,13 +2494,33 @@ export function installBNVDA($rootScope, dependencies) {
             return speakVuePause(element, src, root);
           }
 
+          // Which kind of screen `root` is cannot change without screenKey changing,
+          // so resolve it once per screen instead of once per poll tick. The
+          // vehicleConfigRoot() probe is the costliest selector in the file --
+          // [class*="..."] substring matching bypasses the browser's class/id fast
+          // paths and runs document-wide.
+          var _vueScreenKindRoot = null;
+          var _vueScreenKindKey = null;
+          var _vueScreenKindValue = '';
+
+          function vueScreenKind(root) {
+            if (root && root === _vueScreenKindRoot && _vueWatchScreen === _vueScreenKindKey && root.isConnected) {
+              return _vueScreenKindValue;
+            }
+            var kind = vehicleConfigRoot(root) ? 'vehicle-config' :
+              (root.querySelector('.vehicle-grid, .grid-selector-screen-content, .grid-content') ? 'vehicle-selector' :
+              (root.querySelector('.options-view, .options-categories, .options-category-button, .options-content-wrapper, .options-item-label-text, .options-toc, #binding_list, .binding-item-row') ? 'options' : 'pause'));
+            _vueScreenKindRoot = root;
+            _vueScreenKindKey = _vueWatchScreen;
+            _vueScreenKindValue = kind;
+            return kind;
+          }
+
           function vueFocusSignature(el, root) {
             if (!el) return '';
             var bindingPopup = vueBindingEditorPopup();
             if (bindingPopup && bindingPopup.contains(el)) return vueBindingEditorSignature(el, bindingPopup);
-            var screenKind = vehicleConfigRoot(root) ? 'vehicle-config' :
-              (root.querySelector('.vehicle-grid, .grid-selector-screen-content, .grid-content') ? 'vehicle-selector' :
-              (root.querySelector('.options-view, .options-categories, .options-category-button, .options-content-wrapper, .options-item-label-text, .options-toc, #binding_list, .binding-item-row') ? 'options' : 'pause'));
+            var screenKind = vueScreenKind(root);
             if (screenKind === 'vehicle-config') {
               var configRow = closest(el, '.input-container, .bng-accitem, .bng-row, .folder-button, .pack-button, .multi-paint-setup-item, .mirror-button, .saveload-row') || el;
               var accitem = closest(el, '.bng-accitem');
@@ -2210,6 +2551,10 @@ export function installBNVDA($rootScope, dependencies) {
               if (!root) {
                 clearPartsDropdownActivation(true);
                 resetVueHintLifecycle();
+                // Only on the transition out — this branch re-runs once a second
+                // during gameplay, and resetting every tick would stop non-Vue
+                // screens from ever forming a burst.
+                if (_vueWatchScreen !== null) navBurstReset();
                 _vueWatchScreen = null; _vueWatchSignature = ''; _vueWatchElement = null;
                 _vueOptionsCategory = '';
                 _vueOptionsCategoryGeneration++;
@@ -2217,7 +2562,10 @@ export function installBNVDA($rootScope, dependencies) {
                 scheduleVuePoll(nextDelay);
                 return;
               }
-              nextDelay = 120;
+              // Matches NAV_POLL_FAST_MS: a slower base rate added up to 120ms of
+              // pure sampling jitter to every focus move, and quantized the
+              // nav-burst interval measurements on the first item of a sweep.
+              nextDelay = NAV_POLL_FAST_MS;
               var bindingPopup = vueBindingEditorPopup();
               var optionsCategory = bindingPopup ? '' : vueOptionsCategoryLabel(root);
               if (optionsCategory && optionsCategory !== _vueOptionsCategory) {
@@ -2241,6 +2589,8 @@ export function installBNVDA($rootScope, dependencies) {
                 (dialog ? ((dialog.id || '') + ':' + (dialog.className || '').toString()) : 'screen');
               if (screenKey !== _vueWatchScreen) {
                 if (_vueWatchScreen !== null) clearPartsDropdownActivation(true);
+                // Never let an announcement pending from the old screen land here.
+                navBurstReset();
                 resetVueHintLifecycle();
                 _vueWatchScreen = screenKey; _vueWatchSignature = ''; _vueWatchElement = null; lastFocusedElement = null;
                 _lastTuningCategory = null; _lastTuningSubcategory = null;
@@ -2256,6 +2606,11 @@ export function installBNVDA($rootScope, dependencies) {
                 scheduleVuePoll(nextDelay);
                 return;
               }
+              // The base rate is already NAV_POLL_FAST_MS, so a held sweep needs no
+              // separate step-up here. It used to: at the old 120ms base, every
+              // measured repeat interval quantized to ~120ms regardless of the real
+              // rate, which both inflated the settle delay and left the landing
+              // signature stale.
               _vueConfigFocusEntry = focused !== _vueWatchElement;
               var signature = vueFocusSignature(focused, root);
               var focusChanged = !!(signature && signature !== _vueWatchSignature);
@@ -2489,7 +2844,7 @@ export function installBNVDA($rootScope, dependencies) {
                 if (speakSliderRow(element, src)) return;
                 if (speakMenuAccordionItem(element, src)) return;
                 scheduleSpeak(extractText(element), src);
-              }, 75);
+              }, FOCUS_DEBOUNCE_MS);
             } else {
               // Keyboard path: separate timer, does not cancel controller timer.
               clearTimeout(kbFocusDebounceTimer);
@@ -2504,7 +2859,7 @@ export function installBNVDA($rootScope, dependencies) {
                 if (speakSliderRow(element, src)) return;
                 if (speakMenuAccordionItem(element, src)) return;
                 scheduleSpeak(extractText(element), src);
-              }, 75);
+              }, FOCUS_DEBOUNCE_MS);
             }
           }
 
@@ -2922,6 +3277,7 @@ export function installBNVDA($rootScope, dependencies) {
                 timeoutIds.delete(speakTimer);
                 speakTimer = null;
               }
+              navBurstReset();
               lastFocusedElement = null;
               lastSpoken = '';
               send({ type: 'hover_cancel' });
@@ -2943,6 +3299,7 @@ export function installBNVDA($rootScope, dependencies) {
           }
 
           startTransportSelection();
+          trackedSetInterval(reportDebugState, 500);
 
           if (loadingScreen && typeof vueWatch === 'function') {
             var stopLoadingWatch = vueWatch(loadingShown, handleLoadingState, { immediate: true });

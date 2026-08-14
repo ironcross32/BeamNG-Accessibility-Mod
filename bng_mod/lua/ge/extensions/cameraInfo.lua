@@ -33,6 +33,91 @@ local function camLog(level, msg)
 end
 
 -- =================================================================================================
+--  Ground height
+-- =================================================================================================
+
+-- Height of the ground under `pos`, or nil when there is none to find.
+--
+-- This deliberately does NOT use core_terrain.getTerrainHeight: that only knows about a
+-- TerrainBlock, and several stock maps have none at all. smallgrid is built from a
+-- GroundPlane, gridmap from static meshes -- on those, terrain queries return nil for
+-- every point on the map, and this used to report the camera's absolute altitude as its
+-- height above ground. be:getSurfaceHeightBelow sees terrain, static meshes and ground
+-- planes alike.
+--
+-- Two quirks of that call shape the code: it reports failure as -1e20 rather than nil, and
+-- it only looks downwards -- so a camera sitting level with the ground can miss. Hence the
+-- retries, the same pattern the game's own common/tech/techUtils.lua uses.
+local function groundHeightBelow(pos)
+  local function probe(z)
+    local ok, h = pcall(function() return be:getSurfaceHeightBelow(vec3(pos.x, pos.y, z)) end)
+    if ok and type(h) == "number" and h > -1e10 then return h end
+    return nil
+  end
+  -- From the point itself first: it is the only probe that stays correct when the camera
+  -- is under a bridge or inside a tunnel, where a probe from above would find the deck.
+  return probe(pos.z) or probe(pos.z + 2) or probe(1e5)
+end
+
+-- =================================================================================================
+--  Diagnostic
+-- =================================================================================================
+
+-- One-shot dump of every value the camera readouts are built from, so a wrong altitude can
+-- be traced to the query that produced it without pasting Lua into the console.
+-- Answers "DIAG" on the command port with "DIAG:<spoken summary>|<raw detail>".
+--
+-- Note the parentheses around the core_terrain / core_camera calls: both return NO values
+-- (not nil) on some paths -- getTerrainHeight does it on every map with no terrain block,
+-- getActiveCamName when the player is in no vehicle -- and tostring() of nothing at all is
+-- an error, not "nil". Wrapping a call in parentheses forces it to exactly one value.
+local function sendDiag()
+  if not udpSend then return end
+
+  local ok, speech, raw = pcall(function()
+    local c = core_camera.getPosition()
+    local p = be:getPlayerVehicle(0)
+    local v = p and p:getPosition()
+    local camName = (core_camera.getActiveCamName())
+    local th = (core_terrain.getTerrainHeight(c))
+
+    local function surf(z)
+      local o, h = pcall(function() return be:getSurfaceHeightBelow(vec3(c.x, c.y, z)) end)
+      if o and type(h) == "number" then return h end
+      return nil
+    end
+    local ray = nil
+    do
+      local o, d = pcall(castRayStatic, vec3(c.x, c.y, c.z), vec3(0, 0, -1), 2000)
+      if o and type(d) == "number" then ray = d end
+    end
+
+    local ground = groundHeightBelow(c)
+    -- Numbers in metres, not a finished sentence: Python owns the phrasing so this speaks
+    -- the same units as every other readout. Speaking bare metres here while Alt+A spoke
+    -- feet made one height sound like two different ones.
+    local spoken = string.format("%.3f,%s",
+      c.z, ground and string.format("%.3f", ground) or "nan")
+    local detail = string.format(
+      "cam=%.3f,%.3f,%.3f mode=%s veh=%s terrainBlock=%s terrainH=%s surf=%s surf+2=%s surfHigh=%s rayDown=%s ground=%s",
+      c.x, c.y, c.z, tostring(camName),
+      v and string.format("%.3f,%.3f,%.3f", v.x, v.y, v.z) or "none",
+      tostring(core_terrain.getTerrain() ~= nil), tostring(th),
+      tostring(surf(c.z)), tostring(surf(c.z + 2)), tostring(surf(1e5)),
+      tostring(ray), tostring(ground))
+    return spoken, detail
+  end)
+
+  if ok then
+    udpSend:send("DIAG:" .. speech .. "|" .. raw)
+  else
+    -- `speech` holds the error message when pcall fails. ERR is a sentinel the Python
+    -- side recognises, so it can't be mistaken for a height.
+    udpSend:send("DIAG:ERR|error " .. tostring(speech))
+  end
+end
+
+-- =================================================================================================
 --  GE Extension Hooks
 -- =================================================================================================
 
@@ -75,9 +160,12 @@ function M.onWorldReadyState(state)
   if state == 2 then
     camLog('info', "World is ready. Initializing camera info systems.")
 
-    -- Reset state for new map
-    isActive = false
-    timer    = 0
+    -- isActive deliberately survives a map load. Clearing it here stopped the feed while
+    -- Python still believed it was running, so the readouts went on speaking the last
+    -- packet they had received -- a frozen altitude that sounds exactly like a live one.
+    -- (A Lua reload still resets it, since the whole module is rebuilt; Python notices the
+    -- silence and asks for the feed again.)
+    timer = 0
 
     setupSockets()
   end
@@ -95,6 +183,9 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
       elseif cmd == "OFF" and isActive then
         isActive = false
         camLog('info', "Camera info deactivated via UDP.")
+      elseif cmd == "DIAG" then
+        -- Answers whether or not the feed is active: it is a one-shot query.
+        sendDiag()
       end
     end
   end
@@ -109,6 +200,7 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
 
   -- 3. Gather camera data (all wrapped in pcall for robustness)
   local camYaw, camPitch, camAGL, vehBearing, vehDist, isFreeCam = 0, 0, 0, 0, -1, 0
+  local aglValid = 0
 
   local ok, err = pcall(function()
     -- Camera forward and position
@@ -124,11 +216,16 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
     end
 
     -- Camera AGL (above ground level)
-    local terrainHeight = core_terrain.getTerrainHeight(camPos)
-    if terrainHeight then
-      camAGL = camPos.z - terrainHeight
+    local groundZ = groundHeightBelow(camPos)
+    if groundZ then
+      camAGL = camPos.z - groundZ
+      aglValid = 1
     else
-      camAGL = camPos.z  -- fallback: absolute height when no terrain
+      -- Nothing under the camera at all: over open water, or off the edge of the world.
+      -- Send the absolute height with the flag clear so Python can say which one it is,
+      -- rather than passing sea level off as ground level.
+      camAGL = camPos.z
+      aglValid = 0
     end
 
     -- Is free camera?
@@ -162,8 +259,11 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
     return
   end
 
-  -- 4. Send CSV packet: "yaw,pitch,agl,bearing,distance,isFreeCam"
-  local packet = string.format("%.2f,%.2f,%.2f,%.2f,%.2f,%d", camYaw, camPitch, camAGL, vehBearing, vehDist, isFreeCam)
+  -- 4. Send CSV packet: "yaw,pitch,agl,bearing,distance,isFreeCam,aglValid"
+  -- aglValid is appended rather than replacing a field, so a Python side that still
+  -- expects the original six keeps working.
+  local packet = string.format("%.2f,%.2f,%.2f,%.2f,%.2f,%d,%d",
+    camYaw, camPitch, camAGL, vehBearing, vehDist, isFreeCam, aglValid)
   udpSend:send(packet)
 end
 

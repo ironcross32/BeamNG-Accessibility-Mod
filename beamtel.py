@@ -10,7 +10,9 @@ from nvda_ws_speaker import (
     start_server_in_thread,
     register_dom_dump_callback,
     register_loading_state_callback,
+    register_settings_request_callback,
     broadcast,
+    bnvda_debug_enabled,
 )
 import signal
 import os
@@ -103,6 +105,8 @@ DEFAULT_CONFIG = {
     "pitch_roll_min_dbfs": -36.0,
     "compass_click_level_dbfs": -6.0,
     "lowspeed_click_level_dbfs": -14.0,
+    "lowspeed_stop_tone_level_dbfs": -16.0,
+    "slip_tone_level_dbfs": -18.0,
     "telemetry_protocol": "extended",
     "compass_click_interval": 15,
     "compass_highlight_enabled": True,
@@ -118,6 +122,7 @@ DEFAULT_CONFIG = {
     "obstacle_max_range_m": 20,
     "obstacle_warning_range_m": 15,
     "road_beep_volume_db": -14.0,
+    "placement_ping_volume_db": -12.0,
     "launch_beamng": False,
     "announce_turn_signals": True,
     "announce_speed": True,
@@ -128,8 +133,22 @@ DEFAULT_CONFIG = {
     "scanner_steer_tone_enabled": True,
     "scanner_base_freq_hz": 1000.0,
     "scanner_pitch_offset_oct": 1.0,
+    "ui_nav_hold_suppression": True,
+    # Loader implement (WL-40 bucket / forks). Inert on every other vehicle.
+    "implement_tones_enabled": True,
+    "implement_ground_tone_dbfs": -16.0,
+    "implement_tilt_tone_dbfs": -20.0,
+    "implement_proximity_speech": True,
+    "ai_describer_provider": "gemini",
+    # Gemini's key/model keep their original names so existing configs migrate
+    # for free; every other provider is namespaced.
     "ai_describer_api_key": "",
     "ai_describer_model": "models/gemini-3-flash-preview",
+    "ai_describer_openai_api_key": "",
+    "ai_describer_openai_model": "gpt-5.6-terra",
+    "ai_describer_openai_base_url": "https://api.openai.com/v1",
+    "ai_describer_openai_reasoning_effort": "low",
+    "ai_describer_openai_detail": "auto",
     "ai_describer_disable_ui_toggle": False,
 }
 
@@ -203,10 +222,12 @@ def say(text: str, interrupt: bool = True, exclude_from_buffer: bool = False, so
         logger.info(f"Speech output: '{t}'")
 
     # Background threads must not cut through a protected vehicle-name
-    # announcement. Command context (user-triggered) always interrupts normally.
+    # announcement. Command context (user-triggered) always interrupts normally,
+    # as does UI navigation speech -- see SPEECH_PROTECT_S.
     if (
         interrupt
         and not _command_context
+        and source != "ui_bridge"
         and time.monotonic() < _speech_protected_until
     ):
         interrupt = False
@@ -385,8 +406,22 @@ def load_config():
 OG_FORMAT = "<I4sHBBfffffffIIfff16s16si"
 OG_SIZE = struct.calcsize(OG_FORMAT)
 
-EXT_FORMAT = "<H4sBx9fII28f"
+# Extended telemetry. bng_mod/ is a directory junction into the game install, so the Lua
+# half can move (git checkout, mod update) without beamtel restarting. A hard equality test
+# on the packet length would then reject every packet, leave `unpacked` at None, and take
+# ALL extended telemetry down with it — no speed, no gear, no shift tone, no warning lights,
+# and no error anywhere. So every historical layout stays decodable and short packets are
+# padded with the sentinels the newer fields use for "absent".
+EXT_FORMAT_V1 = "<H4sBx9fII28f"  # pre-implement (no bucket/fork block)
+EXT_SIZE_V1 = struct.calcsize(EXT_FORMAT_V1)
+
+EXT_FORMAT = "<H4sBx9fII36f"
 EXT_SIZE = struct.calcsize(EXT_FORMAT)
+
+# Values a v1 packet implies for the eight implement floats. Mirrors the sentinels in
+# 796F6C6F313035.lua: flags 0 = nothing valid, -1 = no ground reading.
+EXT_V1_IMPLEMENT_DEFAULTS = (0.0, -1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+_ext_version_warned = False
 
 MS_MAGIC = b"BNG1"
 MS_FORMAT = "<4s21f"
@@ -667,11 +702,14 @@ def scanner_listener(audio_controller, stop_event):
                                 exclude_from_buffer=True,
                             )
                     else:
-                        # Text protocol: "bearing,distance,approachDeg"
+                        # Text protocol: "bearing,distance,approachDeg". distance is the
+                        # surface GAP between the two vehicles, not centre-to-centre, so it
+                        # legitimately reaches zero on contact — floor it so the "%.0f"
+                        # readouts below can never say a negative distance.
                         parts = text.split(",")
                         if len(parts) >= 2:
                             bearing = float(parts[0])
-                            distance = float(parts[1])
+                            distance = max(0.0, float(parts[1]))
                             approach = float(parts[2]) if len(parts) >= 3 else 0.0
                             with state_lock:
                                 last_scanner_distance = distance
@@ -888,12 +926,205 @@ def road_listener(audio_controller, stop_event):
         logger.info("Road detector listener stopped.")
 
 
+# Loader implement proximity speech. Distance hysteresis on its own is not enough: at the
+# boundary a genuine relation flap would still re-announce, hence the per-transition dwell
+# timers. Conversely a real change of circumstance — lowering the forks past a frame lip —
+# crosses the relation margin decisively and holds, so it announces at once. That asymmetry
+# is the whole requirement.
+IMPL_PROX_ENTER_M = 3.0
+IMPL_PROX_LEAVE_M = 4.5
+IMPL_PROX_RELATION_HOLD = 0.40  # seconds a new relation must persist before it is spoken
+IMPL_PROX_INSIDE_HOLD = 0.25
+IMPL_PROX_LEAVE_HOLD = 0.30
+_IMPL_RELATION_PHRASE = {
+    "ABOVE": "above it",
+    "BELOW": "below it",
+    "LEVEL": "level with it",
+}
+
+
+def _implement_word(part_name: str) -> str:
+    """What to call the business end. 'Forks' and 'grapple' are worth saying by name."""
+    low = (part_name or "").lower()
+    if "fork" in low:
+        return "Forks"
+    if "grapple" in low:
+        return "Grapple"
+    return "Bucket"
+
+
+def implement_listener(stop_event):
+    """Listens for UDP packets from implementProximity.lua and speaks approach/leave events.
+
+    Only ever announces the NEAREST object. The extension may report a different one from
+    tick to tick in a crowded yard, and narrating all of them would be unusable.
+    """
+    global _implement_word_current
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", IMPLEMENT_LISTEN_PORT))
+        sock.settimeout(0.2)
+        logger.info(f"Implement proximity listener started on port {IMPLEMENT_LISTEN_PORT}")
+
+        impl_word = "Bucket"
+        tracked = None  # name of the object currently being tracked
+        tracked_relation = None
+        tracked_inside = False
+        # Pending transitions, each (value, first_seen_ts), so a flap has to persist.
+        pending_relation = None
+        pending_inside = None
+        pending_leave = None
+
+        while not stop_event.is_set():
+            try:
+                data, _addr = sock.recvfrom(2048)
+                text = data.decode("utf-8", errors="ignore").strip()
+                if not text:
+                    continue
+                now = time.time()
+
+                if text.startswith("IMPLEMENT:"):
+                    part = text.split(":", 1)[1]
+                    impl_word = _implement_word(part)
+                    _implement_word_current = (
+                        "" if part.strip().upper() == "NONE" else impl_word
+                    )
+                    # A part swap invalidates whatever we were tracking.
+                    tracked = None
+                    tracked_relation, tracked_inside = None, False
+                    pending_relation = pending_inside = pending_leave = None
+                    continue
+
+                if text == "CLEAR":
+                    if tracked is not None:
+                        if pending_leave is None:
+                            pending_leave = now
+                        elif now - pending_leave >= IMPL_PROX_LEAVE_HOLD:
+                            say(f"Clear of {tracked}", exclude_from_buffer=True)
+                            tracked = None
+                            tracked_relation, tracked_inside = None, False
+                            pending_relation = pending_inside = pending_leave = None
+                    continue
+
+                if not text.startswith("NEAR:"):
+                    continue
+
+                parts = text[5:].rsplit(",", 4)
+                if len(parts) != 5:
+                    continue
+                name = parts[0].strip()
+                try:
+                    dist = float(parts[1])
+                except ValueError:
+                    continue
+                relation = parts[2].strip().upper()
+                inside = parts[3].strip() == "1"
+
+                if not announce_implement_proximity:
+                    continue
+
+                if tracked is None:
+                    if dist < IMPL_PROX_ENTER_M:
+                        val, unit = fmt_distance(dist)
+                        phrase = _IMPL_RELATION_PHRASE.get(relation, "")
+                        say(
+                            f"{impl_word} approaching {name}, {phrase}, {val} {unit}",
+                            exclude_from_buffer=True,
+                        )
+                        tracked = name
+                        tracked_relation, tracked_inside = relation, inside
+                        pending_relation = pending_inside = pending_leave = None
+                    continue
+
+                if name != tracked:
+                    # A nearer object took over. Announce the new one; no leave line for the
+                    # old one, or every pass through a yard becomes a monologue.
+                    if dist < IMPL_PROX_ENTER_M:
+                        val, unit = fmt_distance(dist)
+                        phrase = _IMPL_RELATION_PHRASE.get(relation, "")
+                        say(
+                            f"{impl_word} approaching {name}, {phrase}, {val} {unit}",
+                            exclude_from_buffer=True,
+                        )
+                        tracked = name
+                        tracked_relation, tracked_inside = relation, inside
+                        pending_relation = pending_inside = pending_leave = None
+                    continue
+
+                # Still on the same object.
+                if dist > IMPL_PROX_LEAVE_M:
+                    if pending_leave is None:
+                        pending_leave = now
+                    elif now - pending_leave >= IMPL_PROX_LEAVE_HOLD:
+                        say(f"Clear of {tracked}", exclude_from_buffer=True)
+                        tracked = None
+                        tracked_relation, tracked_inside = None, False
+                        pending_relation = pending_inside = pending_leave = None
+                    continue
+                pending_leave = None
+
+                if relation != tracked_relation:
+                    if pending_relation is None or pending_relation[0] != relation:
+                        pending_relation = (relation, now)
+                    elif now - pending_relation[1] >= IMPL_PROX_RELATION_HOLD:
+                        tracked_relation = relation
+                        pending_relation = None
+                        say(
+                            f"{tracked}, now {_IMPL_RELATION_PHRASE.get(relation, relation)}",
+                            exclude_from_buffer=True,
+                        )
+                else:
+                    pending_relation = None
+
+                if inside != tracked_inside:
+                    if pending_inside is None or pending_inside[0] != inside:
+                        pending_inside = (inside, now)
+                    elif now - pending_inside[1] >= IMPL_PROX_INSIDE_HOLD:
+                        tracked_inside = inside
+                        pending_inside = None
+                        if inside:
+                            say(
+                                f"{impl_word} under {tracked}", exclude_from_buffer=True
+                            )
+                        else:
+                            say(
+                                f"{impl_word} clear of {tracked}",
+                                exclude_from_buffer=True,
+                            )
+                else:
+                    pending_inside = None
+
+            except socket.timeout:
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Implement proximity listener socket error.")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+        logger.info("Implement proximity listener stopped.")
+
+
+def _send_implement_cmd(command):
+    try:
+        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        cmd_sock.sendto(command.encode("utf-8"), ("127.0.0.1", IMPLEMENT_CMD_PORT))
+        cmd_sock.close()
+    except Exception as e:
+        logger.error(f"Failed to send implement proximity command via UDP: {e}")
+
+
 def camera_listener(audio_controller, stop_event):
     """Listens for UDP packets from cameraInfo.lua and drives camera compass clicks."""
     global \
         cam_yaw_deg, \
         cam_pitch_deg, \
         cam_agl, \
+        cam_agl_valid, \
+        cam_last_packet_ts, \
         cam_veh_bearing, \
         cam_veh_distance, \
         cam_is_free
@@ -922,24 +1153,43 @@ def camera_listener(audio_controller, stop_event):
                         f"First UDP packet received from camera info (source: {addr})"
                     )
                     first_packet = False
+
+                # Diagnostic replies answer a one-shot query, so they arrive whether or
+                # not the live feed is switched on and are handled before that gate.
+                try:
+                    if data.startswith(b"DIAG:"):
+                        body = data.decode("ascii", errors="replace").strip()[len("DIAG:"):]
+                        heights, _, detail = body.partition("|")
+                        logger.info(f"CAMERA DIAG: {detail or heights}")
+                        say(_format_camera_diag(heights), exclude_from_buffer=True)
+                        continue
+                except Exception as e:
+                    logger.error(f"Camera diagnostic reply failed: {e}")
+                    continue
+
                 if not free_cam_active:
                     continue
                 try:
                     text = data.decode("ascii").strip()
                     parts = text.split(",")
-                    if len(parts) == 6:
+                    if len(parts) >= 6:
                         yaw = float(parts[0])
                         pitch = float(parts[1])
                         agl = float(parts[2])
                         bearing = float(parts[3])
                         distance = float(parts[4])
                         is_free = int(parts[5]) == 1
+                        # 7th field is optional: an older Lua mod sends six, and its AGL
+                        # was always presented as valid.
+                        agl_valid = len(parts) < 7 or int(parts[6]) == 1
 
                         now = time.time()
                         with state_lock:
                             cam_yaw_deg = yaw
                             cam_pitch_deg = pitch
                             cam_agl = agl
+                            cam_agl_valid = agl_valid
+                            cam_last_packet_ts = now
                             cam_veh_bearing = bearing
                             cam_veh_distance = distance
                             cam_is_free = is_free
@@ -1261,6 +1511,79 @@ def clickspot_listener(audio_controller, stop_event):
         logger.info("Clickspot listener stopped.")
 
 
+def vehicle_bindings_listener(stop_event):
+    """Listens for the current vehicle's special-control bindings from vehicleBindings.lua.
+
+    Deliberately silent: the mod pushes a fresh list on every vehicle load, and
+    announcing that would talk over the spawn. The list is only ever spoken when
+    the user opens the browser (F9 then B).
+    """
+    global _vehicle_bindings_list, _vehicle_bindings_vehicle
+    global _vehicle_bindings_building, _vehicle_bindings_building_name
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", VEHICLE_BINDINGS_LISTEN_PORT))
+        sock.settimeout(0.2)
+        logger.info(
+            f"Vehicle bindings listener started on port {VEHICLE_BINDINGS_LISTEN_PORT}"
+        )
+
+        while not stop_event.is_set():
+            try:
+                data, _addr = sock.recvfrom(2048)
+                text = data.decode("utf-8", errors="ignore").strip()
+                if not text:
+                    continue
+
+                if text.startswith("BINDINGS_BEGIN:"):
+                    # BINDINGS_BEGIN:<count>,<vehicleName>
+                    parts = text[15:].split(",", 1)
+                    _vehicle_bindings_building = []
+                    _vehicle_bindings_building_name = (
+                        parts[1].strip() if len(parts) == 2 else ""
+                    )
+                    continue
+
+                if text.startswith("BINDING:"):
+                    # BINDING:<cacheIndex>,<line>  — line may contain commas
+                    parts = text[8:].split(",", 1)
+                    if len(parts) == 2 and _vehicle_bindings_building is not None:
+                        try:
+                            _vehicle_bindings_building.append(
+                                (int(parts[0]), parts[1])
+                            )
+                        except ValueError:
+                            pass
+                    continue
+
+                if text == "BINDINGS_END":
+                    # Swap in whole, so a browser opened mid-rebuild never sees a
+                    # torn list.
+                    if _vehicle_bindings_building is not None:
+                        _vehicle_bindings_list = _vehicle_bindings_building
+                        _vehicle_bindings_vehicle = _vehicle_bindings_building_name
+                        _vehicle_bindings_building = None
+                        logger.info(
+                            f"Vehicle bindings updated: {len(_vehicle_bindings_list)} "
+                            f"for {_vehicle_bindings_vehicle!r}"
+                        )
+                    continue
+
+            except socket.timeout:
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Vehicle bindings listener socket error.")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+        logger.info("Vehicle bindings listener stopped.")
+
+
 def slot_listener(stop_event):
     """Listens for SLOTS: messages from vehicleSlots.lua and updates _vehicle_slots."""
     global _vehicle_slots, _selected_slots, _target_slot
@@ -1317,12 +1640,19 @@ announce_turn_signals = True
 announce_speed = True
 speed_announce_interval = 25
 announce_gear = True
-ai_describer_api_key = ""
-ai_describer_model = "models/gemini-3-flash-preview"
+# Held-navigation speech coalescing. Enforced entirely in the UI JS runtime; this
+# side only owns the value and pushes it across the bridge.
+ui_nav_hold_suppression = True
+ai_describer_provider = "gemini"
+# Every provider's describer settings, keyed by config name. Holding them in one
+# dict keeps _ai_describe_worker free of a per-provider if-chain: it asks the
+# registry which keys the active provider uses and looks them up here.
+ai_describer_settings = {}
 ai_describer_disable_ui_toggle = False
 MPH_PER_MS = 2.2369362920544
 KMH_PER_MS = 3.6
 PSI_PER_BAR = 14.503773773
+FEET_PER_M = 3.280839895
 
 
 def fmt_speed(speed_ms: float):
@@ -1352,6 +1682,21 @@ def fmt_temp_c_or_f(celsius: float):
     else:
         f = (float(celsius) * 9.0 / 5.0) + 32.0
         return int(round(f)), "Fahrenheit"
+
+
+def fmt_distance(metres: float):
+    """Short distances (implement height, clearance) as a (value, unit) pair.
+
+    TODO: seven older sites still inline the 3.28084 conversion and format straight into a
+    sentence at their own precision — the coupler distance mode (~line 560), the scanner
+    callout (~760), _format_camera_diag (~2680), camera altitude (~3050), vehicle distance
+    from camera (~3120), the F9+D scanner readout (~3240) and the F9+W waypoint readout
+    (~3270). Folding those in here would change spoken output in six unrelated features, so
+    it is deliberately left for its own change.
+    """
+    if UNITS_MODE == "metric":
+        return round(float(metres), 2), "meters"
+    return round(float(metres) * FEET_PER_M, 1), "feet"
 
 
 def fmt_heading():
@@ -1495,6 +1840,23 @@ compass_click_interval_deg = 15.0
 last_air_pressure = 0.0
 last_air_pressure_max = 0.0
 
+# Implement (loader bucket / forks). All zero-or-sentinel on any vehicle without hydraulic
+# implement cylinders, which is what keeps the status metrics hidden and the tones silent
+# everywhere except a machine like the WL-40. See IMPL_FLAG_* for the bitmask.
+IMPL_FLAG_PRESENT = 1  # an implement part was resolved
+IMPL_FLAG_ARTIC_VALID = 2  # articulationDeg means something (0 = straight, not "no data")
+IMPL_FLAG_GROUND_VALID = 4  # a surface was found below the implement
+IMPL_FLAG_JACKING = 8  # implement is against the ground and lifting the machine
+IMPL_FLAG_DETACHED = 16  # implement has broken off its coupler
+last_implement_flags = 0.0
+last_implement_edge_height = -1.0  # m, cutting edge / tine tips above the surface below
+last_implement_min_clearance = -1.0  # m, nearest of the five sample points to the surface
+last_implement_tilt_deg = 0.0  # degrees from level, positive = curled back / up
+last_implement_tilt_percent = 0.0  # 0..1 of tilt ram travel
+last_implement_lift = 0.0  # m the machine has been jacked up off its wheels
+last_implement_activity = 0.0  # 0..1, drives the tone fade gate
+last_articulation_deg = 0.0  # degrees of frame articulation, positive = LEFT
+
 # Expanded Telemetry
 last_clutch_temp = 0.0
 last_g_lat = 0.0
@@ -1573,8 +1935,20 @@ drift_baseline_heading = 0.0
 drift_alert_active = False
 drift_pan_direction = 0.0  # -1.0 Left, 1.0 Right
 
+# Drift filter/gate tuning. The yaw rate is sampled at the full telemetry rate
+# (~60 Hz) and low-pass filtered rather than decimated, so the signal is
+# responsive without inheriting the per-packet quantisation noise.
+DRIFT_SMOOTH_TAU = 0.25    # seconds; one-pole time constant on the yaw rate
+DRIFT_ON_RATE = 0.8        # deg/s; rate that arms the alert
+DRIFT_OFF_RATE = 0.35      # deg/s; rate that releases it (hysteresis)
+DRIFT_RELEASE_HOLD = 0.3   # seconds below DRIFT_OFF_RATE before releasing
+DRIFT_PAN_MIN_RATE = 0.2   # deg/s; below this the pan side is held, not flipped
+
 # NEW: Low Speed Detection State
 low_speed_mode_active = False
+
+# Wheel slip (lockup / wheelspin) detection state
+slip_mode_active = False
 
 # Coordinate Guidance State
 coord_guidance_active = False
@@ -1584,9 +1958,47 @@ coord_target_bearing = 0.0  # cached bearing to waypoint, recalculated every ~1 
 _last_coord_bearing_ts = 0.0  # timestamp of last bearing recalculation
 _ls_prev_speed_ms = 0.0
 _ls_prev_speed_ts = 0.0
-_ls_decel_smooth = 0.0
-_ls_steady_ref_mph = 0.0
 _ls_steady_start_ts = 0.0
+
+# --- Ground-truth motion state, derived from the MotionSim (BNG1) packet ---
+# MotionSim carries obj:getVelocityXYZ() in world space, which is immune to wheel
+# lockup and wheelspin; the OutGauge/Extended speed field is drivetrain-derived and
+# lies whenever the tires are not rolling with the road.
+last_ground_speed_ms = 0.0
+_ms_last_rx_ts = 0.0
+_ls_accel_smooth = 0.0  # signed longitudinal accel, m/s^2 (+ speeding up)
+_ls_ms_prev_speed_ms = 0.0
+_ls_ms_prev_ts = 0.0
+_ls_stopped = False
+_ls_was_moving = False
+_ls_slip_smooth = 0.0
+_ls_slip_since_ts = 0.0
+_ls_slip_prev_ts = 0.0
+
+# Tuning for the ground-truth derivation. Audio-side response curves live in audio.py.
+LS_ACCEL_TAU_S = 0.15  # EMA time constant for longitudinal accel
+LS_ACCEL_MIN_DT = 0.05  # don't differentiate over shorter gaps; denominator gets noisy
+LS_ACCEL_MAX_DT = 1.0  # longer gap => stream broke (vehicle reload); re-baseline
+LS_ACCEL_DEADBAND = 0.25  # |accel| below this counts as "holding steady"
+LS_STEADY_HOLD_S = 1.5  # how long inside the deadband before clicks are suppressed
+LS_STOP_ENTER_MS = 0.20  # ground speed at/below which we call it a standstill
+LS_STOP_EXIT_MS = 0.50  # and above which we call it moving again (hysteresis)
+LS_STOP_TONE_MIN_MS = 1.0  # only chime if we were actually rolling beforehand
+LS_MS_STALE_S = 1.0  # no MotionSim packet for this long => fall back to wheel speed
+SLIP_TAU_S = 0.10
+SLIP_MIN_GROUND_MS = 2.0
+SLIP_ABS_THRESHOLD_MS = 1.5
+SLIP_REL_THRESHOLD = 0.25
+SLIP_SUSTAIN_S = 0.15
+
+# Low speed diagnostics ride on window.BNVDA_DEBUG, set from the accessible console's
+# CEF/UI JS context (`window.BNVDA_DEBUG = true`). An environment variable is no use
+# here: beamtel is already running by the time the problem shows up, and the whole
+# reason BNVDA_DEBUG exists is that the flag has to be flippable mid-session.
+# Logging additionally requires low speed detection to be on, so enabling debug for
+# something else doesn't fill the log with telemetry.
+LOWSPEED_DIAG_INTERVAL_S = 0.25
+_ls_diag_last_ts = 0.0
 
 # Scanner live data (updated by scanner_listener)
 last_scanner_target_name = ""
@@ -1598,6 +2010,13 @@ last_scanner_bearing = 0.0
 scanner_distance_callout_enabled = False
 scanner_distance_callout_interval = 10
 
+# Loader implement proximity speech (applied via _apply_live_config). The tones themselves
+# are configured inside audio.py's apply_config; only the speech gate lives here.
+announce_implement_proximity = True
+# "Bucket" / "Forks" / "Grapple" once the mod reports one, else "" for every other vehicle.
+# Read by toggle_scan_mode, which needs to say which end of the machine it is aiming from.
+_implement_word_current = ""
+
 # Monotonic timestamp of the last vehicle-switch announcement. The camera
 # compass listener checks this and skips its own callout briefly afterwards
 # so a heading-crossing tick can't talk over the (typically longer)
@@ -1607,15 +2026,29 @@ VEHICLE_SWITCH_QUIET_S = 2.5
 
 # When a vehicle name is announced (SWITCHED or TARGET_NAME), background speech
 # (camera compass, gear, obstacles) is forced to interrupt=False so it queues
-# behind the name rather than cutting it off. Duration covers even long names.
+# behind the name rather than cutting it off.
+#
+# UI screen-reader speech (source="ui_bridge") is exempt: it is direct user
+# navigation, not a background tick, and demoting it made the part selector feel
+# sluggish -- every row you landed on queued behind the previous one, because
+# applying a part reloads the vehicle and re-arms this window.
 _speech_protected_until = 0.0
-SPEECH_PROTECT_S = 10.0
+SPEECH_PROTECT_S = 3.0
 
 # Camera Info State
 free_cam_active = False
 cam_yaw_deg = 0.0
 cam_pitch_deg = 0.0
 cam_agl = 0.0
+# False when the Lua side found no ground under the camera and cam_agl is therefore an
+# absolute height, not a height above ground.
+cam_agl_valid = True
+# When the last camera packet arrived. Everything above goes stale the moment the feed
+# stops, and the readouts must not speak a frozen number as if it were current.
+cam_last_packet_ts = 0.0
+# The feed runs at 10 Hz, so anything older than this means it has actually stopped
+# rather than just missed a tick.
+CAMERA_STALE_SEC = 1.5
 cam_veh_bearing = 0.0
 cam_veh_distance = -1.0
 cam_is_free = False
@@ -1635,6 +2068,14 @@ _nodegrab_scroll_hook = None
 clickspot_mode_active = False
 clickspot_trigger_list = []  # list of (cache_index, trigger_id, display_name)
 clickspot_last_hover_id = -1
+
+# Vehicle-Specific Bindings State
+# Rebuilt silently on every vehicle load — nothing here is ever announced; the
+# list only becomes audible when the user opens the browser with F9 then B.
+_vehicle_bindings_list = []  # list of (cache_index, line)
+_vehicle_bindings_vehicle = ""
+_vehicle_bindings_building = None  # accumulator between BEGIN and END
+_vehicle_bindings_building_name = ""
 
 # Generic Virtual Browser State
 _vbrowser_lines = []
@@ -1888,6 +2329,7 @@ _F9_HELP = {
     ("d", True, True, False): "Toggle coupler distance callouts",
     ("m", False, False, False): "Damage report",
     ("s", True, False, False): "Toggle status mode",
+    ("b", False, False, False): "Browse vehicle bindings",
     ("b", True, False, False): "Toggle buffer mode",
     ("c", True, False, False): "Toggle pedal tones",
     ("v", True, False, False): "Toggle vehicle scanner",
@@ -1906,6 +2348,7 @@ _F9_HELP = {
     ("g", True, False, False): "Toggle coordinate guidance",
     ("l", True, False, False): "DOM dump",
     ("l", True, True, False): "Toggle low speed detection",
+    ("k", True, False, False): "Toggle wheel slip detection",
     ("s", True, True, False): "Toggle speech logger",
     ("f", False, False, True): "Toggle camera info",
     ("h", False, False, True): "Camera heading",
@@ -2048,15 +2491,111 @@ STATUS_METRICS = [
         ),
         "isAvailable": lambda: protocol_mode == "extended",
     },
+    # Loader implement (WL-40 bucket / forks). These three only appear when the mod actually
+    # resolved an implement or hydraulic steering — implementFlags is 0 on every ordinary
+    # vehicle, so a Pickup's status list is unchanged.
+    {
+        "label": "Implement Height",
+        "getValue": lambda: fmt_distance(max(0.0, last_implement_edge_height)),
+        "isAvailable": lambda: bool(int(last_implement_flags) & IMPL_FLAG_PRESENT)
+        and bool(int(last_implement_flags) & IMPL_FLAG_GROUND_VALID),
+    },
+    {
+        "label": "Implement Tilt",
+        "getValue": lambda: (
+            f"{abs(last_implement_tilt_deg):.0f}",
+            "degrees "
+            + (
+                "level"
+                if abs(last_implement_tilt_deg) < 1.0
+                else ("back" if last_implement_tilt_deg > 0 else "forward")
+            ),
+        ),
+        "isAvailable": lambda: bool(int(last_implement_flags) & IMPL_FLAG_PRESENT),
+    },
+    {
+        "label": "Frame Articulation",
+        "getValue": lambda: (
+            f"{abs(last_articulation_deg):.0f}",
+            "degrees "
+            + (
+                "straight"
+                if abs(last_articulation_deg) < 1.0
+                else ("left" if last_articulation_deg > 0 else "right")
+            ),
+        ),
+        "isAvailable": lambda: bool(int(last_implement_flags) & IMPL_FLAG_ARTIC_VALID),
+    },
     # {'label': 'Tire Temps (FL, FR, RL, RR)', 'getValue': lambda: (f"{fmt_temp_c_or_f(last_tire_temp_fl)[0]}, {fmt_temp_c_or_f(last_tire_temp_fr)[0]}, {fmt_temp_c_or_f(last_tire_temp_rl)[0]}, {fmt_temp_c_or_f(last_tire_temp_rr)[0]}", "F" if UNITS_MODE == 'imperial' else "C"), 'isAvailable': lambda: protocol_mode == 'extended'},
     # {'label': 'Brake Temps (FL, FR, RL, RR)', 'getValue': lambda: (f"{fmt_temp_c_or_f(last_brake_temp_fl)[0]}, {fmt_temp_c_or_f(last_brake_temp_fr)[0]}, {fmt_temp_c_or_f(last_brake_temp_rl)[0]}, {fmt_temp_c_or_f(last_brake_temp_rr)[0]}", "F" if UNITS_MODE == 'imperial' else "C"), 'isAvailable': lambda: protocol_mode == 'extended'},
 ]
 
 
 
+def _hook_suppressed(key, handler):
+    """Suppressing KEY_DOWN hook that can always be torn down again.
+
+    `keyboard` indexes every hook by its key NAME as well as by its callback
+    (`_hooks[callback] = _hooks[key] = _hooks[remove] = remove`). Two suppressing hooks on
+    the same key therefore clobber each other's `_hooks[key]` entry, and removing the FIRST
+    one deletes the SECOND one's entry. The second teardown then raises KeyError from inside
+    the library's own remove function — *before* it takes the callback out of
+    `blocking_keys` — so the key stays swallowed for the life of the process with no handle
+    left that can release it. That is what happened when the vehicle spawner and status mode
+    both owned the arrows: closing both left the arrows dead.
+
+    So keep our own reference to the callback and purge it directly on teardown.
+    """
+    cb = lambda e: e.event_type == keyboard.KEY_UP or handler(e)  # noqa: E731
+    remove = keyboard.hook_key(key, cb, suppress=True)
+    return {"key": key, "cb": cb, "remove": remove}
+
+
+def _unhook_suppressed(records):
+    """Undo `_hook_suppressed` records, tolerating already-corrupt library bookkeeping."""
+    for rec in records:
+        try:
+            keyboard.unhook(rec["remove"])
+        except Exception:
+            pass
+        # Belt and braces for the aliasing described above: whatever the library managed to
+        # do, make sure this callback is no longer suppressing the key.
+        try:
+            blocking = keyboard._listener.blocking_keys
+            for scan_code in keyboard.key_to_scan_codes(rec["key"]):
+                lst = blocking.get(scan_code)
+                while lst and rec["cb"] in lst:
+                    lst.remove(rec["cb"])
+        except Exception:
+            pass
+    records.clear()
+
+
+def release_arrow_owners(reason=""):
+    """Hand the arrow keys back, whoever currently holds them.
+
+    Status mode and the virtual browser both take the arrows exclusively, and the vehicle
+    spawner takes them too. Without one place that releases all of them, opening one on top
+    of another leaves two owners on the same key — see `_hook_suppressed`.
+    """
+    close_virtual_browser(speak_exit=False)
+    if status_mode_active:
+        toggle_status_mode()
+    elif status_arrow_hooks:
+        # Hooks outliving the mode flag: release them anyway rather than leaving the arrows
+        # eaten with no mode to toggle off.
+        _unhook_suppressed(status_arrow_hooks)
+        if reason:
+            logger.warning(f"Released orphaned status-mode arrow hooks ({reason})")
+
+
 def on_status_arrow_press(event):
     global current_status_metric_index
-    if _vehicle_selector_open:
+    # Don't steal the arrows while a virtual browser (vehicle selector, clickspot list,
+    # bindings list) owns them. This used to read a `_vehicle_selector_open` name that was
+    # never defined anywhere, so every arrow press in status mode raised NameError before
+    # reaching a single metric — status mode looked dead.
+    if _vbrowser_active:
         return
     if not status_mode_active:
         return
@@ -2093,20 +2632,13 @@ def toggle_status_mode():
         try:
             for key in ["up", "down", "left", "right"]:
                 status_arrow_hooks.append(
-                    keyboard.on_press_key(
-                        key, _kb_enqueue(on_status_arrow_press), suppress=True
-                    )
+                    _hook_suppressed(key, _kb_enqueue(on_status_arrow_press))
                 )
         except Exception as e:
             logger.error(f"Failed to hook status mode keys: {e}")
     else:
         say("Status mode off", exclude_from_buffer=True)
-        for hook in status_arrow_hooks:
-            try:
-                keyboard.unhook(hook)
-            except Exception:
-                pass
-        status_arrow_hooks.clear()
+        _unhook_suppressed(status_arrow_hooks)
 
 
 def on_buffer_nav_press(event):
@@ -2150,20 +2682,13 @@ def toggle_buffer_mode():
         try:
             for key in ["[", "]"]:
                 buffer_key_hooks.append(
-                    keyboard.on_press_key(
-                        key, _kb_enqueue(on_buffer_nav_press), suppress=True
-                    )
+                    _hook_suppressed(key, _kb_enqueue(on_buffer_nav_press))
                 )
         except Exception as e:
             logger.error(f"Failed to hook buffer nav keys: {e}")
     else:
         say("Buffer mode off", exclude_from_buffer=True)
-        for hook in buffer_key_hooks:
-            try:
-                keyboard.unhook(hook)
-            except Exception:
-                pass
-        buffer_key_hooks.clear()
+        _unhook_suppressed(buffer_key_hooks)
 
 
 def _on_vbrowser_nav(event):
@@ -2222,22 +2747,16 @@ def open_virtual_browser(
         try:
             for key in ["up", "down"]:
                 _vbrowser_hooks.append(
-                    keyboard.on_press_key(
-                        key, _kb_enqueue(_on_vbrowser_nav), suppress=True
-                    )
+                    _hook_suppressed(key, _kb_enqueue(_on_vbrowser_nav))
                 )
             # Escape especially must be queued: close_virtual_browser unhooks the
             # very list keyboard is iterating to reach this handler.
             _vbrowser_hooks.append(
-                keyboard.on_press_key(
-                    "escape", _kb_enqueue(_on_vbrowser_escape), suppress=True
-                )
+                _hook_suppressed("escape", _kb_enqueue(_on_vbrowser_escape))
             )
             if on_enter is not None:
                 _vbrowser_hooks.append(
-                    keyboard.on_press_key(
-                        "enter", _kb_enqueue(_on_vbrowser_enter), suppress=True
-                    )
+                    _hook_suppressed("enter", _kb_enqueue(_on_vbrowser_enter))
                 )
         except Exception as e:
             logger.error(f"Failed to hook virtual browser keys: {e}")
@@ -2253,12 +2772,7 @@ def close_virtual_browser(speak_exit=True):
     _vbrowser_active = False
     _vbrowser_on_enter = None
     _vbrowser_entry_data = []
-    for hook in _vbrowser_hooks:
-        try:
-            keyboard.unhook(hook)
-        except Exception:
-            pass
-    _vbrowser_hooks.clear()
+    _unhook_suppressed(_vbrowser_hooks)
     _vbrowser_lines = []
     _vbrowser_index = 0
     if speak_exit:
@@ -2292,6 +2806,14 @@ CONSOLE_CMD_PORT = 4465  # UDP port to send EXEC/CTXLIST/LOGON/LOGOFF to console
 CONSOLE_RESP_PORT = (
     4466  # UDP port to receive console responses/log stream from consoleAccessible.lua
 )
+VEHICLE_BINDINGS_LISTEN_PORT = (
+    4467  # UDP port to receive vehicle binding lists from vehicleBindings.lua
+)
+VEHICLE_BINDINGS_CMD_PORT = 4468  # UDP port to send commands to vehicleBindings.lua
+IMPLEMENT_LISTEN_PORT = (
+    4469  # UDP port to receive implement proximity events from implementProximity.lua
+)
+IMPLEMENT_CMD_PORT = 4470  # UDP port to send ON/OFF/REBUILD to implementProximity.lua
 CONSOLE_HISTORY_PATH = os.path.join(CONFIG_DIR, "console_history.json")
 CONSOLE_HISTORY_MAX = 50  # cap on persisted accessible-console command history
 
@@ -2409,8 +2931,22 @@ def toggle_scan_mode(audio_controller):
     if not scan_mode_active:
         audio_controller.set_coupler_tracking(False)
 
+    # On a loader the scanner aims from the implement, not from the cab (see
+    # getImplementFrame in implementProximity.lua). Say so, or the operator has no way to
+    # know which end of the machine the bearing refers to.
+    # Gated on the live telemetry flag as well as the name. The name arrives from the GE
+    # extension and describes whatever vehicle last reported one, so on its own it can go
+    # stale across a vehicle switch; implementFlags comes from the struct and always
+    # describes the vehicle you are sitting in right now.
+    suffix = ""
+    if (
+        scan_mode_active
+        and _implement_word_current
+        and int(last_implement_flags) & IMPL_FLAG_PRESENT
+    ):
+        suffix = f", measuring from the {_implement_word_current.lower()}"
     say(
-        f"Vehicle scanner {'on' if scan_mode_active else 'off'}",
+        f"Vehicle scanner {'on' if scan_mode_active else 'off'}{suffix}",
         exclude_from_buffer=True,
     )
 
@@ -2456,18 +2992,75 @@ def toggle_road_mode(audio_controller):
     )
 
 
+def _format_camera_diag(heights: str) -> str:
+    """Phrase the camera diagnostic in the same units as every other readout.
+
+    `heights` is "<cameraZ>,<groundZ>" in metres, with groundZ "nan" when no ground was
+    found, or the sentinel "ERR". Doing the conversion here rather than in Lua is what
+    keeps this and the Alt+A altitude from reporting one height as two numbers.
+    """
+    try:
+        cam_z_m, ground_m = (float(v) for v in heights.split(",")[:2])
+    except ValueError:
+        return "Camera diagnostic failed, see the log."
+    conv, unit = (3.28084, "feet") if UNITS_MODE == "imperial" else (1.0, "meters")
+    if math.isnan(ground_m):
+        return f"Camera height {cam_z_m * conv:.1f} {unit}. No ground found below."
+    return (
+        f"Camera height {cam_z_m * conv:.1f} {unit}. "
+        f"Ground {ground_m * conv:.1f}. "
+        f"Above ground {(cam_z_m - ground_m) * conv:.1f} {unit}."
+    )
+
+
+def send_camera_command(command: str) -> bool:
+    """Send one command to cameraInfo.lua. Returns False if it couldn't be sent."""
+    try:
+        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        cmd_sock.sendto(command.encode("utf-8"), ("127.0.0.1", CAMERA_CMD_PORT))
+        cmd_sock.close()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send camera command {command} via UDP: {e}")
+        return False
+
+
+def _camera_feed_problem():
+    """Why the camera readouts can't be trusted right now, or None when they're live.
+
+    The Lua side stops streaming whenever the mod reloads, and it has no way to tell us —
+    so without this check the readouts keep speaking the last packet they ever received,
+    frozen but indistinguishable from a live value. Asking for the feed again here means
+    the next press usually works.
+    """
+    if not free_cam_active:
+        return "Camera info is off"
+    with state_lock:
+        age = time.time() - cam_last_packet_ts
+    if age > CAMERA_STALE_SEC:
+        send_camera_command("ON")
+        return "Camera info is not updating, reconnecting"
+    return None
+
+
+def send_camera_diag():
+    """Ask cameraInfo.lua for a one-shot camera/ground dump (F9 then Alt+Shift+A).
+
+    The reply comes back on the camera data port and is both spoken and logged; it works
+    whether or not the live camera feed is switched on.
+    """
+    if send_camera_command("DIAG"):
+        say("Camera diagnostic requested", exclude_from_buffer=True)
+    else:
+        say("Camera diagnostic failed to send", exclude_from_buffer=True)
+
+
 def toggle_free_cam_info(audio_controller):
     global free_cam_active, cam_last_click_heading_deg, cam_compass_click_counter
     global cam_last_announced_compass_idx, cam_last_compass_ts
     free_cam_active = not free_cam_active
 
-    command = "ON" if free_cam_active else "OFF"
-    try:
-        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        cmd_sock.sendto(command.encode("utf-8"), ("127.0.0.1", CAMERA_CMD_PORT))
-        cmd_sock.close()
-    except Exception as e:
-        logger.error(f"Failed to send camera info command via UDP: {e}")
+    send_camera_command("ON" if free_cam_active else "OFF")
 
     if free_cam_active:
         with state_lock:
@@ -2599,6 +3192,45 @@ def toggle_clickspot_mode(audio_controller):
     )
 
 
+def _send_vehicle_bindings_cmd(command):
+    try:
+        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        cmd_sock.sendto(
+            command.encode("utf-8"), ("127.0.0.1", VEHICLE_BINDINGS_CMD_PORT)
+        )
+        cmd_sock.close()
+    except Exception as e:
+        logger.error(f"Failed to send vehicle bindings command via UDP: {e}")
+
+
+def _vehicle_bindings_on_enter(idx, line, data):
+    """Virtual browser enter callback — fire the highlighted vehicle action."""
+    if data is None:
+        return
+    # No delayed press/release pair is needed here (unlike clickspots): the Lua
+    # side drives ActionMap's down+up itself.
+    _send_vehicle_bindings_cmd(f"EXEC:{data}")
+
+
+def open_vehicle_bindings_browser():
+    """Open a virtual browser listing the current vehicle's special controls."""
+    if not _vehicle_bindings_list:
+        # Nudge the mod in case the push was missed (e.g. beamtel started after
+        # the vehicle spawned), then report rather than opening an empty list.
+        _send_vehicle_bindings_cmd("REQUEST")
+        say("No vehicle bindings available", exclude_from_buffer=True)
+        return
+    lines = [b[1] for b in _vehicle_bindings_list]
+    entry_data = [b[0] for b in _vehicle_bindings_list]
+    vehicle = _vehicle_bindings_vehicle or "Vehicle"
+    open_virtual_browser(
+        lines,
+        title=f"{vehicle}, {len(lines)} binding{'s' if len(lines) != 1 else ''}",
+        on_enter=_vehicle_bindings_on_enter,
+        entry_data=entry_data,
+    )
+
+
 def open_clickspot_browser():
     """Open a virtual browser listing all detected clickspots."""
     if not clickspot_mode_active:
@@ -2712,6 +3344,7 @@ def _on_next_key_press(event, audio_controller):
         cam_yaw_snap = cam_yaw_deg
         cam_pitch_snap = cam_pitch_deg
         cam_agl_snap = cam_agl
+        cam_agl_valid_snap = cam_agl_valid
         cam_bearing_snap = cam_veh_bearing
         cam_dist_snap = cam_veh_distance
 
@@ -2729,10 +3362,11 @@ def _on_next_key_press(event, audio_controller):
         and _capture_mods["alt"]
         and not (_capture_mods["ctrl"] or _capture_mods["shift"])
     ):
-        if free_cam_active:
+        cam_problem = _camera_feed_problem()
+        if cam_problem is None:
             say(f"Camera heading {cam_yaw_snap:.0f} degrees", exclude_from_buffer=True)
         else:
-            say("Camera info is off", exclude_from_buffer=True)
+            say(cam_problem, exclude_from_buffer=True)
         _clear_next_key_hook(speak_exit=False)
         return
     elif (
@@ -2740,17 +3374,32 @@ def _on_next_key_press(event, audio_controller):
         and _capture_mods["alt"]
         and not (_capture_mods["ctrl"] or _capture_mods["shift"])
     ):
-        if free_cam_active:
+        cam_problem = _camera_feed_problem()
+        if cam_problem is None:
             if UNITS_MODE == "imperial":
-                alt_val = cam_agl_snap * 3.28084
-                say(f"Camera altitude {alt_val:.1f} feet", exclude_from_buffer=True)
+                alt_val, unit = cam_agl_snap * 3.28084, "feet"
             else:
-                say(
-                    f"Camera altitude {cam_agl_snap:.1f} meters",
-                    exclude_from_buffer=True,
-                )
+                alt_val, unit = cam_agl_snap, "meters"
+            # When no ground was found under the camera the number is an absolute
+            # height, so say so instead of calling sea level the ground.
+            suffix = "" if cam_agl_valid_snap else " above sea level, ground unknown"
+            say(
+                f"Camera altitude {alt_val:.1f} {unit}{suffix}",
+                exclude_from_buffer=True,
+            )
         else:
-            say("Camera info is off", exclude_from_buffer=True)
+            say(cam_problem, exclude_from_buffer=True)
+        _clear_next_key_hook(speak_exit=False)
+        return
+    elif (
+        name == "a"
+        and _capture_mods["alt"]
+        and _capture_mods["shift"]
+        and not _capture_mods["ctrl"]
+    ):
+        # Camera/ground diagnostic. Speaks a summary and writes the full detail to
+        # bnvdahook.log, so a wrong altitude can be traced to the query behind it.
+        send_camera_diag()
         _clear_next_key_hook(speak_exit=False)
         return
     elif (
@@ -2758,14 +3407,15 @@ def _on_next_key_press(event, audio_controller):
         and _capture_mods["alt"]
         and not (_capture_mods["ctrl"] or _capture_mods["shift"])
     ):
-        if free_cam_active:
+        cam_problem = _camera_feed_problem()
+        if cam_problem is None:
             direction = "up" if cam_pitch_snap >= 0 else "down"
             say(
                 f"Camera pitch {abs(cam_pitch_snap):.0f} degrees {direction}",
                 exclude_from_buffer=True,
             )
         else:
-            say("Camera info is off", exclude_from_buffer=True)
+            say(cam_problem, exclude_from_buffer=True)
         _clear_next_key_hook(speak_exit=False)
         return
     elif (
@@ -2773,7 +3423,8 @@ def _on_next_key_press(event, audio_controller):
         and _capture_mods["alt"]
         and not (_capture_mods["ctrl"] or _capture_mods["shift"])
     ):
-        if free_cam_active:
+        cam_problem = _camera_feed_problem()
+        if cam_problem is None:
             if cam_dist_snap < 0:
                 say("No vehicle", exclude_from_buffer=True)
             else:
@@ -2783,7 +3434,7 @@ def _on_next_key_press(event, audio_controller):
                     exclude_from_buffer=True,
                 )
         else:
-            say("Camera info is off", exclude_from_buffer=True)
+            say(cam_problem, exclude_from_buffer=True)
         _clear_next_key_hook(speak_exit=False)
         return
     elif (
@@ -2791,7 +3442,8 @@ def _on_next_key_press(event, audio_controller):
         and _capture_mods["alt"]
         and not (_capture_mods["ctrl"] or _capture_mods["shift"])
     ):
-        if free_cam_active:
+        cam_problem = _camera_feed_problem()
+        if cam_problem is None:
             if cam_dist_snap < 0:
                 say("No vehicle", exclude_from_buffer=True)
             else:
@@ -2804,7 +3456,7 @@ def _on_next_key_press(event, audio_controller):
                         exclude_from_buffer=True,
                     )
         else:
-            say("Camera info is off", exclude_from_buffer=True)
+            say(cam_problem, exclude_from_buffer=True)
         _clear_next_key_hook(speak_exit=False)
         return
     if name == "s" and not _capture_mods["ctrl"]:
@@ -2982,6 +3634,19 @@ def _on_next_key_press(event, audio_controller):
             "Low speed detection on"
             if low_speed_mode_active
             else "Low speed detection off",
+            exclude_from_buffer=True,
+        )
+    elif (
+        name == "k"
+        and _capture_mods["ctrl"]
+        and not (_capture_mods["shift"] or _capture_mods["alt"])
+    ):
+        global slip_mode_active
+        slip_mode_active = not slip_mode_active
+        say(
+            "Wheel slip detection on"
+            if slip_mode_active
+            else "Wheel slip detection off",
             exclude_from_buffer=True,
         )
     elif (
@@ -3254,6 +3919,13 @@ def _on_next_key_press(event, audio_controller):
     elif name == "b" and _capture_mods["ctrl"]:
         toggle_buffer_mode()
     elif (
+        name == "b"
+        and not _capture_mods["ctrl"]
+        and not _capture_mods["shift"]
+        and not _capture_mods["alt"]
+    ):
+        open_vehicle_bindings_browser()
+    elif (
         name == "c"
         and _capture_mods["ctrl"]
         and not (_capture_mods["shift"] or _capture_mods["alt"])
@@ -3378,7 +4050,7 @@ _describer_busy = False
 
 
 def _ai_describe_worker(audio_controller):
-    """Background worker: hide the UI, screenshot, send to Gemini, speak the result.
+    """Background worker: hide the UI, screenshot, describe it, speak the result.
 
     Runs on a daemon thread so the keyboard hook returns immediately.
     """
@@ -3386,12 +4058,17 @@ def _ai_describe_worker(audio_controller):
 
     global _describer_busy
     try:
-        api_key = ai_describer_api_key
-        model = ai_describer_model
+        settings = ai_describer_settings
+        provider = ai_describer_provider or ai_describer.DEFAULT_PROVIDER
+        key_cfg, model_cfg = ai_describer.config_keys_for(provider)
+        api_key = settings.get(key_cfg, "")
+        model = settings.get(model_cfg) or ai_describer.default_model_for(provider)
+        extra_args = ai_describer.extra_args_for(provider, settings)
         toggle_ui = not ai_describer_disable_ui_toggle
 
         if not (api_key or "").strip():
-            msg = "No API key set. Configure it in the AI Describer tab."
+            display = ai_describer.provider_display_name(provider)
+            msg = f"No {display} API key set. Configure it in the AI Describer tab."
             ai_describer.log_error(msg)
             say(msg)
             return
@@ -3417,7 +4094,9 @@ def _ai_describe_worker(audio_controller):
             return
 
         say("Description in progress.", exclude_from_buffer=True)
-        text, err = ai_describer.describe_image(png, model, api_key, timeout=60)
+        text, err = ai_describer.describe_image(
+            png, model, api_key, provider=provider, timeout=60, **extra_args
+        )
         if text:
             ai_describer.log_description(text)
             say(text)
@@ -4330,13 +5009,35 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
     global \
         _ls_prev_speed_ms, \
         _ls_prev_speed_ts, \
-        _ls_decel_smooth, \
-        _ls_steady_ref_mph, \
         _ls_steady_start_ts
+    global \
+        last_ground_speed_ms, \
+        _ms_last_rx_ts, \
+        _ls_accel_smooth, \
+        _ls_ms_prev_speed_ms, \
+        _ls_ms_prev_ts, \
+        _ls_stopped, \
+        _ls_was_moving, \
+        _ls_diag_last_ts, \
+        _ls_slip_smooth, \
+        _ls_slip_since_ts, \
+        _ls_slip_prev_ts
     global coord_target_bearing, _last_coord_bearing_ts
+    global _ext_version_warned
+    global \
+        last_implement_flags, \
+        last_implement_edge_height, \
+        last_implement_min_clearance, \
+        last_implement_tilt_deg, \
+        last_implement_tilt_percent, \
+        last_implement_lift, \
+        last_implement_activity, \
+        last_articulation_deg
     drift_rate_val = 0.0
 
-    # Drift state (10Hz sampling)
+    # Drift state (sampled per telemetry packet, low-pass filtered)
+    drift_rate_signed = 0.0
+    drift_below_since = 0.0
     prev_drift_sample_ts = 0.0
     prev_drift_sample_heading = 0.0
 
@@ -4383,10 +5084,12 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                 if len(data) >= MS_SIZE:
                     try:
                         ms = struct.unpack(MS_FORMAT, data[:MS_SIZE])
-                        posX, posY, posZ, upZ, rollRad, pitchRad, yawPos = (
+                        posX, posY, posZ, velX, velY, upZ, rollRad, pitchRad, yawPos = (
                             ms[1],
                             ms[2],
                             ms[3],
+                            ms[4],
+                            ms[5],
                             ms[12],
                             ms[13],
                             ms[14],
@@ -4395,6 +5098,34 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     except Exception:
                         continue
                     with state_lock:
+                        # Ground truth speed: horizontal component only, so driving down
+                        # a slope doesn't read as extra speed.
+                        ground_ms = math.hypot(velX, velY)
+                        last_ground_speed_ms = ground_ms
+                        _ms_last_rx_ts = now
+
+                        # Signed longitudinal acceleration by differentiating ground
+                        # speed. Deriving it this way (rather than from the packet's
+                        # accXYZ, which is a vehicle-local accelerometer reading) keeps
+                        # the sign unambiguous: speed rising means speeding up.
+                        ms_dt = now - _ls_ms_prev_ts
+                        if _ls_ms_prev_ts <= 0.0 or ms_dt > LS_ACCEL_MAX_DT:
+                            # First sample, or a gap in the stream — a vehicle reload
+                            # (part change, respawn) halts the vehicle VM for well over
+                            # a second. Re-baseline instead of differentiating across
+                            # the gap, and never leave the timestamp stale or the EMA
+                            # would stop updating for the rest of the session.
+                            _ls_ms_prev_speed_ms = ground_ms
+                            _ls_ms_prev_ts = now
+                            _ls_accel_smooth = 0.0
+                        elif ms_dt >= LS_ACCEL_MIN_DT:
+                            raw_accel = (ground_ms - _ls_ms_prev_speed_ms) / ms_dt
+                            alpha = 1.0 - math.exp(-ms_dt / LS_ACCEL_TAU_S)
+                            _ls_accel_smooth += alpha * (raw_accel - _ls_accel_smooth)
+                            _ls_ms_prev_speed_ms = ground_ms
+                            _ls_ms_prev_ts = now
+                        # else: gap shorter than LS_ACCEL_MIN_DT, keep accumulating
+
                         last_pos_x, last_pos_y, last_pos_z = posX, posY, posZ
                         last_yaw_rad, last_roll_rad, last_pitch_rad, last_up_z = (
                             yawPos,
@@ -4404,32 +5135,40 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         )
                         heading = yaw_to_heading_deg(yawPos)
 
-                        # NEW: Drift calculation (10Hz interval)
+                        # Drift calculation. Sampled every packet (~60 Hz) and
+                        # low-pass filtered, instead of decimated to 10 Hz: the
+                        # raw finite difference over a 100 ms window turns yaw
+                        # quantisation into large rate steps, which the audio
+                        # then rendered as a staircase.
                         if drift_mode_active:
                             if prev_drift_sample_ts == 0.0:
                                 prev_drift_sample_ts = now
                                 prev_drift_sample_heading = heading
 
                             dt = now - prev_drift_sample_ts
-                            if dt >= 0.1:  # Sample every 0.1 seconds
+                            if dt >= 0.004:  # guard against dt ~= 0 blowing up the rate
                                 d_head = heading - prev_drift_sample_heading
                                 if d_head > 180.0:
                                     d_head -= 360.0
                                 elif d_head < -180.0:
                                     d_head += 360.0
 
-                                # Calculate rate over the last interval
                                 rate = d_head / dt
-                                drift_rate_val = abs(rate)
+                                beta = 1.0 - math.exp(-dt / DRIFT_SMOOTH_TAU)
+                                drift_rate_signed += beta * (rate - drift_rate_signed)
+                                drift_rate_val = abs(drift_rate_signed)
 
                                 # Only update direction if significant drift to avoid noise
-                                if drift_rate_val > 0.2:
-                                    drift_pan_direction = 1.0 if rate > 0 else -1.0
+                                if drift_rate_val > DRIFT_PAN_MIN_RATE:
+                                    drift_pan_direction = (
+                                        1.0 if drift_rate_signed > 0 else -1.0
+                                    )
 
                                 prev_drift_sample_heading = heading
                                 prev_drift_sample_ts = now
                         else:
                             drift_rate_val = 0.0
+                            drift_rate_signed = 0.0
                             prev_drift_sample_ts = 0.0
                             prev_drift_sample_heading = 0.0
 
@@ -4508,6 +5247,22 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     unpacked = struct.unpack(EXT_FORMAT, data)
                 except Exception:
                     continue
+            elif protocol_mode == "extended" and len(data) == EXT_SIZE_V1:
+                # Older mod half. Decode what it does send and pad the implement block, so a
+                # version skew costs the loader features rather than all telemetry.
+                try:
+                    unpacked = (
+                        struct.unpack(EXT_FORMAT_V1, data) + EXT_V1_IMPLEMENT_DEFAULTS
+                    )
+                except Exception:
+                    continue
+                if not _ext_version_warned:
+                    _ext_version_warned = True
+                    logger.warning(
+                        f"Extended telemetry packet is {EXT_SIZE_V1} bytes, expected "
+                        f"{EXT_SIZE}. The Lua mod in bng_mod/ is older than this build; "
+                        f"implement (bucket/fork) telemetry will be unavailable."
+                    )
             elif protocol_mode == "outgauge" and len(data) >= OG_SIZE:
                 try:
                     unpacked = struct.unpack(OG_FORMAT, data[:OG_SIZE])
@@ -4565,6 +5320,14 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         hazard_en,
                         lightbar_raw,
                         fog_raw,
+                        implement_flags,
+                        implement_edge_height,
+                        implement_min_clearance,
+                        implement_tilt_deg,
+                        implement_tilt_percent,
+                        implement_lift,
+                        implement_activity,
+                        articulation_deg,
                     ) = unpacked[14:]
                     last_oil_pressure, last_air_pressure, last_air_pressure_max = (
                         oil_pressure,
@@ -4641,6 +5404,16 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     )
                     throttle, brake, clutch = unpacked[14], unpacked[15], unpacked[16]
                     steering, actual_steering, steering_input = 0.0, 0.0, 0.0
+                    # OutGauge carries none of the implement block; the sentinels here are
+                    # what keep the status metrics hidden and the tones silent in that mode.
+                    implement_flags = 0.0
+                    implement_edge_height = -1.0
+                    implement_min_clearance = -1.0
+                    implement_tilt_deg = 0.0
+                    implement_tilt_percent = 0.0
+                    implement_lift = 0.0
+                    implement_activity = 0.0
+                    articulation_deg = 0.0
 
                 (
                     last_speed_ms,
@@ -4659,6 +5432,25 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     steering,
                     actual_steering,
                     steering_input,
+                )
+                (
+                    last_implement_flags,
+                    last_implement_edge_height,
+                    last_implement_min_clearance,
+                    last_implement_tilt_deg,
+                    last_implement_tilt_percent,
+                    last_implement_lift,
+                    last_implement_activity,
+                    last_articulation_deg,
+                ) = (
+                    implement_flags,
+                    implement_edge_height,
+                    implement_min_clearance,
+                    implement_tilt_deg,
+                    implement_tilt_percent,
+                    implement_lift,
+                    implement_activity,
+                    articulation_deg,
                 )
                 shift_active_frame, tc_active_frame = (
                     bool(showLights & DL_SHIFT),
@@ -4696,29 +5488,56 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         last_speed_announce_ts = now
                     last_bucket = current_bucket
 
+            # --- Ground truth selection, shared by low speed and slip detection ---
+            # MotionSim gives real chassis velocity; the telemetry speed field is
+            # drivetrain-derived and collapses to zero under a locked-wheel brake. Fall
+            # back to it only when the MotionSim protocol isn't running.
+            ms_fresh = (now - _ms_last_rx_ts) <= LS_MS_STALE_S
+            if ms_fresh:
+                ground_ms = last_ground_speed_ms
+                a_long = _ls_accel_smooth
+            else:
+                ground_ms = last_speed_ms
+                dt = now - _ls_prev_speed_ts
+                if _ls_prev_speed_ts <= 0.0 or dt > LS_ACCEL_MAX_DT:
+                    _ls_prev_speed_ms = last_speed_ms
+                    _ls_prev_speed_ts = now
+                    _ls_accel_smooth = 0.0
+                elif dt >= LS_ACCEL_MIN_DT:
+                    raw_accel = (last_speed_ms - _ls_prev_speed_ms) / dt
+                    alpha = 1.0 - math.exp(-dt / LS_ACCEL_TAU_S)
+                    _ls_accel_smooth += alpha * (raw_accel - _ls_accel_smooth)
+                    _ls_prev_speed_ms = last_speed_ms
+                    _ls_prev_speed_ts = now
+                a_long = _ls_accel_smooth
+
+            # Standstill tracking, with hysteresis so idle jitter can't chatter the flag.
+            # _ls_was_moving latches once the vehicle has genuinely driven, so a car
+            # that is merely parked at startup doesn't chime.
+            if ground_ms > LS_STOP_TONE_MIN_MS:
+                _ls_was_moving = True
+            if _ls_stopped:
+                if ground_ms > LS_STOP_EXIT_MS:
+                    _ls_stopped = False
+            elif ground_ms < LS_STOP_ENTER_MS:
+                _ls_stopped = True
+                if low_speed_mode_active and _ls_was_moving:
+                    audio_controller.trigger_lowspeed_stopped()
+                _ls_was_moving = False
+
             # Low Speed Detection Logic
             ls_clicks_active = False
             ls_speed_mph = 0.0
-            ls_decel = 0.0
+            ls_accel = 0.0
             if low_speed_mode_active:
-                current_mph = last_speed_ms * MPH_PER_MS
+                current_mph = ground_ms * MPH_PER_MS
 
-                # Compute deceleration via EMA
-                if _ls_prev_speed_ts > 0.0:
-                    dt = now - _ls_prev_speed_ts
-                    if 0.0 < dt <= 1.0:
-                        raw_accel = (last_speed_ms - _ls_prev_speed_ms) / dt
-                        raw_decel = max(0.0, -raw_accel)
-                        alpha = 1.0 - math.exp(-dt / 0.15)
-                        _ls_decel_smooth += alpha * (raw_decel - _ls_decel_smooth)
-                _ls_prev_speed_ms = last_speed_ms
-                _ls_prev_speed_ts = now
-
-                # Steady-speed suppression (3 second timer)
-                if abs(current_mph - _ls_steady_ref_mph) > 1.5:
-                    _ls_steady_ref_mph = current_mph
+                # Steady-speed suppression: go quiet once longitudinal accel has stayed
+                # inside the deadband long enough. Keying this off accel rather than a
+                # speed window means a braking transient can't reset it spuriously.
+                if abs(a_long) > LS_ACCEL_DEADBAND:
                     _ls_steady_start_ts = now
-                steady_suppressed = (now - _ls_steady_start_ts) > 3.0
+                steady_suppressed = (now - _ls_steady_start_ts) > LS_STEADY_HOLD_S
 
                 # Gear check: neutral/park suppression
                 in_neutral_or_park = False
@@ -4731,13 +5550,73 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         in_neutral_or_park = True
 
                 if (
-                    0.0 < current_mph < 25.0
+                    not _ls_stopped
+                    and current_mph < 25.0
                     and not in_neutral_or_park
                     and not steady_suppressed
                 ):
                     ls_clicks_active = True
                     ls_speed_mph = current_mph
-                    ls_decel = _ls_decel_smooth
+                    ls_accel = a_long
+
+                if (
+                    bnvda_debug_enabled()
+                    and (now - _ls_diag_last_ts) >= LOWSPEED_DIAG_INTERVAL_S
+                ):
+                    _ls_diag_last_ts = now
+                    logger.info(
+                        "[LOWSPEED] src=%s ground=%.2fm/s wheel=%.2fm/s mph=%.1f "
+                        "accel=%+.2f clicks=%s stopped=%s steady_supp=%s gearNP=%s "
+                        "ms_age=%.2fs",
+                        "motionsim" if ms_fresh else "wheel-fallback",
+                        ground_ms,
+                        last_speed_ms,
+                        current_mph,
+                        a_long,
+                        ls_clicks_active,
+                        _ls_stopped,
+                        steady_suppressed,
+                        in_neutral_or_park,
+                        now - _ms_last_rx_ts,
+                    )
+
+            # --- Wheel slip detection (lockup / wheelspin) ---
+            # Positive slip => wheels turning slower than the ground is moving (lockup).
+            # Negative slip => wheels outrunning the ground (wheelspin).
+            slip_active = False
+            slip_kind = 0
+            slip_mag = 0.0
+            if slip_mode_active and ms_fresh:
+                slip_dt = (now - _ls_slip_prev_ts) if _ls_slip_prev_ts > 0.0 else 0.0
+                raw_slip = ground_ms - last_speed_ms
+                if 0.0 < slip_dt <= 1.0:
+                    alpha = 1.0 - math.exp(-slip_dt / SLIP_TAU_S)
+                    _ls_slip_smooth += alpha * (raw_slip - _ls_slip_smooth)
+                else:
+                    _ls_slip_smooth = raw_slip
+                _ls_slip_prev_ts = now
+
+                threshold = max(
+                    SLIP_ABS_THRESHOLD_MS, SLIP_REL_THRESHOLD * ground_ms
+                )
+                diverging = (
+                    ground_ms > SLIP_MIN_GROUND_MS and abs(_ls_slip_smooth) > threshold
+                )
+                if diverging:
+                    if _ls_slip_since_ts == 0.0:
+                        _ls_slip_since_ts = now
+                    # Require the divergence to persist so gearshifts and packet jitter
+                    # don't trip it.
+                    if (now - _ls_slip_since_ts) >= SLIP_SUSTAIN_S:
+                        slip_active = True
+                        slip_kind = -1 if _ls_slip_smooth > 0.0 else 1
+                        slip_mag = abs(_ls_slip_smooth)
+                else:
+                    _ls_slip_since_ts = 0.0
+            else:
+                _ls_slip_smooth = 0.0
+                _ls_slip_since_ts = 0.0
+                _ls_slip_prev_ts = 0.0
 
             guidance_diff = 0.0
             if heading_guidance_active:
@@ -4770,18 +5649,28 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
             # NEW: Drift Detection Logic (Continuous)
             if drift_mode_active:
                 # Activation Logic:
-                # Start if: Rate > 0.5 AND Steering < 5.0 (Near zero)
-                # Stop if: Rate < 0.5 (Rotation stops)
+                # Start if: Rate > DRIFT_ON_RATE AND Steering < 5.0 (Near zero)
+                # Stop if: Rate stays below DRIFT_OFF_RATE for DRIFT_RELEASE_HOLD
+                # The separate on/off thresholds plus the release hold keep the
+                # alert from chattering when the rate hovers near the threshold.
                 # Note: Steering input does NOT cancel an active alert, as requested.
 
                 if drift_alert_active:
-                    if drift_rate_val < 0.5:
-                        drift_alert_active = False
+                    if drift_rate_val < DRIFT_OFF_RATE:
+                        if drift_below_since == 0.0:
+                            drift_below_since = now
+                        elif now - drift_below_since >= DRIFT_RELEASE_HOLD:
+                            drift_alert_active = False
+                            drift_below_since = 0.0
+                    else:
+                        drift_below_since = 0.0
                 else:
-                    if drift_rate_val > 0.5 and abs(last_steering) < 5.0:
+                    if drift_rate_val > DRIFT_ON_RATE and abs(last_steering) < 5.0:
                         drift_alert_active = True
+                        drift_below_since = 0.0
             else:
                 drift_alert_active = False
+                drift_below_since = 0.0
 
             audio_controller.update_telemetry_state(
                 {
@@ -4794,6 +5683,11 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     "last_steering": last_steering,
                     "last_actual_steering": last_actual_steering,
                     "last_steering_input": last_steering_input,
+                    "implement_flags": last_implement_flags,
+                    "implement_min_clearance": last_implement_min_clearance,
+                    "implement_tilt_deg": last_implement_tilt_deg,
+                    "implement_lift": last_implement_lift,
+                    "implement_activity": last_implement_activity,
                     "inverted": inverted,
                     "last_roll_rad": last_roll_rad,
                     "last_pitch_rad": last_pitch_rad,
@@ -4805,7 +5699,11 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     "ls_clicks_active": ls_clicks_active,
                     "ls_speed_mph": ls_speed_mph,
                     "scan_speed_ms": speed_ms,
-                    "ls_decel": ls_decel,
+                    "ls_accel": ls_accel,
+                    "ls_stopped": _ls_stopped,
+                    "slip_active": slip_active,
+                    "slip_kind": slip_kind,
+                    "slip_mag": slip_mag,
                     "coord_guidance_active": coord_guidance_active,
                     "coord_guidance_error_deg": coord_bearing_error,
                 }
@@ -4950,8 +5848,9 @@ class BeamTelFrame(wx.Frame):
 
         config_panel = ConfigPanel(notebook)
         describer_panel = AIDescriberPanel(notebook)
-        # Kept so _on_close can flush its debounced save before we tear down.
+        # Kept so _on_close can flush their debounced saves before we tear down.
         self._config_panel = config_panel
+        self._describer_panel = describer_panel
 
         main_panel.Bind(
             wx.EVT_NAVIGATION_KEY, lambda evt: wrap_nav_key(evt, main_panel)
@@ -5293,12 +6192,14 @@ class BeamTelFrame(wx.Frame):
     # ---- Shutdown ----
 
     def _on_close(self, evt):
-        # The Configuration tab debounces its writes by two seconds, so closing
-        # right after an edit would drop it silently. Commit it first.
-        try:
-            self._config_panel.flush_pending_save()
-        except Exception:
-            pass
+        # The Configuration tab debounces its writes by two seconds (as does the
+        # AI Describer tab's base-URL field), so closing right after an edit
+        # would drop it silently. Commit them first.
+        for panel in (self._config_panel, self._describer_panel):
+            try:
+                panel.flush_pending_save()
+            except Exception:
+                pass
         STOP.set()
         if self._engine_thread and self._engine_thread.is_alive():
             self._engine_thread.join(timeout=2.0)
@@ -5308,6 +6209,20 @@ class BeamTelFrame(wx.Frame):
 # =========================
 #  Engine (background)
 # =========================
+
+
+def _broadcast_ui_settings():
+    """Push the UI-side settings to the mod's JS runtime.
+
+    Called both on config change and in reply to the runtime's settings_request,
+    since a broadcast with no client attached is silently dropped.
+    """
+    with state_lock:
+        payload = {"type": "settings", "ui_nav_hold_suppression": ui_nav_hold_suppression}
+    try:
+        broadcast(payload)
+    except Exception as e:
+        logger.error(f"Failed to broadcast UI settings: {e}")
 
 
 def _apply_live_config(audio_controller):
@@ -5320,7 +6235,9 @@ def _apply_live_config(audio_controller):
         compass_click_interval_deg
     global announce_turn_signals, announce_speed, speed_announce_interval, announce_gear
     global scanner_distance_callout_enabled, scanner_distance_callout_interval
-    global ai_describer_api_key, ai_describer_model, ai_describer_disable_ui_toggle
+    global announce_implement_proximity
+    global ai_describer_provider, ai_describer_settings, ai_describer_disable_ui_toggle
+    global ui_nav_hold_suppression
     try:
         cfg = load_config()
     except Exception as e:
@@ -5339,14 +6256,21 @@ def _apply_live_config(audio_controller):
         announce_gear = cfg.get("announce_gear", True)
         scanner_distance_callout_enabled = cfg.get("scanner_distance_callout_enabled", False)
         scanner_distance_callout_interval = cfg.get("scanner_distance_callout_interval", 10)
-        ai_describer_api_key = cfg.get("ai_describer_api_key", "")
-        ai_describer_model = cfg.get("ai_describer_model", "models/gemini-3-flash-preview")
+        announce_implement_proximity = bool(cfg.get("implement_proximity_speech", True))
+        ui_nav_hold_suppression = bool(cfg.get("ui_nav_hold_suppression", True))
+        ai_describer_provider = cfg.get("ai_describer_provider", "gemini")
+        ai_describer_settings = {
+            k: cfg.get(k, DEFAULT_CONFIG.get(k))
+            for k in DEFAULT_CONFIG
+            if k.startswith("ai_describer_")
+        }
         ai_describer_disable_ui_toggle = cfg.get("ai_describer_disable_ui_toggle", False)
     if audio_controller is not None:
         audio_controller.apply_config(cfg)
     # Outside state_lock: rebuilding the backend can take long enough that the
     # telemetry loop and audio callback would notice the stall.
     speech.configure(cfg)
+    _broadcast_ui_settings()
     logger.info("Configuration reloaded.")
 
 
@@ -5372,6 +6296,8 @@ def _run_engine():
     global UNITS_MODE, oil_chime_enabled
     global announce_turn_signals, announce_speed, speed_announce_interval, announce_gear
     global scanner_distance_callout_enabled, scanner_distance_callout_interval
+    global announce_implement_proximity
+    global ui_nav_hold_suppression
     UNITS_MODE = cfg.get("units", "imperial")
     oil_chime_enabled = cfg.get("oil_chime_enabled", True)
     announce_turn_signals = cfg.get("announce_turn_signals", True)
@@ -5380,6 +6306,8 @@ def _run_engine():
     announce_gear = cfg.get("announce_gear", True)
     scanner_distance_callout_enabled = cfg.get("scanner_distance_callout_enabled", False)
     scanner_distance_callout_interval = cfg.get("scanner_distance_callout_interval", 10)
+    announce_implement_proximity = bool(cfg.get("implement_proximity_speech", True))
+    ui_nav_hold_suppression = bool(cfg.get("ui_nav_hold_suppression", True))
 
     if speech.init(cfg) is None:
         logger.warning("No speech backend available; callouts will be silent.")
@@ -5410,6 +6338,7 @@ def _run_engine():
 
     register_dom_dump_callback(_on_dom_dump_received)
     register_loading_state_callback(_on_loading_state_changed)
+    register_settings_request_callback(_broadcast_ui_settings)
 
     if cfg.get("launch_beamng", False):
         try:
@@ -5472,6 +6401,11 @@ def _run_engine():
     )
     road_thread.start()
 
+    implement_thread = threading.Thread(
+        target=implement_listener, args=(STOP,), daemon=True
+    )
+    implement_thread.start()
+
     camera_thread = threading.Thread(
         target=camera_listener, args=(audio_controller, STOP), daemon=True
     )
@@ -5486,6 +6420,14 @@ def _run_engine():
         target=clickspot_listener, args=(audio_controller, STOP), daemon=True
     )
     clickspot_thread.start()
+
+    bindings_thread = threading.Thread(
+        target=vehicle_bindings_listener, args=(STOP,), daemon=True
+    )
+    bindings_thread.start()
+    # Ask for the current vehicle's bindings, in case beamtel started after the
+    # game had already spawned one and the load-time push was missed.
+    _send_vehicle_bindings_cmd("REQUEST")
 
     slot_thread = threading.Thread(target=slot_listener, args=(STOP,), daemon=True)
     slot_thread.start()
@@ -5513,7 +6455,11 @@ def _run_engine():
             _is_beamng_focused,
             logger,
             get_slots_fn=_get_spawner_slots,
-            close_others_fn=lambda: close_virtual_browser(speak_exit=False),
+            # Must release EVERY arrow owner, not just the virtual browser. Leaving status
+            # mode hooked while the spawner also hooks the arrows is what produced the
+            # permanently-dead arrow keys described in _hook_suppressed.
+            close_others_fn=lambda: release_arrow_owners("vehicle spawner opened"),
+            ping_fn=audio_controller.trigger_placement_ping,
         )
         _vehicle_spawner.start(STOP)
     except Exception as e:

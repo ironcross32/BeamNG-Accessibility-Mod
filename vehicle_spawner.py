@@ -25,7 +25,8 @@ The modal is opened with F11 and uses these keys while open (all suppressed):
     F          — open filter dialog (main only)
     C          — clear filters (main only)
     G          — open arrangement presets screen (main/to-be-spawned/manage)
-    W          — placement wizard (to-be-spawned only)
+    W          — placement editor (to-be-spawned: where it will spawn;
+                 manage: where the selected world vehicle teleports to)
     R          — reload selected world vehicles (manage); add random vehicle to queue (main/configs)
     V          — set ignition to 0 on every world vehicle (manage only)
     Ctrl+A     — select every world vehicle (manage only)
@@ -39,20 +40,58 @@ Arrangement screen (opened via G):
     Enter      — on Spacing: open the distance editor; on a button row: activate it
     Escape     — return to previous screen
 
-Distance editor (wizard distance screen, and the arrangement Spacing row):
+Distance editor (the arrangement Spacing row):
     A 5-digit odometer (0..99999 feet, default 15). Left/Right move the cursor
     between digit positions (wrapping); Up/Down cycle the current digit 0-9
     (wrapping). Each digit change speaks the new value (leading zeros stripped);
     moving the cursor speaks the digit at the new position. Enter confirms.
+
+Placement editor (opened with W, after choosing the anchor):
+    A live 3D editor for the queued vehicle's offset and rotation relative to its
+    anchor. All values are in the anchor's own frame, so "forward" means the way
+    the anchor is facing.
+
+    Up/Down       — move forward / back        PageUp/PageDown — raise / lower
+    Left/Right    — move left / right
+    W / S         — pitch nose down / up       (rotate about the anchor's X axis)
+    A / D         — roll left / right          (rotate about the anchor's Y axis)
+    Q / E         — yaw left / right           (rotate about the anchor's Z axis)
+    Space         — speak the current position
+    R             — reset to sit right on the anchor
+    X             — teleports only: switch between standard and force mode
+    Enter         — accept       Escape — discard and go back
+
+    A quick tap moves exactly one unit (1 foot, or 1 degree). Holding a key
+    escalates the step size the longer it is held — 1, 10, 100, 1000, 10000 feet,
+    or 1, 10, 45 degrees. Each step plays a ping whose timbre identifies the
+    magnitude, positioned by HRTF in the direction of travel; height and pitch
+    changes are pitch-shifted up or down instead, since the HRTF set is
+    horizontal-plane only. Holding two arrows moves along the diagonal between
+    them. After a short pause the full position is spoken automatically.
+
+    Opened from the manage page it drives a teleport instead of a spawn: the
+    same editor, the same keys, but Enter moves the vehicle under the cursor to
+    the position it describes rather than storing it on a queued item. The
+    editor starts dead on the anchor rather than offset from it, and the anchor is
+    the vehicle itself (so the offsets read as "move it this far from where it is
+    now"), the ground below the camera, or a marked vehicle.
+
+    X switches a teleport between two ways of getting there. Standard sets the
+    vehicle down on the spot exactly. Force throws it: the game solves for the
+    launch velocity that lands it there on a lobbed arc, so it flies, takes the
+    landing, and ends up roughly — not exactly — on the mark, facing whatever way
+    physics leaves it. Rotation is ignored in force mode for that reason.
 """
 
 from __future__ import annotations
 
 import json
+import math
 import queue
 import random
 import socket
 import threading
+import time
 from typing import Any, Callable
 
 try:
@@ -70,12 +109,78 @@ except Exception:
 DATA_PORT = 4460   # receive from Lua
 CMD_PORT  = 4461   # send to Lua
 
-SIDES = ["front", "back", "left", "right"]
-SIDE_PHRASES = {
-    "front": "in front of",
-    "back":  "behind",
-    "left":  "to the left of",
-    "right": "to the right of",
+# --- Placement editor -------------------------------------------------------
+# Ticker period. Each tick applies one step per held axis, so this is also the
+# maximum ping rate (8/sec) — fast enough to feel continuous, slow enough that
+# successive pings stay individually audible.
+PLACE_TICK_SEC = 0.125
+
+# How long a key must be held before the ticker starts repeating. Below this, a
+# press is a "tap" and moves exactly one unit.
+PLACE_HOLD_DELAY_SEC = 0.35
+
+# (seconds_held, translation_step_ft, rotation_step_deg). Scanned from the bottom
+# up, so the last entry whose threshold is met wins. Rotation caps at 45 degrees —
+# a held key that stepped by thousands of degrees would just spin uselessly.
+PLACE_LADDER = [
+    (0.35, 1,     1),
+    (1.2,  10,    10),
+    (2.4,  100,   45),
+    (3.6,  1000,  45),
+    (4.8,  10000, 45),
+]
+
+# Silence after the last movement before the position is spoken automatically.
+PLACE_IDLE_READOUT_SEC = 1.2
+
+# Pitch multipliers for cues that can't be placed by HRTF (the KEMAR set is
+# horizontal-plane only, so there is no elevation). Up reads as a brighter ping,
+# down as a darker one.
+PLACE_PITCH_UP = 1.5
+PLACE_PITCH_DOWN = 0.6
+
+# key name -> (axis, direction). Axes: fwd/right/up translate; pitch/roll/yaw rotate.
+PLACE_KEY_AXES = {
+    "up":        ("fwd",   +1),
+    "down":      ("fwd",   -1),
+    "right":     ("right", +1),
+    "left":      ("right", -1),
+    "page up":   ("up",    +1),
+    "page down": ("up",    -1),
+    "s":         ("pitch", +1),
+    "w":         ("pitch", -1),
+    "d":         ("roll",  +1),
+    "a":         ("roll",  -1),
+    "q":         ("yaw",   +1),
+    "e":         ("yaw",   -1),
+}
+
+# Sign conventions for the stored angles, matching a right-handed rotation about
+# each of the anchor's axes: +pitch = nose up, +roll = right side down,
+# +yaw = nose swings left. (field, noun, positive_word, negative_word)
+PLACE_ROT_WORDS = [
+    ("rotYawDeg",   "yaw",  "left", "right"),
+    ("rotPitchDeg", "nose", "up",   "down"),
+    ("rotRollDeg",  "roll", "right", "left"),
+]
+
+PLACE_TRANSLATE_AXES = ("fwd", "right", "up")
+
+# Which item field each axis accumulates into.
+PLACE_AXIS_FIELDS = {
+    "fwd":   "offFwdFt",
+    "right": "offRightFt",
+    "up":    "offUpFt",
+    "pitch": "rotPitchDeg",
+    "roll":  "rotRollDeg",
+    "yaw":   "rotYawDeg",
+}
+
+# Default offset for a newly queued item: 15 ft to the right of the anchor, so an
+# item the user never opens the editor on still spawns clear of it.
+PLACE_DEFAULTS = {
+    "offFwdFt": 0, "offRightFt": 15, "offUpFt": 0,
+    "rotPitchDeg": 0, "rotRollDeg": 0, "rotYawDeg": 0,
 }
 
 # Filter categories — pulled from catalog metadata fields.
@@ -110,6 +215,7 @@ ARRANGE_TYPES: list[tuple[str, str, list[tuple[str, str]]]] = [
 _say: Callable[..., None] | None = None
 _is_focused: Callable[[], bool] | None = None
 _close_others: Callable[[], None] | None = None
+_ping: Callable[..., None] | None = None
 _log = None
 
 _listener_sock: socket.socket | None = None
@@ -153,13 +259,11 @@ _filters: dict[str, set[str]] = {}
 _filter_draft: dict[str, set[str]] | None = None   # snapshot used while in filter dialog
 
 # Per-screen cursors
-_screen = "main"        # main | configs | to_spawn | manage | filter | side | distance | ref | mark_picker | replace_slot | arrange | spacing_edit
+_screen = "main"        # main | configs | to_spawn | manage | filter | place3d | ref | mark_picker | replace_slot | arrange | spacing_edit
 _idx_main = 0
 _idx_configs = 0
 _idx_to_spawn = 0
 _idx_filter = 0
-_idx_side = 0
-_idx_distance = 0
 _idx_ref = 0
 _idx_mark = 0
 _idx_manage = 0
@@ -173,14 +277,41 @@ _drill_vehicle: dict[str, Any] | None = None
 
 # To-be-spawned queue
 # Each item: { "model": str, "config": str, "displayName": str,
-#              "side": str|None, "distFt": int|None,
-#              "refMode": "vehicle"|None, "refVehId": int|None }
+#              "offFwdFt": int, "offRightFt": int, "offUpFt": int,
+#              "rotPitchDeg": int, "rotRollDeg": int, "rotYawDeg": int,
+#              "refMode": "auto"|"vehicle"|"prev"|"next", "refVehId": int|None }
 _to_spawn: list[dict[str, Any]] = []
 
 # Placement wizard scratch state
 _wizard_target_idx: int | None = None     # which item in _to_spawn is being configured
-_wizard_side: str | None = None
-_wizard_distance: int | None = None
+_wizard_ref_mode: str | None = None
+_wizard_ref_veh_id: int | None = None
+_wizard_ref_name: str | None = None
+
+# What the placement editor is driving: "spawn" configures the queued item at
+# _wizard_target_idx; "teleport" moves the in-world vehicle _tp_veh_id. The two
+# share every screen (ref -> mark_picker -> place3d) and differ only in where
+# they get their starting values and what Enter does with the result.
+_place_mode = "spawn"
+_tp_veh_id: int | None = None
+_tp_veh_name: str | None = None
+
+# How a teleport gets the vehicle to the position: "standard" sets it down there
+# instantly, "force" throws it there on a ballistic arc. Toggled with X inside the
+# editor. Deliberately not cleared with the rest of the wizard state — it's a mode,
+# so it stays put until the user changes it back.
+_place_launch_mode = "standard"
+
+# Placement editor working state. `_place_values` holds the six live numbers while
+# the editor is open; `_place_snapshot` is what Escape restores.
+_place_lock = threading.RLock()
+_place_values: dict[str, int] = dict(PLACE_DEFAULTS)
+_place_snapshot: dict[str, int] = dict(PLACE_DEFAULTS)
+_place_held: dict[str, float] = {}        # key name -> time.monotonic() at press
+_place_last_step: float = 0.0             # when the last step was applied
+_place_readout_pending = False            # armed by a step, disarmed once spoken
+_place_active = threading.Event()         # set while the editor screen is up
+_place_ticker_thread: threading.Thread | None = None
 
 # When in mark_picker, what we'll write the marked id back into
 _mark_target_idx: int | None = None
@@ -263,15 +394,13 @@ class _DigitField:
         return str(self.value())
 
 
-# Reused digit editors. The wizard distance is seeded from the queued item each
-# time the screen is entered; the arrangement spacing field persists its value
-# across openings so the user's last spacing choice is remembered.
-_distance_field = _DigitField(15)
+# The arrangement spacing field persists its value across openings so the user's
+# last spacing choice is remembered.
 _spacing_field = _DigitField(15)
 
 
 def _active_digit_field() -> _DigitField:
-    return _spacing_field if _screen == "spacing_edit" else _distance_field
+    return _spacing_field
 
 
 def _say_safe(text: str):
@@ -497,6 +626,54 @@ def _handle_packet(text: str):
 
     if text.startswith("SPAWN_ERR:"):
         _say_safe(f"Spawn error: {text[len('SPAWN_ERR:'):]}")
+        return
+
+    if text == "TELEPORT_OK":
+        _say_safe("Moved.")
+        return
+
+    if text.startswith("TELEPORT_LAUNCHED:"):
+        parts = text[len("TELEPORT_LAUNCHED:"):].split(",")
+        try:
+            mph = float(parts[0])
+            secs = float(parts[1])
+            short = len(parts) > 2 and parts[2] == "1"
+        except (IndexError, ValueError):
+            _say_safe("Launched.")
+            return
+        msg = f"Launched at {mph:.0f} miles per hour, landing in {secs:.1f} seconds."
+        _say_safe(f"Launching short. {msg}" if short else msg)
+        return
+
+    if text.startswith("TELEPORT_LANDED:"):
+        parts = text[len("TELEPORT_LANDED:"):].split(",")
+        try:
+            miss_m, along_m, cross_m = (float(p) for p in parts[:3])
+        except (IndexError, ValueError):
+            return
+        M_TO_FT = 3.28084
+        miss_ft = miss_m * M_TO_FT
+        # A launch is only ever "approximately" on target, so a couple of feet is a hit
+        # and saying so beats reciting a number.
+        if miss_ft < 6:
+            _say_safe("Landed on target.")
+            return
+        # Along-track and cross-track are announced separately: short or long is the
+        # arc falling behind the solve, left or right is an aiming error, and knowing
+        # which one it was is the whole point of measuring.
+        bits = []
+        if abs(along_m) * M_TO_FT >= 3:
+            bits.append(f"{abs(along_m) * M_TO_FT:.0f} feet "
+                        f"{'long' if along_m > 0 else 'short'}")
+        if abs(cross_m) * M_TO_FT >= 3:
+            bits.append(f"{abs(cross_m) * M_TO_FT:.0f} feet "
+                        f"{'left' if cross_m > 0 else 'right'}")
+        _say_safe(f"Landed {' and '.join(bits)}." if bits
+                  else f"Landed {miss_ft:.0f} feet off target.")
+        return
+
+    if text.startswith("TELEPORT_ERR:"):
+        _say_safe(f"Move failed: {text[len('TELEPORT_ERR:'):]}")
         return
 
     if text.startswith("ARRANGE_OK:"):
@@ -765,6 +942,48 @@ def _vehicle_summary(v: dict[str, Any]) -> str:
     return ", ".join(parts)
 
 
+def _ref_phrase(item: dict[str, Any]) -> str:
+    ref = item.get("refMode")
+    if ref in ("auto", "prev"):
+        return "previous in queue"
+    if ref == "next":
+        return "next in queue"
+    if ref == "vehicle" and item.get("refVehId") is not None:
+        return f"marked vehicle {item.get('refVehId')}"
+    return "current vehicle"
+
+
+def _feet(n: int, word: str) -> str:
+    """'12 feet right', with the singular handled so it doesn't read '1 feet'."""
+    return f"{abs(n)} {'foot' if abs(n) == 1 else 'feet'} {word}"
+
+
+def _offset_phrase(vals: dict[str, int]) -> str:
+    """Speak only the non-zero components, e.g. '30 feet forward, 4 feet up'."""
+    parts = []
+    fwd, right, up = vals.get("offFwdFt", 0), vals.get("offRightFt", 0), vals.get("offUpFt", 0)
+    if fwd:
+        parts.append(_feet(fwd, "forward" if fwd > 0 else "back"))
+    if right:
+        parts.append(_feet(right, "right" if right > 0 else "left"))
+    if up:
+        parts.append(_feet(up, "up" if up > 0 else "down"))
+    return ", ".join(parts) if parts else "on the anchor"
+
+
+def _rotation_phrase(vals: dict[str, int]) -> str:
+    parts = []
+    for field, noun, pos_word, neg_word in PLACE_ROT_WORDS:
+        v = vals.get(field, 0)
+        if v:
+            parts.append(f"{noun} {pos_word if v > 0 else neg_word} {abs(v)} degrees")
+    return ", ".join(parts) if parts else "level"
+
+
+def _placement_phrase(vals: dict[str, int]) -> str:
+    return f"{_offset_phrase(vals)}. {_rotation_phrase(vals)}"
+
+
 def _to_spawn_summary(item: dict[str, Any]) -> str:
     base = item.get("displayName") or item.get("model") or "vehicle"
     if item.get("replaceVehId") is not None:
@@ -772,24 +991,20 @@ def _to_spawn_summary(item: dict[str, Any]) -> str:
         replaced = item.get("replaceVehName", "")
         target = f"slot {slot} {replaced}".strip() if slot and replaced else "vehicle"
         return f"Replace {target} with {base}"
-    side = item.get("side")
-    dist = item.get("distFt")
-    ref = item.get("refMode")
-    if side and dist:
-        if ref == "auto" or ref == "prev":
-            ref_text = "previous in queue"
-        elif ref == "next":
-            ref_text = "next in queue"
-        elif ref == "vehicle" and item.get("refVehId") is not None:
-            ref_text = f"marked vehicle {item.get('refVehId')}"
-        else:
-            ref_text = "current vehicle"
-        return f"{base}, {SIDE_PHRASES.get(side, side)} {ref_text}, {dist} feet"
-    return f"{base}, no placement set"
+    return f"{base}, {_offset_phrase(item)} from {_ref_phrase(item)}, {_rotation_phrase(item)}"
 
 
 def _ref_options() -> list[tuple[str, str]]:
     """(label, key) options on the ref screen — filtered by the wizard target's queue position."""
+    if _place_mode == "teleport":
+        # No "current vehicle" here: it collapses into "itself" whenever the highlighted
+        # vehicle is the player's, which is most of the time. The player vehicle is still
+        # reachable as an anchor by marking it.
+        return [
+            ("itself", "self"),
+            ("the ground below the camera", "ground"),
+            ("mark a vehicle", "mark"),
+        ]
     opts = [("current vehicle", "current"), ("mark a vehicle", "mark")]
     idx = _wizard_target_idx
     if idx is not None:
@@ -828,7 +1043,7 @@ def _speak_position(idx: int, total: int, content: str):
 
 def _speak_current():
     global _idx_main, _idx_configs, _idx_to_spawn, _idx_filter
-    global _idx_side, _idx_distance, _idx_ref, _idx_mark, _idx_manage
+    global _idx_ref, _idx_mark, _idx_manage
 
     if _screen == "main":
         items = _filtered_catalog()
@@ -885,12 +1100,11 @@ def _speak_current():
         _speak_position(_idx_filter, len(rows), rows[_idx_filter][2])
         return
 
-    if _screen == "side":
-        _idx_side = max(0, min(_idx_side, len(SIDES) - 1))
-        _speak_position(_idx_side, len(SIDES), SIDE_PHRASES[SIDES[_idx_side]])
+    if _screen == "place3d":
+        _say_with_prefix(_speak_place3d_text(with_mode=True))
         return
 
-    if _screen in ("distance", "spacing_edit"):
+    if _screen == "spacing_edit":
         f = _active_digit_field()
         _say_with_prefix(f"{f.spoken_value()} feet")
         return
@@ -952,13 +1166,16 @@ def _enter_screen(screen: str, announce: bool = True, header: str | None = None)
 
 def _on_up(event):
     global _idx_main, _idx_configs, _idx_to_spawn, _idx_filter
-    global _idx_side, _idx_distance, _idx_ref, _idx_mark, _idx_manage, _idx_replace_slot
+    global _idx_ref, _idx_mark, _idx_manage, _idx_replace_slot
     global _idx_arrange
+    if _screen == "place3d":
+        _place_key_down("up")
+        return
     if _screen == "arrange":
         _idx_arrange = max(0, _idx_arrange - 1)
         _speak_current()
         return
-    if _screen in ("distance", "spacing_edit"):
+    if _screen == "spacing_edit":
         f = _active_digit_field()
         f.inc()
         _say_safe(f"{f.spoken_value()} feet")
@@ -974,8 +1191,6 @@ def _on_up(event):
             _idx_manage = max(0, _idx_manage - 1)
         elif _screen == "filter":
             _idx_filter = max(0, _idx_filter - 1)
-        elif _screen == "side":
-            _idx_side = max(0, _idx_side - 1)
         elif _screen == "ref":
             _idx_ref = max(0, _idx_ref - 1)
         elif _screen == "mark_picker":
@@ -987,13 +1202,16 @@ def _on_up(event):
 
 def _on_down(event):
     global _idx_main, _idx_configs, _idx_to_spawn, _idx_filter
-    global _idx_side, _idx_distance, _idx_ref, _idx_mark, _idx_manage, _idx_replace_slot
+    global _idx_ref, _idx_mark, _idx_manage, _idx_replace_slot
     global _idx_arrange
+    if _screen == "place3d":
+        _place_key_down("down")
+        return
     if _screen == "arrange":
         _idx_arrange = min(4, _idx_arrange + 1)
         _speak_current()
         return
-    if _screen in ("distance", "spacing_edit"):
+    if _screen == "spacing_edit":
         f = _active_digit_field()
         f.dec()
         _say_safe(f"{f.spoken_value()} feet")
@@ -1014,8 +1232,6 @@ def _on_down(event):
         elif _screen == "filter":
             n = len(_filter_dialog_lines())
             _idx_filter = min(max(0, n - 1), _idx_filter + 1)
-        elif _screen == "side":
-            _idx_side = min(len(SIDES) - 1, _idx_side + 1)
         elif _screen == "ref":
             n = len(_ref_options())
             _idx_ref = min(max(0, n - 1), _idx_ref + 1)
@@ -1031,7 +1247,10 @@ def _on_down(event):
 
 def _on_left(event):
     global _arrange_type_idx, _arrange_variant_idx
-    if _screen in ("distance", "spacing_edit"):
+    if _screen == "place3d":
+        _place_key_down("left")
+        return
+    if _screen == "spacing_edit":
         f = _active_digit_field()
         f.move_left()
         _say_safe(str(f.current_digit()))
@@ -1051,7 +1270,10 @@ def _on_left(event):
 
 def _on_right(event):
     global _arrange_type_idx, _arrange_variant_idx
-    if _screen in ("distance", "spacing_edit"):
+    if _screen == "place3d":
+        _place_key_down("right")
+        return
+    if _screen == "spacing_edit":
         f = _active_digit_field()
         f.move_right()
         _say_safe(str(f.current_digit()))
@@ -1121,9 +1343,11 @@ def _on_tab(event):
 
 
 def _on_enter(event):
-    global _wizard_target_idx, _wizard_side, _wizard_distance
-    global _mark_target_idx
+    global _wizard_target_idx, _mark_target_idx
     global _pending_replace_item, _replace_editing_idx, _idx_replace_slot
+    if _screen == "place3d":
+        _commit_place3d()
+        return
     if _screen == "arrange":
         if _idx_arrange == 2:
             _spacing_field.home()
@@ -1151,19 +1375,18 @@ def _on_enter(event):
         cfg_name = cfg.get("name") or cfg.get("key") or ""
         if cfg_name and cfg_name.lower() not in ("default", "(default)"):
             display = f"{display} — {cfg_name}"
+        # Default placement: 15 ft right of previous spawn in batch (or player vehicle
+        # for the first item, or camera+ground if no player vehicle exists).
         item = {
             "model": v.get("model"),
             "config": cfg.get("key", ""),
             "displayName": display,
-            # Default placement: 15 ft right of previous spawn in batch (or player vehicle
-            # for the first item, or camera+ground if no player vehicle exists).
-            "side": "right",
-            "distFt": 15,
             "refMode": "auto",
             "refVehId": None,
             "replaceSlot": None,
             "replaceVehId": None,
             "replaceVehName": None,
+            **PLACE_DEFAULTS,
         }
         if _shift_pressed():
             slots = _get_slots()
@@ -1215,38 +1438,27 @@ def _on_enter(event):
         _enter_screen("main")
         return
 
-    if _screen == "side":
-        _wizard_side = SIDES[_idx_side]
-        # Seed the digit editor from the item's current distance (default 15 ft).
-        cur = 15
-        with _state_lock:
-            if _wizard_target_idx is not None and 0 <= _wizard_target_idx < len(_to_spawn):
-                cur = _to_spawn[_wizard_target_idx].get("distFt") or 15
-        _distance_field.set_value(cur)
-        _distance_field.home()
-        _enter_screen("distance", header="Distance from reference, in feet")
-        return
-
-    if _screen == "distance":
-        _wizard_distance = _distance_field.value()
-        _enter_screen("ref", header="Reference vehicle")
-        return
-
     if _screen == "ref":
         opts = _ref_options()
         if not opts:
             return
         _, key = opts[_idx_ref]
-        if key == "current":
-            _commit_wizard(ref_mode="vehicle", ref_veh_id=None)
+        if key == "self":
+            _set_wizard_ref("vehicle", _tp_veh_id, _tp_veh_name)
+        elif key == "ground":
+            # "camera" is what Lua's resolveReferenceFrame calls the camera+ground
+            # snap: the spot under the camera, facing the way the camera looks.
+            _set_wizard_ref("camera", None, "the ground")
+        elif key == "current":
+            _set_wizard_ref("vehicle", None)
         elif key == "mark":
             _request_active_vehicles()
             _mark_target_idx = _wizard_target_idx
             _enter_screen("mark_picker", header="Mark a vehicle")
         elif key == "prev":
-            _commit_wizard(ref_mode="prev", ref_veh_id=None, ref_name="previous in queue")
+            _set_wizard_ref("prev", None, "previous in queue")
         elif key == "next":
-            _commit_wizard(ref_mode="next", ref_veh_id=None, ref_name="next in queue")
+            _set_wizard_ref("next", None, "next in queue")
         return
 
     if _screen == "manage":
@@ -1269,39 +1481,10 @@ def _on_enter(event):
         if not avs:
             return
         vid, name = avs[_idx_mark]
-        # Reject self-reference: the to-be-spawned item is not yet a real vehicle, so the only
-        # collision is if multiple queued items try to anchor to themselves; not possible here
-        # since marks are real in-world vehicles. Still, we guard against marking the same id
-        # twice for the same item if re-entering the wizard.
-        _commit_wizard(ref_mode="vehicle", ref_veh_id=vid, ref_name=name)
+        # Marks are always real in-world vehicles, so a queued item can never end up
+        # anchored to itself here.
+        _set_wizard_ref("vehicle", vid, name)
         return
-
-
-def _commit_wizard(ref_mode: str, ref_veh_id: int | None, ref_name: str | None = None):
-    global _wizard_target_idx, _wizard_side, _wizard_distance, _mark_target_idx
-    if _wizard_target_idx is None or _wizard_side is None or _wizard_distance is None:
-        _say_safe("Placement cancelled.")
-        _enter_screen("to_spawn")
-        return
-    with _state_lock:
-        if 0 <= _wizard_target_idx < len(_to_spawn):
-            item = _to_spawn[_wizard_target_idx]
-            item["side"] = _wizard_side
-            item["distFt"] = _wizard_distance
-            item["refMode"] = ref_mode
-            item["refVehId"] = ref_veh_id
-    if ref_mode in ("prev", "next"):
-        ref_text = ref_name or ref_mode
-    elif ref_veh_id is not None:
-        ref_text = f"marked {ref_name or ref_veh_id}"
-    else:
-        ref_text = "current vehicle"
-    _say_safe(f"Placement set: {SIDE_PHRASES[_wizard_side]} {ref_text}, {_wizard_distance} feet.")
-    _wizard_target_idx = None
-    _wizard_side = None
-    _wizard_distance = None
-    _mark_target_idx = None
-    _enter_screen("to_spawn")
 
 
 def _on_escape(event):
@@ -1322,9 +1505,14 @@ def _on_escape(event):
         _say_safe("Filters cancelled.")
         _enter_screen("main")
         return
-    if _screen in ("side", "distance", "ref", "mark_picker"):
+    if _screen == "place3d":
+        _cancel_place3d()
+        return
+    if _screen in ("ref", "mark_picker"):
+        back = _wizard_return_screen()
+        _clear_wizard()
         _say_safe("Placement cancelled.")
-        _enter_screen("to_spawn")
+        _enter_screen(back)
         return
     if _screen == "replace_slot":
         came_from = "to_spawn" if _replace_editing_idx is not None else "configs"
@@ -1339,6 +1527,9 @@ def _on_escape(event):
 
 def _on_space(event):
     global _filter_draft
+    if _screen == "place3d":
+        _say_safe(_speak_place3d_text(with_mode=True))
+        return
     if _screen == "filter":
         rows = _filter_dialog_lines()
         if not rows:
@@ -1389,6 +1580,9 @@ def _on_delete(event):
 
 
 def _on_r(event):
+    if _screen == "place3d":
+        _reset_place3d()
+        return
     if _screen == "manage":
         with _state_lock:
             ids = sorted(_manage_selected)
@@ -1435,10 +1629,9 @@ def _add_random_config(v: dict[str, Any], cfg: dict[str, Any]):
         "model": v.get("model"),
         "config": cfg.get("key", ""),
         "displayName": display,
-        "side": "right",
-        "distFt": 15,
         "refMode": "auto",
         "refVehId": None,
+        **PLACE_DEFAULTS,
     }
     with _state_lock:
         _to_spawn.append(item)
@@ -1453,6 +1646,9 @@ def _on_v(event):
 
 
 def _on_a(event):
+    if _screen == "place3d":
+        _place_key_down("a")
+        return
     # CTRL+A on manage: select all. Bare A: ignored.
     if _screen != "manage":
         return
@@ -1491,13 +1687,13 @@ _PAGE_JUMP = 20
 
 def _on_home(event):
     global _idx_main, _idx_configs, _idx_to_spawn, _idx_filter
-    global _idx_side, _idx_distance, _idx_ref, _idx_mark, _idx_manage, _idx_replace_slot
+    global _idx_ref, _idx_mark, _idx_manage, _idx_replace_slot
     global _idx_arrange
     if _screen == "arrange":
         _idx_arrange = 0
         _speak_current()
         return
-    if _screen in ("distance", "spacing_edit"):
+    if _screen == "spacing_edit":
         f = _active_digit_field()
         f.home()
         _say_safe(str(f.current_digit()))
@@ -1520,13 +1716,13 @@ def _on_home(event):
 
 def _on_end(event):
     global _idx_main, _idx_configs, _idx_to_spawn, _idx_filter
-    global _idx_side, _idx_distance, _idx_ref, _idx_mark, _idx_manage, _idx_replace_slot
+    global _idx_ref, _idx_mark, _idx_manage, _idx_replace_slot
     global _idx_arrange
     if _screen == "arrange":
         _idx_arrange = 4
         _speak_current()
         return
-    if _screen in ("distance", "spacing_edit"):
+    if _screen == "spacing_edit":
         f = _active_digit_field()
         f.end()
         _say_safe(str(f.current_digit()))
@@ -1550,7 +1746,10 @@ def _on_end(event):
 
 def _on_page_up(event):
     global _idx_main, _idx_configs, _idx_to_spawn, _idx_filter
-    global _idx_side, _idx_distance, _idx_ref, _idx_mark, _idx_manage
+    global _idx_ref, _idx_mark, _idx_manage
+    if _screen == "place3d":
+        _place_key_down("page up")
+        return
     with _state_lock:
         if _screen == "main":
             _idx_main = max(0, _idx_main - _PAGE_JUMP)
@@ -1567,7 +1766,10 @@ def _on_page_up(event):
 
 def _on_page_down(event):
     global _idx_main, _idx_configs, _idx_to_spawn, _idx_filter
-    global _idx_side, _idx_distance, _idx_ref, _idx_mark, _idx_manage
+    global _idx_ref, _idx_mark, _idx_manage
+    if _screen == "place3d":
+        _place_key_down("page down")
+        return
     with _state_lock:
         if _screen == "main":
             n = len(_filtered_catalog())
@@ -1587,8 +1789,327 @@ def _on_page_down(event):
     _speak_current()
 
 
+# =============================================================================
+#  Placement editor
+# =============================================================================
+
+def _place_ping(rung: int, azimuth_deg: float, pitch_mult: float = 1.0):
+    if _ping is None:
+        return
+    try:
+        _ping(rung, azimuth_deg, pitch_mult)
+    except Exception:
+        pass
+
+
+def _place_ladder(held_sec: float) -> tuple[int, int, int]:
+    """(rung, translation_step_ft, rotation_step_deg) for a key held this long.
+
+    A tap (held_sec ~= 0) falls through to the bottom rung, which is what makes a
+    quick press move exactly one unit.
+    """
+    idx = 0
+    for i, (thresh, _ft, _deg) in enumerate(PLACE_LADDER):
+        if held_sec >= thresh:
+            idx = i
+    _thresh, ft, deg = PLACE_LADDER[idx]
+    return idx, ft, deg
+
+
+def _place_ping_for(deltas: dict[str, int], rung: int):
+    """Fire the one ping that best describes this tick's combined movement.
+
+    Horizontal motion wins (it can be placed properly by HRTF); otherwise height,
+    then rotation. Height and pitch have no HRTF representation — the set is
+    horizontal-plane only — so they are pitch-shifted instead.
+    """
+    d_fwd = deltas.get("fwd", 0)
+    d_right = deltas.get("right", 0)
+    if d_fwd or d_right:
+        _place_ping(rung, math.degrees(math.atan2(d_right, d_fwd)))
+        return
+    d_up = deltas.get("up", 0)
+    if d_up:
+        _place_ping(rung, 0.0, PLACE_PITCH_UP if d_up > 0 else PLACE_PITCH_DOWN)
+        return
+    d_yaw = deltas.get("yaw", 0)
+    if d_yaw:   # positive yaw swings the nose left
+        _place_ping(rung, -90.0 if d_yaw > 0 else 90.0)
+        return
+    d_roll = deltas.get("roll", 0)
+    if d_roll:  # positive roll drops the right side
+        _place_ping(rung, 90.0 if d_roll > 0 else -90.0)
+        return
+    d_pitch = deltas.get("pitch", 0)
+    if d_pitch:
+        _place_ping(rung, 0.0, PLACE_PITCH_UP if d_pitch > 0 else PLACE_PITCH_DOWN)
+
+
+def _place_apply_steps(now: float, pressed: list[tuple[str, float]]):
+    """Apply one step for each held key and fire a single ping for the result.
+
+    Each key gets the magnitude its own hold time has earned, so two arrows held
+    together move along the diagonal between them.
+    """
+    global _place_last_step, _place_readout_pending
+    deltas: dict[str, int] = {}
+    rung = 0
+    for name, held in pressed:
+        entry = PLACE_KEY_AXES.get(name)
+        if entry is None:
+            continue
+        axis, direction = entry
+        idx, step_ft, step_deg = _place_ladder(held)
+        step = step_ft if axis in PLACE_TRANSLATE_AXES else step_deg
+        deltas[axis] = deltas.get(axis, 0) + direction * step
+        rung = max(rung, idx)
+    if not deltas:
+        return
+    with _place_lock:
+        for axis, d in deltas.items():
+            field = PLACE_AXIS_FIELDS[axis]
+            v = _place_values.get(field, 0) + d
+            if axis not in PLACE_TRANSLATE_AXES:
+                # Keep angles in -180..180 so the readout says "yaw right 90"
+                # rather than an ever-growing wound-up number.
+                v = ((v + 180) % 360) - 180
+            _place_values[field] = v
+        _place_last_step = now
+        _place_readout_pending = True
+    _place_ping_for(deltas, rung)
+
+
+def _place_ticker_loop():
+    """Drives hold-to-repeat and the idle readout.
+
+    Parked on _place_active whenever the editor is closed, so it costs nothing
+    while the user is anywhere else in the spawner.
+    """
+    global _place_readout_pending
+    while True:
+        _place_active.wait()
+        if _stop_event is not None and _stop_event.is_set():
+            return
+        time.sleep(PLACE_TICK_SEC)
+        if not _place_active.is_set():
+            continue
+        now = time.monotonic()
+        with _place_lock:
+            pressed = [
+                (k, now - t) for k, t in _place_held.items()
+                if now - t >= PLACE_HOLD_DELAY_SEC
+            ]
+            idle_due = (
+                not _place_held
+                and _place_readout_pending
+                and now - _place_last_step >= PLACE_IDLE_READOUT_SEC
+            )
+            if idle_due:
+                _place_readout_pending = False
+        if pressed:
+            _place_apply_steps(now, pressed)
+        elif idle_due:
+            _say_safe(_speak_place3d_text())
+
+
+def _start_place_ticker():
+    global _place_ticker_thread
+    if _place_ticker_thread is not None and _place_ticker_thread.is_alive():
+        return
+    _place_ticker_thread = threading.Thread(target=_place_ticker_loop, daemon=True)
+    _place_ticker_thread.start()
+
+
+def _place_key_down(name: str):
+    """A tap applies exactly one unit immediately; the ticker handles the rest.
+
+    Windows delivers auto-repeat as a stream of key-down events with no
+    interleaved key-up, so a key already in _place_held is ignored here — that
+    dedupe is what keeps a tap to a single unit.
+    """
+    now = time.monotonic()
+    with _place_lock:
+        if name in _place_held:
+            return
+        _place_held[name] = now
+    _place_apply_steps(now, [(name, 0.0)])
+
+
+def _place_key_up(name: str):
+    with _place_lock:
+        _place_held.pop(name, None)
+
+
+def _speak_place3d_text(with_mode: bool = False) -> str:
+    with _place_lock:
+        text = _placement_phrase(_place_values)
+    # Only the readouts the user asks for by name carry the mode. The idle readout
+    # fires after every pause in editing, where repeating it would just be noise.
+    if with_mode and _place_mode == "teleport" and _place_launch_mode == "force":
+        text += ". Force mode"
+    return text
+
+
+def _enter_place3d():
+    """Open the editor on the wizard's target, seeded from its current values."""
+    global _place_values, _place_snapshot, _place_last_step, _place_readout_pending
+    if _place_mode == "teleport":
+        # Dead on the anchor. A spawn has to start clear of its anchor or it would
+        # spawn inside it, but a teleport is aiming an existing vehicle at a spot the
+        # user picked, so anything other than zero is an offset they didn't ask for.
+        vals = {f: 0 for f in PLACE_DEFAULTS} if _tp_veh_id is not None else None
+    else:
+        with _state_lock:
+            idx = _wizard_target_idx
+            item = _to_spawn[idx] if idx is not None and 0 <= idx < len(_to_spawn) else None
+            vals = (
+                {f: int(item.get(f, d) or 0) for f, d in PLACE_DEFAULTS.items()}
+                if item is not None else None
+            )
+    if vals is None:
+        back = _wizard_return_screen()
+        _clear_wizard()
+        _say_safe("Placement cancelled.")
+        _enter_screen(back)
+        return
+    with _place_lock:
+        _place_values = vals
+        _place_snapshot = dict(vals)
+        _place_held.clear()
+        _place_last_step = 0.0
+        _place_readout_pending = False
+    _start_place_ticker()
+    _place_active.set()
+    _enter_screen("place3d", header="Position")
+
+
+def _leave_place3d():
+    global _place_readout_pending
+    _place_active.clear()
+    with _place_lock:
+        _place_held.clear()
+        # Disarm the idle readout too, so a tick that slips through as the screen
+        # closes can't speak a position the user has already left behind.
+        _place_readout_pending = False
+
+
+def _wizard_return_screen() -> str:
+    """Where the wizard's screens back out to, depending on what opened them."""
+    return "manage" if _place_mode == "teleport" else "to_spawn"
+
+
+def _clear_wizard():
+    global _wizard_target_idx, _wizard_ref_mode, _wizard_ref_veh_id
+    global _wizard_ref_name, _mark_target_idx
+    global _place_mode, _tp_veh_id, _tp_veh_name
+    _wizard_target_idx = None
+    _wizard_ref_mode = None
+    _wizard_ref_veh_id = None
+    _wizard_ref_name = None
+    _mark_target_idx = None
+    _place_mode = "spawn"
+    _tp_veh_id = None
+    _tp_veh_name = None
+
+
+def _commit_teleport(vals: dict[str, int]):
+    """Send the finished placement as a teleport for the vehicle the wizard targets."""
+    veh_id = _tp_veh_id
+    name = _tp_veh_name or f"vehicle {veh_id}"
+    ref_mode = _wizard_ref_mode or "vehicle"
+    if ref_mode == "camera":
+        anchor = "the ground below the camera"
+    elif _wizard_ref_veh_id is not None and _wizard_ref_veh_id == veh_id:
+        anchor = "its own position"
+    elif _wizard_ref_veh_id is not None:
+        anchor = _wizard_ref_name or f"vehicle {_wizard_ref_veh_id}"
+    else:
+        anchor = "current vehicle"
+    payload = {
+        "vehId": veh_id,
+        "refMode": ref_mode,
+        "refVehId": _wizard_ref_veh_id,
+        "mode": _place_launch_mode,
+        **{f: int(vals.get(f, d) or 0) for f, d in PLACE_DEFAULTS.items()},
+    }
+    _send_cmd("TELEPORT_PLACE:" + json.dumps(payload, separators=(",", ":")))
+    if _place_launch_mode == "force":
+        # No rotation clause: a launched vehicle lands however physics leaves it, so
+        # reading the editor's angles back would describe something that won't happen.
+        _say_safe(f"Launching {name} {_offset_phrase(vals)} from {anchor}.")
+    else:
+        _say_safe(
+            f"Moving {name} {_offset_phrase(vals)} from {anchor}, {_rotation_phrase(vals)}."
+        )
+
+
+def _commit_place3d():
+    _leave_place3d()
+    with _place_lock:
+        vals = dict(_place_values)
+    if _place_mode == "teleport":
+        _commit_teleport(vals)
+        _clear_wizard()
+        _enter_screen("manage", announce=False)
+        return
+    ref_mode = _wizard_ref_mode or "auto"
+    with _state_lock:
+        if _wizard_target_idx is not None and 0 <= _wizard_target_idx < len(_to_spawn):
+            item = _to_spawn[_wizard_target_idx]
+            item.update(vals)
+            item["refMode"] = ref_mode
+            item["refVehId"] = _wizard_ref_veh_id
+            ref_text = _ref_phrase(item)
+        else:
+            ref_text = "anchor"
+    _say_safe(
+        f"Placement set: {_offset_phrase(vals)} from {ref_text}, {_rotation_phrase(vals)}."
+    )
+    _clear_wizard()
+    _enter_screen("to_spawn")
+
+
+def _cancel_place3d():
+    global _place_values
+    _leave_place3d()
+    with _place_lock:
+        _place_values = dict(_place_snapshot)
+    back = _wizard_return_screen()
+    _clear_wizard()
+    _say_safe("Placement cancelled.")
+    _enter_screen(back)
+
+
+def _reset_place3d():
+    global _place_last_step, _place_readout_pending
+    with _place_lock:
+        for field in PLACE_DEFAULTS:
+            _place_values[field] = 0
+        _place_last_step = time.monotonic()
+        _place_readout_pending = False
+    _say_safe("Reset. On the anchor, level.")
+
+
 def _on_w(event):
-    global _wizard_target_idx, _wizard_side, _wizard_distance
+    global _wizard_target_idx, _place_mode, _tp_veh_id, _tp_veh_name
+    if _screen == "place3d":
+        _place_key_down("w")
+        return
+    if _screen == "manage":
+        with _state_lock:
+            mv = list(_manage_vehicles)
+            idx = _idx_manage
+        if not mv:
+            _say_safe("No vehicles in the world.")
+            return
+        idx = max(0, min(idx, len(mv) - 1))
+        _place_mode = "teleport"
+        _tp_veh_id, _tp_veh_name = mv[idx]
+        _wizard_target_idx = None
+        _clear_wizard_ref()
+        # Not "Anchor vehicle" — the ground is one of the choices here.
+        _enter_screen("ref", header=f"Move {_tp_veh_name}. Anchor")
+        return
     if _screen != "to_spawn":
         return
     with _state_lock:
@@ -1600,13 +2121,71 @@ def _on_w(event):
             _say_safe("Placement is not needed for replacement vehicles.")
             return
         _wizard_target_idx = _idx_to_spawn
-        _wizard_side = None
-        _wizard_distance = None
-    _enter_screen("side", header="Spawn position")
+    _clear_wizard_ref()
+    _enter_screen("ref", header="Anchor vehicle")
+
+
+def _clear_wizard_ref():
+    global _wizard_ref_mode, _wizard_ref_veh_id, _wizard_ref_name, _idx_ref
+    # Spawn and teleport show different anchor lists, so a cursor left over from
+    # the other one would land on an unrelated option.
+    _idx_ref = 0
+    _wizard_ref_mode = None
+    _wizard_ref_veh_id = None
+    _wizard_ref_name = None
+
+
+def _set_wizard_ref(ref_mode: str, ref_veh_id: int | None, ref_name: str | None = None):
+    global _wizard_ref_mode, _wizard_ref_veh_id, _wizard_ref_name
+    _wizard_ref_mode = ref_mode
+    _wizard_ref_veh_id = ref_veh_id
+    _wizard_ref_name = ref_name
+    _enter_place3d()
+
+
+def _on_place_letter(name: str):
+    """Shared handler for the rotation letters that have no other modal binding."""
+    if _screen != "place3d":
+        return
+    _place_key_down(name)
+
+
+def _on_s(event):
+    _on_place_letter("s")
+
+
+def _on_d(event):
+    _on_place_letter("d")
+
+
+def _on_q(event):
+    _on_place_letter("q")
+
+
+def _on_e(event):
+    _on_place_letter("e")
+
+
+def _on_place_release(event):
+    name = getattr(event, "name", None)
+    if name:
+        _place_key_up(name)
 
 
 def _on_x(event):
-    global _replace_editing_idx, _idx_replace_slot
+    global _replace_editing_idx, _idx_replace_slot, _place_launch_mode
+    if _screen == "place3d":
+        if _place_mode != "teleport":
+            # A queued vehicle doesn't exist yet, so there's nothing to throw.
+            _say_safe("Force mode only applies to teleports.")
+            return
+        if _place_launch_mode == "force":
+            _place_launch_mode = "standard"
+            _say_safe("Standard mode. The vehicle will be teleported.")
+        else:
+            _place_launch_mode = "force"
+            _say_safe("Force mode. The vehicle will be launched.")
+        return
     if _screen != "to_spawn":
         return
     cleared = False
@@ -1645,12 +2224,8 @@ def _do_spawn_all():
     ordered = replacements + additions
 
     payload_items = []
-    missing = 0
     for idx, it in enumerate(ordered):
         is_replace = it.get("replaceVehId") is not None
-        if not is_replace and (it.get("side") is None or it.get("distFt") is None):
-            missing += 1
-            continue
         entry: dict[str, Any] = {
             "queueIdx":    idx,
             "model":       it["model"],
@@ -1658,19 +2233,18 @@ def _do_spawn_all():
             "replaceVehId": it.get("replaceVehId"),
         }
         if not is_replace:
-            entry["side"]     = it["side"]
-            entry["distFt"]   = it["distFt"]
-            entry["refMode"]  = it.get("refMode", "vehicle")
+            # Every item always carries a full placement (PLACE_DEFAULTS at queue
+            # time), so there is nothing to skip here.
+            for field, default in PLACE_DEFAULTS.items():
+                entry[field] = int(it.get(field, default) or 0)
+            entry["refMode"]  = it.get("refMode", "auto")
             entry["refVehId"] = it.get("refVehId")
         payload_items.append(entry)
     if not payload_items:
-        _say_safe("No items have placement set. Press W on each to configure.")
+        _say_safe("Nothing to spawn.")
         return
     n = len(payload_items)
-    msg = f"Spawning {n} {'vehicle' if n == 1 else 'vehicles'}"
-    if missing:
-        msg += f", skipping {missing} without placement"
-    msg += ", please wait."
+    msg = f"Spawning {n} {'vehicle' if n == 1 else 'vehicles'}, please wait."
     _say_safe(msg)
     payload = json.dumps({"items": payload_items})
     _send_cmd(f"SPAWN:{payload}")
@@ -1804,6 +2378,10 @@ _MODAL_KEYS = [
     ("v",         _on_v),
     ("a",         _on_a),
     ("x",         _on_x),
+    ("s",         _on_s),
+    ("d",         _on_d),
+    ("q",         _on_q),
+    ("e",         _on_e),
 ]
 
 
@@ -1834,26 +2412,68 @@ def _worker_loop():
             _logw(f"vehicle_spawner: handler error: {e}")
 
 
+def _hook_suppressed(key, handler, on_release=False):
+    """Suppressing hook that can always be torn down again.
+
+    `keyboard` indexes hooks by key NAME as well as by callback, so two suppressing hooks on
+    one key clobber each other's entry; removing the first then makes the second's teardown
+    raise KeyError *before* it stops suppressing, and the key stays swallowed for the life of
+    the process. Keeping our own callback reference lets `_uninstall_modal_hooks` purge it
+    regardless. See the twin helper in beamtel.py.
+    """
+    if on_release:
+        cb = lambda e: e.event_type == keyboard.KEY_DOWN or handler(e)  # noqa: E731
+    else:
+        cb = lambda e: e.event_type == keyboard.KEY_UP or handler(e)  # noqa: E731
+    remove = keyboard.hook_key(key, cb, suppress=True)
+    return {"key": key, "cb": cb, "remove": remove}
+
+
 def _install_modal_hooks():
     global _hook_handles
+    # Never blow this list away while hooks are live: the handles are the only way to
+    # release the keys again.
+    if _hook_handles:
+        _uninstall_modal_hooks()
     _hook_handles = []
     if not _KEYBOARD_OK:
         return
     for key, handler in _MODAL_KEYS:
         try:
-            h = keyboard.on_press_key(key, _enqueue(handler), suppress=True)
-            _hook_handles.append(h)
+            _hook_handles.append(_hook_suppressed(key, _enqueue(handler)))
         except Exception as e:
             _logw(f"vehicle_spawner: failed to hook {key}: {e}")
+    # The placement editor is the only screen that cares when a key comes back up
+    # (hold-to-accelerate). on_press_key lets key-up events through unsuppressed,
+    # so these are separate hooks; suppressing the release too keeps the game from
+    # seeing a key-up for a key-down it never got.
+    for key in PLACE_KEY_AXES:
+        try:
+            _hook_handles.append(
+                _hook_suppressed(key, _enqueue(_on_place_release), on_release=True)
+            )
+        except Exception as e:
+            _logw(f"vehicle_spawner: failed to hook release of {key}: {e}")
 
 
 def _uninstall_modal_hooks():
     global _hook_handles
     if not _KEYBOARD_OK:
+        _hook_handles = []
         return
-    for h in _hook_handles:
+    for rec in _hook_handles:
         try:
-            keyboard.unhook(h)
+            keyboard.unhook(rec["remove"])
+        except Exception:
+            pass
+        # Whatever the library's own bookkeeping managed to do, make sure this callback is
+        # no longer suppressing the key — otherwise it is unreachable and the key is dead.
+        try:
+            blocking = keyboard._listener.blocking_keys
+            for scan_code in keyboard.key_to_scan_codes(rec["key"]):
+                lst = blocking.get(scan_code)
+                while lst and rec["cb"] in lst:
+                    lst.remove(rec["cb"])
         except Exception:
             pass
     _hook_handles = []
@@ -1896,6 +2516,9 @@ def _close_modal(silent: bool = False):
     if not _modal_open:
         return
     _modal_open = False
+    # Park the placement ticker and drop any keys still held — otherwise a key held
+    # as the modal closes would keep stepping with no way to release it.
+    _leave_place3d()
     _uninstall_modal_hooks()
     if not silent:
         _say_safe("Vehicle spawner closed.")
@@ -1924,13 +2547,15 @@ def _toggle_modal_async():
 #  Public API
 # =============================================================================
 
-def init(say_fn, is_focused_fn, logger, get_slots_fn=None, close_others_fn=None):
-    global _say, _is_focused, _log, _get_slots_fn, _close_others
+def init(say_fn, is_focused_fn, logger, get_slots_fn=None, close_others_fn=None,
+         ping_fn=None):
+    global _say, _is_focused, _log, _get_slots_fn, _close_others, _ping
     _say = say_fn
     _is_focused = is_focused_fn
     _log = logger
     _get_slots_fn = get_slots_fn
     _close_others = close_others_fn
+    _ping = ping_fn
 
 
 def close_modal():

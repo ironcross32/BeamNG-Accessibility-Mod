@@ -1,0 +1,532 @@
+-- implementProximity.lua
+--
+-- Tells a blind operator what the loader's bucket or forks are about to run into.
+--
+-- Scope note: the GROUND is deliberately NOT handled here. That is computed in the vehicle
+-- VM (lua/vehicle/protocols/796F6C6F313035.lua), which owns the implement node set and has
+-- both obj:getSurfaceHeightBelow and obj:castRayStatic. This extension covers only the
+-- things the vehicle VM cannot see: other spawned objects.
+--
+-- Why node-level and not just bounding boxes: when a part breaks off a vehicle in BeamNG,
+-- its nodes stay part of the SAME object. A detached bumper lying in the dirt is therefore
+-- invisible to that vehicle's oriented bounding box but perfectly visible in its node
+-- cloud. Requirement "don't let the forks hit a piece that fell off" only works node-side.
+-- The bounding box is still used, but for the opposite question: is the implement INSIDE
+-- the vehicle's volume without touching it, i.e. are the tines under the frame ready to
+-- lift.
+--
+-- Note that in BeamNG most "props" -- cones, barriers, haybales, pallets -- are spawned
+-- vehicle objects, so be:getObject covers them. Map-placed static clutter (TSStatic) is
+-- not enumerable this way and shows up only in the vehicle VM's ground raycast.
+
+local M = {}
+
+local PYTHON_HOST      = "127.0.0.1"
+local PYTHON_PORT_DATA = 4469  -- send proximity events to Python
+local CMD_LISTEN_PORT  = 4470  -- receive ON/OFF/REBUILD from Python
+
+local SCAN_INTERVAL   = 0.1    -- 10 Hz
+local BROAD_RADIUS_M  = 25.0   -- object-position prefilter
+local MAX_CANDIDATES  = 3      -- narrow-phase budget per tick
+local NODE_STRIDE     = 8      -- sample every Nth node of a candidate
+local CONTACT_M       = 0.12   -- closer than this counts as touching
+local REPORT_M        = 6.0    -- don't bother Python past this; its enter threshold is 3 m
+local INSIDE_MIN_PTS  = 2      -- implement points that must be inside the box
+local MIN_EDGE_WIDTH_M = 0.30  -- shortest edgeL->edgeR baseline worth deriving a heading from
+
+local udpSend, udpCmd = nil, nil
+-- Active by default, unlike the scanner and obstacle detector which are keybind-toggled.
+-- This one needs no handshake because it is silent by construction: with no implement
+-- resolved, a tick costs one getPlayerVehicle and an early return. That also means it works
+-- when BeamNG is started after beamtel, which an ON-on-startup message would not.
+local isActive     = true
+local scanTimer    = 0
+
+-- Implement node set, pushed to us by the vehicle VM's telemetry protocol when it resolves
+-- (on spawn and after every reset). Pushed rather than pulled on purpose: the resolution is
+-- name-driven and lives in one place, and because it only ever changes when it re-runs, the
+-- newest push is always authoritative -- there is no window in which we could be holding
+-- cids that belong to a part that is no longer fitted.
+local implVehID   = nil
+local implCids    = nil
+local implSampleCids = nil  -- exactly {edgeL, edgeC, edgeR, heelL, heelR}
+local implName    = nil
+local lastSentName = nil
+local nameEverSent = false  -- distinguishes "not sent yet" from "sent NONE"
+local lastSentLine = nil
+
+local function ipLog(level, msg) log(level, 'implementProximity', msg) end
+
+-- Called from the vehicle VM. cidCsv is empty when the machine has no implement.
+-- sampleCsv carries exactly five cids in a fixed order: edgeL, edgeC, edgeR, heelL, heelR.
+function M.onImplementCids(vehID, friendlyName, sampleCsv, cidCsv)
+  local function parse(csv)
+    local out = {}
+    for s in tostring(csv or ""):gmatch("[^,]+") do
+      local n = tonumber(s)
+      if n then out[#out + 1] = n end
+    end
+    return out
+  end
+  local cids = parse(cidCsv)
+  implSampleCids = parse(sampleCsv)
+  if #implSampleCids ~= 5 then implSampleCids = nil end
+  if #cids > 0 then
+    implVehID, implCids, implName = vehID, cids, friendlyName
+    ipLog('I', string.format("implement '%s' on vehicle %d: %d sample nodes",
+      tostring(friendlyName), vehID, #cids))
+  else
+    implVehID, implCids, implName = vehID, nil, nil
+    ipLog('I', string.format("vehicle %d reports no implement", vehID))
+  end
+  lastSentName, nameEverSent = nil, false  -- force a fresh IMPLEMENT: line
+end
+
+-- Where the implement is and which way it points, in world space. Returns nil on anything
+-- without an implement, so callers can fall back to the whole-vehicle frame.
+--
+-- This exists because an articulated machine has TWO frames. player:getDirectionVector()
+-- describes the rear one, where the cab and the reference nodes live; the bucket is bolted
+-- to the front one, which yaws relative to it as the frame bends. Aiming with the rear
+-- frame is actively misleading: bend left toward a target and the rear initially swings
+-- RIGHT as the machine pivots, so a bearing that should be closing opens up instead.
+function M.getImplementFrame()
+  if not implSampleCids then return nil end
+  local player = be:getPlayerVehicle(0)
+  if not player then return nil end
+  if implVehID and player:getID() ~= implVehID then return nil end
+
+  local ok, res = pcall(function()
+    local base = vec3(player:getPosition())
+    local function midOf(first, last)
+      local acc, n = vec3(0, 0, 0), 0
+      for i = first, last do
+        acc = acc + (base + vec3(player:getNodePosition(implSampleCids[i])))
+        n = n + 1
+      end
+      return acc / n
+    end
+    local edge = midOf(1, 3)   -- cutting edge / tine tips
+    local heel = midOf(4, 5)   -- the implement's rear-bottom
+
+    -- Derive the heading from the implement's LATERAL axis (edgeL -> edgeR), not from
+    -- heel -> edge. Tilt rotates the implement about that lateral axis, so the lateral
+    -- axis is the one thing curling cannot skew. Heel -> edge shortens as the bucket
+    -- curls back and can invert entirely past vertical, which would flip the bearing
+    -- left-for-right at exactly the moment you are carrying a full load.
+    local left, right = vec3(player:getNodePosition(implSampleCids[1])),
+                        vec3(player:getNodePosition(implSampleCids[3]))
+    local lateral = right - left
+    lateral.z = 0
+    local fwd
+    -- Needs a real baseline. A short one points wherever soft-body jitter says it does,
+    -- and since the hemisphere test below flips on the sign of a dot product, a noisy
+    -- heading does not degrade gracefully -- it snaps between left and right.
+    if lateral:length() > MIN_EDGE_WIDTH_M then
+      -- Rotate the lateral axis 90 degrees in the horizontal plane, then resolve which of
+      -- the two normals points ahead using the machine's own heading. Only the hemisphere
+      -- matters, and the rear frame is never further off than the articulation angle, so
+      -- this cannot pick the wrong one.
+      fwd = vec3(-lateral.y, lateral.x, 0)
+      local veh = vec3(player:getDirectionVector())
+      veh.z = 0
+      if fwd:dot(veh) < 0 then fwd = -fwd end
+    else
+      -- Degenerate lateral axis (a narrow implement where both edge picks collapsed onto
+      -- the centre). Fall back to the along-axis, which is better than nothing.
+      fwd = edge - heel
+      fwd.z = 0
+    end
+    if fwd:length() < 1e-3 then return nil end
+    -- Origin is the cutting edge, not the implement centroid: that is the part of the
+    -- machine you are actually trying to put somewhere, so a distance of zero means
+    -- "touching" rather than "half a bucket short".
+    return {pos = edge, fwd = fwd:normalized(), name = implName}
+  end)
+  if not ok then return nil end
+  return res
+end
+
+-- The implement's world-space contact points, for callers that need a contact SET rather
+-- than the single origin getImplementFrame returns. This is what lets vehicleScanner treat
+-- a loader as "a different cid list" instead of a special case: with an implement fitted the
+-- contact set is the bucket or tines, without one it is the vehicle's own front node band,
+-- and the distance code downstream cannot tell the difference.
+--
+-- The five sample cids are used rather than the full implCids list: they are the edge and
+-- heel extremes, which are the parts that actually reach a target first, and five points
+-- keeps the nearest-approach sweep cheap enough to run every scanner tick.
+function M.getImplementPoints()
+  if not (implSampleCids and implCids) then return nil end
+  local player = be:getPlayerVehicle(0)
+  if not player then return nil end
+  if implVehID and player:getID() ~= implVehID then return nil end
+  local ok, pts = pcall(function()
+    local base = vec3(player:getPosition())
+    local out = {}
+    for _, cid in ipairs(implSampleCids) do
+      out[#out + 1] = base + vec3(player:getNodePosition(cid))
+    end
+    return out
+  end)
+  if not ok or not pts or #pts == 0 then return nil end
+  return pts
+end
+
+local function send(line)
+  if udpSend then pcall(function() udpSend:send(line) end) end
+end
+
+-- Strip the separators the CSV protocol relies on, the way vehicleScanner does for names.
+local function cleanName(s)
+  s = tostring(s or "")
+  s = s:gsub("[,|;\r\n]", " ")
+  s = s:gsub("^%s*(.-)%s*$", "%1")
+  if s == "" or s:find("^table: ") then return "unknown" end
+  return s
+end
+
+local function nameOf(veh)
+  local ok, n = pcall(function()
+    if extensions and extensions.vehicleNaming and extensions.vehicleNaming.describe then
+      return extensions.vehicleNaming.describe(veh)
+    end
+    return nil
+  end)
+  if ok and type(n) == "string" and n ~= "" then return cleanName(n) end
+  local f = veh:getJBeamFilename() or "unknown"
+  return cleanName(f:match("([^/\\]+)%.jbeam$") or f)
+end
+
+-- World positions of the implement's sample nodes. getNodePosition returns an offset from
+-- the vehicle origin expressed in WORLD axes, so this is a plain addition.
+local function implementPoints(player)
+  if not implCids then return nil end
+  local base = vec3(player:getPosition())
+  local pts = {}
+  for _, cid in ipairs(implCids) do
+    local ok, p = pcall(function() return vec3(player:getNodePosition(cid)) end)
+    if ok and p then pts[#pts + 1] = base + p end
+  end
+  if #pts == 0 then return nil end
+  return pts
+end
+
+-- Oriented box test in the TARGET's own frame. Deliberately not
+-- be:getObjectOOBBHalfExtentsXYZ against world axes: for a car parked at any angle other
+-- than dead-on that would describe a box it isn't in.
+local function boxFrame(veh)
+  local ok, res = pcall(function()
+    local fwd = vec3(veh:getDirectionVector()):normalized()
+    local up  = vec3(veh:getDirectionVectorUp()):normalized()
+    local right = fwd:cross(up)
+    if right:length() < 1e-4 then return nil end
+    return {c = vec3(veh:getPosition()), f = fwd, u = up, r = right:normalized()}
+  end)
+  if not ok or not res then return nil end
+  return res
+end
+
+-- Half-extents and the vertical span, measured from the node cloud rather than taken from
+-- the engine, so a deformed or partly-detached vehicle still reports its real footprint.
+--
+-- Preferred source is vehicleGeometry's cache, for two reasons that are about accuracy
+-- rather than speed. Its extents are measured over EVERY node once, where the strided
+-- fallback below samples every 8th and can therefore miss the actual extreme node and
+-- under-report the box. And its cached cids are hull nodes -- ones near a face of the
+-- bounding box -- which is exactly the set a nearest-approach-from-outside test wants,
+-- whereas an arbitrary stride wastes most of its budget on interior nodes that can never be
+-- the closest point. The fallback stays because the cache is resolved asynchronously and is
+-- not there for the first few ticks after a spawn.
+local function measureTargetCached(veh, frame)
+  local geo = extensions and extensions.vehicleGeometry or nil
+  if not geo then return nil end
+  local vehID = veh:getID()
+  local entry = geo.get(vehID)
+  if not entry then
+    pcall(geo.request, vehID)
+    return nil
+  end
+  if not entry.hull then return nil end
+  local base = vec3(veh:getPosition())
+  local pts, minZ, maxZ = {}, math.huge, -math.huge
+  for _, cid in ipairs(entry.hull) do
+    local ok, p = pcall(function() return base + vec3(veh:getNodePosition(cid)) end)
+    if ok and p then
+      pts[#pts + 1] = p
+      if p.z < minZ then minZ = p.z end
+      if p.z > maxZ then maxZ = p.z end
+    end
+  end
+  if #pts == 0 then return nil end
+  local e = entry.ext
+  return {
+    pts = pts,
+    minF = e.minF, maxF = e.maxF, minR = e.minR, maxR = e.maxR,
+    minU = e.minU, maxU = e.maxU,
+    minZ = minZ, maxZ = maxZ,
+  }
+end
+
+local function measureTarget(veh, frame)
+  local cached = measureTargetCached(veh, frame)
+  if cached then return cached end
+
+  local n = veh:getNodeCount()
+  if not n or n < 4 then return nil end
+  local base = vec3(veh:getPosition())
+  local minF, maxF = math.huge, -math.huge
+  local minR, maxR = math.huge, -math.huge
+  local minU, maxU = math.huge, -math.huge
+  local minZ, maxZ = math.huge, -math.huge
+  local pts = {}
+  local i = 0
+  while i < n do
+    local ok, p = pcall(function() return base + vec3(veh:getNodePosition(i)) end)
+    if ok and p then
+      pts[#pts + 1] = p
+      local d = p - frame.c
+      local f, r, u = frame.f:dot(d), frame.r:dot(d), frame.u:dot(d)
+      if f < minF then minF = f end
+      if f > maxF then maxF = f end
+      if r < minR then minR = r end
+      if r > maxR then maxR = r end
+      if u < minU then minU = u end
+      if u > maxU then maxU = u end
+      if p.z < minZ then minZ = p.z end
+      if p.z > maxZ then maxZ = p.z end
+    end
+    i = i + NODE_STRIDE
+  end
+  if #pts == 0 then return nil end
+  return {
+    pts = pts,
+    minF = minF, maxF = maxF, minR = minR, maxR = maxR, minU = minU, maxU = maxU,
+    minZ = minZ, maxZ = maxZ,
+  }
+end
+
+local function insideBox(p, frame, box)
+  local d = p - frame.c
+  local f, r, u = frame.f:dot(d), frame.r:dot(d), frame.u:dot(d)
+  return f >= box.minF and f <= box.maxF
+     and r >= box.minR and r <= box.maxR
+     and u >= box.minU and u <= box.maxU
+end
+
+local function scan()
+  local player = be:getPlayerVehicle(0)
+  if not player then return end
+
+  -- A push we haven't matched to the current vehicle is not usable.
+  if implVehID and player:getID() ~= implVehID then return end
+
+  -- Compare the STRING we would send, not implName itself, and track whether anything has
+  -- been sent at all. Comparing implName against lastSentName looks equivalent and is not:
+  -- on a vehicle with no implement both are nil, so they test equal and the NONE line is
+  -- never sent. Python then keeps whatever name it last heard, and announces "measuring
+  -- from the forks" on a car you climbed into after getting out of the loader.
+  local desiredName = implName and cleanName(implName) or "NONE"
+  if (not nameEverSent) or desiredName ~= lastSentName then
+    nameEverSent = true
+    lastSentName = desiredName
+    send("IMPLEMENT:" .. desiredName)
+  end
+  if not implCids then return end
+
+  local pts = implementPoints(player)
+  if not pts then return end
+
+  local implMinZ, implMaxZ = math.huge, -math.huge
+  local implCentre = vec3(0, 0, 0)
+  for _, p in ipairs(pts) do
+    if p.z < implMinZ then implMinZ = p.z end
+    if p.z > implMaxZ then implMaxZ = p.z end
+    implCentre = implCentre + p
+  end
+  implCentre = implCentre / #pts
+
+  -- Broad phase on object position. Radius is generous rather than tight because a part
+  -- that has fallen off sits well outside its parent's centre.
+  local playerID = player:getID()
+  local cands = {}
+  for i = 0, be:getObjectCount() - 1 do
+    local obj = be:getObject(i)
+    if obj and obj:getID() ~= playerID then
+      local ok, d = pcall(function() return implCentre:distance(vec3(obj:getPosition())) end)
+      if ok and d and d < BROAD_RADIUS_M then
+        cands[#cands + 1] = {obj = obj, d = d}
+      end
+    end
+  end
+  if #cands == 0 then
+    if lastSentLine ~= "CLEAR" then lastSentLine = "CLEAR"; send("CLEAR") end
+    return
+  end
+  table.sort(cands, function(a, b) return a.d < b.d end)
+
+  local best = nil
+  for ci = 1, math.min(#cands, MAX_CANDIDATES) do
+    local veh = cands[ci].obj
+    local frame = boxFrame(veh)
+    local box = frame and measureTarget(veh, frame)
+    if box then
+      -- Narrow phase: nearest approach between the implement's sample points and the
+      -- target's node cloud. This is the test that sees detached parts.
+      local minD = math.huge
+      for _, ip in ipairs(pts) do
+        for _, tp in ipairs(box.pts) do
+          local d = ip:squaredDistance(tp)
+          if d < minD then minD = d end
+        end
+      end
+      minD = math.sqrt(minD)
+
+      if minD < REPORT_M then
+        -- "Under the frame, not touching it" needs all three of these. Box overlap alone
+        -- fires constantly, because a solid box also contains the air beside a low car's
+        -- wheels -- which is not a place you can lift from.
+        local nInside = 0
+        for _, ip in ipairs(pts) do
+          if insideBox(ip, frame, box) then nInside = nInside + 1 end
+        end
+        local boxMidZ = (box.minZ + box.maxZ) * 0.5
+        local inside = (nInside >= INSIDE_MIN_PTS)
+                   and (minD > CONTACT_M)
+                   and (implCentre.z < boxMidZ)
+
+        local relation
+        if implMinZ >= box.maxZ then
+          relation = "ABOVE"
+        elseif implMaxZ <= box.minZ then
+          relation = "BELOW"
+        else
+          relation = "LEVEL"
+        end
+
+        if not best or minD < best.d then
+          best = {
+            d = minD,
+            name = nameOf(veh),
+            relation = relation,
+            inside = inside and 1 or 0,
+            contact = (minD <= CONTACT_M) and 1 or 0,
+          }
+        end
+      end
+    end
+  end
+
+  local line
+  if best then
+    line = string.format("NEAR:%s,%.3f,%s,%d,%d",
+      best.name, best.d, best.relation, best.inside, best.contact)
+  else
+    line = "CLEAR"
+  end
+  -- Python owns the hysteresis and the speech; resend a live NEAR every tick so it can see
+  -- the distance move, but collapse repeated CLEARs so an idle machine sends nothing.
+  if line ~= "CLEAR" or lastSentLine ~= "CLEAR" then
+    lastSentLine = line
+    send(line)
+  end
+end
+
+-- =================================================================================================
+--  GE Extension Hooks
+-- =================================================================================================
+
+local function setupSockets()
+  if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
+  if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
+
+  udpSend = socket.udp()
+  if udpSend then
+    udpSend:setpeername(PYTHON_HOST, PYTHON_PORT_DATA)
+    udpSend:settimeout(0)
+  else
+    ipLog('E', "Failed to create UDP send socket.")
+  end
+
+  local ok, err = pcall(function()
+    udpCmd = socket.udp()
+    udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
+    udpCmd:settimeout(0)
+  end)
+  if not (ok and udpCmd) then
+    ipLog('E', "Failed to create UDP command socket: " .. tostring(err))
+    udpCmd = nil
+  end
+end
+
+local function resetState()
+  isActive = true
+  scanTimer = 0
+  implVehID, implCids, implName, implSampleCids = nil, nil, nil, nil
+  lastSentName, lastSentLine, nameEverSent = nil, nil, false
+end
+
+function M.onExtensionLoaded()
+  setExtensionUnloadMode(M, "manual")
+  ipLog('I', "Implement proximity extension loaded.")
+  setupSockets()  -- here too, so a Ctrl+L Lua reload re-opens them
+end
+
+function M.onWorldReadyState(state)
+  if state == 2 then
+    resetState()
+    setupSockets()
+  end
+end
+
+-- The cid cache belongs to one vehicle and one part configuration. Drop it on any event
+-- that could invalidate either and wait for the vehicle VM to push a fresh one; reporting
+-- against stale cids would give confident, wrong positions rather than an error.
+function M.onVehicleSwitched(oldId, newId, player)
+  if player ~= nil and player ~= 0 then return end
+  implVehID, implCids, implName, implSampleCids = nil, nil, nil, nil
+  lastSentName, lastSentLine, nameEverSent = nil, nil, false
+end
+
+function M.onVehicleResetted(vehId)
+  if implVehID and vehId ~= implVehID then return end
+  implVehID, implCids, implName, implSampleCids = nil, nil, nil, nil
+  lastSentName, lastSentLine, nameEverSent = nil, nil, false
+end
+
+function M.onUpdate(dtReal, dtSim, dtRaw)
+  if udpCmd then
+    local data
+    repeat
+      data = udpCmd:receive()
+      if data then
+        local cmd = data:match("^%s*(.-)%s*$"):upper()
+        if cmd == "ON" then
+          isActive = true
+          lastSentName, lastSentLine, nameEverSent = nil, nil, false
+        elseif cmd == "OFF" then
+          isActive = false
+        elseif cmd == "REBUILD" then
+          implVehID, implCids, implName, implSampleCids = nil, nil, nil, nil
+          lastSentName, lastSentLine, nameEverSent = nil, nil, false
+        end
+      end
+    until not data
+  end
+
+  if not isActive then return end
+
+  scanTimer = scanTimer + dtReal
+  if scanTimer >= SCAN_INTERVAL then
+    scanTimer = 0
+    -- The GE onUpdate hook chain is dispatched WITHOUT pcall, so a throw here would
+    -- silently stop every extension loaded after this one in modScript.lua.
+    local ok, err = pcall(scan)
+    if not ok then
+      ipLog('E', "scan failed, disabling: " .. tostring(err))
+      isActive = false
+    end
+  end
+end
+
+return M

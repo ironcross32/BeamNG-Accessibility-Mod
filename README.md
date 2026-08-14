@@ -52,6 +52,7 @@ Press F9, then one of the following keys. If you press an invalid key or allow t
 - A: Speak attitude (roll and pitch)
 - C: Speak coordinates
 - U: Switch between imperial and metric
+- B: Browse the current vehicle's special controls (the "Special Vehicle Keys" list, e.g. Toggle Lightbar, Toggle Tailgate) with the keys and controller buttons they are bound to. Arrow up and down through the list, Enter to fire the highlighted action, Escape to close.
 
 #### Message buffer:
 
@@ -74,6 +75,8 @@ Press F9, then one of the following keys. If you press an invalid key or allow t
 - Shift+V: Align to trailer coupler — vehicle scanner must be on, target must be a trailer, couplers on source vehicle and target must be compatible
 - Ctrl+Shift+D: Automatic coupler distance callouts — vehicle scanner must be on
 
+Scanner distances are the **gap** between the two vehicles — the clear space you still have — not the distance between their centres. Earlier versions measured centre to centre, which added roughly half a vehicle at each end and, worse, changed with the target's orientation: a car sitting broadside and the same car nose-on at the same real gap reported the same number. Expect the figures to read smaller than they used to, and to reach zero when you touch.
+
 #### Toggleable modes:
 
 - Ctrl+S: Toggle status mode
@@ -82,6 +85,7 @@ Press F9, then one of the following keys. If you press an invalid key or allow t
 - Ctrl+H: Toggle heading guidance
 - Ctrl+D: Toggle drift detection
 - Ctrl+Shift+L: Toggle low speed detection
+- Ctrl+K: Toggle wheel slip detection (lockup / wheelspin)
 - Ctrl+O: Toggle obstacle detection
 - Ctrl+G: Toggle coordinate guidance
 - Ctrl+Shift+C: Clickspot detection
@@ -91,10 +95,13 @@ Press F9, then one of the following keys. If you press an invalid key or allow t
 
 - Alt+F: Toggle camera info
 - Alt+H: Camera heading
-- Alt+A: Camera altitude
+- Alt+A: Camera altitude — height above whatever is directly below the camera, or, when there is nothing below it at all, height above sea level (said explicitly)
 - Alt+P: Camera pitch
 - Alt+V: Vehicle bearing from camera
 - Alt+D: Vehicle distance from camera
+- Alt+Shift+A: Camera and ground diagnostic — speaks the camera height, the ground height under it, and the difference, and writes the full detail (camera position, active camera, and every ground query the mod can make) to `bnvdahook.log`. Works whether or not camera info is switched on.
+
+If the game stops sending camera data — which happens when the Lua side reloads — these readouts say "Camera info is not updating, reconnecting" and ask for the feed again, rather than repeating the last value they received.
 
 #### Diagnostics:
 
@@ -156,7 +163,7 @@ Press F11 to open the accessible vehicle spawner. F11 is suppressed while the sp
 
 - Delete: Remove the selected item from the queue
 - X: Toggle the selected item between spawning as a new vehicle and replacing an existing one in place
-- W: Open the placement wizard for the selected item — choose which side to spawn it relative to a reference vehicle (front, back, left, right), then set the distance in 5-foot steps, then pick whether to use the current player vehicle or mark a specific vehicle as the reference point
+- W: Open the placement wizard for the selected item — first pick the anchor (the current player vehicle, a marked vehicle, or the previous/next item in the queue), then position the vehicle in the 3D editor described below
 - Space: Spawn all queued vehicles immediately
 
 #### Manage page (in-world vehicles)
@@ -166,6 +173,21 @@ Press F11 to open the accessible vehicle spawner. F11 is suppressed while the sp
 - Delete: Delete all selected vehicles
 - R: Reload all selected vehicles (replaces each with a fresh copy at the same position)
 - V: Cut ignition on every vehicle in the world
+- W: Open the placement wizard for the highlighted vehicle and move it there — first pick the anchor, then position it in the 3D editor described below. The anchor can be the vehicle itself (offsets then read as "move it this far from where it is now"), the ground below the camera (the spot you are looking at, facing the way the camera faces — useful for dropping a car exactly where you are), or any marked vehicle. The editor starts dead on the anchor, so accepting it without moving anything puts the vehicle exactly on target. Damage is preserved either way; the vehicle is moved, not respawned.
+
+#### Placement editor (opened with W from the to-be-spawned or manage page)
+
+The editor works in the anchor's own frame, so "forward" means the way the anchor is facing.
+
+- Up/Down: Move forward or back; Left/Right: move left or right; Page Up/Page Down: raise or lower
+- W/S: Pitch the nose down or up; A/D: roll left or right; Q/E: yaw left or right
+- Space: Speak the current position; R: Reset to sit right on the anchor
+- X: On a teleport, switch between standard and force mode (see below)
+- Enter: Accept (queues the placement, or moves the vehicle); Escape: Discard
+
+When moving an in-world vehicle, X chooses how it gets there. **Standard** sets it down on the spot exactly. **Force** throws it instead: the game works out the launch velocity that lands it on the mark and flings it, the same way the fling and boost cheats do. It arcs high enough to clear fences and parked cars, announces its launch speed and flight time, and lands approximately — not exactly — on target, taking whatever damage the landing does and ending up facing whichever way it tumbles. Rotation is ignored in force mode for that reason. A target too far away to reach is launched at full speed and announced as landing short. Once the vehicle comes to rest, the mod announces where it actually ended up — "landed on target", or how far short, long, left or right of the mark it finished.
+
+A quick tap moves exactly one foot or one degree. Holding a key escalates the step the longer it is held — 1, 10, 100, 1000, 10000 feet, or 1, 10, 45 degrees. Each step plays a ping whose timbre identifies the magnitude, spatialized in the direction of travel; height and pitch changes are pitch-shifted up or down instead. Holding two arrows moves along the diagonal between them, and after a short pause the full position is spoken automatically.
 
 #### Arrangement presets screen (opened with G from any page)
 
@@ -185,6 +207,14 @@ Arrangement types are: line (all vehicles in a row), side by side (abreast), two
 **Buffer mode** commandeers the bracket keys for itself. These step through the 100 most recent messages. Left bracket navigates backwards through the buffer (older messages), and right bracket moves forward (newer messages).
 
 **Clickspot detection** looks for interactables on the interior or exterior of a vehicle — buttons, switches, levers, latches, etc. Press F9 then Ctrl+Shift+C to enable it; this will announce how many clickspots were found. Clickspots are then discoverable with the mouse: a beep sounds when the pointer enters one, and a reverse beep when it leaves. Click the mouse to perform the associated action. A menu-driven approach can also be activated with F9 then Ctrl+Shift+Alt+C, opening a virtual browser where you can move through all clickspots with the arrow keys and press Enter to activate one.
+
+**Loader implement awareness** covers the bucket and forks on machines like the WL-40 wheel loader. Nothing needs turning on and there is no keybind: it appears by itself on a machine that has an implement, and is completely inert on every ordinary vehicle.
+
+Status mode gains three extra items on such a machine — implement height above the ground beneath it, implement tilt in degrees from level, and the frame articulation angle (the same bend that drives the articulation tone).
+
+Two tones report the implement continuously. A rough FM tone reports the ground: it is clean and quiet a couple of metres up, and grows progressively grittier the closer the bucket or forks get to the ground. If you curl into the ground hard enough to lever the machine up off its front wheels, that tone cleans up again and rises in pitch with how much lift you are getting. A second tone reports tilt on a quarter-tone scale — 400 Hz is dead level, falling to 200 Hz at the full forward dump and rising to 800 Hz at the full curl back, in countable quarter-tone steps. Both tones fade away about a second after you stop moving the implement and snap straight back when you touch the controls again; the ground tone also comes back on its own if you are driving toward something rather than lowering onto it.
+
+Speech announces vehicles and props the implement is approaching, by name, along with whether the bucket or forks are above, below or level with them. It announces again when the relationship changes — for instance when raising the forks clears the roofline — when the tines slide underneath something ready to lift it, and when you leave the area. Parts that have broken off a vehicle are detected in their own right, so a bumper lying in the dirt is not invisible.
 
 **Accessible node grabber** announces node names as the mouse pointer enters them and jumps the pointer to the closest node relative to the camera's center. Holding Ctrl allows free mouse movement. Scrolling the mouse wheel announces the grabber's strength — higher strength can lift a vehicle by a node, or tear a part free if it cannot bear the weight. Middle-click pins or unpins a node; a pinned node is fixed in place, which may prevent driving or tear off the associated part. To exert force on a node: hold Ctrl, move to the desired node, then click and hold the left mouse button — Ctrl can then be released. Middle-click while holding the left button to pin or unpin.
 

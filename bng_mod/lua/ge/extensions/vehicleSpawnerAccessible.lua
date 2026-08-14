@@ -199,6 +199,26 @@ end
 --  Spawn Reference Frames
 -- =================================================================================================
 
+-- Height of the ground under `pos`, or nil when there is none to find.
+--
+-- Deliberately not core_terrain.getTerrainHeight: that only knows about a TerrainBlock,
+-- and several stock maps have none at all (smallgrid is a GroundPlane, gridmap is static
+-- meshes), so terrain queries return nil for every point on them.
+-- be:getSurfaceHeightBelow sees terrain, static meshes and ground planes alike. It reports
+-- failure as -1e20 rather than nil and only looks downwards, hence the retries -- the same
+-- pattern the game's own common/tech/techUtils.lua uses. Vehicles are soft bodies and
+-- invisible to it, which is what we want: the anchor should be the ground, not the roof of
+-- a car parked below. (cameraInfo.lua carries its own copy; these extensions are
+-- standalone by design.)
+local function groundHeightBelow(pos)
+  local function probe(z)
+    local ok, h = pcall(function() return be:getSurfaceHeightBelow(vec3(pos.x, pos.y, z)) end)
+    if ok and type(h) == "number" and h > -1e10 then return h end
+    return nil
+  end
+  return probe(pos.z) or probe(pos.z + 2) or probe(1e5)
+end
+
 local function frameFromVehicle(veh)
   if not veh then return nil end
   local pos = vec3(veh:getPosition())
@@ -222,15 +242,18 @@ local function frameFromCameraGroundSnap()
   local up = vec3(0, 0, 1)
   local right = fwd:cross(up):normalized()
 
-  -- Try to ground-snap. If terrain is unavailable (e.g. grid_small_pure), fall back to Z=1.0.
-  local groundZ = nil
-  if core_terrain and core_terrain.getTerrainHeight then
-    local ok, h = pcall(core_terrain.getTerrainHeight, vec3(cp.x, cp.y, cp.z))
-    if ok and type(h) == "number" and h > -1000 and h < 10000 then
-      groundZ = h
-    end
+  -- Ground height under the camera. See groundHeightBelow: core_terrain.getTerrainHeight
+  -- used to be the query here, and it returns nil for every point on maps with no terrain
+  -- block (smallgrid, gridmap), which left this falling back to a hardcoded Z=1.0 -- the
+  -- anchor landed a metre off the ground, or nowhere near it.
+  local groundZ = groundHeightBelow(cp)
+  if not groundZ then
+    -- Genuinely nothing below: over open water, or off the edge of the world. The camera's
+    -- own height is at least a spot the user can reason about (the vehicle drops from where
+    -- they are looking), unlike an arbitrary constant.
+    vsLog('warn', "No ground found below the camera; anchoring at camera height instead.")
   end
-  local z = groundZ or 1.0
+  local z = groundZ or cp.z
   return { pos = vec3(cp.x, cp.y, z), fwd = fwd, up = up, right = right }
 end
 
@@ -262,20 +285,45 @@ local function resolveReferenceFrame(refMode, refVehId, prevFrame)
   return frameFromCameraGroundSnap()
 end
 
-local function buildSpawnTransform(frame, side, distM)
-  if not frame then return nil, nil, nil end
-  local offset
-  if     side == "front" then offset =  frame.fwd  * distM
-  elseif side == "back"  then offset = -frame.fwd  * distM
-  elseif side == "right" then offset =  frame.right * distM
-  elseif side == "left"  then offset = -frame.right * distM
-  else                        offset = -frame.fwd  * distM end
+-- Rodrigues' rotation formula. Pure vec3 math so it does not depend on a quat
+-- axis-angle helper being present in retail LuaJIT.
+local function rotateAboutAxis(v, axis, angleRad)
+  local c, s = math.cos(angleRad), math.sin(angleRad)
+  return v * c + axis:cross(v) * s + axis * (axis:dot(v) * (1 - c))
+end
 
-  local spawnPos = frame.pos + offset
-  local rot = quatFromDir(frame.fwd, frame.up)
-  -- Return spawn pos/rot and the new reference frame for chaining (uses spawned pos
-  -- with same orientation as the resolved reference).
-  local newFrame = { pos = spawnPos, fwd = frame.fwd, up = frame.up, right = frame.right }
+local function rotateBasis(fwd, up, right, axis, angleRad)
+  if angleRad == 0 then return fwd, up, right end
+  return rotateAboutAxis(fwd, axis, angleRad):normalized(),
+         rotateAboutAxis(up, axis, angleRad):normalized(),
+         rotateAboutAxis(right, axis, angleRad):normalized()
+end
+
+-- Place a vehicle relative to `frame`. `off` is {fwd, right, up} in metres and
+-- `rotDeg` is {yaw, pitch, roll} in degrees, all in the reference frame's own axes.
+-- Sign convention (right-handed, matching the Python editor): +yaw swings the nose
+-- left, +pitch lifts the nose, +roll drops the right side.
+local function buildSpawnTransform(frame, off, rotDeg)
+  if not frame then return nil, nil, nil end
+  off = off or {}
+  rotDeg = rotDeg or {}
+
+  local spawnPos = frame.pos
+    + frame.fwd   * (off.fwd   or 0)
+    + frame.right * (off.right or 0)
+    + frame.up    * (off.up    or 0)
+
+  -- Intrinsic yaw -> pitch -> roll: each rotation is about the axis as it stands
+  -- after the previous one, which is what "turn it, then tip it" means to the user.
+  local fwd, up, right = frame.fwd, frame.up, frame.right
+  fwd, up, right = rotateBasis(fwd, up, right, up,    math.rad(rotDeg.yaw   or 0))
+  fwd, up, right = rotateBasis(fwd, up, right, right, math.rad(rotDeg.pitch or 0))
+  fwd, up, right = rotateBasis(fwd, up, right, fwd,   math.rad(rotDeg.roll  or 0))
+
+  local rot = quatFromDir(fwd, up)
+  -- Return spawn pos/rot and the new reference frame for chaining. The rotated
+  -- basis is used so "previous in queue" follows the vehicle as it actually sits.
+  local newFrame = { pos = spawnPos, fwd = fwd, up = up, right = right }
   return spawnPos, rot, newFrame
 end
 
@@ -539,6 +587,267 @@ local function handleTeleportArrange(jsonStr)
 end
 
 -- =================================================================================================
+--  Teleport to an edited placement (manage page "W")
+-- =================================================================================================
+
+-- Move an already-spawned vehicle to pos/rot, carrying its damage along. Anything that
+-- resets the vehicle -- safeTeleport's default resetVehicle, setPosRot, setPositionRotation
+-- -- respawns it from its initial node positions, which repairs every dent. Both paths
+-- below go through the cluster API instead, which moves the deformed body as it stands.
+--
+-- allowSettle picks between safeTeleport, which finds a non-intersecting spot and sets the
+-- vehicle down on the ground, and a direct cluster move. The ground search would throw
+-- away a height offset, so a raised placement takes the direct path.
+local function teleportVehicleTo(veh, pos, rot, allowSettle)
+  if allowSettle then
+    -- 7th arg is centeredPosition, 8th is resetVehicle -- false is what keeps the damage.
+    -- safeTeleport applies the 180-degree flip and zeroes the velocity itself.
+    return pcall(spawn.safeTeleport, veh, pos, rot, nil, nil, nil, false, false)
+  end
+  return pcall(function()
+    local refNode = veh:getRefNodeId()
+    -- Vehicle rotations carry the same 180-degree flip spawn.lua applies on the spawn
+    -- path ("vehicles' forward is inverted"), so rot has to be flipped before it can be
+    -- compared against the vehicle's current rotation.
+    local target  = quat(0, 0, 1, 0) * rot
+    local current = quat(veh:getClusterRotationSlow(refNode))
+    -- setClusterPosRelRot takes an absolute refnode position but a *relative* rotation.
+    local diffRot = current:inversed() * target
+    veh:setClusterPosRelRot(refNode, pos.x, pos.y, pos.z, diffRot.x, diffRot.y, diffRot.z, diffRot.w)
+    -- Land it stationary rather than carrying the speed it had before the move.
+    veh:applyClusterVelocityScaleAdd(refNode, 0, 0, 0, 0)
+    veh:setOriginalTransform(pos.x, pos.y, pos.z, target.x, target.y, target.z, target.w)
+  end)
+end
+
+-- Fastest launch we will ever ask for, in m/s (~560 mph). Past this the vehicle is
+-- leaving the map rather than being thrown across it, so a target that needs more
+-- gets thrown at the cap and lands short -- announced, never silently retargeted.
+local MAX_LAUNCH_MPS = 250
+
+-- Set while a launched vehicle is in the air, so onUpdate can watch it down and report
+-- where it really ended up. A ballistic solve is a point-mass approximation of a
+-- soft-body car: air drag, tumbling and the bounce on landing all pull the real landing
+-- point in, and none of them can be solved for up front. Measuring the miss is both the
+-- honest thing to announce and the only way to tell a physics shortfall from an aiming
+-- bug -- the numbers go to the game log alongside the solve that produced them.
+local launchTrack = nil
+local LAUNCH_TRACK_TIMEOUT = 30   -- seconds; give up rather than track forever
+local LAUNCH_SETTLE_SPEED  = 2.0  -- m/s below which we call it landed
+local LAUNCH_SETTLE_TIME   = 0.4  -- seconds it must stay that slow
+
+-- Throw a vehicle at targetPos instead of placing it there, the way the game's own
+-- "fling"/"boost" cheats do (core/funstuff.lua): one impulse via
+-- applyClusterVelocityScaleAdd, then gravity does the rest. Returns ok, speed, flightTime,
+-- wasCapped.
+local function launchVehicleTo(veh, targetPos)
+  local refNode = veh:getRefNodeId()
+  local d    = targetPos - vec3(veh:getPosition())
+  local flat = vec3(d.x, d.y, 0)
+  local L    = flat:length()
+  local dz   = d.z
+
+  local g = -9.81
+  if core_environment and core_environment.getGravity then
+    local okG, gv = pcall(core_environment.getGravity)
+    if okG and type(gv) == "number" then g = gv end
+  end
+  g = math.abs(g)
+
+  local vel, zeroG
+  if g < 0.05 then
+    -- Zero-gravity level: nothing to arc over, so just cross the gap at a steady clip.
+    zeroG = true
+    vel = d / 2.0
+  else
+    -- Apex height above the start. Tying it to a quarter of the horizontal distance is
+    -- what makes this a 45-degree launch on flat ground (tan(theta) = 4h/L = 1), which
+    -- is high enough to clear fences and parked cars on the way. The 1.5 m floor keeps
+    -- a short hop -- or a straight-up move, where L is 0 -- from degenerating into a
+    -- flat shove. Targets above the vehicle raise the apex so the arc still peaks over
+    -- the landing point rather than under it.
+    local h  = math.max(0, dz) + math.max(1.5, L * 0.25)
+    local vz = math.sqrt(2 * g * h)
+    local T  = vz / g + math.sqrt(2 * math.max(0, h - dz) / g)
+    vel = vec3(0, 0, vz)
+    if L > 0 then vel = vel + flat:normalized() * (L / T) end
+  end
+
+  local speed  = vel:length()
+  local capped = false
+  if speed > MAX_LAUNCH_MPS then
+    vel = vel * (MAX_LAUNCH_MPS / speed)
+    speed = MAX_LAUNCH_MPS
+    capped = true
+  end
+
+  -- Flight time is derived from the velocity we actually apply, not the one we solved
+  -- for, so a capped launch reports the shorter hop it will really make. For an
+  -- uncapped launch this returns the solved time exactly.
+  local flightTime
+  if zeroG then
+    flightTime = (speed > 0) and (d:length() / speed) or 0
+  else
+    -- Descending crossing of the target height: dz = vz*t - g*t^2/2. When the arc never
+    -- climbs that high, report the round trip back to the starting height instead.
+    local disc = vel.z * vel.z - 2 * g * dz
+    if disc >= 0 then
+      flightTime = (vel.z + math.sqrt(disc)) / g
+    else
+      flightTime = 2 * vel.z / g
+    end
+  end
+
+  -- Scale 0 rather than the 1 the fling/boost cheats use: it wipes whatever the vehicle
+  -- was already doing, so a rolling car arcs from a known state instead of adding the
+  -- launch to its current motion. Nothing here resets the vehicle, so damage survives.
+  local ok, err = pcall(function()
+    veh:applyClusterVelocityScaleAdd(refNode, 0, vel.x, vel.y, vel.z)
+  end)
+
+  if ok then
+    local start = vec3(veh:getPosition())
+    vsLog('info', string.format(
+      "launch solve: from %.2f,%.2f,%.2f to %.2f,%.2f,%.2f | L=%.2f dz=%.2f g=%.2f " ..
+      "vel=%.2f,%.2f,%.2f speed=%.2f flight=%.2fs capped=%s",
+      start.x, start.y, start.z, targetPos.x, targetPos.y, targetPos.z,
+      L, dz, g, vel.x, vel.y, vel.z, speed, flightTime, tostring(capped)))
+    launchTrack = {
+      vehId    = veh:getId(),
+      target   = vec3(targetPos),
+      start    = start,
+      -- Kept so the miss can be split into along-track (drag: always short) and
+      -- cross-track (aiming) components, which say different things about the cause.
+      dir      = (L > 0) and flat:normalized() or vec3(0, 0, 0),
+      plannedL = L,
+      solved   = flightTime,
+      t        = 0,
+      slowFor  = 0,
+    }
+  end
+
+  return ok, speed, flightTime, capped, err
+end
+
+-- Watch a launched vehicle until it settles, then report the miss. Called every frame
+-- while launchTrack is set.
+local function updateLaunchTrack(dt)
+  local tr = launchTrack
+  if not tr then return end
+
+  tr.t = tr.t + dt
+
+  local veh = be:getObjectByID(tr.vehId)
+  if not veh then launchTrack = nil; return end
+
+  local pos = vec3(veh:getPosition())
+  local spd = 0
+  local okV, v = pcall(function() return vec3(veh:getVelocity()) end)
+  if okV and v then spd = v:length() end
+
+  -- Only start counting once it is actually moving, so the frame or two before the
+  -- impulse takes effect cannot be mistaken for a landing.
+  if tr.t > 0.5 and spd < LAUNCH_SETTLE_SPEED then
+    tr.slowFor = tr.slowFor + dt
+  else
+    tr.slowFor = 0
+  end
+
+  local settled  = tr.slowFor >= LAUNCH_SETTLE_TIME
+  local timedOut = tr.t >= LAUNCH_TRACK_TIMEOUT
+  if not settled and not timedOut then return end
+
+  launchTrack = nil
+
+  local miss    = pos - tr.target
+  local missFlat = vec3(miss.x, miss.y, 0)
+  local along, cross = 0, missFlat:length()
+  if tr.dir:length() > 0.5 then
+    along = missFlat:dot(tr.dir)                       -- +over, -short
+    cross = missFlat:dot(vec3(0, 0, 1):cross(tr.dir))  -- + is left of the launch line
+  end
+
+  vsLog('info', string.format(
+    "launch result: landed %.2f,%.2f,%.2f | target %.2f,%.2f,%.2f | miss=%.2fm " ..
+    "along=%.2f cross=%.2f | plannedL=%.2f actualL=%.2f (%.0f%%) | t=%.2fs solved=%.2fs%s",
+    pos.x, pos.y, pos.z, tr.target.x, tr.target.y, tr.target.z, missFlat:length(),
+    along, cross, tr.plannedL,
+    vec3(pos.x - tr.start.x, pos.y - tr.start.y, 0):length(),
+    (tr.plannedL > 0.01) and (vec3(pos.x - tr.start.x, pos.y - tr.start.y, 0):length() / tr.plannedL * 100) or 0,
+    tr.t, tr.solved, timedOut and " TIMEOUT" or ""))
+
+  if udpSend then
+    -- Metres and seconds; Python owns the units and the phrasing.
+    udpSend:send(string.format("TELEPORT_LANDED:%.2f,%.2f,%.2f,%.1f",
+      missFlat:length(), along, cross, tr.t))
+  end
+end
+
+local function handleTeleportPlace(jsonStr)
+  local ok, payload = pcall(jsonDecode, jsonStr)
+  if not ok or not payload or type(payload.vehId) ~= "number" then
+    if udpSend then udpSend:send("TELEPORT_ERR:bad payload") end
+    return
+  end
+
+  local veh = be:getObjectByID(math.floor(payload.vehId))
+  if not veh then
+    if udpSend then udpSend:send("TELEPORT_ERR:vehicle not found") end
+    return
+  end
+
+  -- refVehId nil means "the player vehicle"; resolveReferenceFrame already handles
+  -- that fallback, including the camera+ground last resort.
+  local frame = resolveReferenceFrame(payload.refMode or "vehicle", payload.refVehId, nil)
+  if not frame then
+    if udpSend then udpSend:send("TELEPORT_ERR:no reference frame") end
+    return
+  end
+
+  local FT_TO_M = 0.3048
+  local off = {
+    fwd   = (payload.offFwdFt   or 0) * FT_TO_M,
+    right = (payload.offRightFt or 0) * FT_TO_M,
+    up    = (payload.offUpFt    or 0) * FT_TO_M,
+  }
+  local rotDeg = {
+    yaw   = payload.rotYawDeg   or 0,
+    pitch = payload.rotPitchDeg or 0,
+    roll  = payload.rotRollDeg  or 0,
+  }
+  local pos, rot = buildSpawnTransform(frame, off, rotDeg)
+  if not pos or not rot then
+    if udpSend then udpSend:send("TELEPORT_ERR:no transform") end
+    return
+  end
+
+  -- Force mode aims at the same world point the standard teleport would have used --
+  -- everything above is shared -- but throws the vehicle there instead of placing it.
+  -- The rotation is dropped: physics decides how it lands.
+  if payload.mode == "force" then
+    local ok, speed, flightTime, capped, err = launchVehicleTo(veh, pos)
+    if udpSend then
+      if ok then
+        udpSend:send(string.format("TELEPORT_LAUNCHED:%.0f,%.1f,%d",
+          speed * 2.23694, flightTime, capped and 1 or 0))
+      else
+        udpSend:send(("TELEPORT_ERR:" .. tostring(err)):sub(1, 400))
+      end
+    end
+    return
+  end
+
+  local moved, err = teleportVehicleTo(veh, pos, rot, off.up == 0)
+  if udpSend then
+    if moved then
+      udpSend:send("TELEPORT_OK")
+    else
+      udpSend:send(("TELEPORT_ERR:" .. tostring(err)):sub(1, 400))
+    end
+  end
+end
+
+-- =================================================================================================
 --  Spawn
 -- =================================================================================================
 
@@ -627,13 +936,18 @@ local function handleSpawnBatch(jsonStr)
       frame = resolveReferenceFrame(mode or "auto", item.refVehId, prevFrame)
     end
 
-    local req = {
-      model    = item.model,
-      config   = item.config,
-      side     = item.side,
-      distM    = (item.distFt or 5) * 0.3048,
+    local FT_TO_M = 0.3048
+    local off = {
+      fwd   = (item.offFwdFt   or 0) * FT_TO_M,
+      right = (item.offRightFt or 0) * FT_TO_M,
+      up    = (item.offUpFt    or 0) * FT_TO_M,
     }
-    local pos, rot, newFrame = buildSpawnTransform(frame, req.side or "right", req.distM or 3.048)
+    local rotDeg = {
+      yaw   = item.rotYawDeg   or 0,
+      pitch = item.rotPitchDeg or 0,
+      roll  = item.rotRollDeg  or 0,
+    }
+    local pos, rot, newFrame = buildSpawnTransform(frame, off, rotDeg)
     attempted[i] = true
     inProgress[i] = nil
     if not pos or not rot then
@@ -641,10 +955,16 @@ local function handleSpawnBatch(jsonStr)
       return false
     end
 
-    local options = { pos = pos, rot = rot, cling = true, autoEnterVehicle = false }
-    if req.config and req.config ~= "" then options.config = req.config end
+    -- cling ground-snaps the vehicle, which would silently throw away a height
+    -- offset — so it is only enabled when the user asked for ground level.
+    local options = {
+      pos = pos, rot = rot,
+      cling = (off.up == 0),
+      autoEnterVehicle = false,
+    }
+    if item.config and item.config ~= "" then options.config = item.config end
 
-    local okSp, vehOrErr = pcall(core_vehicles.spawnNewVehicle, req.model, options)
+    local okSp, vehOrErr = pcall(core_vehicles.spawnNewVehicle, item.model, options)
     if not okSp or not vehOrErr then
       failures[#failures + 1] = tostring(item.model) .. ": " .. tostring(vehOrErr)
       return false
@@ -808,6 +1128,8 @@ local function handleCommand(cmd)
     handleRemove(cmd:sub(8))
   elseif cmd:sub(1, 17) == "TELEPORT_ARRANGE:" then
     handleTeleportArrange(cmd:sub(18))
+  elseif cmd:sub(1, 15) == "TELEPORT_PLACE:" then
+    handleTeleportPlace(cmd:sub(16))
   elseif upper == "REQUEST_PLAYER_VEH_ID" then
     local p = be:getPlayerVehicle(0)
     local id = p and p:getID() or -1
@@ -881,6 +1203,16 @@ function M.onWorldReadyState(state)
 end
 
 function M.onUpdate(dtReal, dtSim, dtRaw)
+  -- Ahead of the socket guard: a vehicle already in the air still has to be watched down
+  -- even if the command socket failed to bind.
+  if launchTrack then
+    local ok, err = pcall(updateLaunchTrack, dtReal)
+    if not ok then
+      vsLog('warn', "launch tracking failed: " .. tostring(err))
+      launchTrack = nil
+    end
+  end
+
   if not udpCmd then return end
   repeat
     local data = udpCmd:receive()

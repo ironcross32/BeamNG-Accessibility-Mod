@@ -2,7 +2,7 @@
 # WebSocket-Only version
 # Designed to be embedded: start_server_in_thread(lambda text: say(text))
 
-import asyncio, json, os, re, threading
+import asyncio, json, os, re, threading, time
 from aiohttp import web, WSMsgType
 from bnh_logger import get_logger
 
@@ -28,10 +28,22 @@ _RUNNER: web.AppRunner | None = None
 _TCP_SERVER: asyncio.AbstractServer | None = None
 _SPEAK_FUNC = None
 _SPEAK_LAST = ""
+_SPEAK_LAST_TS = 0.0
+# Suppress an identical interrupting repeat only inside this window. Matches the
+# same-text gate the UI runtime already applies (bnvdaRuntime.js scheduleSpeak).
+# Without an expiry, leaving a list row and coming back to it stayed silent
+# forever, because the text still equalled the last thing spoken.
+_SPEAK_DEDUP_S = 0.4
 _HOVER_TASK: asyncio.Task | None = None
 _HOVER_TOKEN = None
 _DOM_DUMP_CALLBACK = None
 _LOADING_STATE_CALLBACK = None
+_SETTINGS_REQUEST_CALLBACK = None
+
+# Mirrors window.BNVDA_DEBUG from the CEF/UI JS context. The UI runtime reports it
+# whenever it changes, so debug output anywhere in the Python side can be switched on
+# at runtime from the accessible console rather than needing a relaunch.
+_BNVDA_DEBUG = False
 
 _CLIENTS: set = set()  # connected WebSocket instances
 _TCP_CLIENTS: set = set()  # connected GE Lua newline-delimited JSON clients
@@ -47,11 +59,31 @@ def register_loading_state_callback(callback):
     _LOADING_STATE_CALLBACK = callback
 
 
+def register_settings_request_callback(callback):
+    """Register the handler that answers the UI runtime's settings pull.
+
+    The runtime asks on every transport activation rather than relying on a push:
+    beamtel broadcasts whenever the config changes, but the first such broadcast
+    happens long before the Lua bridge connects and would be dropped on the floor.
+    """
+    global _SETTINGS_REQUEST_CALLBACK
+    _SETTINGS_REQUEST_CALLBACK = callback
+
+
+def bnvda_debug_enabled():
+    """True while window.BNVDA_DEBUG is set in the game's UI JS context.
+
+    Read this live at each use site rather than latching it — the flag is flipped from
+    the accessible console long after startup, and a UI reload resets it.
+    """
+    return _BNVDA_DEBUG
+
+
 
 
 # ---------- Core helpers ----------
 def engine_offer(text: str, interrupt: bool = True):
-    global _SPEAK_LAST
+    global _SPEAK_LAST, _SPEAK_LAST_TS
     t = (text or "").strip()
     if not t:
         return
@@ -61,9 +93,11 @@ def engine_offer(text: str, interrupt: bool = True):
     # Only dedup against the last utterance for interrupting speech. A queued
     # follow-up (interrupt=False, e.g. a tuning hint) is intentionally a second
     # utterance and must not be swallowed by this guard.
-    if interrupt and t == _SPEAK_LAST:
+    now = time.monotonic()
+    if interrupt and t == _SPEAK_LAST and (now - _SPEAK_LAST_TS) < _SPEAK_DEDUP_S:
         return
     _SPEAK_LAST = t
+    _SPEAK_LAST_TS = now
     try:
         _SPEAK_FUNC(t, interrupt)
     except Exception as e:
@@ -116,6 +150,12 @@ def handle_ws_message(data):
         level = str(data.get("level", "INFO")).lower()
         msg = str(data.get("msg", ""))
         getattr(logger, level, logger.info)(msg)
+    elif msg_type == "debug_state":
+        global _BNVDA_DEBUG
+        new_state = bool(data.get("enabled", False))
+        if new_state != _BNVDA_DEBUG:
+            _BNVDA_DEBUG = new_state
+            logger.info("[bnvda] BNVDA_DEBUG %s", "enabled" if new_state else "disabled")
     elif msg_type == "hover":
         hover_on(
             data.get("text", ""), item_id=data.get("id"), delay_ms=data.get("delay_ms")
@@ -128,6 +168,13 @@ def handle_ws_message(data):
                 _DOM_DUMP_CALLBACK(data.get("lines", []))
             except Exception as e:
                 logger.error(f"dom_dump_result callback error: {e}")
+
+    elif msg_type == "settings_request":
+        if _SETTINGS_REQUEST_CALLBACK:
+            try:
+                _SETTINGS_REQUEST_CALLBACK()
+            except Exception as e:
+                logger.error(f"settings_request callback error: {e}")
 
     elif msg_type == "loading_state":
         if _LOADING_STATE_CALLBACK:
