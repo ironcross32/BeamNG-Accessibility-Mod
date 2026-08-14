@@ -103,6 +103,16 @@ DEFAULT_CONFIG = {
     "scanner_base_freq_hz": 1000.0,
     "scanner_pitch_offset_oct": 1.0,
     "ui_nav_hold_suppression": True,
+    # Loader implement (WL-40 bucket / forks). Inert on every other vehicle. These were
+    # missing here while present in beamtel's DEFAULT_CONFIG, which load_config's
+    # DEFAULT_CONFIG.copy() + update() papered over — but a key absent from this dict also
+    # never gets a _coerce or a clamp, so they were reaching audio.py unvalidated.
+    "implement_tones_enabled": True,
+    "implement_ground_tone_dbfs": -16.0,
+    "implement_tilt_tone_dbfs": -20.0,
+    "implement_proximity_speech": True,
+    "dock_tones_enabled": True,
+    "dock_tone_dbfs": -18.0,
     "ai_describer_provider": "gemini",
     # Gemini's key/model keep their original names so existing configs migrate
     # for free; every other provider is namespaced.
@@ -315,6 +325,12 @@ def load_config():
         _coerce("scanner_base_freq_hz", float, 1000.0)
         _coerce("scanner_pitch_offset_oct", float, 1.0)
         _coerce("ui_nav_hold_suppression", bool, True)
+        _coerce("implement_tones_enabled", bool, True)
+        _coerce("implement_ground_tone_dbfs", float, -16.0)
+        _coerce("implement_tilt_tone_dbfs", float, -20.0)
+        _coerce("implement_proximity_speech", bool, True)
+        _coerce("dock_tones_enabled", bool, True)
+        _coerce("dock_tone_dbfs", float, -18.0)
         _coerce("preferred_device_name", str, "")
         _coerce("audio_poll_interval_sec", float, 2.0)
         _coerce("ai_describer_provider", str, "gemini")
@@ -370,7 +386,9 @@ def load_config():
                     "pitch_roll_max_dbfs", "pitch_roll_min_dbfs", "compass_click_level_dbfs",
                     "lowspeed_click_level_dbfs", "lowspeed_stop_tone_level_dbfs",
                     "slip_tone_level_dbfs", "placement_ping_volume_db",
-                    "hrtf_front_emphasis_db"]:
+                    "hrtf_front_emphasis_db",
+                    "implement_ground_tone_dbfs", "implement_tilt_tone_dbfs",
+                    "dock_tone_dbfs"]:
             db = merged.get(key, -12.0)
             merged[key] = max(-120.0, min(0.0, db))
         merged["hrtf_distance_gain_db"] = max(-24.0, min(6.0, merged.get("hrtf_distance_gain_db", 0.0)))

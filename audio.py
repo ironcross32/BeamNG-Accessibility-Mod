@@ -321,6 +321,67 @@ IMPL_CLOSING_STALE_S = 0.5  # no fresh clearance for this long -> forget the est
 # hydraulic steering tone while the implement is being worked.
 IMPL_HYDRO_DUCK_DB = -4.0
 
+# =========================================================================================
+#  Docking instrument (loader implement alignment)
+# =========================================================================================
+#
+# Three axes for the last few metres of lining an implement up: lateral on the stereo image,
+# range on a pulse rate, vertical on a beat pair that goes to unison at alignment. Two voices
+# for three dimensions, because pan and rate ride on the same pulse.
+#
+# The design constraint that shapes all of it is that this machine already has an
+# articulation tone, a ground-proximity tone, a tilt scale and possibly the scanner running.
+# So the instrument REPLACES rather than adds: while it is open the scanner is suppressed
+# outright and the articulation tone is ducked hard. That is not arbitrary — articulation
+# tells you what your input did, lateral offset tells you what you need, and on a final
+# approach at walking pace those are the same axis expressed twice. The goal beats the means,
+# and the articulation centre-crossing click still fires, so the frame reference is not lost.
+DOCK_MAX_RANGE_M = 5.0  # beyond this the instrument is silent
+# Inside this, the vertical beat pair fades in. It stays out until then on purpose: at four
+# metres the vertical does not matter yet and you are still steering, so the acquire phase is
+# deliberately only two dimensions.
+DOCK_BEAT_RANGE_M = 2.0
+DOCK_PULSE_FREQ_HZ = 700.0  # carrier of the panned range/lateral voice
+DOCK_PULSE_MIN_HZ = 1.2  # pulses per second at DOCK_MAX_RANGE_M
+DOCK_PULSE_MAX_HZ = 12.0  # ...and at contact
+DOCK_PULSE_DUTY = 0.35  # fraction of each period the pulse sounds for
+DOCK_PULSE_DB = -18.0
+# Same ceiling and the same reason as HYDRO_STEER_MAX_AZIMUTH_DEG: the KEMAR set's interaural
+# level difference peaks near 67.5 degrees and then FALLS about 5 dB out to 90, so mapping
+# full offset to 90 makes being further off read as coming back toward centre.
+DOCK_MAX_AZIMUTH_DEG = 75.0
+DOCK_LATERAL_FULL_M = 1.2  # lateral offset that maps to full azimuth
+# Vertical error as a detune against a fixed reference. Alignment is UNISON: the beating
+# falls to zero and the texture goes smooth. Chosen over mapping error to absolute pitch
+# because unison is self-calibrating — there is no reference frequency to learn, and the ear
+# resolves a beat far finer than it resolves pitch. It is also texturally unmistakable
+# against the two FM voices and the pure-sine tilt scale already on this machine.
+DOCK_REF_HZ = 330.0
+# Capped low enough that the pair never becomes a musical interval. A cap up at a fifth or a
+# tritone would march through the third and the fourth on the way in, and a consonant
+# interval mid-approach sounds MORE right than it is — the exact inversion of the meaning.
+# At 330 Hz, 200 cents is about 40 Hz apart: plainly two rough tones, never a chord.
+DOCK_MAX_CENTS = 200.0
+DOCK_CENTS_PER_M = 400.0  # so half a metre of error saturates the detune
+DOCK_BEAT_DB = -22.0
+# Beating is signless, so above-versus-below rides on a slow tremolo whose RATE differs. The
+# two rates are far enough apart to name by ear and both are well below the beat rates they
+# coexist with, so tremolo and roughness stay perceptually separate.
+DOCK_AM_ABOVE_HZ = 5.5  # implement is above the band: come down
+DOCK_AM_BELOW_HZ = 2.0  # implement is below the band: come up
+DOCK_AM_DEPTH = 0.45
+# Unison lock, armed with hysteresis so hunting around the null cannot machine-gun it.
+DOCK_LOCK_CENTS = 20.0
+DOCK_LOCK_REARM_CENTS = 80.0
+DOCK_LOCK_DB = -8.0
+DOCK_LOCK_HI_HZ = 1568.0  # a descending pair; nothing else in the mod uses that figure,
+DOCK_LOCK_LO_HZ = 1046.0  # which keeps it clear of the FM clicks and the noise-burst click
+DOCK_LOCK_DUR_MS = 110.0
+DOCK_ATTACK_TAU = 0.04
+DOCK_REL_TAU = 0.20
+DOCK_HYDRO_DUCK_DB = -12.0  # articulation ducked hard, not merely trimmed, while docking
+DOCK_STALE_S = 0.6  # no packet for this long and the instrument fades out
+
 # Node Grabber Hover Beep
 NODE_BEEP_BASE_FREQ_HZ = 800.0  # Base frequency at height 0.5
 NODE_BEEP_LOW_FREQ_HZ = 600.0  # Frequency at underside (height 0.0)
@@ -431,6 +492,7 @@ class AudioController:
         self.CAM_CLICK_WAVEFORM = None
         self.CAM_HIGHLIGHT_CLICK_WAVEFORM = None
         self.HYDRO_CENTER_CLICK_WAVEFORM = None  # Articulation centre-crossing tick
+        self.DOCK_LOCK_WAVEFORM = None  # Docking vertical-null chime
         self.NODE_BEEP_WAVEFORM = None  # Node grabber hover beep
         self.CLICKSPOT_BEEP_WAVEFORM = None  # Clickspot hover beep (forward)
         self.CLICKSPOT_BEEP_REV_WAVEFORM = (
@@ -659,6 +721,28 @@ class AudioController:
         self._impl_tilt_span_up = 0.0  # learned travel to the up stop, degrees
         self._impl_tilt_span_dn = 0.0  # ...and to the down stop
 
+        # Docking instrument (loader implement alignment) state
+        self._dock_active = False  # user toggle, mirrored from beamtel
+        self._dock_have = False  # a live readout, as opposed to "in range of nothing"
+        self._dock_range = float("inf")
+        self._dock_lateral = 0.0
+        self._dock_vertical = 0.0
+        self._dock_stamp = 0.0  # perf_counter of the last packet, for the stale fade
+        self._dock_tones_enabled = True
+        self._dock_pulse_db = DOCK_PULSE_DB
+        self._dock_gate_env = 0.0  # shared fade for both voices
+        self._dock_pulse_phase = 0.0
+        self._dock_pulse_timer = 0.0  # position within the current pulse period
+        self._dock_overlap_L = None  # HRTF overlap-add tails
+        self._dock_overlap_R = None
+        self._dock_ref_phase = 0.0  # fixed reference of the beat pair
+        self._dock_mov_phase = 0.0  # ...and the tracking tone
+        self._dock_mov_inc = 0.0  # glided across blocks; stepping it zippers
+        self._dock_am_phase = 0.0
+        self._dock_beat_env = 0.0  # separate fade, so the pair enters inside DOCK_BEAT_RANGE
+        self._dock_lock_armed = False
+        self._dock_lock_pos = -1.0  # cursor into the lock waveform, -1 = idle
+
         # Coordinate Guidance FM state
         self._coord_guidance_active = False
         self._coord_guidance_error = 0.0
@@ -765,6 +849,28 @@ class AudioController:
                 self._scan_closing_ms = 0.0
             self._scan_prev_dist = distance if math.isfinite(distance) else None
             self._scan_prev_dist_t = now
+
+    # Docking instrument control
+    def set_dock_mode(self, active):
+        with self.lock:
+            self._dock_active = bool(active)
+            if not self._dock_active:
+                self._dock_have = False
+                self._dock_range = float("inf")
+
+    def update_dock_target(self, range_m, lateral_m, vertical_m):
+        with self.lock:
+            self._dock_have = True
+            # The mod reports a surface gap, which legitimately reaches zero on contact.
+            self._dock_range = max(0.0, float(range_m))
+            self._dock_lateral = float(lateral_m)
+            self._dock_vertical = float(vertical_m)
+            self._dock_stamp = time.perf_counter()
+
+    def clear_dock_target(self):
+        with self.lock:
+            self._dock_have = False
+            self._dock_range = float("inf")
 
     # Coupler tracking control methods
     def set_coupler_tracking(self, active):
@@ -950,6 +1056,14 @@ class AudioController:
             max(-120.0, float(cfg.get("implement_tilt_tone_dbfs", IMPL_TILT_MAX_DB))),
         )
 
+        # Docking instrument. Only the pulse voice is user-levelled: the beat pair has to sit
+        # in a fixed relationship to it for the two to stay separable, and exposing both
+        # invites a mix in which the null cue is inaudible under the range cue.
+        self._dock_tones_enabled = bool(cfg.get("dock_tones_enabled", True))
+        self._dock_pulse_db = min(
+            0.0, max(-120.0, float(cfg.get("dock_tone_dbfs", DOCK_PULSE_DB)))
+        )
+
         # Vehicle scanner pitch + steering-locked steady tone
         self._scan_steer_tone_enabled = bool(
             cfg.get("scanner_steer_tone_enabled", True)
@@ -1019,6 +1133,7 @@ class AudioController:
         self.CAM_CLICK_WAVEFORM = self._generate_cam_click()
         self.CAM_HIGHLIGHT_CLICK_WAVEFORM = self._generate_cam_highlight_click()
         self.HYDRO_CENTER_CLICK_WAVEFORM = self._generate_center_click()
+        self.DOCK_LOCK_WAVEFORM = self._generate_dock_lock()
 
         old_follow = self._follow_default_enabled
         old_device = self._preferred_device_name
@@ -1406,6 +1521,7 @@ class AudioController:
         self.CAM_CLICK_WAVEFORM = self._generate_cam_click()
         self.CAM_HIGHLIGHT_CLICK_WAVEFORM = self._generate_cam_highlight_click()
         self.HYDRO_CENTER_CLICK_WAVEFORM = self._generate_center_click()
+        self.DOCK_LOCK_WAVEFORM = self._generate_dock_lock()
         self.NODE_BEEP_WAVEFORM = self._generate_node_beep()
         self.NODE_BEEP_REV_WAVEFORM = self._generate_node_beep_reverse()
         self.CLICKSPOT_BEEP_WAVEFORM = self._generate_clickspot_beep()
@@ -1541,6 +1657,41 @@ class AudioController:
         if peak > 0:
             wave /= peak  # normalise so the dB constant means what it says
         return (wave * (10.0 ** (HYDRO_CENTER_CLICK_DB / 20.0))).astype(np.float32)
+
+    def _generate_dock_lock(self):
+        """Two-note descending chime marking the vertical error passing through zero.
+
+        Silence alone cannot report a null: the beat pair goes smooth at unison, but a smooth
+        tone is also what you hear when the instrument has nothing to say. So the arrival has
+        to be marked positively.
+
+        A pitched *pair* rather than a single tone or a noise burst, because both of those
+        slots are taken: the compass and cam clicks are FM around 900 Hz, the articulation
+        centre-crossing click is a noise burst, and the scanner and coupler beeps are single
+        sines near 1 kHz. Nothing in the mod uses a descending two-note figure, so it cannot
+        be mistaken for any of them even at a glance.
+        """
+        dur_s = DOCK_LOCK_DUR_MS / 1000.0
+        n = int(self.samplerate * dur_s)
+        half = n // 2
+        t = np.arange(n) / self.samplerate
+        freq = np.where(np.arange(n) < half, DOCK_LOCK_HI_HZ, DOCK_LOCK_LO_HZ)
+        # Integrate the frequency rather than using t * f directly, so the note change does
+        # not put a phase discontinuity — i.e. a click — in the middle of the chime.
+        phase = np.cumsum(freq) / self.samplerate
+        wave = np.sin(2.0 * np.pi * phase) * np.exp(-t * (3.0 / dur_s))
+        # Short fades at both ends and across the seam, for the same reason.
+        edge = max(1, int(self.samplerate * 0.004))
+        wave[:edge] *= np.linspace(0, 1, edge)
+        wave[-edge:] *= np.linspace(1, 0, edge)
+        if half > edge:
+            wave[half - edge // 2 : half + edge // 2] *= np.concatenate(
+                [np.linspace(1, 0.3, edge // 2), np.linspace(0.3, 1, edge // 2)]
+            )
+        peak = float(np.max(np.abs(wave)))
+        if peak > 0:
+            wave /= peak  # normalise so the dB constant means what it says
+        return (wave * (10.0 ** (DOCK_LOCK_DB / 20.0))).astype(np.float32)
 
     def _generate_cam_highlight_click(self):
         dur_samples = int(self.samplerate * CLICK_DUR_MS / 1000.0)
@@ -1933,6 +2084,15 @@ class AudioController:
             impl_lift = self._impl_lift
             impl_activity = self._impl_activity
             impl_enabled = self._impl_tones_enabled
+
+            # Docking instrument snapshot
+            dock_on = self._dock_active and self._dock_tones_enabled
+            dock_have = self._dock_have
+            dock_range = self._dock_range
+            dock_lateral = self._dock_lateral
+            dock_vertical = self._dock_vertical
+            dock_stamp = self._dock_stamp
+            dock_pulse_db = self._dock_pulse_db
 
             # Coordinate Guidance
             coord_guide_active = self._coord_guidance_active
@@ -2568,9 +2728,19 @@ class AudioController:
             self._sm_drift_pan = self._drift_pan
             self._drift_inc = 0.0
 
-        # NEW: Vehicle Scanner audio logic (suppressed when coupler tracking is active)
+        # NEW: Vehicle Scanner audio logic (suppressed when coupler tracking is active, and
+        # likewise while the docking instrument is open — that instrument reports the same
+        # target with more precision on the same two axes, so leaving the scanner running
+        # would put two competing pan-and-rate voices on one object). Gated on the previous
+        # callback's dock envelope, since the dock block runs after this one; a single buffer
+        # of overlap during the fade is inaudible.
         scanner_produced_audio = False
-        if scan_active and scan_dist != float("inf") and not coupler_active:
+        if (
+            scan_active
+            and scan_dist != float("inf")
+            and not coupler_active
+            and self._dock_gate_env <= 0.0
+        ):
             # Beep repetition rate from distance (exponential). Half-distance scales with the CLOSING
             # speed (how fast the distance is shrinking) rather than raw vehicle speed, so heading
             # toward the target speeds the beeps up while heading away slows them down. Clamped to a
@@ -3398,6 +3568,13 @@ class AudioController:
             # what you are listening for with a bucket in the air. The gate value used here
             # is last callback's — this block runs before the implement block — which is one
             # buffer of latency on a 4 dB level change, i.e. inaudible.
+            #
+            # Ducked much harder while the docking instrument is open, and that one is a
+            # judgement rather than a mix decision: articulation tells you what your input
+            # DID, the docking instrument's lateral pan tells you what you NEED, and on a
+            # final approach at walking pace those are the same axis expressed twice. The
+            # goal wins. The articulation centre-crossing click is unaffected, so the frame
+            # reference is still there when you want it.
             amp = float(
                 10.0
                 ** (
@@ -3405,6 +3582,7 @@ class AudioController:
                         HYDRO_STEER_MIN_DB
                         + (HYDRO_STEER_MAX_DB - HYDRO_STEER_MIN_DB) * norm
                         + IMPL_HYDRO_DUCK_DB * self._impl_gate_env
+                        + DOCK_HYDRO_DUCK_DB * self._dock_gate_env
                     )
                     / 20.0
                 )
@@ -3702,6 +3880,198 @@ class AudioController:
             self._impl_tilt_inc = 0.0
             self._impl_tilt_step = None
             self._impl_tilt_dip_left = 0.0
+
+        # =================================================================================
+        #  Docking instrument
+        # =================================================================================
+        # Two voices, three dimensions. The panned pulse carries lateral offset on the
+        # stereo image and range on its repetition rate; the beat pair carries vertical
+        # error, nulling to unison at alignment. Phased by range so no more than three
+        # dimensions are ever live at once: silent past DOCK_MAX_RANGE_M, pulse only from
+        # there in to DOCK_BEAT_RANGE_M, pair fading in inside that.
+        dt_dock = frames / self.samplerate
+        dock_produced_audio = False
+
+        # Stale-guard on wall time rather than on a packet counter: the mod scans at 10 Hz
+        # and stops sending entirely when it goes CLEAR, so "nothing arrived recently" is
+        # the only signal that the instrument has nothing to say.
+        dock_live = (
+            dock_on
+            and dock_have
+            and dock_range < DOCK_MAX_RANGE_M
+            and (time.perf_counter() - dock_stamp) < DOCK_STALE_S
+        )
+
+        gate_tgt_dock = 1.0 if dock_live else 0.0
+        tau_dock = DOCK_ATTACK_TAU if gate_tgt_dock > self._dock_gate_env else DOCK_REL_TAU
+        dock_gate_end = self._dock_gate_env + (1.0 - math.exp(-dt_dock / tau_dock)) * (
+            gate_tgt_dock - self._dock_gate_env
+        )
+        if dock_gate_end < 0.01 and gate_tgt_dock == 0.0:
+            dock_gate_end = 0.0  # hard cut; a one-pole never actually reaches zero
+        dock_gate_arr = np.linspace(
+            self._dock_gate_env, dock_gate_end, frames, endpoint=False
+        ).astype(np.float32)
+        dock_gate_was = self._dock_gate_env
+        self._dock_gate_env = dock_gate_end
+
+        # frames > 0 guarded because every phase advance below reads arr[-1]; a zero-length
+        # buffer is legal from PortAudio and would raise straight out of the callback.
+        if frames > 0 and (dock_gate_end > 0.0 or dock_gate_was > 0.0):
+            # ---- Voice 1: panned pulse (lateral + range) --------------------------------
+            rng_norm = self._clamp(1.0 - (dock_range / DOCK_MAX_RANGE_M))
+            pulse_hz = DOCK_PULSE_MIN_HZ + (DOCK_PULSE_MAX_HZ - DOCK_PULSE_MIN_HZ) * (
+                rng_norm**2
+            )
+            period = 1.0 / max(0.01, pulse_hz)
+
+            inc_p = DOCK_PULSE_FREQ_HZ / self.samplerate
+            ph_p = self._dock_pulse_phase + np.arange(frames) * inc_p
+            t_pulse = self._dock_pulse_timer + np.arange(frames) / self.samplerate
+            pulse_gate = np.where(
+                (t_pulse % period) < (period * DOCK_PULSE_DUTY), 1.0, 0.0
+            ).astype(np.float32)
+            amp_p = float(10.0 ** (dock_pulse_db / 20.0))
+            mono_dock = (
+                np.sin(2.0 * np.pi * ph_p).astype(np.float32) * amp_p * pulse_gate
+            )
+            self._dock_pulse_phase = float((ph_p[-1] + inc_p) % 1.0)
+            self._dock_pulse_timer = float(t_pulse[-1] + 1.0 / self.samplerate)
+
+            # ---- Voice 2: vertical beat pair --------------------------------------------
+            # Fades in only inside DOCK_BEAT_RANGE_M. Its own envelope rather than the shared
+            # gate, so the acquire phase really is two-dimensional instead of three quiet
+            # ones.
+            beat_tgt = 1.0 if (dock_live and dock_range < DOCK_BEAT_RANGE_M) else 0.0
+            tau_b = DOCK_ATTACK_TAU if beat_tgt > self._dock_beat_env else DOCK_REL_TAU
+            beat_end = self._dock_beat_env + (1.0 - math.exp(-dt_dock / tau_b)) * (
+                beat_tgt - self._dock_beat_env
+            )
+            if beat_end < 0.01 and beat_tgt == 0.0:
+                beat_end = 0.0
+            beat_arr = np.linspace(
+                self._dock_beat_env, beat_end, frames, endpoint=False
+            ).astype(np.float32)
+            self._dock_beat_env = beat_end
+
+            cents = self._clamp(
+                dock_vertical * DOCK_CENTS_PER_M, -DOCK_MAX_CENTS, DOCK_MAX_CENTS
+            )
+            if beat_end > 0.0 or beat_arr.max() > 0.0:
+                inc_ref = DOCK_REF_HZ / self.samplerate
+                ph_ref = self._dock_ref_phase + np.arange(frames) * inc_ref
+                inc_mov_tgt = (DOCK_REF_HZ * (2.0 ** (cents / 1200.0))) / self.samplerate
+                if self._dock_mov_inc <= 0.0:
+                    self._dock_mov_inc = inc_mov_tgt
+                # Glided across the block. Stepping the increment per callback zippers, and
+                # here it would also make the beat rate itself jump, which is the one thing
+                # the operator is trying to read.
+                inc_mov_arr = np.linspace(
+                    self._dock_mov_inc, inc_mov_tgt, frames, endpoint=False
+                )
+                ph_mov = self._dock_mov_phase + np.cumsum(inc_mov_arr)
+
+                # Sign carrier. Beating is signless, so above-versus-below rides on the
+                # tremolo RATE. Suppressed inside the lock window: at the null there is
+                # nothing to correct, and a steady unison is the clearest "stop" available.
+                if abs(cents) <= DOCK_LOCK_CENTS:
+                    am = np.ones(frames, dtype=np.float32)
+                    self._dock_am_phase = 0.0
+                else:
+                    am_hz = DOCK_AM_ABOVE_HZ if cents < 0.0 else DOCK_AM_BELOW_HZ
+                    inc_am = am_hz / self.samplerate
+                    ph_am = self._dock_am_phase + np.arange(frames) * inc_am
+                    am = (
+                        1.0
+                        - DOCK_AM_DEPTH
+                        + DOCK_AM_DEPTH * (0.5 + 0.5 * np.cos(2.0 * np.pi * ph_am))
+                    ).astype(np.float32)
+                    self._dock_am_phase = float((ph_am[-1] + inc_am) % 1.0)
+
+                amp_b = float(10.0 ** (DOCK_BEAT_DB / 20.0))
+                pair = (
+                    np.sin(2.0 * np.pi * ph_ref) + np.sin(2.0 * np.pi * ph_mov) * am
+                ).astype(np.float32) * (amp_b * 0.5)
+                mono_dock = mono_dock + pair * beat_arr
+
+                self._dock_ref_phase = float((ph_ref[-1] + inc_ref) % 1.0)
+                self._dock_mov_phase = float(ph_mov[-1] % 1.0)
+                self._dock_mov_inc = float(inc_mov_tgt)
+            else:
+                self._dock_mov_inc = 0.0
+
+            mono_dock = (mono_dock * dock_gate_arr).astype(np.float32)
+
+            # ---- Lateral -> HRTF azimuth ------------------------------------------------
+            lat_norm = self._clamp(dock_lateral / DOCK_LATERAL_FULL_M, -1.0, 1.0)
+            # Game bearing is positive-LEFT, and the in-callback HRTF convention takes the
+            # raw bearing mod 360 (unlike the mirrored one used by the one-shot earcons).
+            hrtf_az_dock = (DOCK_MAX_AZIMUTH_DEG * lat_norm) % 360.0
+            if self._hrtf is not None and self._hrtf_user_enabled:
+                ir_l, ir_r = self._hrtf.get_hrir(hrtf_az_dock)
+                if ir_l is not None:
+                    conv_l = np.convolve(mono_dock, ir_l, mode="full")
+                    conv_r = np.convolve(mono_dock, ir_r, mode="full")
+                    if self._dock_overlap_L is not None:
+                        ol = min(len(self._dock_overlap_L), len(conv_l))
+                        conv_l[:ol] += self._dock_overlap_L[:ol]
+                        conv_r[:ol] += self._dock_overlap_R[:ol]
+                    bufL += conv_l[:frames].astype(np.float32)
+                    bufR += conv_r[:frames].astype(np.float32)
+                    self._dock_overlap_L = conv_l[frames:].copy()
+                    self._dock_overlap_R = conv_r[frames:].copy()
+                    dock_produced_audio = True
+                else:
+                    Lg, Rg = self._pan_gains(-lat_norm)
+                    bufL += mono_dock * Lg
+                    bufR += mono_dock * Rg
+            else:
+                Lg, Rg = self._pan_gains(-lat_norm)
+                bufL += mono_dock * Lg
+                bufR += mono_dock * Rg
+
+            # ---- Unison lock earcon -----------------------------------------------------
+            # Armed latch entirely inside the callback, the way the articulation
+            # centre-crossing click works: hysteresis on a continuous quantity, fired from
+            # here so it is sample-accurate against the tone it is marking and cannot
+            # double-fire while hunting around the null.
+            if abs(cents) > DOCK_LOCK_REARM_CENTS:
+                self._dock_lock_armed = True
+            elif (
+                self._dock_lock_armed
+                and abs(cents) <= DOCK_LOCK_CENTS
+                and beat_end > 0.5
+            ):
+                self._dock_lock_armed = False
+                if self.DOCK_LOCK_WAVEFORM is not None:
+                    self._dock_lock_pos = 0.0
+        else:
+            # Idle: reset the glide anchors so re-entry attacks cleanly rather than sweeping
+            # up from wherever the last approach left them.
+            self._dock_beat_env = 0.0
+            self._dock_mov_inc = 0.0
+            self._dock_pulse_timer = 0.0
+            self._dock_lock_armed = False
+
+        if not dock_produced_audio:
+            # Drain the HRTF tail, or the last convolution hangs on the output forever.
+            if self._dock_overlap_L is not None and len(self._dock_overlap_L) > 0:
+                ol = min(len(self._dock_overlap_L), frames)
+                bufL[:ol] += self._dock_overlap_L[:ol].astype(np.float32)
+                bufR[:ol] += self._dock_overlap_R[:ol].astype(np.float32)
+            self._dock_overlap_L = None
+            self._dock_overlap_R = None
+
+        if self._dock_lock_pos >= 0 and self.DOCK_LOCK_WAVEFORM is not None:
+            wf = self.DOCK_LOCK_WAVEFORM
+            start = int(self._dock_lock_pos)
+            n_lk = min(frames, len(wf) - start)
+            if n_lk > 0:
+                chunk = wf[start : start + n_lk]
+                bufL[:n_lk] += chunk
+                bufR[:n_lk] += chunk
+            nxt = start + frames
+            self._dock_lock_pos = float(nxt) if nxt < len(wf) else -1.0
 
         # Coordinate Guidance FM tone
         if coord_guide_active:

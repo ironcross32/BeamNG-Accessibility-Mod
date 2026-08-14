@@ -139,6 +139,8 @@ DEFAULT_CONFIG = {
     "implement_ground_tone_dbfs": -16.0,
     "implement_tilt_tone_dbfs": -20.0,
     "implement_proximity_speech": True,
+    "dock_tones_enabled": True,
+    "dock_tone_dbfs": -18.0,
     "ai_describer_provider": "gemini",
     # Gemini's key/model keep their original names so existing configs migrate
     # for free; every other provider is namespaced.
@@ -1023,7 +1025,7 @@ def _dock_phrase(dock: dict) -> str:
     return ". ".join(bits)
 
 
-def implement_listener(stop_event):
+def implement_listener(audio_controller, stop_event):
     """Listens for UDP packets from implementProximity.lua and speaks approach/leave events.
 
     Only ever announces the NEAREST object. The extension may report a different one from
@@ -1066,6 +1068,7 @@ def implement_listener(stop_event):
                     pending_relation = pending_inside = pending_leave = None
                     with state_lock:
                         last_dock = None
+                    audio_controller.clear_dock_target()
                     continue
 
                 # Docking lines are handled ahead of the proximity chain and never feed it:
@@ -1074,6 +1077,7 @@ def implement_listener(stop_event):
                 if text == "DOCKCLEAR":
                     with state_lock:
                         last_dock = None
+                    audio_controller.clear_dock_target()
                     continue
 
                 if text.startswith("DOCK:"):
@@ -1101,6 +1105,9 @@ def implement_listener(stop_event):
                         continue
                     with state_lock:
                         last_dock = parsed
+                    audio_controller.update_dock_target(
+                        parsed["range"], parsed["lateral"], parsed["vertical"]
+                    )
                     continue
 
                 if text == "CLEAR":
@@ -3773,6 +3780,7 @@ def _on_next_key_press(event, audio_controller):
     ):
         dock_mode_active = not dock_mode_active
         _send_implement_cmd("DOCK_ON" if dock_mode_active else "DOCK_OFF")
+        audio_controller.set_dock_mode(dock_mode_active)
         if not dock_mode_active:
             with state_lock:
                 last_dock = None
@@ -6617,7 +6625,7 @@ def _run_engine():
     road_thread.start()
 
     implement_thread = threading.Thread(
-        target=implement_listener, args=(STOP,), daemon=True
+        target=implement_listener, args=(audio_controller, STOP), daemon=True
     )
     implement_thread.start()
 

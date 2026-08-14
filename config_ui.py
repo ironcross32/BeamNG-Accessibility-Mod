@@ -932,6 +932,16 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_impl_proximity, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6
         )
 
+        self.chk_dock_tones = wx.CheckBox(sb_impl, label="Docking Instrument Tones")
+        self.chk_dock_tones.SetToolTip(
+            "Alignment tones for lining the bucket or forks up with something: a pulse "
+            "that pans left and right and speeds up as you close, and a pair of tones "
+            "that beat against each other until the implement is level with the "
+            "reference band. Only heard while the instrument is switched on in game "
+            "with F9 then Ctrl+I."
+        )
+        impl_sizer.Add(self.chk_dock_tones, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+
         impl_grid = wx.FlexGridSizer(0, 2, 6, 8)
         impl_grid.AddGrowableCol(1, 1)
 
@@ -959,6 +969,18 @@ class ConfigPanel(wx.ScrolledWindow):
         _label_spin(self.spin_impl_tilt, "Tilt Tone Level")
         impl_grid.Add(lbl_impl_tilt, 0, wx.ALIGN_CENTER_VERTICAL)
         impl_grid.Add(self.spin_impl_tilt, 0, wx.EXPAND)
+
+        lbl_dock = wx.StaticText(sb_impl, label="Docking Tone Level (dBFS):")
+        self.spin_dock = wx.SpinCtrlDouble(sb_impl, min=-120.0, max=0.0, inc=1.0)
+        self.spin_dock.SetDigits(1)
+        self.spin_dock.SetToolTip(
+            "Level of the docking pulse. The beating alignment pair is fixed relative to "
+            "it, so that the two stay separable."
+        )
+        self.spin_dock.SetName("Docking Tone Level")
+        _label_spin(self.spin_dock, "Docking Tone Level")
+        impl_grid.Add(lbl_dock, 0, wx.ALIGN_CENTER_VERTICAL)
+        impl_grid.Add(self.spin_dock, 0, wx.EXPAND)
 
         impl_sizer.Add(impl_grid, 0, wx.EXPAND | wx.ALL, 6)
         vbox.Add(impl_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
@@ -1045,6 +1067,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_ui_nav_hold,
             self.chk_impl_tones,
             self.chk_impl_proximity,
+            self.chk_dock_tones,
         ):
             ctrl.Bind(wx.EVT_CHECKBOX, self._schedule_save)
 
@@ -1073,6 +1096,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.spin_chime_level,
             self.spin_impl_ground,
             self.spin_impl_tilt,
+            self.spin_dock,
             self.spin_compass_click_level,
             self.spin_lowspeed_click_level,
             self.spin_lowspeed_stop_level,
@@ -1238,6 +1262,8 @@ class ConfigPanel(wx.ScrolledWindow):
                 cfg.get("implement_ground_tone_dbfs", -16.0)
             )
             self.spin_impl_tilt.SetValue(cfg.get("implement_tilt_tone_dbfs", -20.0))
+            self.chk_dock_tones.SetValue(cfg.get("dock_tones_enabled", True))
+            self.spin_dock.SetValue(cfg.get("dock_tone_dbfs", -18.0))
 
             self.spin_compass_interval.SetValue(cfg.get("compass_click_interval", 15))
             self.chk_compass_highlight.SetValue(
@@ -1319,6 +1345,8 @@ class ConfigPanel(wx.ScrolledWindow):
         cfg["implement_proximity_speech"] = self.chk_impl_proximity.GetValue()
         cfg["implement_ground_tone_dbfs"] = self.spin_impl_ground.GetValue()
         cfg["implement_tilt_tone_dbfs"] = self.spin_impl_tilt.GetValue()
+        cfg["dock_tones_enabled"] = self.chk_dock_tones.GetValue()
+        cfg["dock_tone_dbfs"] = self.spin_dock.GetValue()
 
         cfg["compass_click_interval"] = self.spin_compass_interval.GetValue()
         cfg["compass_highlight_enabled"] = self.chk_compass_highlight.GetValue()
