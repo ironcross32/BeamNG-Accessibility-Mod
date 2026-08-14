@@ -336,11 +336,18 @@ IMPL_HYDRO_DUCK_DB = -4.0
 # tells you what your input did, lateral offset tells you what you need, and on a final
 # approach at walking pace those are the same axis expressed twice. The goal beats the means,
 # and the articulation centre-crossing click still fires, so the frame reference is not lost.
-DOCK_MAX_RANGE_M = 5.0  # beyond this the instrument is silent
-# Inside this, the vertical beat pair fades in. It stays out until then on purpose: at four
-# metres the vertical does not matter yet and you are still steering, so the acquire phase is
-# deliberately only two dimensions.
-DOCK_BEAT_RANGE_M = 2.0
+# Must not exceed implementProximity.lua's REPORT_M, which is where the mod stops sending
+# at all. Setting it higher does not extend the instrument — it makes it fall silent at
+# REPORT_M with no fade and no explanation, because the feed simply stops.
+DOCK_MAX_RANGE_M = 6.0  # beyond this the instrument is silent
+# Inside this, the vertical beat pair fades in.
+#
+# Originally 2 m, on the reasoning that the vertical does not matter yet while you are still
+# steering. That was armchair reasoning and play-testing killed it: a loader manoeuvres at
+# something like walking pace, so 2 m of gap is one to two seconds — nowhere near enough to
+# set the height AND close the distance. The operator needs the vertical cue while there is
+# still room to act on it, which means well before the point where the approach is committed.
+DOCK_BEAT_RANGE_M = 3.5
 DOCK_PULSE_FREQ_HZ = 700.0  # carrier of the panned range/lateral voice
 DOCK_PULSE_MIN_HZ = 1.2  # pulses per second at DOCK_MAX_RANGE_M
 DOCK_PULSE_MAX_HZ = 12.0  # ...and at contact

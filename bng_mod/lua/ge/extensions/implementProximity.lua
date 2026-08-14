@@ -30,7 +30,11 @@ local BROAD_RADIUS_M  = 25.0   -- object-position prefilter
 local MAX_CANDIDATES  = 3      -- narrow-phase budget per tick
 local NODE_STRIDE     = 8      -- sample every Nth node of a candidate
 local CONTACT_M       = 0.12   -- closer than this counts as touching
-local REPORT_M        = 6.0    -- don't bother Python past this; its enter threshold is 3 m
+-- Don't bother Python past this; the proximity speech's enter threshold is 3 m. This is
+-- also the hard ceiling on the docking instrument's range: audio.py's DOCK_MAX_RANGE_M
+-- must not exceed it, because past here the feed simply stops and the instrument would cut
+-- out with no fade and no explanation rather than fading at its own configured range.
+local REPORT_M        = 6.0
 local INSIDE_MIN_PTS  = 2      -- implement points that must be inside the box
 local MIN_EDGE_WIDTH_M = 0.30  -- shortest edgeL->edgeR baseline worth deriving a heading from
 
