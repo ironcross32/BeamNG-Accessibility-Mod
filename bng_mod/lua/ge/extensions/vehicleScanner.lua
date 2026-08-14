@@ -42,6 +42,7 @@ local lastPlayerID      = nil      -- for vehicle-switch detection
 -- standstill about to reverse the readout should already be rear-referenced -- velocity
 -- reads zero there and would answer "forwards".
 local activeDirection   = 1        -- 1 = forward, -1 = reverse
+local lastBearingVec    = nil      -- held while the origin is inside the target
 local gearDirection     = nil      -- last direction Python told us, nil until it does
 local gearStaleTimer    = 0
 local GEAR_STALE_SEC    = 2.0      -- fall back to velocity if Python stops sending
@@ -525,6 +526,7 @@ local function scanAndSendVehicleData()
   -- with no loader-specific code. Backing up measured from the bucket was the worst case in
   -- the old build -- the whole machine length of error, in the wrong direction.
   local originPos, forwardVec = playerPos, playerForwardVec
+  local refUpVec = playerUpVec
   local contactPts = nil
   if activeDirection > 0 and extensions and extensions.implementProximity then
     local ip = extensions.implementProximity
@@ -532,6 +534,10 @@ local function scanAndSendVehicleData()
       local okFrame, implFrame = pcall(ip.getImplementFrame)
       if okFrame and implFrame then
         originPos, forwardVec = implFrame.pos, implFrame.fwd
+        -- The implement heading is flattened by construction, so pair it with WORLD up.
+        -- Using the chassis up here would tilt the derived left vector on a machine that is
+        -- pitched or rolled, against a forward vector that is not.
+        refUpVec = vec3(0, 0, 1)
       end
     end
     if ip.getImplementPoints then
@@ -561,6 +567,21 @@ local function scanAndSendVehicleData()
   -- it is up x fwd, so negating fwd would silently negate the cross product too and swap
   -- left for right. Reversing does not move the driver's physical left side. This exact
   -- sign has already produced one false bug report; the geometry sim asserts it.
+  -- Snapshot the heading BEFORE the reverse negation. This is the reference the left/right
+  -- sign is derived from, and it has to satisfy two things at once that were previously in
+  -- conflict:
+  --
+  --   * it must not be negated, or reverse swaps left and right (up x fwd negates with fwd),
+  --   * it must be the SAME FRAME the angle magnitude is measured in.
+  --
+  -- The second one is what was broken. The magnitude came from the implement heading while
+  -- the sign came from the chassis heading, and on an articulated machine those differ by
+  -- the articulation angle -- up to 40 degrees on this one. For any target lying between the
+  -- bucket's left-plane and the cab's left-plane, the output was |angle from bucket| with
+  -- sign(cab side), so as the frame flexed the reading snapped +20 to -20 without ever
+  -- passing through zero. On a rigid vehicle the two frames are identical and the bug is
+  -- invisible, which is exactly why it only ever showed up on the loader.
+  local refForwardVec = forwardVec
   if activeDirection < 0 then
     local f = vec3(forwardVec)
     forwardVec = vec3(-f.x, -f.y, -f.z)
@@ -589,14 +610,27 @@ local function scanAndSendVehicleData()
   -- Clamp: once the implement is inside the target's hull the nearest approach is still
   -- positive, but the box tier can round through zero, and Python formats this with %.0f.
   currentTargetDist = math.max(0, gap or originPos:distance(targetPos))
-  local toTargetVec    = (targetPos - originPos):normalized()
-  local cosAngle       = forwardVec:dot(toTargetVec)
+  -- Bearing is a HORIZONTAL quantity, so flatten the direction to the target. The implement
+  -- heading is already flat, and leaving this one in 3-D meant raising the boom -- three
+  -- metres of vertical travel -- shrank the dot product and inflated the reported angle with
+  -- no yaw change whatsoever. Lifting the bucket appeared to steer the machine.
+  local toTargetVec    = targetPos - originPos
+  toTargetVec.z        = 0
+  if toTargetVec:length() < 1e-3 then
+    -- Directly over or inside the target: the direction is soft-body noise at this point.
+    -- Hold the last bearing rather than emitting a random one.
+    toTargetVec = lastBearingVec or vec3(1, 0, 0)
+  end
+  toTargetVec          = toTargetVec:normalized()
+  lastBearingVec       = toTargetVec
+
+  local flatFwd = vec3(forwardVec); flatFwd.z = 0
+  if flatFwd:length() < 1e-3 then flatFwd = vec3(forwardVec) else flatFwd = flatFwd:normalized() end
+  local cosAngle       = flatFwd:dot(toTargetVec)
   local angleRadians   = math.acos(math.max(-1, math.min(1, cosAngle)))
-  -- playerFORWARDVec, never the possibly-negated forwardVec: this is up x fwd, so feeding it
-  -- the reversed heading would negate the cross product and report left as right for the
-  -- whole time the vehicle is in reverse. The driver's left side does not move when they
-  -- select reverse. Positive stays LEFT in every gear.
-  local playerLeftVec  = playerUpVec:cross(playerForwardVec)
+  -- refForwardVec, never the possibly-negated forwardVec and never a different frame's: see
+  -- the note above the negation.
+  local playerLeftVec  = refUpVec:cross(refForwardVec)
   local dot            = playerLeftVec:dot(toTargetVec)
   local bearingDegrees = math.deg(angleRadians) * (dot < 0 and -1 or 1)
 

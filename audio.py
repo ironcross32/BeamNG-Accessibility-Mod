@@ -104,6 +104,13 @@ SCANNER_OFFSET_OCT_MAX = 2.0  # Maximum allowed offset (two octaves above base)
 # Beep rate is driven by CLOSING speed (rate of change of distance), not raw speed, so heading away
 # from the target slows the beeps. Half-distance grows when approaching and shrinks when receding;
 # clamped to a positive minimum so the exp() denominator stays valid.
+# The scanner was the only continuous spatial voice in this file with no smoothing on its
+# azimuth — the drift tone, the coord guidance tone and the waypoint tone all smooth theirs,
+# and the comment on DRIFT_PAN_TAU spells out why ("de-staircases the incoming rate at block
+# boundaries"). The bearing arrives at ~10 Hz while the callback runs at 50-100 Hz, so
+# without this it steps rather than glides. Matched to DRIFT_PAN_TAU: fast enough to track a
+# real turn, slow enough that a single noisy packet cannot throw the image.
+SCANNER_BEARING_TAU = 0.09  # s; EMA on the scanner bearing before it becomes an azimuth
 SCANNER_HALF_DIST_MIN_M = 4.0
 SCANNER_CLOSING_SMOOTH = (
     0.25  # EMA factor for closing-speed estimate (per scanner packet)
@@ -658,6 +665,7 @@ class AudioController:
         # Closing-speed estimate (positive = approaching) from successive distance samples
         self._scan_closing_ms = 0.0
         self._scan_prev_dist = None
+        self._sm_scan_bearing = None  # EMA'd bearing; see SCANNER_BEARING_TAU
         self._scan_prev_dist_t = 0.0
         # Scanner pitch / steady-tone config (overwritten by apply_config)
         self._scan_base_freq = SCANNER_BASE_FREQ_DEFAULT
@@ -2835,6 +2843,21 @@ class AudioController:
             self._sm_drift_rate = self._drift_rate
             self._sm_drift_pan = self._drift_pan
             self._drift_inc = 0.0
+
+        # Smooth the bearing before anything derives a position or a pitch from it. Done in
+        # SHORTEST-ANGULAR-DISTANCE form so it cannot take the long way round through the
+        # rear: a target at +179 followed by one at -179 has moved two degrees, and a naive
+        # EMA would sweep the image all the way across the head instead.
+        if scan_active and math.isfinite(scan_bearing):
+            if self._sm_scan_bearing is None:
+                self._sm_scan_bearing = scan_bearing
+            else:
+                delta = ((scan_bearing - self._sm_scan_bearing + 180.0) % 360.0) - 180.0
+                beta_sb = 1.0 - math.exp(-(frames / self.samplerate) / SCANNER_BEARING_TAU)
+                self._sm_scan_bearing += beta_sb * delta
+            scan_bearing = self._sm_scan_bearing
+        else:
+            self._sm_scan_bearing = None
 
         # NEW: Vehicle Scanner audio logic (suppressed when coupler tracking is active, and
         # likewise while the docking instrument is open — that instrument reports the same

@@ -64,8 +64,65 @@ local lastSentLine = nil
 -- awareness, and its readout is meaningless on a machine with no implement fitted.
 local dockActive   = false
 local lastDockLine = nil
+-- Last heading we were confident in, so a momentarily degenerate frame holds position rather
+-- than mirroring. See the length guard in getImplementFrame.
+local lastGoodFwd  = nil
 
 local function ipLog(level, msg) log(level, 'implementProximity', msg) end
+
+-- Pushes are stored PER VEHICLE and only the player's is ever made active.
+--
+-- They used to land straight in the shared globals, whichever vehicle sent them. That was
+-- survivable while each vehicle pushed exactly once (last spawn quietly won), but the push
+-- is a heartbeat now, so two vehicles claiming an implement take it in turns every few
+-- seconds. Worse, the vehicle-side match is pure name matching against a wide word list --
+-- "bucket", "fork", "blade", "scoop", "plow" -- which a bucket SEAT, a wiper blade or a hood
+-- scoop can satisfy. So an ordinary car parked next to the loader can take ownership, and
+-- the scanner's origin then flips between the bucket's cutting edge and the loader's
+-- reference node on a four-second cycle. Nothing logged it, because the re-push is
+-- idempotent and only speaks up when the payload changes.
+local implByVeh = {}  -- vehID -> {cids = {...}, sample = {...}|nil, name = string} or false
+
+-- Promote whichever stored push belongs to the vehicle currently being driven. Cheap enough
+-- to run every scan tick, which is also what makes switching vehicles take effect at once
+-- rather than waiting for the next heartbeat.
+local function applyActivePush()
+  local player = be:getPlayerVehicle(0)
+  local pid = player and player:getID() or nil
+  local e = pid and implByVeh[pid] or nil
+  local newCids = e and e.cids or nil
+  local newName = e and e.name or nil
+
+  -- Idempotent, because this runs constantly now. Clearing the announce latch every time
+  -- would re-send the IMPLEMENT: line on a loop, and Python reads that as a part swap -- it
+  -- drops whatever it was tracking, so the approach speech would re-announce while the
+  -- machine sat still.
+  local same = (implVehID == pid) and (implName == newName)
+           and ((implCids ~= nil) == (newCids ~= nil))
+  if same and implCids and newCids then
+    same = (#implCids == #newCids)
+    if same then
+      for i = 1, #newCids do
+        if implCids[i] ~= newCids[i] then same = false; break end
+      end
+    end
+  end
+
+  implVehID = pid
+  implCids = newCids
+  implName = newName
+  implSampleCids = e and e.sample or nil
+
+  if not same then
+    if newCids then
+      ipLog('I', string.format("implement '%s' active on vehicle %s: %d nodes",
+        tostring(newName), tostring(pid), #newCids))
+    else
+      ipLog('I', string.format("no implement active on vehicle %s", tostring(pid)))
+    end
+    lastSentName, nameEverSent = nil, false
+  end
+end
 
 -- Called from the vehicle VM. cidCsv is empty when the machine has no implement.
 -- sampleCsv carries exactly five cids in a fixed order: edgeL, edgeC, edgeR, heelL, heelR.
@@ -82,36 +139,12 @@ function M.onImplementCids(vehID, friendlyName, sampleCsv, cidCsv)
   local sample = parse(sampleCsv)
   if #sample ~= 5 then sample = nil end
 
-  -- Idempotent, because this now arrives as a heartbeat rather than once. Resetting the
-  -- announce latch unconditionally would re-send the IMPLEMENT: line every few seconds, and
-  -- Python treats that as a part swap -- it drops whatever it was tracking, so the approach
-  -- speech would re-announce "Bucket approaching X" on a loop while you sat still.
-  local newName = (#cids > 0) and friendlyName or nil
-  local same = (implVehID == vehID)
-           and (implName == newName)
-           and (implCids ~= nil) == (#cids > 0)
-  if same and implCids then
-    same = (#implCids == #cids)
-    if same then
-      for i = 1, #cids do
-        if implCids[i] ~= cids[i] then same = false; break end
-      end
-    end
-  end
-
-  implSampleCids = sample
   if #cids > 0 then
-    implVehID, implCids, implName = vehID, cids, friendlyName
-    if not same then
-      ipLog('I', string.format("implement '%s' on vehicle %d: %d sample nodes",
-        tostring(friendlyName), vehID, #cids))
-    end
+    implByVeh[vehID] = {cids = cids, sample = sample, name = friendlyName}
   else
-    implVehID, implCids, implName = vehID, nil, nil
-    if not same then ipLog('I', string.format("vehicle %d reports no implement", vehID)) end
+    implByVeh[vehID] = false  -- "asked and has none", distinct from "never heard from"
   end
-  -- Only an actual change forces a fresh IMPLEMENT: line.
-  if not same then lastSentName, nameEverSent = nil, false end
+  applyActivePush()
 end
 
 -- Where the implement is and which way it points, in world space. Returns nil on anything
@@ -162,6 +195,16 @@ function M.getImplementFrame()
       fwd = vec3(-lateral.y, lateral.x, 0)
       local veh = vec3(player:getDirectionVector())
       veh.z = 0
+      -- The lateral baseline is length-guarded above; this operand was not, and it is half
+      -- of the same sign test. Flattening the machine's heading collapses it to numerical
+      -- residue whenever the machine pitches near vertical -- nose-down into a pile, or
+      -- jacked up on its own bucket -- and the hemisphere test then picks a side at random
+      -- per tick. It does not degrade gracefully: negating fwd negates the derived left
+      -- vector, so the bearing MIRRORS. Hold the previous heading instead of guessing.
+      if veh:length() < 0.2 then
+        if lastGoodFwd then return {pos = edge, fwd = lastGoodFwd, name = implName} end
+        return nil
+      end
       if fwd:dot(veh) < 0 then fwd = -fwd end
     else
       -- Degenerate lateral axis (a narrow implement where both edge picks collapsed onto
@@ -170,6 +213,7 @@ function M.getImplementFrame()
       fwd.z = 0
     end
     if fwd:length() < 1e-3 then return nil end
+    lastGoodFwd = fwd:normalized()
     -- Origin is the cutting edge, not the implement centroid: that is the part of the
     -- machine you are actually trying to put somewhere, so a distance of zero means
     -- "touching" rather than "half a bucket short".
@@ -565,6 +609,9 @@ local function scan()
     sendDockLine(nil, "no player vehicle")
     return
   end
+  -- Cheap, and it means switching vehicles takes effect on the next tick rather than
+  -- waiting out a heartbeat.
+  applyActivePush()
 
   -- A push we haven't matched to the current vehicle is not usable.
   --
@@ -747,6 +794,7 @@ end
 local function resetState()
   isActive = true
   scanTimer = 0
+  implByVeh = {}
   implVehID, implCids, implName, implSampleCids = nil, nil, nil, nil
   lastSentName, lastSentLine, nameEverSent = nil, nil, false
   -- A manual band pick is tied to a target and to the implement that was fitted when it was
@@ -774,8 +822,11 @@ end
 -- against stale cids would give confident, wrong positions rather than an error.
 function M.onVehicleSwitched(oldId, newId, player)
   if player ~= nil and player ~= 0 then return end
-  implVehID, implCids, implName, implSampleCids = nil, nil, nil, nil
-  lastSentName, lastSentLine, nameEverSent = nil, nil, false
+  -- Stored pushes are per vehicle and survive a switch: the machine you stepped out of still
+  -- has its implement, and heartbeats keep them all current. Only the ACTIVE selection is
+  -- re-derived.
+  applyActivePush()
+  lastSentLine = nil
   -- A manual band pick is tied to a target and to the implement that was fitted when it was
   -- made; both may have just changed, so fall back to auto rather than keeping an index that
   -- now points at unrelated geometry.
@@ -784,9 +835,11 @@ function M.onVehicleSwitched(oldId, newId, player)
 end
 
 function M.onVehicleResetted(vehId)
-  if implVehID and vehId ~= implVehID then return end
-  implVehID, implCids, implName, implSampleCids = nil, nil, nil, nil
-  lastSentName, lastSentLine, nameEverSent = nil, nil, false
+  -- Drop only the vehicle that reset; its own re-push will refill it. Other vehicles' cids
+  -- are unaffected and must not be thrown away.
+  implByVeh[vehId] = nil
+  applyActivePush()
+  lastSentLine = nil
   -- A manual band pick is tied to a target and to the implement that was fitted when it was
   -- made; both may have just changed, so fall back to auto rather than keeping an index that
   -- now points at unrelated geometry.
@@ -807,6 +860,7 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
         elseif cmd == "OFF" then
           isActive = false
         elseif cmd == "REBUILD" then
+          implByVeh = {}
           implVehID, implCids, implName, implSampleCids = nil, nil, nil, nil
           lastSentName, lastSentLine, nameEverSent = nil, nil, false
         elseif cmd == "DOCK_ON" then
