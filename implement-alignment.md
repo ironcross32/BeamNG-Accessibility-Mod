@@ -87,6 +87,56 @@ python diagnostic/implement_proximity_sim.py # regression
 python diagnostic/hydro_steer_sim.py         # regression
 ```
 
+## [ ] Next pass — OPEN: play-test findings, 2026-08-13
+
+Reported from play after the beat-pair fix (`c684c58`) had landed and beamtel had been
+restarted. **Not yet investigated.** The hypotheses below are untested reasoning, recorded so
+the next pass does not start cold — treat them as leads, not findings.
+
+### 1. "No implement fitted" after a Python-only restart
+
+Restarting beamtel alone, without touching the game, produces "no implement fitted" — though
+the scanner still tracks. `Ctrl+R` on the vehicle plus toggling the docking mode off and on
+clears it.
+
+*Untested hypothesis*: `_implement_word_current` is Python-side state that a restart wipes,
+but the mod only re-sends the `IMPLEMENT:` line when the name **changes** — `nameEverSent`
+and `lastSentName` are Lua-side and survive the Python restart, so the mod believes it has
+already announced and stays quiet. If so this is the mirror image of the REBUILD gap below:
+the same one-shot announcement pattern, failing from the other side of the socket. A
+`settings_request`-style pull on the Python listener's startup, as `bnvdaRuntime.js` already
+does over the UI bridge, would cover both.
+
+### 2. The audio is unchanged by the fix — the important one
+
+The instrument "still stutters and still seems to act as before" after the fix, i.e. the
+change that measured correctly on the bench produced no audible difference in game.
+
+**Resolve this first, because it decides whether there is a bug at all**: the pulse voice is
+a gated tone at 1.2–12 Hz *by design*, and a stutter is what that is. It is entirely possible
+that "stutters" describes the intended pulse train and has been read as a defect twice now.
+Before changing any audio, establish which sound is being described — e.g. by setting
+`dock_tone_dbfs` very low so the pulse drops away and only the beat pair remains, or by
+listening with the vertical error held at zero, where the pair should be a smooth,
+unwavering hum and any remaining stutter can only be the pulse.
+
+Other leads, in rough order of likelihood:
+
+- The selected reference band may be far from the cutting edge, holding the error above
+  `DOCK_BEAT_MAX_HZ / DOCK_BEAT_HZ_PER_M` (0.5 m) the whole time. The beat would then sit
+  pinned at 12 Hz and never vary — audibly a constant flutter, not a null-seeking beat. The
+  `F9` `I` readout gives the number directly and would confirm or kill this immediately.
+- The pair may simply be inaudible under the pulse. `DOCK_BEAT_DB` is −22 against the pulse's
+  −18, and the pulse is the more attention-grabbing texture.
+- The pulse rate (1.2–12 Hz) and the beat rate (0–12 Hz) span the same range, so at some
+  bucket positions the two modulate at similar speeds. Known at the time of writing and
+  judged acceptable given the spectral and spatial separation; may not be.
+
+Bench measurements for reference, all from rendered audio: beat rate tracks spec to within
+0.1 Hz across 0–0.5 m of error; centre pitch holds 330.1 Hz throughout; with the target hard
+left the pulse sits at 2.17 L/R while the pair holds 1.00. So the DSP does what it is meant
+to — which points at the mapping, the levels, or the description, rather than the synthesis.
+
 ## [ ] Next pass — REBUILD cannot actually rebuild
 
 The implement cid list is pushed one-shot from the vehicle VM (`_implPushed`,
