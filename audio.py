@@ -345,6 +345,7 @@ DOCK_PULSE_FREQ_HZ = 700.0  # carrier of the panned range/lateral voice
 DOCK_PULSE_MIN_HZ = 1.2  # pulses per second at DOCK_MAX_RANGE_M
 DOCK_PULSE_MAX_HZ = 12.0  # ...and at contact
 DOCK_PULSE_DUTY = 0.35  # fraction of each period the pulse sounds for
+DOCK_PULSE_EDGE = 0.15  # attack skirt, as a fraction of the pulse; kills the gate click
 DOCK_PULSE_DB = -18.0
 # Same ceiling and the same reason as HYDRO_STEER_MAX_AZIMUTH_DEG: the KEMAR set's interaural
 # level difference peaks near 67.5 degrees and then FALLS about 5 dB out to 90, so mapping
@@ -357,12 +358,24 @@ DOCK_LATERAL_FULL_M = 1.2  # lateral offset that maps to full azimuth
 # resolves a beat far finer than it resolves pitch. It is also texturally unmistakable
 # against the two FM voices and the pure-sine tilt scale already on this machine.
 DOCK_REF_HZ = 330.0
-# Capped low enough that the pair never becomes a musical interval. A cap up at a fifth or a
-# tritone would march through the third and the fourth on the way in, and a consonant
-# interval mid-approach sounds MORE right than it is — the exact inversion of the meaning.
-# At 330 Hz, 200 cents is about 40 Hz apart: plainly two rough tones, never a chord.
-DOCK_MAX_CENTS = 200.0
-DOCK_CENTS_PER_M = 400.0  # so half a metre of error saturates the detune
+# The detune is specified as a BEAT RATE in Hz, not as an interval in cents, and the two
+# tones are placed symmetrically either side of DOCK_REF_HZ rather than one being held fixed.
+# Both of those are corrections to a first version that failed in listening:
+#
+#   * Holding one tone fixed and sliding the other means the pair's *average* frequency moves
+#     with the error. Two tones that close fuse into a single pitch percept sitting at that
+#     average, so what the listener actually hears is a tone gliding up and down — a pitch
+#     cue that was never intended and that completely masks the beating. Moving both by half
+#     the detune in opposite directions keeps the centre pitch nailed to DOCK_REF_HZ, so the
+#     ONLY thing that changes is the beat rate. That is how tuning by beats actually works.
+#
+#   * Specifying cents makes the audible result a function of DOCK_REF_HZ, and the first
+#     cap (200 cents, ~40 Hz apart at 330 Hz) was far outside the range where beating is
+#     heard as beating at all — above roughly 12-15 Hz of separation the percept turns into
+#     roughness and then into two separate pitches. Naming the beat rate directly makes the
+#     thing being tuned the thing being specified, and keeps it in range by construction.
+DOCK_BEAT_MAX_HZ = 12.0  # flutter fast enough to read as "well out", still clearly a beat
+DOCK_BEAT_HZ_PER_M = 24.0  # so half a metre of error saturates it
 DOCK_BEAT_DB = -22.0
 # Beating is signless, so above-versus-below rides on a slow tremolo whose RATE differs. The
 # two rates are far enough apart to name by ear and both are well below the beat rates they
@@ -370,9 +383,10 @@ DOCK_BEAT_DB = -22.0
 DOCK_AM_ABOVE_HZ = 5.5  # implement is above the band: come down
 DOCK_AM_BELOW_HZ = 2.0  # implement is below the band: come up
 DOCK_AM_DEPTH = 0.45
-# Unison lock, armed with hysteresis so hunting around the null cannot machine-gun it.
-DOCK_LOCK_CENTS = 20.0
-DOCK_LOCK_REARM_CENTS = 80.0
+# Unison lock, armed with hysteresis so hunting around the null cannot machine-gun it. In
+# beat-rate terms rather than cents, for the same reason as above.
+DOCK_LOCK_BEAT_HZ = 0.5
+DOCK_LOCK_REARM_BEAT_HZ = 2.5
 DOCK_LOCK_DB = -8.0
 DOCK_LOCK_HI_HZ = 1568.0  # a descending pair; nothing else in the mod uses that figure,
 DOCK_LOCK_LO_HZ = 1046.0  # which keeps it clear of the FM clicks and the noise-burst click
@@ -754,9 +768,12 @@ class AudioController:
         self._dock_pulse_timer = 0.0  # position within the current pulse period
         self._dock_overlap_L = None  # HRTF overlap-add tails
         self._dock_overlap_R = None
-        self._dock_ref_phase = 0.0  # fixed reference of the beat pair
-        self._dock_mov_phase = 0.0  # ...and the tracking tone
-        self._dock_mov_inc = 0.0  # glided across blocks; stepping it zippers
+        # Both partners of the beat pair move, symmetrically about DOCK_REF_HZ, so both
+        # increments are state and both are glided.
+        self._dock_ref_phase = 0.0
+        self._dock_mov_phase = 0.0
+        self._dock_ref_inc = 0.0
+        self._dock_mov_inc = 0.0
         self._dock_am_phase = 0.0
         self._dock_beat_env = 0.0  # separate fade, so the pair enters inside DOCK_BEAT_RANGE
         self._dock_lock_armed = False
@@ -4003,8 +4020,18 @@ class AudioController:
             inc_p = DOCK_PULSE_FREQ_HZ / self.samplerate
             ph_p = self._dock_pulse_phase + np.arange(frames) * inc_p
             t_pulse = self._dock_pulse_timer + np.arange(frames) / self.samplerate
-            pulse_gate = np.where(
-                (t_pulse % period) < (period * DOCK_PULSE_DUTY), 1.0, 0.0
+            # Shaped rather than hard-gated. A rectangular gate on a continuous sine puts a
+            # step discontinuity at both edges of every pulse, which is a click — at up to
+            # 12 pulses a second that reads as a harsh stutter laid over the tone rather than
+            # as a clean pulse train. A raised-cosine skirt on each end costs nothing and
+            # leaves the rate cue identical.
+            frac = (t_pulse % period) / (period * DOCK_PULSE_DUTY)
+            pulse_gate = np.clip(1.0 - frac, 0.0, 1.0)
+            pulse_gate = np.where(frac <= 1.0, pulse_gate, 0.0)
+            edge = DOCK_PULSE_EDGE
+            rise = np.clip(frac / edge, 0.0, 1.0)
+            pulse_gate = (
+                pulse_gate * 0.5 * (1.0 - np.cos(np.pi * rise))
             ).astype(np.float32)
             amp_p = float(10.0 ** (dock_pulse_db / 20.0))
             mono_dock = (
@@ -4029,31 +4056,42 @@ class AudioController:
             ).astype(np.float32)
             self._dock_beat_env = beat_end
 
-            cents = self._clamp(
-                dock_vertical * DOCK_CENTS_PER_M, -DOCK_MAX_CENTS, DOCK_MAX_CENTS
+            # Beat rate straight from the vertical error, and the pair placed symmetrically
+            # about DOCK_REF_HZ so the centre pitch never moves. See the constants block: a
+            # fixed reference with one sliding partner is heard as a single gliding PITCH,
+            # not as beating, because the fused percept sits at their average.
+            beat_hz = min(
+                abs(dock_vertical) * DOCK_BEAT_HZ_PER_M, DOCK_BEAT_MAX_HZ
             )
+            pair = None
             if beat_end > 0.0 or beat_arr.max() > 0.0:
-                inc_ref = DOCK_REF_HZ / self.samplerate
-                ph_ref = self._dock_ref_phase + np.arange(frames) * inc_ref
-                inc_mov_tgt = (DOCK_REF_HZ * (2.0 ** (cents / 1200.0))) / self.samplerate
+                inc_ref_tgt = (DOCK_REF_HZ - beat_hz * 0.5) / self.samplerate
+                inc_mov_tgt = (DOCK_REF_HZ + beat_hz * 0.5) / self.samplerate
                 if self._dock_mov_inc <= 0.0:
+                    self._dock_ref_inc = inc_ref_tgt
                     self._dock_mov_inc = inc_mov_tgt
-                # Glided across the block. Stepping the increment per callback zippers, and
-                # here it would also make the beat rate itself jump, which is the one thing
-                # the operator is trying to read.
+                # Both increments glide across the block. Stepping either per callback
+                # zippers, and here it would also make the beat rate itself jump, which is
+                # the one quantity the operator is reading.
+                inc_ref_arr = np.linspace(
+                    self._dock_ref_inc, inc_ref_tgt, frames, endpoint=False
+                )
                 inc_mov_arr = np.linspace(
                     self._dock_mov_inc, inc_mov_tgt, frames, endpoint=False
                 )
+                ph_ref = self._dock_ref_phase + np.cumsum(inc_ref_arr)
                 ph_mov = self._dock_mov_phase + np.cumsum(inc_mov_arr)
 
                 # Sign carrier. Beating is signless, so above-versus-below rides on the
                 # tremolo RATE. Suppressed inside the lock window: at the null there is
                 # nothing to correct, and a steady unison is the clearest "stop" available.
-                if abs(cents) <= DOCK_LOCK_CENTS:
+                if beat_hz <= DOCK_LOCK_BEAT_HZ:
                     am = np.ones(frames, dtype=np.float32)
                     self._dock_am_phase = 0.0
                 else:
-                    am_hz = DOCK_AM_ABOVE_HZ if cents < 0.0 else DOCK_AM_BELOW_HZ
+                    am_hz = (
+                        DOCK_AM_ABOVE_HZ if dock_vertical < 0.0 else DOCK_AM_BELOW_HZ
+                    )
                     inc_am = am_hz / self.samplerate
                     ph_am = self._dock_am_phase + np.arange(frames) * inc_am
                     am = (
@@ -4064,15 +4102,21 @@ class AudioController:
                     self._dock_am_phase = float((ph_am[-1] + inc_am) % 1.0)
 
                 amp_b = float(10.0 ** (DOCK_BEAT_DB / 20.0))
+                # The tremolo rides on BOTH partners, not just one. Applying it to a single
+                # tone amplitude-modulates that tone alone, which adds sidebands and muddies
+                # the very beat the pair exists to produce; scaling the sum leaves the beat
+                # untouched and simply breathes the whole voice.
                 pair = (
-                    np.sin(2.0 * np.pi * ph_ref) + np.sin(2.0 * np.pi * ph_mov) * am
-                ).astype(np.float32) * (amp_b * 0.5)
-                mono_dock = mono_dock + pair * beat_arr
+                    (np.sin(2.0 * np.pi * ph_ref) + np.sin(2.0 * np.pi * ph_mov))
+                    * am
+                ).astype(np.float32) * (amp_b * 0.5) * beat_arr * dock_gate_arr
 
-                self._dock_ref_phase = float((ph_ref[-1] + inc_ref) % 1.0)
+                self._dock_ref_phase = float(ph_ref[-1] % 1.0)
                 self._dock_mov_phase = float(ph_mov[-1] % 1.0)
+                self._dock_ref_inc = float(inc_ref_tgt)
                 self._dock_mov_inc = float(inc_mov_tgt)
             else:
+                self._dock_ref_inc = 0.0
                 self._dock_mov_inc = 0.0
 
             mono_dock = (mono_dock * dock_gate_arr).astype(np.float32)
@@ -4105,16 +4149,28 @@ class AudioController:
                 bufL += mono_dock * Lg
                 bufR += mono_dock * Rg
 
+            # ---- The pair is rendered CENTRE, deliberately not with the pulse ------------
+            # Summing the two voices before panning put them at the same point in space, and
+            # two sounds from one point fuse into one object — which is exactly what the
+            # first version sounded like: a single stuttering tone rather than a pulse and a
+            # pair. Splitting them is also honest, because the vertical null is not a
+            # directional quantity: an azimuth on it would carry no information. And it is
+            # free, since centre needs no convolution at all — the same argument the loader's
+            # ground and tilt tones already make for being centre-panned.
+            if pair is not None:
+                bufL += pair
+                bufR += pair
+
             # ---- Unison lock earcon -----------------------------------------------------
             # Armed latch entirely inside the callback, the way the articulation
             # centre-crossing click works: hysteresis on a continuous quantity, fired from
             # here so it is sample-accurate against the tone it is marking and cannot
             # double-fire while hunting around the null.
-            if abs(cents) > DOCK_LOCK_REARM_CENTS:
+            if beat_hz > DOCK_LOCK_REARM_BEAT_HZ:
                 self._dock_lock_armed = True
             elif (
                 self._dock_lock_armed
-                and abs(cents) <= DOCK_LOCK_CENTS
+                and beat_hz <= DOCK_LOCK_BEAT_HZ
                 and beat_end > 0.5
             ):
                 self._dock_lock_armed = False
