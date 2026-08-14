@@ -161,6 +161,11 @@ local _implEdgeCids     = nil  -- {left, centre, right} of the cutting edge / ti
 local _implHeelCids     = nil  -- {left, right} of the implement's rear-bottom
 local _implTiltZeroDeg  = 0.0  -- design-pose pitch of the edge->heel axis, subtracted out
 local _implPushed       = false -- the cid list has been handed to the GE proximity extension
+local _implClock        = 0     -- seconds of sim time, for the push heartbeat
+local _implPushAt       = -1e9  -- when the cid list was last sent
+local _implPushName     = ""    -- ...and what was sent, so it can be repeated verbatim
+local _implPushCids     = nil
+local IMPL_PUSH_HEARTBEAT_S = 4.0
 local _implDiagLogged   = false -- the "why did resolution fail" dump has been written once
 local _implRefCid       = nil  -- a machine-body node, for the detach test
 local _implRefDist      = 0.0  -- its design-space distance to the centre edge node
@@ -255,9 +260,22 @@ end
 -- because the resolution only ever changes when it re-runs, and it re-runs on reset --
 -- so GE can treat the newest push as authoritative and never has to guard against
 -- reading stale cids.
+-- Re-sent periodically rather than once, which is a correction. The game-engine side drops
+-- its cids on any event that could invalidate them -- a Lua reload, a vehicle switch -- but
+-- it has no way to ASK for them back, and this VM's one-shot latch meant it never volunteered
+-- them either. Switching out of the loader and back in therefore killed every implement
+-- feature until the vehicle was reset, which is a routine thing to do and left no error
+-- anywhere. A heartbeat costs one queueGameEngineLua every few seconds and makes the whole
+-- handoff self-healing: whatever GE has lost, it gets back within IMPL_PUSH_HEARTBEAT_S.
+--
+-- Only machines that HAVE an implement heartbeat. A vehicle with none says so once; repeating
+-- it would let whichever vehicle spoke last overwrite the loader's cids while you are sitting
+-- in the other one.
 local function pushImplementToGE(partName, friendly, cids)
-  if _implPushed then return end
   _implPushed = true
+  _implPushAt = _implClock
+  _implPushName = friendly or partName or ""
+  _implPushCids = cids
   local list = {}
   for _, cid in ipairs(cids or {}) do list[#list + 1] = tostring(cid) end
   -- The five sample nodes go over separately, in a FIXED order that the GE side relies on:
@@ -777,6 +795,9 @@ local function reset()
   _implNodesScanned = false
   _implNodeTries = 0
   _implPushed = false
+  _implPushAt = -1e9
+  _implPushName = ""
+  _implPushCids = nil
   _implDiagLogged = false
   _implEdgeCids = nil
   _implHeelCids = nil
@@ -1070,6 +1091,12 @@ local function fillStruct(o, dtSim)
   -- pcall because this runs on the physics thread: a throw here would take the whole
   -- telemetry protocol down, not just the loader features.
   _implAccum = _implAccum + (dtSim or 0)
+  _implClock = _implClock + (dtSim or 0)
+  -- Heartbeat the cid list so a game-engine reload or a vehicle switch self-heals. Only
+  -- once something was actually found: see pushImplementToGE.
+  if _implPushCids and (_implClock - _implPushAt) >= IMPL_PUSH_HEARTBEAT_S then
+    pcall(pushImplementToGE, nil, _implPushName, _implPushCids)
+  end
   if _implAccum >= IMPL_TICK_INTERVAL then
     local dt = _implAccum
     _implAccum = 0

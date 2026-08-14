@@ -75,17 +75,39 @@ function M.onImplementCids(vehID, friendlyName, sampleCsv, cidCsv)
     return out
   end
   local cids = parse(cidCsv)
-  implSampleCids = parse(sampleCsv)
-  if #implSampleCids ~= 5 then implSampleCids = nil end
+  local sample = parse(sampleCsv)
+  if #sample ~= 5 then sample = nil end
+
+  -- Idempotent, because this now arrives as a heartbeat rather than once. Resetting the
+  -- announce latch unconditionally would re-send the IMPLEMENT: line every few seconds, and
+  -- Python treats that as a part swap -- it drops whatever it was tracking, so the approach
+  -- speech would re-announce "Bucket approaching X" on a loop while you sat still.
+  local newName = (#cids > 0) and friendlyName or nil
+  local same = (implVehID == vehID)
+           and (implName == newName)
+           and (implCids ~= nil) == (#cids > 0)
+  if same and implCids then
+    same = (#implCids == #cids)
+    if same then
+      for i = 1, #cids do
+        if implCids[i] ~= cids[i] then same = false; break end
+      end
+    end
+  end
+
+  implSampleCids = sample
   if #cids > 0 then
     implVehID, implCids, implName = vehID, cids, friendlyName
-    ipLog('I', string.format("implement '%s' on vehicle %d: %d sample nodes",
-      tostring(friendlyName), vehID, #cids))
+    if not same then
+      ipLog('I', string.format("implement '%s' on vehicle %d: %d sample nodes",
+        tostring(friendlyName), vehID, #cids))
+    end
   else
     implVehID, implCids, implName = vehID, nil, nil
-    ipLog('I', string.format("vehicle %d reports no implement", vehID))
+    if not same then ipLog('I', string.format("vehicle %d reports no implement", vehID)) end
   end
-  lastSentName, nameEverSent = nil, false  -- force a fresh IMPLEMENT: line
+  -- Only an actual change forces a fresh IMPLEMENT: line.
+  if not same then lastSentName, nameEverSent = nil, false end
 end
 
 -- Where the implement is and which way it points, in world space. Returns nil on anything

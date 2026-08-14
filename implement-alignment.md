@@ -156,24 +156,35 @@ shredded around it.
       and spatial separation; unverified by ear.
 - [ ] `DOCK_BEAT_DB` (-22) against the pulse's -18 may leave the pair too quiet to read.
 
-## [ ] Next pass — REBUILD cannot actually rebuild
+## [x] Fixed — the implement handoff is now self-healing
 
-The implement cid list is pushed one-shot from the vehicle VM (`_implPushed`,
-`796F6C6F313035.lua:259`), re-armed only by that VM's own `reset()`. The GE-side extension
-drops its cids on any reload. So a GE Lua reload with the vehicle already spawned leaves GE
-with no cids and the vehicle VM convinced it has already pushed — the machine reports
-`IMPLEMENT:NONE` and every implement feature goes silent until the vehicle is reset.
+Two symptoms, one cause, and it was logged as a "next pass" nicety when it was in fact
+breaking routine play:
 
-Adding `vehicleGeometry.lua` to `modScript.lua` forced exactly that reload and surfaced it
-for the first time. It is a latent gap, not a regression from this work.
+1. Restarting beamtel alone left every implement feature convinced nothing was fitted.
+2. Switching out of the loader and back in killed the tones permanently — toggling the
+   instrument off and on did not bring them back either.
 
-`REBUILD` on 4470 clears the GE cache but has no path to make the vehicle VM re-push, so the
-one command that exists to recover from this cannot.
+The cid list was pushed **once** from the vehicle VM, re-armed only by that VM's own
+`reset()`. The game-engine side drops its cids on a Lua reload or a vehicle switch, but had
+no way to *ask* for them back, and the vehicle never volunteered them again. Switching
+vehicles is routine, so this was not an edge case. Separately, which implement is fitted is
+Python-side state that a restart wipes, while the "already announced" latch lives in Lua
+where restarting beamtel cannot clear it.
 
-- [ ] `REBUILD` should `queueLuaCommand` into the player vehicle to clear `_implPushed` and
-      re-run `resolveImplementNodes`, not just clear the GE side
-- [ ] Consider having the GE extension request a push on `onExtensionLoaded` rather than
-      waiting to be told, so a Lua reload self-heals without any user action
+- [x] The push is a heartbeat (`IMPL_PUSH_HEARTBEAT_S`, 4 s) rather than one-shot, so
+      whatever the game-engine side has lost it gets back on its own. Only machines that
+      *have* an implement heartbeat — repeating "no implement" would let whichever vehicle
+      spoke last overwrite the loader's cids while you sat in the other one.
+- [x] `onImplementCids` is idempotent. Resetting the announce latch on every heartbeat would
+      re-send the `IMPLEMENT:` line every few seconds, and Python reads that as a part swap —
+      it drops what it was tracking, so the approach speech would re-announce on a loop while
+      the machine sat still.
+- [x] Python asks for a re-announce (`ON`, which is already exactly the right reset mod-side)
+      when the implement listener starts, and again when the instrument is toggled on, so
+      the toggle is a real recovery path.
+- [x] The toggle waits for the reply before speaking, rather than reporting from the state it
+      is in the middle of refreshing.
 
 ## [ ] Next pass — make the docking instrument on by default
 

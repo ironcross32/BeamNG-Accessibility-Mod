@@ -1047,6 +1047,14 @@ def implement_listener(audio_controller, stop_event):
         sock.settimeout(0.2)
         logger.info(f"Implement proximity listener started on port {IMPLEMENT_LISTEN_PORT}")
 
+        # Ask the mod to re-announce. Which implement is fitted is Python-side state that a
+        # restart wipes, but the mod only sends the IMPLEMENT: line when the name CHANGES —
+        # and that latch lives in Lua, where restarting beamtel cannot clear it. Without
+        # this, restarting beamtel while the game keeps running leaves every implement
+        # feature convinced no implement is fitted until the vehicle is reset. ON is already
+        # exactly the right reset on the mod side, so it needs no new command.
+        _send_implement_cmd("ON")
+
         impl_word = "Bucket"
         tracked = None  # name of the object currently being tracked
         tracked_relation = None
@@ -3824,6 +3832,10 @@ def _on_next_key_press(event, audio_controller):
         and not (_capture_mods["shift"] or _capture_mods["alt"])
     ):
         dock_mode_active = not dock_mode_active
+        # Re-announce on the way in, so toggling the instrument is a genuine recovery path
+        # if the mod and this side have drifted apart about what is fitted.
+        if dock_mode_active:
+            _send_implement_cmd("ON")
         _send_implement_cmd("DOCK_ON" if dock_mode_active else "DOCK_OFF")
         audio_controller.set_dock_mode(dock_mode_active)
         if not dock_mode_active:
@@ -3831,15 +3843,22 @@ def _on_next_key_press(event, audio_controller):
                 last_dock = None
                 last_dock_fail = None
             say("Docking instrument off", exclude_from_buffer=True)
-        elif not _implement_word_current:
-            # Left on deliberately rather than refused: you may be about to climb into a
-            # machine that has one, and the readout is inert until then.
-            say("Docking instrument on. No implement fitted", exclude_from_buffer=True)
         else:
-            # Auto-select is per target, so a fresh mode start should not inherit a band
-            # pick made against something you have since driven away from.
-            _send_implement_cmd("BANDAUTO")
-            say("Docking instrument on", exclude_from_buffer=True)
+            # The re-announce above travels to the mod and back, and the mod scans at 10 Hz,
+            # so read the answer rather than the stale value. Without this the toggle reports
+            # "no implement fitted" from state it is in the middle of refreshing.
+            time.sleep(0.25)
+            if _implement_word_current:
+                # Auto-select is per target, so a fresh mode start should not inherit a band
+                # pick made against something you have since driven away from.
+                _send_implement_cmd("BANDAUTO")
+                say("Docking instrument on", exclude_from_buffer=True)
+            else:
+                # Left on deliberately rather than refused: you may be about to climb into a
+                # machine that has one, and the readout is inert until then. It also
+                # self-heals shortly after a vehicle switch, once the mod's next heartbeat
+                # re-delivers the implement to the game-engine side.
+                say("Docking instrument on. No implement fitted", exclude_from_buffer=True)
     elif name == "w" and not (
         _capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]
     ):
