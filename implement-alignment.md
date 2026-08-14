@@ -87,6 +87,27 @@ python diagnostic/implement_proximity_sim.py # regression
 python diagnostic/hydro_steer_sim.py         # regression
 ```
 
+## [ ] Next pass — make the docking instrument on by default
+
+Currently opt-in behind `F9` `Ctrl+I`, on the reasoning that it is a mode you enter
+deliberately and that it silences the scanner while it runs. In practice that is
+inconsistent with the rest of the loader features: the ground tone, the tilt scale and the
+articulation tone all appear by themselves on a machine with an implement fitted and need no
+keybind at all. It should behave the same way.
+
+- [ ] `dockActive` starts true in `implementProximity.lua`; `dock_mode_active` starts true in
+      `beamtel.py`, with `audio_controller.set_dock_mode(True)` at startup
+- [ ] Keep `F9` `Ctrl+I` as the toggle, so it can still be switched off
+- [ ] Check the interaction with scanner suppression: with the instrument live by default, an
+      operator who switches the scanner on inside 5 m of something would get silence from it
+      and might reasonably read that as the scanner being broken. Either the suppression
+      needs to be conditional on the scanner having been turned on *after* the instrument, or
+      the scanner toggle should speak something when it is being suppressed.
+
+That third point is the reason this is worth its own pass rather than a one-line default
+flip — the suppression was designed on the assumption that the instrument is a deliberate,
+short-lived mode.
+
 ## Not yet done — in-game
 
 None of this has been run in BeamNG. The sims cover the geometry, the sign conventions and
