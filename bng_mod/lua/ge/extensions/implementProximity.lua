@@ -55,6 +55,12 @@ local lastSentName = nil
 local nameEverSent = false  -- distinguishes "not sent yet" from "sent NONE"
 local lastSentLine = nil
 
+-- The docking instrument. Off by default and toggled from Python, unlike the proximity
+-- speech above: it is a deliberate mode you enter to line something up, not ambient
+-- awareness, and its readout is meaningless on a machine with no implement fitted.
+local dockActive   = false
+local lastDockLine = nil
+
 local function ipLog(level, msg) log(level, 'implementProximity', msg) end
 
 -- Called from the vehicle VM. cidCsv is empty when the machine has no implement.
@@ -306,12 +312,151 @@ local function measureTarget(veh, frame)
   }
 end
 
+-- =================================================================================================
+--  Docking reference band
+-- =================================================================================================
+
+-- Which band of the target the implement is being lined up against. Lifting and ramming want
+-- different bands out of identical geometry, so the reference is selected rather than derived,
+-- and it is announced -- with a derived pocket the operator could never tell what the readout
+-- was measuring against.
+--
+-- Auto-selection needs to know a bucket from a pair of forks, which is otherwise a Python-side
+-- job (beamtel's _implement_word). Only the CHOICE is made here; the spoken naming stays over
+-- there. Splitting it this way keeps one copy of each: Lua picks, Python speaks.
+local BAND_MIN_HEIGHT_M = 0.10  -- a void shorter than this is a modelling seam, not a pocket
+local bandIndex    = nil        -- nil means auto-select
+local bandTargetID = nil        -- which target the manual index belongs to
+
+local function implementIsFork()
+  local s = tostring(implName or ""):lower()
+  return s:find("fork", 1, true) ~= nil
+      or s:find("tine", 1, true) ~= nil
+      or s:find("grapple", 1, true) ~= nil
+end
+
+-- Forks want the lowest real void: that is the pallet pocket, or the air under a car's
+-- rocker. A bucket wants the tallest solid run, because you are lining up against a face --
+-- a pile, a flank, a door -- rather than trying to get inside anything.
+local function autoSelectBand(bands)
+  if not bands or #bands == 0 then return nil end
+  if implementIsFork() then
+    for i, b in ipairs(bands) do
+      if b.kind == "GAP" and (b.hiZ - b.loZ) >= BAND_MIN_HEIGHT_M then return i end
+    end
+  end
+  local best, bestH = nil, -1
+  for i, b in ipairs(bands) do
+    if b.kind == "SOLID" and (b.hiZ - b.loZ) > bestH then best, bestH = i, b.hiZ - b.loZ end
+  end
+  if best then return best end
+  return 1
+end
+
+local function resolveBand(targetID)
+  local geo = extensions and extensions.vehicleGeometry or nil
+  if not geo or not geo.bands then return nil, nil, 0 end
+  local ok, bands = pcall(geo.bands, targetID)
+  if not ok or not bands or #bands == 0 then return nil, nil, 0 end
+  -- A manual pick belongs to the target it was made against; a new target starts on auto
+  -- again rather than inheriting an index that now points at unrelated geometry.
+  if bandTargetID ~= targetID then
+    bandIndex, bandTargetID = nil, targetID
+  end
+  local idx = bandIndex or autoSelectBand(bands) or 1
+  if idx < 1 then idx = 1 end
+  if idx > #bands then idx = #bands end
+  -- Write the clamp back, or holding the cycle key past the end would run the index away and
+  -- the same number of presses would then be needed to get back into range.
+  if bandIndex then bandIndex = idx end
+  return bands[idx], idx, #bands
+end
+
+local function cycleBand(step)
+  bandIndex = (bandIndex or 0) + step
+  -- Clamped, not wrapped: wrapping a short list is disorienting when you cannot see it, and
+  -- hitting the end is itself information.
+  if bandIndex < 1 then bandIndex = 1 end
+end
+
 local function insideBox(p, frame, box)
   local d = p - frame.c
   local f, r, u = frame.f:dot(d), frame.r:dot(d), frame.u:dot(d)
   return f >= box.minF and f <= box.maxF
      and r >= box.minR and r <= box.maxR
      and u >= box.minU and u <= box.maxU
+end
+
+-- The docking readout: where the implement is relative to the selected band of the nearest
+-- target, resolved onto the implement's own axes rather than the machine's.
+--
+-- Three numbers plus a reference, which is the ceiling for anything a person can track at
+-- once. Lateral and vertical are the ones you steer and lift with; range tells you how long
+-- you have left to get them right. Yaw is reported but is not one of the continuous
+-- channels -- it only matters at the moment of entry, and sonifying a fourth axis is exactly
+-- how the obstacle detector became unusable.
+local function sendDockLine(best)
+  if not dockActive then return end
+  if not best or not implCids then
+    if lastDockLine ~= "DOCKCLEAR" then
+      lastDockLine = "DOCKCLEAR"
+      send("DOCKCLEAR")
+    end
+    return
+  end
+
+  local ok, err = pcall(function()
+    local frame = M.getImplementFrame()
+    if not frame then return end
+    local band, idx, count = resolveBand(best.id)
+    if not band then return end
+
+    -- Implement axes. Left is world-up cross the implement heading, keeping the mod-wide
+    -- convention that a positive bearing means LEFT.
+    local fwd = frame.fwd
+    local left = vec3(0, 0, 1):cross(fwd)
+    if left:length() < 1e-4 then return end
+    left = left:normalized()
+
+    local geo = extensions and extensions.vehicleGeometry or nil
+    local centre = nil
+    if geo and geo.boxCentre then
+      local okC, c = pcall(geo.boxCentre, best.id)
+      if okC and c then centre = c end
+    end
+    if not centre then centre = vec3(best.veh:getPosition()) end
+
+    local d = centre - frame.pos
+    local lateral = left:dot(d)
+
+    -- Positive vertical means the band sits ABOVE the cutting edge, i.e. raise to meet it.
+    -- Measured against the band's mid-height rather than its floor because for a fork pocket
+    -- the middle is what you aim the tines at, and for a solid band it is the centre of the
+    -- face you are about to hit.
+    local bandMid = (band.loZ + band.hiZ) * 0.5
+    local vertical = bandMid - frame.pos.z
+
+    -- Squareness to the target's face, folded to +/-90: entering a pallet at an angle jams
+    -- it, but a pallet has no front or back as far as the tines are concerned.
+    local tf = vec3(best.veh:getDirectionVector())
+    tf.z = 0
+    local yaw = 0
+    if tf:length() > 1e-4 then
+      tf = tf:normalized()
+      local c = math.max(-1, math.min(1, fwd:dot(tf)))
+      yaw = math.deg(math.acos(c))
+      if yaw > 90 then yaw = 180 - yaw end
+      if left:dot(tf) < 0 then yaw = -yaw end
+    end
+
+    send(string.format("DOCK:%s,%.3f,%.3f,%.3f,%d,%d,%s,%.3f,%.3f,%.1f,%d",
+      best.name, best.d, lateral, vertical, idx, count, band.kind,
+      band.loZ, band.hiZ, yaw, (bandIndex ~= nil) and 1 or 0))
+    lastDockLine = "DOCK"
+  end)
+  if not ok then
+    ipLog('D', "dock readout failed: " .. tostring(err))
+  end
 end
 
 local function scan()
@@ -411,6 +556,10 @@ local function scan()
             relation = relation,
             inside = inside and 1 or 0,
             contact = (minD <= CONTACT_M) and 1 or 0,
+            veh = veh,
+            id = veh:getID(),
+            frame = frame,
+            box = box,
           }
         end
       end
@@ -430,6 +579,8 @@ local function scan()
     lastSentLine = line
     send(line)
   end
+
+  sendDockLine(best)
 end
 
 -- =================================================================================================
@@ -464,6 +615,10 @@ local function resetState()
   scanTimer = 0
   implVehID, implCids, implName, implSampleCids = nil, nil, nil, nil
   lastSentName, lastSentLine, nameEverSent = nil, nil, false
+  -- A manual band pick is tied to a target and to the implement that was fitted when it was
+  -- made; both may have just changed, so fall back to auto rather than keeping an index that
+  -- now points at unrelated geometry.
+  bandIndex, bandTargetID, lastDockLine = nil, nil, nil
 end
 
 function M.onExtensionLoaded()
@@ -486,12 +641,20 @@ function M.onVehicleSwitched(oldId, newId, player)
   if player ~= nil and player ~= 0 then return end
   implVehID, implCids, implName, implSampleCids = nil, nil, nil, nil
   lastSentName, lastSentLine, nameEverSent = nil, nil, false
+  -- A manual band pick is tied to a target and to the implement that was fitted when it was
+  -- made; both may have just changed, so fall back to auto rather than keeping an index that
+  -- now points at unrelated geometry.
+  bandIndex, bandTargetID, lastDockLine = nil, nil, nil
 end
 
 function M.onVehicleResetted(vehId)
   if implVehID and vehId ~= implVehID then return end
   implVehID, implCids, implName, implSampleCids = nil, nil, nil, nil
   lastSentName, lastSentLine, nameEverSent = nil, nil, false
+  -- A manual band pick is tied to a target and to the implement that was fitted when it was
+  -- made; both may have just changed, so fall back to auto rather than keeping an index that
+  -- now points at unrelated geometry.
+  bandIndex, bandTargetID, lastDockLine = nil, nil, nil
 end
 
 function M.onUpdate(dtReal, dtSim, dtRaw)
@@ -509,6 +672,16 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
         elseif cmd == "REBUILD" then
           implVehID, implCids, implName, implSampleCids = nil, nil, nil, nil
           lastSentName, lastSentLine, nameEverSent = nil, nil, false
+        elseif cmd == "DOCK_ON" then
+          dockActive, lastDockLine = true, nil
+        elseif cmd == "DOCK_OFF" then
+          dockActive, lastDockLine = false, nil
+        elseif cmd == "BANDNEXT" then
+          cycleBand(1)
+        elseif cmd == "BANDPREV" then
+          cycleBand(-1)
+        elseif cmd == "BANDAUTO" then
+          bandIndex = nil
         end
       end
     until not data

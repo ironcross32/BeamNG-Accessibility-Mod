@@ -79,6 +79,12 @@ In reverse, the scanner measures from the **back** of your vehicle and reports t
 
 Scanner distances are the **gap** between the two vehicles — the clear space you still have — not the distance between their centres. Earlier versions measured centre to centre, which added roughly half a vehicle at each end and, worse, changed with the target's orientation: a car sitting broadside and the same car nose-on at the same real gap reported the same number. Expect the figures to read smaller than they used to, and to reach zero when you touch.
 
+#### Loader implement (bucket / forks):
+
+- Ctrl+I: Toggle the docking instrument
+- I: Speak the alignment readout — reference band, how far to raise or lower, how far left or right, range, and how square you are to the face
+- Shift+I: Cycle the reference band
+
 #### Toggleable modes:
 
 - Ctrl+S: Toggle status mode
@@ -217,6 +223,12 @@ Status mode gains three extra items on such a machine — implement height above
 Two tones report the implement continuously. A rough FM tone reports the ground: it is clean and quiet a couple of metres up, and grows progressively grittier the closer the bucket or forks get to the ground. If you curl into the ground hard enough to lever the machine up off its front wheels, that tone cleans up again and rises in pitch with how much lift you are getting. A second tone reports tilt on a quarter-tone scale — 400 Hz is dead level, falling to 200 Hz at the full forward dump and rising to 800 Hz at the full curl back, in countable quarter-tone steps. Both tones fade away about a second after you stop moving the implement and snap straight back when you touch the controls again; the ground tone also comes back on its own if you are driving toward something rather than lowering onto it.
 
 Speech announces vehicles and props the implement is approaching, by name, along with whether the bucket or forks are above, below or level with them. It announces again when the relationship changes — for instance when raising the forks clears the roofline — when the tines slide underneath something ready to lift it, and when you leave the area. Parts that have broken off a vehicle are detected in their own right, so a bumper lying in the dirt is not invisible.
+
+**The docking instrument** is for the last couple of metres, when you are lining the tines up with a pallet pocket or squaring the bucket against a car's flank. Turn it on with F9 then Ctrl+I; it is off by default because it is a mode you enter deliberately to line something up, not ambient awareness.
+
+It works from a **reference band**. The mod reads the vertical profile of whatever you are closest to and splits it into alternating solid runs and voids — the air under a car's rocker, the sill, the door, the glass, the roofline — then picks one for you: the lowest real void if you are carrying forks, the tallest solid face if you are carrying a bucket. F9 then Shift+I steps to a different one and says which it is, so the readout always tells you what it is measuring against. It is never a guess you have to reverse-engineer.
+
+F9 then I speaks the whole picture in one go: which band, how tall it is, how far to raise or lower, how far left or right, the range, and — only when it is bad enough to jam the tines — how far off square you are to the face. Think of it as a cane tap rather than a continuous field: one deliberate press, one complete answer, silence in between.
 
 **Accessible node grabber** announces node names as the mouse pointer enters them and jumps the pointer to the closest node relative to the camera's center. Holding Ctrl allows free mouse movement. Scrolling the mouse wheel announces the grabber's strength — higher strength can lift a vehicle by a node, or tear a part free if it cannot bear the weight. Middle-click pins or unpins a node; a pinned node is fixed in place, which may prevent driving or tear off the associated part. To exert force on a node: hold Ctrl, move to the desired node, then click and hold the left mouse button — Ctrl can then be released. Middle-click while holding the left button to pin or unpin.
 

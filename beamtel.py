@@ -936,6 +936,14 @@ IMPL_PROX_LEAVE_M = 4.5
 IMPL_PROX_RELATION_HOLD = 0.40  # seconds a new relation must persist before it is spoken
 IMPL_PROX_INSIDE_HOLD = 0.25
 IMPL_PROX_LEAVE_HOLD = 0.30
+
+# Docking readout thresholds. Both exist to stop the cane tap reading out noise: soft-body
+# jitter moves the cutting edge by a couple of centimetres even on a parked machine, and a
+# spoken "left 0.01 meters" is worse than "centred" because it invites a correction that
+# cannot be made.
+IMPL_DOCK_LEVEL_M = 0.05    # below this an axis is called level / centred rather than numbered
+IMPL_DOCK_YAW_DEG = 8.0     # squareness is only worth saying once it would jam the tines
+
 _IMPL_RELATION_PHRASE = {
     "ABOVE": "above it",
     "BELOW": "below it",
@@ -953,13 +961,75 @@ def _implement_word(part_name: str) -> str:
     return "Bucket"
 
 
+def _band_name(kind: str, idx: int, count: int) -> str:
+    """Name the docking reference band from its position in the stack.
+
+    Named by ordinal rather than by absolute height because the mod reports world Z, which
+    means nothing spoken aloud, and because what makes a band identifiable is where it sits
+    relative to the others — the lowest void in a pallet is the pocket whether the pallet is
+    on the ground or on a truck bed.
+    """
+    if kind == "GAP":
+        if idx <= 1:
+            return "underside"
+        return "opening"
+    if idx >= count:
+        return "roof"
+    if idx <= 1:
+        return "base"
+    return "body"
+
+
+def _dock_phrase(dock: dict) -> str:
+    """The cane tap: the whole docking picture in one utterance.
+
+    Deliberately a single sentence fired on a keypress rather than anything continuous. A
+    blind cane user taps when they want to know something; they do not receive an ambient
+    three-dimensional field, which is precisely what made the obstacle detector unusable.
+    """
+    band = _band_name(dock["kind"], dock["idx"], dock["count"])
+    thick = dock["hi_z"] - dock["lo_z"]
+    bits = [f"{dock['impl_word']}, {dock['name']}"]
+
+    ref = f"{band} {dock['idx']} of {dock['count']}"
+    if dock["manual"]:
+        ref += ", held"
+    tv, tu = fmt_distance(max(0.0, thick))
+    bits.append(f"{ref}, {tv} {tu} tall")
+
+    vert = dock["vertical"]
+    if abs(vert) < IMPL_DOCK_LEVEL_M:
+        bits.append("level")
+    else:
+        vv, vu = fmt_distance(abs(vert))
+        bits.append(f"{'raise' if vert > 0 else 'lower'} {vv} {vu}")
+
+    lat = dock["lateral"]
+    if abs(lat) < IMPL_DOCK_LEVEL_M:
+        bits.append("centred")
+    else:
+        lv, lu = fmt_distance(abs(lat))
+        bits.append(f"{'left' if lat > 0 else 'right'} {lv} {lu}")
+
+    rv, ru = fmt_distance(max(0.0, dock["range"]))
+    bits.append(f"range {rv} {ru}")
+
+    # Squareness only matters at the moment of entry, so it is spoken when it is bad enough
+    # to jam the tines and stays silent otherwise rather than becoming a fourth number.
+    yaw = dock["yaw"]
+    if abs(yaw) >= IMPL_DOCK_YAW_DEG:
+        bits.append(f"face {abs(yaw):.0f} degrees {'left' if yaw > 0 else 'right'}")
+
+    return ". ".join(bits)
+
+
 def implement_listener(stop_event):
     """Listens for UDP packets from implementProximity.lua and speaks approach/leave events.
 
     Only ever announces the NEAREST object. The extension may report a different one from
     tick to tick in a crowded yard, and narrating all of them would be unusable.
     """
-    global _implement_word_current
+    global _implement_word_current, last_dock
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         sock.bind(("127.0.0.1", IMPLEMENT_LISTEN_PORT))
@@ -989,10 +1059,48 @@ def implement_listener(stop_event):
                     _implement_word_current = (
                         "" if part.strip().upper() == "NONE" else impl_word
                     )
-                    # A part swap invalidates whatever we were tracking.
+                    # A part swap invalidates whatever we were tracking — including the
+                    # docking readout, whose band pick belonged to the old implement.
                     tracked = None
                     tracked_relation, tracked_inside = None, False
                     pending_relation = pending_inside = pending_leave = None
+                    with state_lock:
+                        last_dock = None
+                    continue
+
+                # Docking lines are handled ahead of the proximity chain and never feed it:
+                # they are a separate instrument with its own toggle, and the two would
+                # otherwise fight over the same tracked/pending state machine.
+                if text == "DOCKCLEAR":
+                    with state_lock:
+                        last_dock = None
+                    continue
+
+                if text.startswith("DOCK:"):
+                    # rsplit so a target name containing a stray separator cannot shift the
+                    # numeric fields, the same way the NEAR parse below does it.
+                    fields = text[5:].rsplit(",", 10)
+                    if len(fields) != 11:
+                        continue
+                    try:
+                        parsed = {
+                            "name": fields[0].strip(),
+                            "range": float(fields[1]),
+                            "lateral": float(fields[2]),
+                            "vertical": float(fields[3]),
+                            "idx": int(fields[4]),
+                            "count": int(fields[5]),
+                            "kind": fields[6].strip().upper(),
+                            "lo_z": float(fields[7]),
+                            "hi_z": float(fields[8]),
+                            "yaw": float(fields[9]),
+                            "manual": fields[10].strip() == "1",
+                            "impl_word": impl_word,
+                        }
+                    except ValueError:
+                        continue
+                    with state_lock:
+                        last_dock = parsed
                     continue
 
                 if text == "CLEAR":
@@ -2044,6 +2152,12 @@ announce_implement_proximity = True
 # Read by toggle_scan_mode, which needs to say which end of the machine it is aiming from.
 _implement_word_current = ""
 
+# Docking instrument. dock_mode_active is the user-facing toggle; last_dock is the most
+# recent readout from the mod, or None when there is nothing in range. Written by
+# implement_listener under state_lock and read by the F9+I cane tap and the audio callback.
+dock_mode_active = False
+last_dock = None
+
 # Monotonic timestamp of the last vehicle-switch announcement. The camera
 # compass listener checks this and skips its own callout briefly afterwards
 # so a heading-crossing tick can't talk over the (typically longer)
@@ -2390,6 +2504,9 @@ _F9_HELP = {
     ("n", True, False, False): "Toggle accessible node grabber",
     ("c", True, True, False): "Toggle clickspot detection",
     ("c", True, True, True): "Browse clickspots",
+    ("i", False, False, False): "Implement alignment readout",
+    ("i", False, True, False): "Cycle implement alignment reference band",
+    ("i", True, False, False): "Toggle implement docking instrument",
 }
 
 # F10 (AI) command descriptions
@@ -3278,6 +3395,7 @@ def open_clickspot_browser():
 
 def _on_next_key_press(event, audio_controller):
     global marked_coord_x, marked_coord_y, _last_coord_bearing_ts, _input_help_mode
+    global dock_mode_active, last_dock
     if event.event_type != "down":
         return
     name = (event.name or "").lower()
@@ -3602,6 +3720,72 @@ def _on_next_key_press(event, audio_controller):
                 say(
                     f"{prefix}{dist_str} {orientation} {side}", exclude_from_buffer=True
                 )
+    elif name == "i" and not (
+        _capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]
+    ):
+        # The cane tap. One deliberate press, one complete picture, no ambient noise.
+        if not _implement_word_current:
+            say("No implement fitted", exclude_from_buffer=True)
+        elif not dock_mode_active:
+            say("Docking instrument is off", exclude_from_buffer=True)
+        else:
+            with state_lock:
+                snap = dict(last_dock) if last_dock else None
+            if snap is None:
+                say("Nothing in range", exclude_from_buffer=True)
+            else:
+                say(_dock_phrase(snap), exclude_from_buffer=True)
+    elif (
+        name == "i"
+        and _capture_mods["shift"]
+        and not (_capture_mods["ctrl"] or _capture_mods["alt"])
+    ):
+        # Retarget the reference band. The mod auto-selects on lock — the lowest void for
+        # forks, the tallest face for a bucket — and this overrides it when you want a
+        # different part of the same object: a window rather than the sill, the roofline
+        # rather than the pocket.
+        if not _implement_word_current:
+            say("No implement fitted", exclude_from_buffer=True)
+        else:
+            _send_implement_cmd("BANDNEXT")
+            # The mod recomputes on its next 10 Hz tick, so read back rather than predicting.
+            time.sleep(0.15)
+            with state_lock:
+                snap = dict(last_dock) if last_dock else None
+            if snap is None:
+                say("Nothing in range", exclude_from_buffer=True)
+            else:
+                band = _band_name(snap["kind"], snap["idx"], snap["count"])
+                vert = snap["vertical"]
+                if abs(vert) < IMPL_DOCK_LEVEL_M:
+                    where = "level"
+                else:
+                    vv, vu = fmt_distance(abs(vert))
+                    where = f"{'raise' if vert > 0 else 'lower'} {vv} {vu}"
+                say(
+                    f"{band} {snap['idx']} of {snap['count']}, {where}",
+                    exclude_from_buffer=True,
+                )
+    elif (
+        name == "i"
+        and _capture_mods["ctrl"]
+        and not (_capture_mods["shift"] or _capture_mods["alt"])
+    ):
+        dock_mode_active = not dock_mode_active
+        _send_implement_cmd("DOCK_ON" if dock_mode_active else "DOCK_OFF")
+        if not dock_mode_active:
+            with state_lock:
+                last_dock = None
+            say("Docking instrument off", exclude_from_buffer=True)
+        elif not _implement_word_current:
+            # Left on deliberately rather than refused: you may be about to climb into a
+            # machine that has one, and the readout is inert until then.
+            say("Docking instrument on. No implement fitted", exclude_from_buffer=True)
+        else:
+            # Auto-select is per target, so a fresh mode start should not inherit a band
+            # pick made against something you have since driven away from.
+            _send_implement_cmd("BANDAUTO")
+            say("Docking instrument on", exclude_from_buffer=True)
     elif name == "w" and not (
         _capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]
     ):

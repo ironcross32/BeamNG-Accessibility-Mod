@@ -41,6 +41,11 @@ local BAND_FRAC   = 0.15   -- fore/aft slice at each end that forms the contact 
 local HULL_MAX    = 128    -- cap on cached hull cids
 local BAND_MAX    = 16     -- cap on cached front/rear band cids
 local HIST_BINS   = 24     -- vertical occupancy bins, consumed by the band selector
+-- A bin holding less than this share of the fullest bin reads as empty space. Judged
+-- relative to the peak rather than as an absolute count because node density varies by an
+-- order of magnitude between a cone and a truck, and the question is only ever "is there
+-- material at this height compared with the rest of this object".
+local BAND_OCC_FRAC = 0.25
 local MIN_NODES   = 4      -- below this a vehicle has no meaningful shape
 -- Outlier rejection for the extents. A percentile trim is the wrong tool here: a detached
 -- bumper is a DENSE cluster of ten or twenty nodes sitting on its own, so trimming a fixed
@@ -403,6 +408,61 @@ function M.nearestApproach(pts, targetID)
   end
   if not bestP then return nil, nil, nil end
   return bestD, bestP, bestSurf
+end
+
+-- Collapse the vertical occupancy histogram into alternating GAP and SOLID runs, with world
+-- heights.
+--
+-- This is deliberately not a "pocket finder". Lifting and ramming want different bands out of
+-- identical geometry -- forks into a pallet want the void, forks through a window want the
+-- glass, a bucket into the flank wants the sill -- so the profile is built once and the
+-- reference is *selected* rather than derived. That is also what lets the selection be
+-- announced: with a derived pocket the operator could never tell what the readout was
+-- measuring against.
+--
+-- Heights come back in world Z, since that is the frame the implement's own position is in.
+-- The conversion samples the box's central column, so on a vehicle tilted well off level the
+-- reported heights lean toward that column rather than describing a horizontal slice. That is
+-- the right error to have: a tilted target is one you are about to approach from a slope, and
+-- the centre of it is what the implement meets.
+function M.bands(vehID)
+  local entry = cache[vehID]
+  if not (entry and entry.hist) then return nil end
+  local frame = M.boxFrame(vehID)
+  if not frame then return nil end
+
+  local peak = 0
+  for i = 1, HIST_BINS do
+    if entry.hist[i] > peak then peak = entry.hist[i] end
+  end
+  if peak <= 0 then return nil end
+  local thresh = peak * BAND_OCC_FRAC
+
+  local lo, span = entry.histLo, entry.histHi - entry.histLo
+  if span <= 1e-4 then return nil end
+  local e = entry.ext
+  local fMid = (e.minF + e.maxF) * 0.5
+  local rMid = (e.minR + e.maxR) * 0.5
+  local function zAt(uNorm)
+    local base = frame.c + frame.f * fMid + frame.r * rMid + frame.u * (lo + span * uNorm)
+    return base.z
+  end
+
+  local out = {}
+  local curKind, curStart = nil, 1
+  for i = 1, HIST_BINS do
+    local kind = (entry.hist[i] < thresh) and "GAP" or "SOLID"
+    if kind ~= curKind then
+      if curKind then
+        out[#out + 1] = {kind = curKind,
+                         loZ = zAt((curStart - 1) / HIST_BINS),
+                         hiZ = zAt((i - 1) / HIST_BINS)}
+      end
+      curKind, curStart = kind, i
+    end
+  end
+  out[#out + 1] = {kind = curKind, loZ = zAt((curStart - 1) / HIST_BINS), hiZ = zAt(1.0)}
+  return out
 end
 
 -- Centre of the target's oriented box, in world space. This is what bearing should aim at:
