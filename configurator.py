@@ -108,7 +108,7 @@ DEFAULT_CONFIG = {
     # DEFAULT_CONFIG.copy() + update() papered over — but a key absent from this dict also
     # never gets a _coerce or a clamp, so they were reaching audio.py unvalidated.
     "implement_tones_enabled": True,
-    "implement_ground_tone_dbfs": -16.0,
+    "implement_ground_tone_dbfs": -19.5,
     "implement_tilt_tone_dbfs": -20.0,
     "implement_proximity_speech": True,
     "dock_tones_enabled": True,
@@ -326,7 +326,7 @@ def load_config():
         _coerce("scanner_pitch_offset_oct", float, 1.0)
         _coerce("ui_nav_hold_suppression", bool, True)
         _coerce("implement_tones_enabled", bool, True)
-        _coerce("implement_ground_tone_dbfs", float, -16.0)
+        _coerce("implement_ground_tone_dbfs", float, -19.5)
         _coerce("implement_tilt_tone_dbfs", float, -20.0)
         _coerce("implement_proximity_speech", bool, True)
         _coerce("dock_tones_enabled", bool, True)

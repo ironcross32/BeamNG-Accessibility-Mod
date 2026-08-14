@@ -268,12 +268,18 @@ IMPL_GROUND_RATIO_DRIFT = 0.45
 # has to be legible from about a metre out; cubed, 2.0 m -> 0.5 m would stay nearly clean.
 IMPL_GROUND_DIRT_CURVE = 2.0
 IMPL_GROUND_INDEX_LO = 0.6  # modulation depth far from the ground — few sidebands
-IMPL_GROUND_INDEX_HI = 3.2  # at contact — thoroughly rough
+# Dropped from 3.2 after play-testing: getting a bucket UNDER something means working with
+# it near the ground continuously, not passing through that state on the way to a dig, and
+# at 3.2 the tone was harsh enough to be a reason not to. 2.2 keeps a clear gradient from
+# INDEX_LO while taking about a quarter off the brightness at contact.
+IMPL_GROUND_INDEX_HI = 2.2  # at contact — rough, but liveable to work in
 IMPL_GROUND_JACK_FULL_M = 0.35  # metres of machine lift that counts as "full"
 IMPL_GROUND_JACK_OCTAVES = 1.5  # carrier rise across that range
 IMPL_GROUND_JACK_INDEX = 1.2  # modulation depth once the ratio is back on an integer
 IMPL_GROUND_MIN_DB = -30.0  # dBFS at the far edge of the range
-IMPL_GROUND_MAX_DB = -16.0  # dBFS at contact / full jack
+# Also dropped 3.5 dB for the same reason. This is only the DEFAULT for the loud end —
+# implement_ground_tone_dbfs overrides it, so an existing config keeps whatever it has.
+IMPL_GROUND_MAX_DB = -19.5  # dBFS at contact / full jack
 # The gate also opens on approach speed, not only on joystick input. Driving forward into a
 # pile with a motionless bucket is the implement's position changing relative to the ground,
 # and going deaf there would silence exactly the approach this tone exists to report.

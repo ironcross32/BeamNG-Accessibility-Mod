@@ -136,7 +136,7 @@ DEFAULT_CONFIG = {
     "ui_nav_hold_suppression": True,
     # Loader implement (WL-40 bucket / forks). Inert on every other vehicle.
     "implement_tones_enabled": True,
-    "implement_ground_tone_dbfs": -16.0,
+    "implement_ground_tone_dbfs": -19.5,
     "implement_tilt_tone_dbfs": -20.0,
     "implement_proximity_speech": True,
     "dock_tones_enabled": True,

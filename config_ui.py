@@ -1259,7 +1259,7 @@ class ConfigPanel(wx.ScrolledWindow):
                 cfg.get("implement_proximity_speech", True)
             )
             self.spin_impl_ground.SetValue(
-                cfg.get("implement_ground_tone_dbfs", -16.0)
+                cfg.get("implement_ground_tone_dbfs", -19.5)
             )
             self.spin_impl_tilt.SetValue(cfg.get("implement_tilt_tone_dbfs", -20.0))
             self.chk_dock_tones.SetValue(cfg.get("dock_tones_enabled", True))
