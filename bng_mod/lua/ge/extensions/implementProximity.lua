@@ -355,9 +355,11 @@ end
 
 local function resolveBand(targetID)
   local geo = extensions and extensions.vehicleGeometry or nil
-  if not geo or not geo.bands then return nil, nil, 0 end
-  local ok, bands = pcall(geo.bands, targetID)
-  if not ok or not bands or #bands == 0 then return nil, nil, 0 end
+  if not geo or not geo.bands then return nil, nil, 0, "vehicleGeometry not loaded" end
+  local ok, bands, why = pcall(geo.bands, targetID)
+  if not ok then return nil, nil, 0, "bands threw" end
+  if not bands then return nil, nil, 0, why or "no bands" end
+  if #bands == 0 then return nil, nil, 0, "no bands" end
   -- A manual pick belongs to the target it was made against; a new target starts on auto
   -- again rather than inheriting an index that now points at unrelated geometry.
   if bandTargetID ~= targetID then
@@ -450,9 +452,24 @@ end
 -- you have left to get them right. Yaw is reported but is not one of the continuous
 -- channels -- it only matters at the moment of entry, and sonifying a fourth axis is exactly
 -- how the obstacle detector became unusable.
+-- Every path that cannot produce a reading says so, rather than returning silently.
+-- The first version returned nil from five different places with no output anywhere, so a
+-- failure was indistinguishable from "nothing nearby" -- and since the instrument shares its
+-- soundscape with the scanner, which pans and changes pitch and pulses, a dead instrument
+-- was also indistinguishable from a working one. Three rounds of play-testing were spent
+-- guessing at which. A named reason costs one UDP line and F9+I reads it straight out.
+local function dockFail(reason)
+  local line = "DOCKFAIL:" .. reason
+  if lastDockLine ~= line then
+    lastDockLine = line
+    send(line)
+  end
+end
+
 local function sendDockLine(best)
   if not dockActive then return end
-  if not best or not implCids then
+  if not implCids then return dockFail("no implement resolved") end
+  if not best then
     if lastDockLine ~= "DOCKCLEAR" then
       lastDockLine = "DOCKCLEAR"
       send("DOCKCLEAR")
@@ -462,15 +479,15 @@ local function sendDockLine(best)
 
   local ok, err = pcall(function()
     local frame = M.getImplementFrame()
-    if not frame then return end
-    local band, idx, count = resolveBand(best.id)
-    if not band then return end
+    if not frame then return dockFail("no implement frame") end
+    local band, idx, count, why = resolveBand(best.id)
+    if not band then return dockFail(why or "no reference band") end
 
     -- Implement axes. Left is world-up cross the implement heading, keeping the mod-wide
     -- convention that a positive bearing means LEFT.
     local fwd = frame.fwd
     local left = vec3(0, 0, 1):cross(fwd)
-    if left:length() < 1e-4 then return end
+    if left:length() < 1e-4 then return dockFail("degenerate implement heading") end
     left = left:normalized()
 
     local geo = extensions and extensions.vehicleGeometry or nil
@@ -510,7 +527,8 @@ local function sendDockLine(best)
     lastDockLine = "DOCK"
   end)
   if not ok then
-    ipLog('D', "dock readout failed: " .. tostring(err))
+    ipLog('E', "dock readout threw: " .. tostring(err))
+    dockFail("readout error")
   end
 end
 

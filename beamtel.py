@@ -1040,7 +1040,7 @@ def implement_listener(audio_controller, stop_event):
     Only ever announces the NEAREST object. The extension may report a different one from
     tick to tick in a crowded yard, and narrating all of them would be unusable.
     """
-    global _implement_word_current, last_dock
+    global _implement_word_current, last_dock, last_dock_fail
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         sock.bind(("127.0.0.1", IMPLEMENT_LISTEN_PORT))
@@ -1077,6 +1077,7 @@ def implement_listener(audio_controller, stop_event):
                     pending_relation = pending_inside = pending_leave = None
                     with state_lock:
                         last_dock = None
+                        last_dock_fail = None
                     audio_controller.clear_dock_target()
                     continue
 
@@ -1086,6 +1087,16 @@ def implement_listener(audio_controller, stop_event):
                 if text == "DOCKCLEAR":
                     with state_lock:
                         last_dock = None
+                        last_dock_fail = None
+                    audio_controller.clear_dock_target()
+                    continue
+
+                if text.startswith("DOCKFAIL:"):
+                    # Not spoken unprompted — it would nag while manoeuvring. Held for the
+                    # F9+I readout, which is where someone asks "why is this silent".
+                    with state_lock:
+                        last_dock = None
+                        last_dock_fail = text[9:].strip()
                     audio_controller.clear_dock_target()
                     continue
 
@@ -1128,6 +1139,7 @@ def implement_listener(audio_controller, stop_event):
                         continue
                     with state_lock:
                         last_dock = parsed
+                        last_dock_fail = None
                     audio_controller.update_dock_target(
                         parsed["range"], parsed["lateral"], parsed["vertical"]
                     )
@@ -2187,6 +2199,9 @@ _implement_word_current = ""
 # implement_listener under state_lock and read by the F9+I cane tap and the audio callback.
 dock_mode_active = False
 last_dock = None
+# Why the instrument has nothing to say, when it has nothing to say. Held rather than
+# spoken, and read out by F9+I on request.
+last_dock_fail = None
 
 # Monotonic timestamp of the last vehicle-switch announcement. The camera
 # compass listener checks this and skips its own callout briefly afterwards
@@ -3425,7 +3440,7 @@ def open_clickspot_browser():
 
 def _on_next_key_press(event, audio_controller):
     global marked_coord_x, marked_coord_y, _last_coord_bearing_ts, _input_help_mode
-    global dock_mode_active, last_dock
+    global dock_mode_active, last_dock, last_dock_fail
     if event.event_type != "down":
         return
     name = (event.name or "").lower()
@@ -3761,10 +3776,17 @@ def _on_next_key_press(event, audio_controller):
         else:
             with state_lock:
                 snap = dict(last_dock) if last_dock else None
-            if snap is None:
-                say("Nothing in range", exclude_from_buffer=True)
-            else:
+                why = last_dock_fail
+            if snap is not None:
                 say(_dock_phrase(snap), exclude_from_buffer=True)
+            elif why:
+                # The instrument shares its soundscape with the scanner, which also pans,
+                # changes pitch and pulses — so a dead instrument sounds exactly like a
+                # working one. This is the only way to tell them apart from the driver's
+                # seat, which is why the reason is carried all the way from the mod.
+                say(f"No reading. {why}", exclude_from_buffer=True)
+            else:
+                say("Nothing in range", exclude_from_buffer=True)
     elif (
         name == "i"
         and _capture_mods["shift"]
@@ -3807,6 +3829,7 @@ def _on_next_key_press(event, audio_controller):
         if not dock_mode_active:
             with state_lock:
                 last_dock = None
+                last_dock_fail = None
             say("Docking instrument off", exclude_from_buffer=True)
         elif not _implement_word_current:
             # Left on deliberately rather than refused: you may be about to climb into a

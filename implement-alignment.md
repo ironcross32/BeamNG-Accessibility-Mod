@@ -87,55 +87,53 @@ python diagnostic/implement_proximity_sim.py # regression
 python diagnostic/hydro_steer_sim.py         # regression
 ```
 
-## [ ] Next pass — OPEN: play-test findings, 2026-08-13
+## [x] Diagnosed — the docking instrument was producing no audio at all
 
-Reported from play after the beat-pair fix (`c684c58`) had landed and beamtel had been
-restarted. **Not yet investigated.** The hypotheses below are untested reasoning, recorded so
-the next pass does not start cold — treat them as leads, not findings.
+The decisive description, on the third round of play-testing: *"rather than two tones I hear
+one; it changes pitch, it positions itself when I steer, and it stops and starts at irregular
+intervals."*
 
-### 1. "No implement fitted" after a Python-only restart
+That is not the docking instrument. **It is the vehicle scanner beep**, which pans by
+bearing, changes pitch by bearing, and pulses at a distance-derived rate — all four
+properties at once. The scanner is meant to be suppressed while the instrument is live, so
+hearing it proves the dock gate never opened, i.e. no `DOCK:` line was ever arriving. "Seems
+to act as before" was literal: it *was* the old behaviour.
 
-Restarting beamtel alone, without touching the game, produces "no implement fitted" — though
-the scanner still tracks. `Ctrl+R` on the vehicle plus toggling the docking mode off and on
-clears it.
+Root cause: `vehicleGeometry.bands()` only ever read the cache, it never called
+`M.request()`. On any path where nothing else had already requested that same target, the
+bands never resolved, `resolveBand` returned nil, and `sendDockLine` returned silently.
 
-*Untested hypothesis*: `_implement_word_current` is Python-side state that a restart wipes,
-but the mod only re-sends the `IMPLEMENT:` line when the name **changes** — `nameEverSent`
-and `lastSentName` are Lua-side and survive the Python restart, so the mod believes it has
-already announced and stays quiet. If so this is the mirror image of the REBUILD gap below:
-the same one-shot announcement pattern, failing from the other side of the socket. A
-`settings_request`-style pull on the Python listener's startup, as `bnvdaRuntime.js` already
-does over the UI bridge, would cover both.
+- [x] `bands()` requests as well as reads, so it self-heals (`<pending>`)
 
-### 2. The audio is unchanged by the fix — the important one
+### The real lesson: the failure was invisible by construction
 
-The instrument "still stutters and still seems to act as before" after the fix, i.e. the
-change that measured correctly on the bench produced no audible difference in game.
+`sendDockLine` had **five** paths that returned nil with no output anywhere, so "broken" and
+"nothing nearby" were indistinguishable. Worse, because the instrument shares its soundscape
+with the scanner — which also pans, changes pitch and pulses — a dead instrument was
+indistinguishable from a working one *from the driver's seat*. Three rounds of play-testing
+went on guessing which, and two of my three diagnoses were wrong.
 
-**Resolve this first, because it decides whether there is a bug at all**: the pulse voice is
-a gated tone at 1.2–12 Hz *by design*, and a stutter is what that is. It is entirely possible
-that "stutters" describes the intended pulse train and has been read as a defect twice now.
-Before changing any audio, establish which sound is being described — e.g. by setting
-`dock_tone_dbfs` very low so the pulse drops away and only the beat pair remains, or by
-listening with the vertical error held at zero, where the pair should be a smooth,
-unwavering hum and any remaining stutter can only be the pulse.
+- [x] Every bail-out now sends `DOCKFAIL:<reason>`, carried through to `F9` `I`, which says
+      "No reading. \<reason\>" instead of "Nothing in range"
+- [x] Reasons are named at source: "geometry not resolved yet", "no implement frame",
+      "no reference band", "vehicleGeometry not loaded", "degenerate implement heading",
+      "readout error"
+- [x] Held rather than spoken unprompted, so it cannot nag mid-manoeuvre
 
-Other leads, in rough order of likelihood:
+Design note for anything similar: a feature whose failure mode is *silence*, in a soundscape
+that already contains a similar-sounding working feature, needs a way to say why it is quiet.
+Not as a debugging aid — as a user-facing feature, because the driver cannot see a log.
 
-- The selected reference band may be far from the cutting edge, holding the error above
-  `DOCK_BEAT_MAX_HZ / DOCK_BEAT_HZ_PER_M` (0.5 m) the whole time. The beat would then sit
-  pinned at 12 Hz and never vary — audibly a constant flutter, not a null-seeking beat. The
-  `F9` `I` readout gives the number directly and would confirm or kill this immediately.
-- The pair may simply be inaudible under the pulse. `DOCK_BEAT_DB` is −22 against the pulse's
-  −18, and the pulse is the more attention-grabbing texture.
-- The pulse rate (1.2–12 Hz) and the beat rate (0–12 Hz) span the same range, so at some
-  bucket positions the two modulate at similar speeds. Known at the time of writing and
-  judged acceptable given the spectral and spatial separation; may not be.
+### Still open after this
 
-Bench measurements for reference, all from rendered audio: beat rate tracks spec to within
-0.1 Hz across 0–0.5 m of error; centre pitch holds 330.1 Hz throughout; with the target hard
-left the pulse sits at 2.17 L/R while the pair holds 1.00. So the DSP does what it is meant
-to — which points at the mapping, the levels, or the description, rather than the synthesis.
+- [ ] The beat-pair fix (`c684c58`) has never actually been heard, since no docking audio was
+      reaching the ears. Its bench measurements were sound — beat tracks spec to 0.1 Hz,
+      centre pitch holds 330.1 Hz, pulse pans 2.17 L/R while the pair holds 1.00 — but it
+      needs a real listen before being called good.
+- [ ] The pulse rate (1.2-12 Hz) and beat rate (0-12 Hz) span the same range, so at some
+      bucket positions the two modulate at similar speeds. Judged acceptable given spectral
+      and spatial separation; unverified by ear.
+- [ ] `DOCK_BEAT_DB` (-22) against the pulse's -18 may leave the pair too quiet to read.
 
 ## [ ] Next pass — REBUILD cannot actually rebuild
 

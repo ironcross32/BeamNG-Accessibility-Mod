@@ -426,20 +426,24 @@ end
 -- the right error to have: a tilted target is one you are about to approach from a slope, and
 -- the centre of it is what the implement meets.
 function M.bands(vehID)
+  -- Request rather than only reading. This used to depend entirely on some other caller
+  -- having asked for the same vehicle first, so on any path where nothing else had, the
+  -- bands never resolved and every downstream reading vanished with no error anywhere.
+  M.request(vehID)
   local entry = cache[vehID]
-  if not (entry and entry.hist) then return nil end
+  if not (entry and entry.hist) then return nil, "geometry not resolved yet" end
   local frame = M.boxFrame(vehID)
-  if not frame then return nil end
+  if not frame then return nil, "no box frame" end
 
   local peak = 0
   for i = 1, HIST_BINS do
     if entry.hist[i] > peak then peak = entry.hist[i] end
   end
-  if peak <= 0 then return nil end
+  if peak <= 0 then return nil, "histogram empty" end
   local thresh = peak * BAND_OCC_FRAC
 
   local lo, span = entry.histLo, entry.histHi - entry.histLo
-  if span <= 1e-4 then return nil end
+  if span <= 1e-4 then return nil, "zero vertical span" end
   local e = entry.ext
   local fMid = (e.minF + e.maxF) * 0.5
   local rMid = (e.minR + e.maxR) * 0.5
