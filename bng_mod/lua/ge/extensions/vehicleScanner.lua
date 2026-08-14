@@ -30,6 +30,23 @@ local currentTargetDist = math.huge
 local scanTimer         = 0
 local lastPlayerID      = nil      -- for vehicle-switch detection
 
+-- Which end of the player's machine is the business end. Reversing does not just mean "the
+-- target is behind me": it means the rear bumper is what will hit something, so the contact
+-- set has to move to the rear node band and the bearing has to be measured against the
+-- direction of travel. On a loader it additionally means the bucket -- the FAR end -- must
+-- stop being used as the origin, which is the case that was most wrong before.
+--
+-- Gear is pushed from Python, which already decodes it from the extended telemetry struct,
+-- rather than polled cross-VM from electrics. Velocity is the fallback because gear alone
+-- misses rolling backwards in neutral, and gear is preferred over velocity because at a
+-- standstill about to reverse the readout should already be rear-referenced -- velocity
+-- reads zero there and would answer "forwards".
+local activeDirection   = 1        -- 1 = forward, -1 = reverse
+local gearDirection     = nil      -- last direction Python told us, nil until it does
+local gearStaleTimer    = 0
+local GEAR_STALE_SEC    = 2.0      -- fall back to velocity if Python stops sending
+local REVERSE_SPEED_MS  = 0.4      -- ignore creep and soft-body jitter around standstill
+
 -- Alignment State
 local alignPending      = false
 local alignTimeout      = 0
@@ -412,6 +429,22 @@ end
 --  Core Scan Logic
 -- =================================================================================================
 
+-- Resolve which end is live. Gear wins while it is fresh; velocity covers the gaps (rolling
+-- backwards in neutral, or Python not running yet).
+local function resolveDirection(player, forwardVec)
+  if gearDirection and gearStaleTimer < GEAR_STALE_SEC then
+    return gearDirection
+  end
+  local ok, along = pcall(function()
+    return vec3(player:getVelocity()):dot(forwardVec)
+  end)
+  if ok and along then
+    if along < -REVERSE_SPEED_MS then return -1 end
+    if along > REVERSE_SPEED_MS then return 1 end
+  end
+  return activeDirection  -- below the threshold, hold whatever we had rather than flapping
+end
+
 local function scanAndSendVehicleData()
   if not udpSend then return end
 
@@ -477,15 +510,23 @@ local function scanAndSendVehicleData()
     return
   end
 
+  activeDirection = resolveDirection(player, playerForwardVec)
+
   -- Aim from the implement when there is one. An articulated loader has two frames, and
   -- player:getDirectionVector() describes the REAR one (cab, reference nodes) while the
   -- bucket is on the front one. Measuring from the rear frame makes lining the bucket up
   -- close to impossible: bend the frame toward a target and the rear initially swings the
   -- other way as the machine pivots, so the bearing OPENS while the bucket is closing on
   -- it. Returns nil on anything that is not such a machine, which is every ordinary vehicle.
+  --
+  -- The override is deliberately scoped to FORWARD only. Phrasing the rule as "the implement
+  -- supplies the forward contact set" rather than "loaders use the implement" is what makes
+  -- reversing a loader fall out for free: it drops to the rear band like any other vehicle,
+  -- with no loader-specific code. Backing up measured from the bucket was the worst case in
+  -- the old build -- the whole machine length of error, in the wrong direction.
   local originPos, forwardVec = playerPos, playerForwardVec
   local contactPts = nil
-  if extensions and extensions.implementProximity then
+  if activeDirection > 0 and extensions and extensions.implementProximity then
     local ip = extensions.implementProximity
     if ip.getImplementFrame then
       local okFrame, implFrame = pcall(ip.getImplementFrame)
@@ -499,13 +540,30 @@ local function scanAndSendVehicleData()
     end
   end
 
-  -- With no implement the contact set is the player's own front node band -- the same
-  -- question answered for an ordinary car. This is the whole point of the vehicleGeometry
-  -- split: the loader is a different cid list, not a different code path.
+  -- With no implement the contact set is the player's own front or rear node band -- the
+  -- same question answered for an ordinary car. This is the whole point of the
+  -- vehicleGeometry split: the loader is a different cid list, not a different code path.
   local geo = extensions and extensions.vehicleGeometry or nil
   if not contactPts and geo then
-    local okC, pts = pcall(geo.contactPoints, playerID, 1)
-    if okC and pts then contactPts = pts end
+    local okC, pts = pcall(geo.contactPoints, playerID, activeDirection)
+    if okC and pts then
+      contactPts = pts
+      -- Bearing is measured from the contact set's own centroid, so backing toward
+      -- something reports the gap and the angle from the bumper that will reach it.
+      local acc = vec3(0, 0, 0)
+      for _, p in ipairs(pts) do acc = acc + p end
+      originPos = acc / #pts
+    end
+  end
+
+  -- Reversing flips the reference heading so a target dead behind reads ~0 degrees rather
+  -- than ~180. playerLeftVec below is built from the UN-negated forward vector on purpose:
+  -- it is up x fwd, so negating fwd would silently negate the cross product too and swap
+  -- left for right. Reversing does not move the driver's physical left side. This exact
+  -- sign has already produced one false bug report; the geometry sim asserts it.
+  if activeDirection < 0 then
+    local f = vec3(forwardVec)
+    forwardVec = vec3(-f.x, -f.y, -f.z)
   end
 
   -- Bearing aims at the target's box CENTRE while range measures to its nearest SURFACE.
@@ -534,7 +592,11 @@ local function scanAndSendVehicleData()
   local toTargetVec    = (targetPos - originPos):normalized()
   local cosAngle       = forwardVec:dot(toTargetVec)
   local angleRadians   = math.acos(math.max(-1, math.min(1, cosAngle)))
-  local playerLeftVec  = playerUpVec:cross(forwardVec) -- up x fwd = left, see note above
+  -- playerFORWARDVec, never the possibly-negated forwardVec: this is up x fwd, so feeding it
+  -- the reversed heading would negate the cross product and report left as right for the
+  -- whole time the vehicle is in reverse. The driver's left side does not move when they
+  -- select reverse. Positive stays LEFT in every gear.
+  local playerLeftVec  = playerUpVec:cross(playerForwardVec)
   local dot            = playerLeftVec:dot(toTargetVec)
   local bearingDegrees = math.deg(angleRadians) * (dot < 0 and -1 or 1)
 
@@ -602,6 +664,9 @@ function M.onWorldReadyState(state)
     currentTargetID   = nil
     currentTargetDist = math.huge
     lastPlayerID      = nil
+    activeDirection   = 1
+    gearDirection     = nil
+    gearStaleTimer    = 0
     alignPending      = false
     _fwCouplePending  = false
     couplerTrackActive = false
@@ -630,12 +695,24 @@ function M.onWorldReadyState(state)
 end
 
 function M.onUpdate(dtReal, dtSim, dtRaw)
+  -- Age the pushed gear. If Python stops sending -- it exited, or this is an older build --
+  -- direction resolution falls back to velocity rather than freezing on the last gear seen.
+  gearStaleTimer = gearStaleTimer + dtReal
+
   -- 1. Poll UDP for ON/OFF commands from Python
   if udpCmd then
     local data = udpCmd:receive()
     if data then
       local cmd = data:match("^%s*(.-)%s*$"):upper()
-      if cmd == "ON" and not isScanModeActive then
+      -- Gear is pushed on change from the Python side, which already decodes it out of the
+      -- extended telemetry struct. Handled ahead of the chain because it arrives whether or
+      -- not scan mode is on: the direction has to be current the moment the scanner is
+      -- switched on, not one gear change later.
+      local gearArg = cmd:match("^GEAR:(%a*)$")
+      if gearArg then
+        gearDirection = (gearArg == "R") and -1 or 1
+        gearStaleTimer = 0
+      elseif cmd == "ON" and not isScanModeActive then
         isScanModeActive  = true
         currentTargetID   = nil
         currentTargetDist = math.huge
@@ -1168,6 +1245,11 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
     lastPlayerID      = playerID
     currentTargetID   = nil
     currentTargetDist = math.huge
+    -- The gear we were told belonged to the machine we just left. Drop back to forward and
+    -- let velocity carry it until Python reports the new vehicle's gear, rather than
+    -- measuring off the rear bumper because the last vehicle happened to be reversing.
+    activeDirection   = 1
+    gearDirection     = nil
     if couplerTrackActive then
       couplerTrackActive = false
       if udpSend then udpSend:send("COUPLER_LOST") end

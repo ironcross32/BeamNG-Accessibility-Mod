@@ -1117,6 +1117,32 @@ def _send_implement_cmd(command):
         logger.error(f"Failed to send implement proximity command via UDP: {e}")
 
 
+def _send_scanner_cmd(command):
+    try:
+        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        cmd_sock.sendto(command.encode("utf-8"), ("127.0.0.1", SCANNER_CMD_PORT))
+        cmd_sock.close()
+    except Exception as e:
+        logger.error(f"Failed to send scanner command via UDP: {e}")
+
+
+def _push_gear_direction(gear):
+    """Tell the scanner which end of the vehicle is the business end.
+
+    Reversing is not just "the target is behind me" — the rear bumper becomes the thing
+    that will hit something, so the scanner's contact set has to move to the rear node
+    band and its bearing has to be measured against the direction of travel. On a loader
+    it also has to stop measuring from the bucket, which in reverse is the far end.
+
+    Pushed from here rather than polled cross-VM in Lua because this side already decodes
+    gear out of the telemetry struct, and it is sent only on change, so the 60 Hz loop
+    does not turn into a 60 Hz send. The Lua side ages it and falls back to velocity if
+    these stop arriving, so an older mod or a stopped beamtel degrades rather than sticks.
+    """
+    reverse = str(gear or "").strip().upper().startswith("R")
+    _send_scanner_cmd("GEAR:R" if reverse else "GEAR:F")
+
+
 def camera_listener(audio_controller, stop_event):
     """Listens for UDP packets from cameraInfo.lua and drives camera compass clicks."""
     global \
@@ -1913,6 +1939,7 @@ inverted, inverted_announced = False, False
 
 last_bucket, last_speed_announce_ts, cooldown_sec = None, 0.0, 1.0
 
+REVERSE = 0  # OutGauge gear byte: 0=R, 1=N, 2+=1st
 NEUTRAL = 1
 last_gear_byte, last_gear_str = None, None
 
@@ -5469,6 +5496,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                             elif phrase not in ("unknown", "neutral"):
                                 say(phrase, exclude_from_buffer=True)
                         last_gear_str = gear_str
+                        _push_gear_direction(gear_str)
                 else:  # outgauge
                     gear_byte = unpacked[3]
                     if gear_byte != last_gear_byte:
@@ -5479,6 +5507,9 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                             elif phrase not in ("unknown", "neutral"):
                                 say(phrase, exclude_from_buffer=True)
                         last_gear_byte = gear_byte
+                        # OutGauge encodes reverse as byte 0, unlike the extended protocol's
+                        # "R" string, so the two paths cannot share a formatter.
+                        _push_gear_direction("R" if gear_byte == REVERSE else "D")
 
                 current_bucket = get_speed_bucket(speed_ms)
                 if current_bucket != last_bucket:

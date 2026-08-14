@@ -75,6 +75,8 @@ Press F9, then one of the following keys. If you press an invalid key or allow t
 - Shift+V: Align to trailer coupler — vehicle scanner must be on, target must be a trailer, couplers on source vehicle and target must be compatible
 - Ctrl+Shift+D: Automatic coupler distance callouts — vehicle scanner must be on
 
+In reverse, the scanner measures from the **back** of your vehicle and reports the bearing relative to the way you are travelling, so a target directly behind you reads straight ahead rather than straight behind. Left and right are unchanged — they stay the left and right you are sitting in, in every gear. This applies to any vehicle, not just the loader, so backing up to a wall, a trailer or a parking space now gives you a real bumper-to-surface distance.
+
 Scanner distances are the **gap** between the two vehicles — the clear space you still have — not the distance between their centres. Earlier versions measured centre to centre, which added roughly half a vehicle at each end and, worse, changed with the target's orientation: a car sitting broadside and the same car nose-on at the same real gap reported the same number. Expect the figures to read smaller than they used to, and to reach zero when you touch.
 
 #### Toggleable modes:
