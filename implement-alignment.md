@@ -87,6 +87,25 @@ python diagnostic/implement_proximity_sim.py # regression
 python diagnostic/hydro_steer_sim.py         # regression
 ```
 
+## [ ] Next pass — REBUILD cannot actually rebuild
+
+The implement cid list is pushed one-shot from the vehicle VM (`_implPushed`,
+`796F6C6F313035.lua:259`), re-armed only by that VM's own `reset()`. The GE-side extension
+drops its cids on any reload. So a GE Lua reload with the vehicle already spawned leaves GE
+with no cids and the vehicle VM convinced it has already pushed — the machine reports
+`IMPLEMENT:NONE` and every implement feature goes silent until the vehicle is reset.
+
+Adding `vehicleGeometry.lua` to `modScript.lua` forced exactly that reload and surfaced it
+for the first time. It is a latent gap, not a regression from this work.
+
+`REBUILD` on 4470 clears the GE cache but has no path to make the vehicle VM re-push, so the
+one command that exists to recover from this cannot.
+
+- [ ] `REBUILD` should `queueLuaCommand` into the player vehicle to clear `_implPushed` and
+      re-run `resolveImplementNodes`, not just clear the GE side
+- [ ] Consider having the GE extension request a push on `onExtensionLoaded` rather than
+      waiting to be told, so a Lua reload self-heals without any user action
+
 ## [ ] Next pass — make the docking instrument on by default
 
 Currently opt-in behind `F9` `Ctrl+I`, on the reasoning that it is a mode you enter
