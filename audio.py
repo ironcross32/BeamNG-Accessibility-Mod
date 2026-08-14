@@ -765,7 +765,10 @@ class AudioController:
         self._dock_pulse_db = DOCK_PULSE_DB
         self._dock_gate_env = 0.0  # shared fade for both voices
         self._dock_pulse_phase = 0.0
-        self._dock_pulse_timer = 0.0  # position within the current pulse period
+        # Accumulated pulse-cycle phase and the rate it is advancing at. Deliberately not an
+        # elapsed-time counter — see the render block for why that shredded the train.
+        self._dock_pulse_cycle = 0.0
+        self._dock_pulse_rate = 0.0
         self._dock_overlap_L = None  # HRTF overlap-add tails
         self._dock_overlap_R = None
         # Both partners of the beat pair move, symmetrically about DOCK_REF_HZ, so both
@@ -4015,17 +4018,36 @@ class AudioController:
             pulse_hz = DOCK_PULSE_MIN_HZ + (DOCK_PULSE_MAX_HZ - DOCK_PULSE_MIN_HZ) * (
                 rng_norm**2
             )
-            period = 1.0 / max(0.01, pulse_hz)
-
             inc_p = DOCK_PULSE_FREQ_HZ / self.samplerate
             ph_p = self._dock_pulse_phase + np.arange(frames) * inc_p
-            t_pulse = self._dock_pulse_timer + np.arange(frames) / self.samplerate
+
+            # Pulse position is an ACCUMULATED PHASE, never elapsed-time-modulo-period.
+            #
+            # The first version computed (t % period) with t as absolute session time and
+            # period derived from the live range. Both of those move: t grows without bound
+            # and period changes on every telemetry update, so the remainder teleports to an
+            # essentially arbitrary point in the cycle ten times a second. Measured over a
+            # 1 m/s approach a minute into a session, the pulse landed a mean of 0.25 of a
+            # cycle away from where it should have been, worst case 0.48 out of a possible
+            # 0.5. That is the "stops and starts at irregular intervals" — the rate cue was
+            # real but the train was being shredded around it.
+            #
+            # Accumulating instead means changing the rate changes how fast the phase
+            # advances, which is the only thing it should change. Glided across the block so
+            # the rate itself never steps.
+            rate_prev = (
+                self._dock_pulse_rate if self._dock_pulse_rate > 0.0 else pulse_hz
+            )
+            rate_arr = np.linspace(rate_prev, pulse_hz, frames, endpoint=False)
+            cyc = self._dock_pulse_cycle + np.cumsum(rate_arr) / self.samplerate
+            # 0 at the start of a pulse, 1 at its end, >1 through the silent remainder.
+            frac = (cyc % 1.0) / DOCK_PULSE_DUTY
+
             # Shaped rather than hard-gated. A rectangular gate on a continuous sine puts a
             # step discontinuity at both edges of every pulse, which is a click — at up to
-            # 12 pulses a second that reads as a harsh stutter laid over the tone rather than
+            # 12 pulses a second that reads as a harsh rasp laid over the tone rather than
             # as a clean pulse train. A raised-cosine skirt on each end costs nothing and
             # leaves the rate cue identical.
-            frac = (t_pulse % period) / (period * DOCK_PULSE_DUTY)
             pulse_gate = np.clip(1.0 - frac, 0.0, 1.0)
             pulse_gate = np.where(frac <= 1.0, pulse_gate, 0.0)
             edge = DOCK_PULSE_EDGE
@@ -4038,7 +4060,8 @@ class AudioController:
                 np.sin(2.0 * np.pi * ph_p).astype(np.float32) * amp_p * pulse_gate
             )
             self._dock_pulse_phase = float((ph_p[-1] + inc_p) % 1.0)
-            self._dock_pulse_timer = float(t_pulse[-1] + 1.0 / self.samplerate)
+            self._dock_pulse_cycle = float(cyc[-1] % 1.0)
+            self._dock_pulse_rate = float(pulse_hz)
 
             # ---- Voice 2: vertical beat pair --------------------------------------------
             # Fades in only inside DOCK_BEAT_RANGE_M. Its own envelope rather than the shared
@@ -4181,7 +4204,8 @@ class AudioController:
             # up from wherever the last approach left them.
             self._dock_beat_env = 0.0
             self._dock_mov_inc = 0.0
-            self._dock_pulse_timer = 0.0
+            self._dock_pulse_cycle = 0.0
+            self._dock_pulse_rate = 0.0
             self._dock_lock_armed = False
 
         if not dock_produced_audio:

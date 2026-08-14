@@ -124,12 +124,33 @@ Design note for anything similar: a feature whose failure mode is *silence*, in 
 that already contains a similar-sounding working feature, needs a way to say why it is quiet.
 Not as a debugging aid — as a user-facing feature, because the driver cannot see a log.
 
+## [x] Fixed — the pulse train was teleporting, not pulsing
+
+Reported as *"stops and starts at irregular intervals"* three times, and misattributed twice
+before being isolated: first as the intended pulse train being misdescribed, then as the
+vehicle scanner. Both wrong. The user's correction — *"it properly mutes when approaching,
+and it always did"* — ruled out the scanner and left only the pulse voice.
+
+Pulse position was computed as `(t % period)`, with `t` the absolute session time and
+`period` derived from the live range. **Both of those move.** `t` grows without bound and
+`period` changes on every telemetry update, so the remainder lands somewhere essentially
+arbitrary in the cycle ten times a second. Measured on a 1 m/s approach a minute into a
+session: a mean of 0.25 of a cycle from where it should have been, worst case 0.497 out of a
+possible 0.5.
+
+What made this so hard to name from the driver's seat is that the *rate* cue underneath was
+perfectly correct the whole time. The train carried the right information and was being
+shredded around it.
+
+- [x] Pulse position is an accumulated phase, glided across the block, so changing the rate
+      changes how fast the phase advances and nothing else
+- [x] Measured after: phase advances by exactly `rate x dt`, error 3.8e-07 cycles; every
+      rendered interval matches its commanded period to within 0.5%
+- [x] `dock_tone_sim.py` scenario 8 asserts the accumulator *and* asserts that the old form
+      teleports, so the check cannot pass for free if someone reverts to it
+
 ### Still open after this
 
-- [ ] The beat-pair fix (`c684c58`) has never actually been heard, since no docking audio was
-      reaching the ears. Its bench measurements were sound — beat tracks spec to 0.1 Hz,
-      centre pitch holds 330.1 Hz, pulse pans 2.17 L/R while the pair holds 1.00 — but it
-      needs a real listen before being called good.
 - [ ] The pulse rate (1.2-12 Hz) and beat rate (0-12 Hz) span the same range, so at some
       bucket positions the two modulate at similar speeds. Judged acceptable given spectral
       and spatial separation; unverified by ear.
