@@ -946,6 +946,15 @@ IMPL_PROX_LEAVE_HOLD = 0.30
 IMPL_DOCK_LEVEL_M = 0.05    # below this an axis is called level / centred rather than numbered
 IMPL_DOCK_YAW_DEG = 8.0     # squareness is only worth saying once it would jam the tines
 
+# Slam gate states -> the audio cue each fires. NONE is deliberately absent: leaving the
+# gate is not itself an event worth marking, and a cue on every exit would fire constantly
+# while manoeuvring around a yard.
+_SLAM_CUES = {
+    "CLEAR": "clear",
+    "OVER": "over",
+    "COMMITTED": "committed",
+}
+
 _IMPL_RELATION_PHRASE = {
     "ABOVE": "above it",
     "BELOW": "below it",
@@ -1078,6 +1087,20 @@ def implement_listener(audio_controller, stop_event):
                     with state_lock:
                         last_dock = None
                     audio_controller.clear_dock_target()
+                    continue
+
+                if text.startswith("SLAM:"):
+                    # Sent only on a state change; the hysteresis that stops these
+                    # chattering lives in the mod, next to the geometry it hysteresises.
+                    state = text[5:].strip().upper()
+                    cue = _SLAM_CUES.get(state)
+                    if cue:
+                        audio_controller.trigger_slam_cue(cue)
+                        if announce_implement_proximity and state == "COMMITTED":
+                            # Only the committed state is worth a word. The other two are
+                            # waypoints you pass through on the way; speaking each one
+                            # would talk over the manoeuvre it is describing.
+                            say("Over it, clear", exclude_from_buffer=True)
                     continue
 
                 if text.startswith("DOCK:"):

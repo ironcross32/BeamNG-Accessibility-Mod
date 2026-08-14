@@ -382,6 +382,24 @@ DOCK_REL_TAU = 0.20
 DOCK_HYDRO_DUCK_DB = -12.0  # articulation ducked hard, not merely trimmed, while docking
 DOCK_STALE_S = 0.6  # no packet for this long and the instrument fades out
 
+# Slam gate. Three discrete states rather than a continuous readout, because nulling is the
+# wrong shape for dropping a bucket on something: you want to be decisively above it, then
+# over it, then commit. Ramming is also forgiving in a way that threading tines into a pallet
+# is not, so this profile is deliberately coarser and quieter than the docking one — three
+# earcons and nothing sustained.
+#
+# Pitched so the three read as a sequence: clear is high and short, over is lower and short,
+# committed rises between the two as a pair. The rise is the point — the docking lock chime
+# DESCENDS, and these two are the only two-note figures in the mod, so opposite contours keep
+# "arrived at the null" and "armed to drop" from ever being confused.
+SLAM_CLEAR_HZ = 1320.0
+SLAM_OVER_HZ = 660.0
+SLAM_TICK_DUR_MS = 55.0
+SLAM_COMMIT_LO_HZ = 523.0
+SLAM_COMMIT_HI_HZ = 1046.0
+SLAM_COMMIT_DUR_MS = 150.0
+SLAM_CUE_DB = -12.0
+
 # Node Grabber Hover Beep
 NODE_BEEP_BASE_FREQ_HZ = 800.0  # Base frequency at height 0.5
 NODE_BEEP_LOW_FREQ_HZ = 600.0  # Frequency at underside (height 0.0)
@@ -493,6 +511,7 @@ class AudioController:
         self.CAM_HIGHLIGHT_CLICK_WAVEFORM = None
         self.HYDRO_CENTER_CLICK_WAVEFORM = None  # Articulation centre-crossing tick
         self.DOCK_LOCK_WAVEFORM = None  # Docking vertical-null chime
+        self.SLAM_CUE_WAVEFORMS = {}  # Slam gate: clear / over / committed
         self.NODE_BEEP_WAVEFORM = None  # Node grabber hover beep
         self.CLICKSPOT_BEEP_WAVEFORM = None  # Clickspot hover beep (forward)
         self.CLICKSPOT_BEEP_REV_WAVEFORM = (
@@ -742,6 +761,8 @@ class AudioController:
         self._dock_beat_env = 0.0  # separate fade, so the pair enters inside DOCK_BEAT_RANGE
         self._dock_lock_armed = False
         self._dock_lock_pos = -1.0  # cursor into the lock waveform, -1 = idle
+        self._slam_cue_kind = None  # slam gate earcon: which one is playing
+        self._slam_cue_pos = -1.0  # ...and how far through it, -1 = idle
 
         # Coordinate Guidance FM state
         self._coord_guidance_active = False
@@ -871,6 +892,15 @@ class AudioController:
         with self.lock:
             self._dock_have = False
             self._dock_range = float("inf")
+
+    def trigger_slam_cue(self, kind):
+        """Fire a slam-gate earcon. The mod only sends these on a state CHANGE, so the
+        hysteresis that stops them chattering lives there, not here."""
+        if kind not in ("clear", "over", "committed"):
+            return
+        with self.lock:
+            self._slam_cue_kind = kind
+            self._slam_cue_pos = 0.0
 
     # Coupler tracking control methods
     def set_coupler_tracking(self, active):
@@ -1134,6 +1164,9 @@ class AudioController:
         self.CAM_HIGHLIGHT_CLICK_WAVEFORM = self._generate_cam_highlight_click()
         self.HYDRO_CENTER_CLICK_WAVEFORM = self._generate_center_click()
         self.DOCK_LOCK_WAVEFORM = self._generate_dock_lock()
+        self.SLAM_CUE_WAVEFORMS = {
+            k: self._generate_slam_cue(k) for k in ("clear", "over", "committed")
+        }
 
         old_follow = self._follow_default_enabled
         old_device = self._preferred_device_name
@@ -1522,6 +1555,9 @@ class AudioController:
         self.CAM_HIGHLIGHT_CLICK_WAVEFORM = self._generate_cam_highlight_click()
         self.HYDRO_CENTER_CLICK_WAVEFORM = self._generate_center_click()
         self.DOCK_LOCK_WAVEFORM = self._generate_dock_lock()
+        self.SLAM_CUE_WAVEFORMS = {
+            k: self._generate_slam_cue(k) for k in ("clear", "over", "committed")
+        }
         self.NODE_BEEP_WAVEFORM = self._generate_node_beep()
         self.NODE_BEEP_REV_WAVEFORM = self._generate_node_beep_reverse()
         self.CLICKSPOT_BEEP_WAVEFORM = self._generate_clickspot_beep()
@@ -1692,6 +1728,45 @@ class AudioController:
         if peak > 0:
             wave /= peak  # normalise so the dB constant means what it says
         return (wave * (10.0 ** (DOCK_LOCK_DB / 20.0))).astype(np.float32)
+
+    def _generate_slam_cue(self, kind):
+        """Earcons for the slam gate: 'clear', 'over', or 'committed'.
+
+        The first two are single short ticks a fifth apart; committed is those same two
+        notes played as a RISING pair. Rising specifically, because the docking lock chime
+        descends and those are the only two-note figures in the mod — opposite contours are
+        what stop "arrived at the null" and "armed to drop" being mistaken for each other,
+        which would be an expensive confusion given what the second one leads to.
+        """
+        if kind == "committed":
+            dur_s = SLAM_COMMIT_DUR_MS / 1000.0
+            n = int(self.samplerate * dur_s)
+            half = n // 2
+            freq = np.where(
+                np.arange(n) < half, SLAM_COMMIT_LO_HZ, SLAM_COMMIT_HI_HZ
+            )
+        else:
+            dur_s = SLAM_TICK_DUR_MS / 1000.0
+            n = int(self.samplerate * dur_s)
+            half = None
+            freq = np.full(n, SLAM_CLEAR_HZ if kind == "clear" else SLAM_OVER_HZ)
+
+        t = np.arange(n) / self.samplerate
+        # Integrated frequency, so the note change carries no phase discontinuity — i.e. no
+        # click in the middle of the cue.
+        phase = np.cumsum(freq) / self.samplerate
+        wave = np.sin(2.0 * np.pi * phase) * np.exp(-t * (3.5 / dur_s))
+        edge = max(1, int(self.samplerate * 0.004))
+        wave[:edge] *= np.linspace(0, 1, edge)
+        wave[-edge:] *= np.linspace(1, 0, edge)
+        if half is not None and half > edge:
+            wave[half - edge // 2 : half + edge // 2] *= np.concatenate(
+                [np.linspace(1, 0.3, edge // 2), np.linspace(0.3, 1, edge // 2)]
+            )
+        peak = float(np.max(np.abs(wave)))
+        if peak > 0:
+            wave /= peak  # normalise so the dB constant means what it says
+        return (wave * (10.0 ** (SLAM_CUE_DB / 20.0))).astype(np.float32)
 
     def _generate_cam_highlight_click(self):
         dur_samples = int(self.samplerate * CLICK_DUR_MS / 1000.0)
@@ -4072,6 +4147,22 @@ class AudioController:
                 bufR[:n_lk] += chunk
             nxt = start + frames
             self._dock_lock_pos = float(nxt) if nxt < len(wf) else -1.0
+
+        # Slam gate earcon. Outside the gate check on purpose, so a cue that started as the
+        # instrument was switched off still finishes rather than being cut mid-note.
+        if self._slam_cue_pos >= 0:
+            wf_s = self.SLAM_CUE_WAVEFORMS.get(self._slam_cue_kind)
+            if wf_s is None:
+                self._slam_cue_pos = -1.0
+            else:
+                start = int(self._slam_cue_pos)
+                n_sl = min(frames, len(wf_s) - start)
+                if n_sl > 0:
+                    chunk = wf_s[start : start + n_sl]
+                    bufL[:n_sl] += chunk
+                    bufR[:n_sl] += chunk
+                nxt = start + frames
+                self._slam_cue_pos = float(nxt) if nxt < len(wf_s) else -1.0
 
         # Coordinate Guidance FM tone
         if coord_guide_active:

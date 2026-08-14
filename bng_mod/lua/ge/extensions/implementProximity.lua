@@ -379,6 +379,61 @@ local function cycleBand(step)
   if bandIndex < 1 then bandIndex = 1 end
 end
 
+-- =================================================================================================
+--  Slam gate (using the implement as a tool of destruction)
+-- =================================================================================================
+
+-- Nulling is the wrong shape for dropping a bucket on something. Lining up to lift wants a
+-- vertical error driven to zero; an overhead slam wants the opposite -- get decisively above
+-- it, get over it, then commit. So this is three discrete states with hysteresis rather than
+-- a continuous readout, and it is deliberately coarse: ramming is forgiving in a way that
+-- sliding tines into a pallet pocket is not, so the precision instrument stays off here and
+-- the whole thing costs three booleans.
+--
+-- It needs no new geometry at all. edgeL/C/R and heelL/R are already resolved and already
+-- pushed to this VM; the mode only changes WHICH of those five points drive the test --
+-- heels for what lands in an overhead drop, the cutting edge for a flat ram.
+local SLAM_CLEAR_ENTER_M = 0.20  -- implement underside this far above the target's top
+local SLAM_CLEAR_EXIT_M  = 0.05  -- ...and how far it must fall back through to lose it
+local SLAM_OVER_MIN_PTS  = 2     -- implement points inside the target's plan outline
+local slamState = "NONE"
+
+-- Plan-view containment: inside the target's footprint looking straight down, ignoring
+-- height entirely. This is the inverse of the lift test above, which additionally requires
+-- the implement centroid BELOW the box mid-height because it is asking "are the tines
+-- underneath ready to lift". Here the question is "am I over it", and the height half of the
+-- answer is the clearance test, not this one.
+local function overBox(p, frame, box)
+  local d = p - frame.c
+  local f, r = frame.f:dot(d), frame.r:dot(d)
+  return f >= box.minF and f <= box.maxF and r >= box.minR and r <= box.maxR
+end
+
+local function resolveSlam(best, pts, implMinZ)
+  if not best or not best.box then return "NONE" end
+  local box, frame = best.box, best.frame
+
+  -- Hysteresis on the clearance, or hunting on the lift lever at the threshold chatters the
+  -- state -- and this cue is meant to be a decision point, not a flicker.
+  local margin = (slamState == "CLEAR" or slamState == "COMMITTED")
+                 and SLAM_CLEAR_EXIT_M or SLAM_CLEAR_ENTER_M
+  local clear = implMinZ >= (box.maxZ + margin)
+
+  local nOver = 0
+  for _, p in ipairs(pts) do
+    if overBox(p, frame, box) then nOver = nOver + 1 end
+  end
+  -- Asymmetric by construction: it takes two points to claim the footprint and losing it
+  -- takes all of them, so drifting along an edge cannot flutter.
+  local wasOver = (slamState == "OVER" or slamState == "COMMITTED")
+  local over = wasOver and (nOver > 0) or (nOver >= SLAM_OVER_MIN_PTS)
+
+  if clear and over then return "COMMITTED" end
+  if clear then return "CLEAR" end
+  if over then return "OVER" end
+  return "NONE"
+end
+
 local function insideBox(p, frame, box)
   local d = p - frame.c
   local f, r, u = frame.f:dot(d), frame.r:dot(d), frame.u:dot(d)
@@ -581,6 +636,20 @@ local function scan()
   end
 
   sendDockLine(best)
+
+  -- The slam gate rides on the docking toggle rather than getting one of its own. It is the
+  -- same act -- putting the implement somewhere specific relative to an object -- approached
+  -- from the other end, and a second mode key for it would be one more thing to remember
+  -- mid-manoeuvre. Sent only on change; these are decision points, not a readout.
+  if dockActive then
+    local st = resolveSlam(best, pts, implMinZ)
+    if st ~= slamState then
+      slamState = st
+      send("SLAM:" .. st)
+    end
+  elseif slamState ~= "NONE" then
+    slamState = "NONE"
+  end
 end
 
 -- =================================================================================================
@@ -619,6 +688,7 @@ local function resetState()
   -- made; both may have just changed, so fall back to auto rather than keeping an index that
   -- now points at unrelated geometry.
   bandIndex, bandTargetID, lastDockLine = nil, nil, nil
+  slamState = "NONE"
 end
 
 function M.onExtensionLoaded()
@@ -645,6 +715,7 @@ function M.onVehicleSwitched(oldId, newId, player)
   -- made; both may have just changed, so fall back to auto rather than keeping an index that
   -- now points at unrelated geometry.
   bandIndex, bandTargetID, lastDockLine = nil, nil, nil
+  slamState = "NONE"
 end
 
 function M.onVehicleResetted(vehId)
@@ -655,6 +726,7 @@ function M.onVehicleResetted(vehId)
   -- made; both may have just changed, so fall back to auto rather than keeping an index that
   -- now points at unrelated geometry.
   bandIndex, bandTargetID, lastDockLine = nil, nil, nil
+  slamState = "NONE"
 end
 
 function M.onUpdate(dtReal, dtSim, dtRaw)
@@ -675,7 +747,7 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
         elseif cmd == "DOCK_ON" then
           dockActive, lastDockLine = true, nil
         elseif cmd == "DOCK_OFF" then
-          dockActive, lastDockLine = false, nil
+          dockActive, lastDockLine, slamState = false, nil, "NONE"
         elseif cmd == "BANDNEXT" then
           cycleBand(1)
         elseif cmd == "BANDPREV" then
