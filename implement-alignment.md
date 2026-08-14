@@ -103,7 +103,7 @@ Root cause: `vehicleGeometry.bands()` only ever read the cache, it never called
 `M.request()`. On any path where nothing else had already requested that same target, the
 bands never resolved, `resolveBand` returned nil, and `sendDockLine` returned silently.
 
-- [x] `bands()` requests as well as reads, so it self-heals (`<pending>`)
+- [x] `bands()` requests as well as reads, so it self-heals (`de80a4e`)
 
 ### The real lesson: the failure was invisible by construction
 
