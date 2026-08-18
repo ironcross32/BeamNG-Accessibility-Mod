@@ -38,6 +38,40 @@ local REPORT_M        = 6.0
 local INSIDE_MIN_PTS  = 2      -- implement points that must be inside the box
 local MIN_EDGE_WIDTH_M = 0.30  -- shortest edgeL->edgeR baseline worth deriving a heading from
 
+-- Ramp mode. The docking instrument's other answer: lining an ordinary vehicle up with the
+-- drive-in mouth of a ramp-equipped machine (the stock large_cannon) instead of lining an
+-- implement up with a load. Same instrument, same toggle, same wire format -- see scan().
+--
+-- The ranges are PER MODE and deliberately not a raise of REPORT_M. The implement instrument
+-- is short-range on purpose: a bucket's approach is the last two metres, and stretching its
+-- pulse rate across twenty would make the whole of a loader's working envelope crawl.
+--
+-- This is the FEED cutoff, not the range at which the instrument sonifies anything. Those are
+-- two different jobs and conflating them is what made the whole thing go dead in the one place
+-- it was most needed. At 20 m -- measured to the MOUTH -- parking beside a sixteen-metre cannon
+-- at the barrel end puts the mouth comfortably outside it, so the mod sent DOCKCLEAR: no tones,
+-- no reason, no readout, an instrument indistinguishable from a switched-off one while the
+-- scanner cheerfully reported the machine three metres away. Reported from the seat as "I'm
+-- getting nothing", and F9+I could only answer "nothing in range".
+--
+-- The feed now runs well past where audio fades out (DOCK_RAMP_MAX_RANGE_M, 25 m), so the
+-- spoken readout keeps answering after the tones have gone quiet -- which is exactly the state
+-- in which someone taps the key. 45 m covers standing anywhere around a machine of this size
+-- with room to spare, and the packet is a hundred bytes at 10 Hz.
+local RAMP_REPORT_M   = 45.0
+-- Object-position prefilter for ramp candidates, and it has to be much wider than
+-- BROAD_RADIUS_M rather than reusing it. That radius is measured to the object's REFERENCE
+-- node, which on a ~16 m cannon sits ten to fifteen metres behind the ramp mouth -- so a mouth
+-- twenty metres away can easily have its object centre thirty-five metres away and be filtered
+-- out before it is ever looked at. Costs nothing: the candidate loop already visits every
+-- object, and rampGeometry.get is only consulted for what survives.
+--
+-- It has to keep clearing RAMP_REPORT_M by more than half a machine length, or the prefilter
+-- silently becomes the real ceiling and the raise above buys nothing.
+local RAMP_SEARCH_M   = 70.0
+-- Degenerate mouth baseline guard, mirroring MIN_EDGE_WIDTH_M and there for the same reason.
+local RAMP_MIN_WIDTH_M = 0.30
+
 local udpSend, udpCmd = nil, nil
 -- Active by default, unlike the scanner and obstacle detector which are keybind-toggled.
 -- This one needs no handshake because it is silent by construction: with no implement
@@ -64,6 +98,9 @@ local lastSentLine = nil
 -- awareness, and its readout is meaningless on a machine with no implement fitted.
 local dockActive   = false
 local lastDockLine = nil
+-- Which cannon the player is sitting in: OLD (ballistic barrel), LARGE (drive-in ramp), or
+-- "0". Latched so the type line is only sent on change.
+local lastCannon   = nil
 -- Last heading we were confident in, so a momentarily degenerate frame holds position rather
 -- than mirroring. See the length guard in getImplementFrame.
 local lastGoodFwd  = nil
@@ -163,16 +200,24 @@ function M.getImplementFrame()
 
   local ok, res = pcall(function()
     local base = vec3(player:getPosition())
-    local function midOf(first, last)
+    local function midOf(first, last, endsOnly)
       local acc, n = vec3(0, 0, 0), 0
       for i = first, last do
-        acc = acc + (base + vec3(player:getNodePosition(implSampleCids[i])))
-        n = n + 1
+        if not (endsOnly and i ~= first and i ~= last) then
+          acc = acc + (base + vec3(player:getNodePosition(implSampleCids[i])))
+          n = n + 1
+        end
       end
       return acc / n
     end
-    local edge = midOf(1, 3)   -- cutting edge / tine tips
-    local heel = midOf(4, 5)   -- the implement's rear-bottom
+    -- The origin is the MIDPOINT of edgeL/edgeR, not the mean of all three edge picks.
+    -- edgeC is a real contact point but it is not a centre: on an implement with nothing in
+    -- the middle -- forks -- it lands on the inner face of one tine, so averaging it in
+    -- pulls the origin a fifth of a tine spacing off the centreline and short of the tips.
+    -- It stays in getImplementPoints, the narrow-phase sweep and the clearance sets, where
+    -- being a contact point is the whole of what is asked of it.
+    local edge = midOf(1, 3, true)   -- cutting edge / tine tips: (edgeL + edgeR) / 2
+    local heel = midOf(4, 5)         -- the implement's rear-bottom
 
     -- Derive the heading from the implement's LATERAL axis (edgeL -> edgeR), not from
     -- heel -> edge. Tilt rotates the implement about that lateral axis, so the lateral
@@ -202,7 +247,9 @@ function M.getImplementFrame()
       -- per tick. It does not degrade gracefully: negating fwd negates the derived left
       -- vector, so the bearing MIRRORS. Hold the previous heading instead of guessing.
       if veh:length() < 0.2 then
-        if lastGoodFwd then return {pos = edge, fwd = lastGoodFwd, name = implName} end
+        if lastGoodFwd then
+          return {pos = edge, heel = heel, fwd = lastGoodFwd, name = implName}
+        end
         return nil
       end
       if fwd:dot(veh) < 0 then fwd = -fwd end
@@ -217,7 +264,9 @@ function M.getImplementFrame()
     -- Origin is the cutting edge, not the implement centroid: that is the part of the
     -- machine you are actually trying to put somewhere, so a distance of zero means
     -- "touching" rather than "half a bucket short".
-    return {pos = edge, fwd = fwd:normalized(), name = implName}
+    -- heel rides along so the entry gate can measure the floor plane's world pitch and the
+    -- tine length without a second round of node reads.
+    return {pos = edge, heel = heel, fwd = fwd:normalized(), name = implName}
   end)
   if not ok then return nil end
   return res
@@ -291,11 +340,25 @@ end
 -- Oriented box test in the TARGET's own frame. Deliberately not
 -- be:getObjectOOBBHalfExtentsXYZ against world axes: for a car parked at any angle other
 -- than dead-on that would describe a box it isn't in.
+--
+-- The lateral vector MUST be up:cross(fwd), matching vehicleGeometry's VEH_SCRIPT and its own
+-- boxFrame. measureTargetCached takes minR/maxR straight out of that cache, so the two have to
+-- agree and nothing enforces it but this comment: fwd:cross(up) is the negation, which mirrors
+-- every lateral test against a cached target. It fails in the nastiest possible way -- the
+-- strided fallback measures with whatever frame it is handed and so stays self-consistent, so
+-- the containment test and the slam footprint work correctly for the first few ticks after a
+-- spawn and then flip sides the moment the async resolve lands.
+--
+-- With fwd = +Y and up = +Z the result actually points to the driver's LEFT, so `right` and
+-- vehicleGeometry's `rgt` are both misnomers. Leave them: the only property that matters is
+-- that the two agree, and renaming one of them is how they would stop agreeing. Nothing
+-- outside the box tests reads this vector, and the readout's own left/right convention is
+-- built separately in sendDockLine.
 local function boxFrame(veh)
   local ok, res = pcall(function()
     local fwd = vec3(veh:getDirectionVector()):normalized()
     local up  = vec3(veh:getDirectionVectorUp()):normalized()
-    local right = fwd:cross(up)
+    local right = up:cross(fwd)
     if right:length() < 1e-4 then return nil end
     return {c = vec3(veh:getPosition()), f = fwd, u = up, r = right:normalized()}
   end)
@@ -506,12 +569,537 @@ local function resolveSlam(best, pts, implMinZ)
   return "NONE"
 end
 
+-- =================================================================================================
+--  Entry gate (can the tines actually go into the selected band?)
+-- =================================================================================================
+
+-- The single cue that would have ended a four-round investigation in one press. Lateral,
+-- vertical and range can all be nulled perfectly and the tines still cannot enter, because a
+-- tilted implement sweeps through the band's whole thickness after a few centimetres of
+-- travel and hits the far side. It is pure trigonometry on numbers already resolved, so it
+-- costs nothing: the floor plane's angle against the band's thickness.
+--
+-- Reported as a DEPTH rather than as a maximum angle, because depth is the thing that is
+-- actually true of the manoeuvre -- "the tines go in 15 centimetres" is directly actionable,
+-- where "you are 12 degrees over the limit for this band" needs the operator to do the
+-- geometry the mod has already done.
+local IMPL_ENTRY_MIN_DEPTH_M   = 0.40  -- tine engagement below this cannot carry a load
+local IMPL_ENTRY_EXIT_DEPTH_M  = 0.34  -- ...and how far back through it must fall to be lost
+local IMPL_ENTRY_LEVEL_DEG     = 1.0   -- flatter than this and the tine enters its full length
+local entryOK = false
+
+-- theta: world pitch of the floor plane, degrees, edge above heel positive.
+-- L:     tine length, edgeMid -> heelMid.
+-- Returns depth in metres and the enterable flag (hysteretic, so a machine breathing on its
+-- suspension at the threshold cannot chatter -- the same reason SLAM_CLEAR_* is asymmetric).
+local function resolveEntry(frame, band)
+  if not (frame and frame.heel and band) then
+    entryOK = false
+    return nil, nil, false
+  end
+  local L = frame.pos:distance(frame.heel)
+  if L < 1e-3 then
+    entryOK = false
+    return nil, nil, false
+  end
+  local dz = frame.pos.z - frame.heel.z
+  local theta = math.deg(math.asin(math.max(-1, math.min(1, dz / L))))
+  local T = math.max(0.0, band.hiZ - band.loZ)
+
+  local depth
+  if math.abs(theta) < IMPL_ENTRY_LEVEL_DEG then
+    depth = L
+  else
+    -- The tine climbs (or dives) T metres of band thickness over T / sin|theta| of travel,
+    -- and cannot in any case go in further than it is long.
+    depth = math.min(L, T / math.sin(math.rad(math.abs(theta))))
+  end
+
+  local threshold = entryOK and IMPL_ENTRY_EXIT_DEPTH_M or IMPL_ENTRY_MIN_DEPTH_M
+  entryOK = depth >= threshold
+  return theta, depth, entryOK
+end
+
 local function insideBox(p, frame, box)
   local d = p - frame.c
   local f, r, u = frame.f:dot(d), frame.r:dot(d), frame.u:dot(d)
   return f >= box.minF and f <= box.maxF
      and r >= box.minR and r <= box.maxR
      and u >= box.minU and u <= box.maxU
+end
+
+-- =================================================================================================
+--  Ground truth dump (diagnostic)
+-- =================================================================================================
+
+-- Everything the docking readout is built from, as text, run from the accessible console:
+--
+--   return extensions.implementProximity.dockTruth()
+--
+-- WHY IT LIVES HERE rather than in diagnostic/. Two reasons, and the second is the real one.
+-- The accessible console's input is a single-line control and EXEC carries one datagram, so a
+-- pasted multi-line chunk arrives as one line -- at which point the first "--" comments out
+-- everything after it and the whole thing evaluates to nothing, silently. Only a one-liner is
+-- reliably runnable from the seat.
+--
+-- And a diagnostic that re-derives the band selection, the node set or the frame is a SECOND
+-- implementation. It can tell you that two pieces of code disagree; it cannot tell you which
+-- one the machine is obeying, which is the only question worth asking here. In here it calls
+-- the same resolveBand, the same insideBox, the same sample cids that produced the reading
+-- being questioned.
+--
+-- WHAT TO READ FIRST, given "I cannot get the forks under a car":
+--   BANDS        -- the reference the vertical is nulling against. A SOLID pick whose middle
+--                   sits near half the car's height means the instrument is correctly telling
+--                   you to raise the tines into the door. Readout wrong, not operator.
+--   OCCUPANCY    -- the raw bins behind that. A void that is real but sparsely noded can be
+--                   classified SOLID and vanish from the band list; this is the evidence.
+--   RANGE WINNER -- which two nodes produce the range you hear. A wheel winning means "zero"
+--                   is a tyre with the sill still ahead of it, and pushing on shoves the car.
+--   IMPLEMENT    -- tilt, and how far the tine root sits above the tip. The readout measures
+--                   the cutting edge only, so this is the one axis it cannot currently see.
+function M.dockTruth()
+  local out = {}
+  local function p(fmt, ...)
+    if select('#', ...) == 0 then out[#out + 1] = tostring(fmt)
+    else out[#out + 1] = string.format(fmt, ...) end
+  end
+  local function finish() return table.concat(out, "\n") end
+
+  local geo = extensions and extensions.vehicleGeometry or nil
+  if not geo then return "vehicleGeometry not loaded" end
+  local player = be:getPlayerVehicle(0)
+  if not player then return "no player vehicle" end
+
+  -- core_terrain is the nil-returning height source (unlike the vehicle VM's
+  -- getSurfaceHeightBelow, which returns a huge negative), so every ground figure below is
+  -- optional and the dump still reads on a terrain-less map such as smallgrid.
+  local function groundAt(pos)
+    if not (core_terrain and core_terrain.getTerrainHeight) then return nil end
+    local ok, h = pcall(core_terrain.getTerrainHeight, pos)
+    if ok and type(h) == "number" then return h end
+    return nil
+  end
+  local function agl(z, gz)
+    if not gz then return "n/a" end
+    return string.format("%+.3f", z - gz)
+  end
+  local SAMPLE_NAMES = {"edgeL", "edgeC", "edgeR", "heelL", "heelR"}
+
+  p("=== DOCK TRUTH ===")
+  p("player vehicle %d (%s)", player:getID(), tostring(player:getJBeamFilename()))
+  p("implement '%s' pushed by vehicle %s, %d cids, %s sample set",
+    tostring(implName), tostring(implVehID), implCids and #implCids or 0,
+    implSampleCids and "5-point" or "MISSING")
+  p("dock mode %s, band %s, slam %s, classified as %s",
+    dockActive and "ON" or "OFF",
+    bandIndex and ("MANUAL " .. bandIndex .. " on target " .. tostring(bandTargetID)) or "auto",
+    tostring(slamState),
+    implementIsFork() and "FORKS (auto-selects lowest void)"
+                       or "BUCKET (auto-selects tallest face)")
+
+  if not (implCids and implSampleCids) then
+    p("")
+    p("No implement resolved for this vehicle -- nothing below can be computed.")
+    return finish()
+  end
+
+  -- ---- implement -------------------------------------------------------------------------
+  local base = vec3(player:getPosition())
+  local function samplePt(i) return base + vec3(player:getNodePosition(implSampleCids[i])) end
+  local eL, eC, eR = samplePt(1), samplePt(2), samplePt(3)
+  local hL, hR     = samplePt(4), samplePt(5)
+  local edge = (eL + eC + eR) / 3
+  local heel = (hL + hR) / 2
+  local along = edge - heel
+  local alongH = math.sqrt(along.x * along.x + along.y * along.y)
+  -- Positive = tips below the heel, i.e. tilted forward and down. That is the state in which
+  -- the readout's edge origin can sit at exactly the right height while the tines themselves
+  -- are not enterable, so the sign is chosen to make that the loud case.
+  local tiltDeg = (alongH > 1e-4) and math.deg(math.atan2(-along.z, alongH)) or 0
+  local gEdge = groundAt(edge)
+
+  p("")
+  p("--- IMPLEMENT ---")
+  p("edge (tine tips)  world z %.3f  above ground %s", edge.z, agl(edge.z, gEdge))
+  p("heel (tine roots) world z %.3f  above ground %s", heel.z, agl(heel.z, gEdge))
+  p("tine reach (horizontal) %.3f m, edge width %.3f m", alongH, (eR - eL):length())
+  p("TILT %+.1f deg (positive = tips down; tines enter a pocket only near 0)", tiltDeg)
+  p("  -> the tine root sits %.3f m higher than the tip", math.max(0, heel.z - edge.z))
+  p("  -> so a pocket shorter than that cannot be entered, however well the tip is aimed")
+
+  -- ---- target ----------------------------------------------------------------------------
+  local playerID = player:getID()
+  local bestObj, bestD = nil, math.huge
+  for i = 0, be:getObjectCount() - 1 do
+    local obj = be:getObject(i)
+    if obj and obj:getID() ~= playerID then
+      local ok, d = pcall(function() return edge:distance(vec3(obj:getPosition())) end)
+      if ok and d and d < bestD then bestObj, bestD = obj, d end
+    end
+  end
+  if not bestObj then
+    p("")
+    p("No other object in the scene.")
+    return finish()
+  end
+
+  local tid = bestObj:getID()
+  geo.request(tid)
+  local entry = geo.get(tid)
+  local frame = geo.boxFrame(tid)
+  local gTgt = groundAt(vec3(bestObj:getPosition()))
+
+  p("")
+  p("--- TARGET ---")
+  p("nearest object id %d (%s), centre %.2f m from the tine tips",
+    tid, tostring(bestObj:getJBeamFilename()), bestD)
+  if not (entry and frame) then
+    p("geometry NOT RESOLVED -- the readout is on the box/origin fallback right now.")
+    p("Run again in a few seconds; if it never resolves, grep the game log for vehicleGeometry.")
+    return finish()
+  end
+  local e = entry.ext
+  p("extents (own frame): fore/aft %.2f m, lateral %.2f m, vertical %.2f m",
+    e.maxF - e.minF, e.maxR - e.minR, e.maxU - e.minU)
+  p("hull nodes cached: %d", entry.hull and #entry.hull or 0)
+
+  -- Live vertical envelope from the hull nodes: the honest "how high off the ground is the
+  -- bottom of this thing", independent of the histogram that the band list depends on.
+  local hullPts, tMinZ, tMaxZ = {}, math.huge, -math.huge
+  local tBase = vec3(bestObj:getPosition())
+  for _, cid in ipairs(entry.hull or {}) do
+    local ok, q = pcall(function() return tBase + vec3(bestObj:getNodePosition(cid)) end)
+    if ok and q then
+      hullPts[#hullPts + 1] = q
+      if q.z < tMinZ then tMinZ = q.z end
+      if q.z > tMaxZ then tMaxZ = q.z end
+    end
+  end
+  if #hullPts > 0 then
+    p("hull z span %.3f .. %.3f (above ground %s .. %s)",
+      tMinZ, tMaxZ, agl(tMinZ, gTgt), agl(tMaxZ, gTgt))
+  end
+
+  -- ---- bands: what the vertical is nulling against ----------------------------------------
+  p("")
+  p("--- BANDS (the vertical reference) ---")
+  local okB, bands, whyB = pcall(geo.bands, tid)
+  -- Hoisted out of the block below so the entry-gate section can report against the SAME band
+  -- the vertical is nulling to; measuring the two against different references would make a
+  -- disagreement between them impossible to interpret.
+  local selectedBand = nil
+  if not okB or not bands then
+    p("no bands: %s", tostring(whyB or "bands threw"))
+  else
+    -- The real selector, not a copy of it. If this disagrees with what F9+I speaks, the bug is
+    -- in the readout rather than in here, which is exactly the distinction worth preserving.
+    --
+    -- Saved and restored around the call because resolveBand MUTATES: it drops a manual pick
+    -- back to auto whenever the target id differs from the one the pick was made against, and
+    -- the nearest object to the tine tips is not necessarily the one the readout has locked.
+    -- A diagnostic that silently discards the band the operator chose would be changing the
+    -- very state it was run to explain.
+    local savedIdx, savedTgt = bandIndex, bandTargetID
+    local usedBand, usedIdx, count, whyR = resolveBand(tid)
+    bandIndex, bandTargetID = savedIdx, savedTgt
+    selectedBand = usedBand
+    for i, b in ipairs(bands) do
+      local mid = (b.loZ + b.hiZ) * 0.5
+      p("%s %d/%d %-5s z %.3f..%.3f thick %.3f mid %.3f (agl %s) vertical %+.3f",
+        (i == usedIdx) and "->" or "  ", i, #bands, b.kind, b.loZ, b.hiZ,
+        b.hiZ - b.loZ, mid, agl(mid, gTgt), mid - edge.z)
+    end
+    if not usedBand then
+      p("resolveBand returned nothing: %s", tostring(whyR))
+    else
+      local umid = (usedBand.loZ + usedBand.hiZ) * 0.5
+      p("using band %d of %d (%s)", usedIdx, count, bandIndex and "manual" or "auto")
+      p("=> instrument says %s %.3f m, putting the TINE TIPS at z %.3f",
+        (umid - edge.z) >= 0 and "RAISE" or "LOWER", math.abs(umid - edge.z), umid)
+      if gTgt then p("=> that is %.3f m above the ground the target sits on", umid - gTgt) end
+      if usedBand.kind ~= "GAP" then
+        p("!! reference is SOLID: nulling the vertical aims the tips AT material, not a void")
+      end
+    end
+  end
+
+  -- Raw bins. The collapser calls a bin empty below 25%% of the peak, so a genuine void that
+  -- happens to be sparsely noded -- the air under a sill, with bodywork above and wheels on
+  -- either side -- can be classified SOLID and disappear from the list above. Printing the
+  -- verdict alone would hide exactly the failure this dump exists to catch.
+  if entry.hist then
+    local peak = 0
+    for i = 1, #entry.hist do if entry.hist[i] > peak then peak = entry.hist[i] end end
+    local lo, span = entry.histLo, entry.histHi - entry.histLo
+    local fMid, rMid = (e.minF + e.maxF) * 0.5, (e.minR + e.maxR) * 0.5
+    local function zAt(u)
+      return (frame.c + frame.f * fMid + frame.r * rMid + frame.u * (lo + span * u)).z
+    end
+    p("")
+    p("--- VERTICAL OCCUPANCY (peak %d nodes, GAP below %.1f) ---", peak, peak * 0.25)
+    local n = #entry.hist
+    for i = 1, n do
+      local zMid, zLo, zHi = zAt((i - 0.5) / n), zAt((i - 1) / n), zAt(i / n)
+      local here = ""
+      if (edge.z >= math.min(zLo, zHi)) and (edge.z < math.max(zLo, zHi)) then
+        here = "  <== tine tips at this height"
+      end
+      p("bin %2d z %.3f (agl %s) nodes %4d %s%s",
+        i, zMid, agl(zMid, gTgt), entry.hist[i],
+        (entry.hist[i] < peak * 0.25) and "GAP" or "SOLID", here)
+    end
+  end
+
+  -- ---- range: which two nodes produce the number you hear ---------------------------------
+  p("")
+  p("--- RANGE WINNER ---")
+  local implPts = {}
+  for _, cid in ipairs(implCids) do
+    local ok, q = pcall(function() return base + vec3(player:getNodePosition(cid)) end)
+    if ok and q then implPts[#implPts + 1] = {cid = cid, p = q} end
+  end
+  if #hullPts == 0 or #implPts == 0 then
+    p("not enough points (implement %d, hull %d)", #implPts, #hullPts)
+  else
+    local wD, wI, wT = math.huge, nil, nil
+    for _, a in ipairs(implPts) do
+      for _, b in ipairs(hullPts) do
+        local d = a.p:squaredDistance(b)
+        if d < wD then wD, wI, wT = d, a, b end
+      end
+    end
+    wD = math.sqrt(wD)
+    local which = " -- NOT one of the five sample points"
+    for i = 1, 5 do
+      if implSampleCids[i] == wI.cid then which = " -- this is " .. SAMPLE_NAMES[i]; break end
+    end
+    local d = wT - frame.c
+    local tf, tr, tu = frame.f:dot(d), frame.r:dot(d), frame.u:dot(d)
+    p("range %.3f m -- measured over the FULL implement cloud, in 3D, in every direction", wD)
+    p("winning implement node cid %d, z %.3f (agl %s)%s", wI.cid, wI.p.z, agl(wI.p.z, gEdge), which)
+    p("winning target node z %.3f (agl %s), target frame fore %+.3f lateral %+.3f up %+.3f",
+      wT.z, agl(wT.z, gTgt), tf, tr, tu)
+    p("  target spans fore %.3f..%.3f lateral %.3f..%.3f up %.3f..%.3f",
+      e.minF, e.maxF, e.minR, e.maxR, e.minU, e.maxU)
+    local outerR = math.max(math.abs(e.minR), math.abs(e.maxR))
+    if gTgt and (wT.z - gTgt) < 0.45 and outerR > 0 and (math.abs(tr) / outerR) > 0.7 then
+      p("!! winning target point is LOW and near the outer edge -- almost certainly a WHEEL.")
+      p("!! 'zero range' then means tip against tyre, with the sill still ahead of it.")
+    end
+  end
+
+  -- ---- is the five-point sample set actually at the extremes? -----------------------------
+  --
+  -- Everything the readout says about position is measured from the mean of edgeL/C/R, on the
+  -- stated assumption that those three points ARE the cutting edge or the tine tips. Nothing
+  -- checks it. They are picked once from design-space nd.pos by "forward and low", and if that
+  -- pick lands on the carriage instead of the tines, the docking origin sits somewhere in the
+  -- middle of the implement while the RANGE -- which sweeps the full cloud -- keeps reporting
+  -- from the real tips. The readout is then internally inconsistent in the one way that is
+  -- impossible to notice from the seat: range says zero exactly when the tips touch, while
+  -- lateral and vertical are nulling a point that is somewhere else entirely.
+  p("")
+  p("--- SAMPLE SET vs FULL CLOUD ---")
+  local fr = M.getImplementFrame()
+  if not fr or #implPts == 0 then
+    p("no implement frame available")
+  else
+    local fwd = fr.fwd
+    local left = vec3(0, 0, 1):cross(fwd)
+    if left:length() > 1e-4 then left = left:normalized() end
+    local function proj(q)
+      local d = q - base
+      return fwd:dot(d), left:dot(d), q.z
+    end
+    local minA, maxA = math.huge, -math.huge
+    local minZ2, maxZ2 = math.huge, -math.huge
+    local fwdMost, lowMost = nil, nil
+    for _, a in ipairs(implPts) do
+      local f2, _, z2 = proj(a.p)
+      if f2 > maxA then maxA, fwdMost = f2, a end
+      if f2 < minA then minA = f2 end
+      if z2 < minZ2 then minZ2, lowMost = z2, a end
+      if z2 > maxZ2 then maxZ2 = z2 end
+    end
+    p("cloud of %d nodes: along-heading %.3f..%.3f m, world z %.3f..%.3f",
+      #implPts, minA, maxA, minZ2, maxZ2)
+    for i = 1, 5 do
+      local f2, l2, z2 = proj(samplePt(i))
+      p("  %-5s along %+.3f (%.3f m short of the foremost node), left %+.3f, z %.3f",
+        SAMPLE_NAMES[i], f2, maxA - f2, l2, z2)
+    end
+    local ffA, _, ffZ = proj(fwdMost.p)
+    local flA, _, flZ = proj(lowMost.p)
+    p("foremost node cid %d at along %+.3f, z %.3f", fwdMost.cid, ffA, ffZ)
+    p("lowest node   cid %d at along %+.3f, z %.3f", lowMost.cid, flA, flZ)
+    p("=> if the foremost and lowest nodes are not among edgeL/C/R, the docking origin is not")
+    p("=> the tip, and the vertical null refers to a point the tines are not at.")
+
+    -- Longitudinal profile of the cloud, in the implement's own frame.
+    --
+    -- Five single picks cannot show SHAPE, which is the thing actually in question: whether
+    -- "forward and low" in design space landed on the tines or on the top corners of the
+    -- carriage. Slicing along the heading and reporting how LOW each slice reaches traces the
+    -- underside of the implement, and the underside is where tines are and where a backplate
+    -- is not. The lowest cid per slice is printed because those are the candidate replacements
+    -- for the edge picks if the current ones turn out to be on the frame.
+    local NSLICE = 10
+    local span = maxA - minA
+    if span > 1e-3 then
+      local slices = {}
+      for i = 1, NSLICE do
+        slices[i] = {n = 0, minZ = math.huge, maxZ = -math.huge,
+                     minL = math.huge, maxL = -math.huge, minCid = -1}
+      end
+      for _, a in ipairs(implPts) do
+        local f2, l2, z2 = proj(a.p)
+        local k = math.floor((f2 - minA) / span * NSLICE) + 1
+        if k < 1 then k = 1 end
+        if k > NSLICE then k = NSLICE end
+        local s = slices[k]
+        s.n = s.n + 1
+        if z2 < s.minZ then s.minZ, s.minCid = z2, a.cid end
+        if z2 > s.maxZ then s.maxZ = z2 end
+        if l2 < s.minL then s.minL = l2 end
+        if l2 > s.maxL then s.maxL = l2 end
+      end
+      p("longitudinal profile, rear of the implement to front:")
+      for i = 1, NSLICE do
+        local s = slices[i]
+        if s.n > 0 then
+          p("  along %+.2f..%+.2f %3d nodes  z %.3f..%.3f  left %+.2f..%+.2f  lowest cid %d",
+            minA + span * (i - 1) / NSLICE, minA + span * i / NSLICE,
+            s.n, s.minZ, s.maxZ, s.minL, s.maxL, s.minCid)
+        end
+      end
+    end
+  end
+
+  -- ---- the 'under it' gate ----------------------------------------------------------------
+  p("")
+  p("--- 'UNDER IT' GATE ---")
+  local box = {minF = e.minF, maxF = e.maxF, minR = e.minR, maxR = e.maxR,
+               minU = e.minU, maxU = e.maxU}
+  local nInside = 0
+  for i = 1, 5 do
+    local q = samplePt(i)
+    local d = q - frame.c
+    local within = insideBox(q, frame, box)
+    if within then nInside = nInside + 1 end
+    p("  %-5s fore %+.3f lateral %+.3f up %+.3f  %s", SAMPLE_NAMES[i],
+      frame.f:dot(d), frame.r:dot(d), frame.u:dot(d), within and "INSIDE" or "outside")
+  end
+  local implCentre = vec3(0, 0, 0)
+  for _, a in ipairs(implPts) do implCentre = implCentre + a.p end
+  implCentre = implCentre / math.max(1, #implPts)
+  local boxMidZ = (tMinZ + tMaxZ) * 0.5
+  p("points inside %d (needs >= %d)", nInside, INSIDE_MIN_PTS)
+  p("implement centroid z %.3f vs box mid z %.3f -> %s", implCentre.z, boxMidZ,
+    (implCentre.z < boxMidZ) and "below, OK" or "ABOVE, gate blocked")
+  p("contact threshold is %.2f m, but the gate no longer requires clearing it: 'under it'", CONTACT_M)
+  p("and 'touching it' are independent, so tines resting against the underbody report both.")
+
+  -- ---- the entry gate ----------------------------------------------------------------------
+  p("")
+  p("--- ENTRY GATE ---")
+  if not fr or not fr.heel then
+    p("no implement frame, cannot measure the floor plane")
+  else
+    local L = fr.pos:distance(fr.heel)
+    local theta = 0.0
+    if L > 1e-3 then
+      theta = math.deg(math.asin(math.max(-1, math.min(1, (fr.pos.z - fr.heel.z) / L))))
+    end
+    p("floor plane edgeMid->heelMid: length %.3f m, world pitch %+.1f deg", L, theta)
+    local bandNow = selectedBand
+    if not bandNow then
+      p("no reference band selected, so there is nothing to enter")
+    else
+      local T = math.max(0.0, bandNow.hiZ - bandNow.loZ)
+      local depth = L
+      if math.abs(theta) >= IMPL_ENTRY_LEVEL_DEG then
+        depth = math.min(L, T / math.sin(math.rad(math.abs(theta))))
+      end
+      p("band thickness %.3f m -> usable insertion depth %.3f m (needs >= %.2f)",
+        T, depth, IMPL_ENTRY_MIN_DEPTH_M)
+      p("=> %s", (depth >= IMPL_ENTRY_MIN_DEPTH_M) and "ENTERABLE"
+        or "TOO STEEP: the tines hit the far side of the band before they are in")
+    end
+  end
+
+  return finish()
+end
+
+-- Park the free camera on the implement, from a named angle.
+--
+--   extensions.implementProximity.dockCam("side")   -- broadside, at tine height
+--   extensions.implementProximity.dockCam("front")  -- straight down the heading
+--   extensions.implementProximity.dockCam("top")    -- plan view
+--   extensions.implementProximity.dockCam("side", 4) -- closer
+--
+-- This exists because the person who needs the screenshot is the person who cannot aim the
+-- camera. Asking a blind operator to guess at a viewpoint and then guess again at whether it
+-- showed anything is a loop that costs a session per useful image. The implement's own frame
+-- is already resolved every tick, so a view relative to it -- broadside at tine height, which
+-- is exactly the profile a tilt question needs -- is arithmetic, not aim.
+--
+-- Every engine call is wrapped: this is a debugging aid, and a camera API that has moved
+-- between versions must report that plainly rather than throwing inside the console.
+function M.dockCam(which, dist)
+  which = tostring(which or "side"):lower()
+  dist = tonumber(dist) or 7.0
+
+  local player = be:getPlayerVehicle(0)
+  if not player then return "no player vehicle" end
+  if not implCids then return "no implement resolved" end
+  local fr = M.getImplementFrame()
+  if not fr then return "no implement frame" end
+
+  -- Aim at the centroid of the whole implement, not at the cutting edge: the point of these
+  -- views is to see the implement's SHAPE against its frame, so it wants to be in the middle
+  -- of the picture rather than at one edge of it.
+  local base = vec3(player:getPosition())
+  local c, n = vec3(0, 0, 0), 0
+  for _, cid in ipairs(implCids) do
+    local ok, q = pcall(function() return base + vec3(player:getNodePosition(cid)) end)
+    if ok and q then c = c + q; n = n + 1 end
+  end
+  if n == 0 then return "no implement node positions" end
+  c = c / n
+
+  local fwd = fr.fwd
+  local left = vec3(0, 0, 1):cross(fwd)
+  if left:length() < 1e-4 then return "degenerate implement heading" end
+  left = left:normalized()
+
+  local eye, upHint
+  if which == "side" then
+    eye, upHint = c + left * dist, vec3(0, 0, 1)
+  elseif which == "front" then
+    eye, upHint = c + fwd * dist, vec3(0, 0, 1)
+  elseif which == "top" then
+    -- Looking straight down, world up is parallel to the view direction and cannot orient the
+    -- roll. Use the implement heading, which also makes "up the screen" mean "forward".
+    eye, upHint = c + vec3(0, 0, dist), fwd
+  else
+    return "unknown view '" .. which .. "' (want side, front or top)"
+  end
+
+  local dir = c - eye
+  if dir:length() < 1e-4 then return "camera would sit on the target" end
+  dir = dir:normalized()
+
+  local ok, err = pcall(function()
+    commands.setFreeCamera()
+    local q = quatFromDir(dir, upHint)
+    core_camera.setPosRot(0, eye.x, eye.y, eye.z, q.x, q.y, q.z, q.w)
+  end)
+  if not ok then return "camera call failed: " .. tostring(err) end
+
+  return string.format(
+    "free camera at %.2f, %.2f, %.2f looking at the implement centroid %.2f, %.2f, %.2f (%s view, %.1f m)",
+    eye.x, eye.y, eye.z, c.x, c.y, c.z, which, dist)
 end
 
 -- The docking readout: where the implement is relative to the selected band of the nearest
@@ -592,15 +1180,318 @@ local function sendDockLine(best, reason)
       if left:dot(tf) < 0 then yaw = -yaw end
     end
 
-    send(string.format("DOCK:%s,%.3f,%.3f,%.3f,%d,%d,%s,%.3f,%.3f,%.1f,%d",
+    -- Entry gate. Appended at the END of the line, so an older Python half simply parses the
+    -- eleven fields it knows and ignores these -- the same contract the scanner packet's
+    -- optional fourth field already uses.
+    local theta, depth = resolveEntry(frame, band)
+
+    -- Two more optional-tail fields, on the same contract: the MODE, so Python knows what unit
+    -- the null channel is in and which wording to use, and the ramp-mode width margin, which is
+    -- -1 here because an implement approach has no such thing. Mode is last-but-one rather than
+    -- first because moving an existing field would break the very compatibility the tail exists
+    -- to provide; a Python half older than this simply parses thirteen and assumes IMPL, which
+    -- is exactly right, since a mod older than this has no other mode to be in.
+    send(string.format("DOCK:%s,%.3f,%.3f,%.3f,%d,%d,%s,%.3f,%.3f,%.1f,%d,%.1f,%.3f,%s,%.3f",
       best.name, best.d, lateral, vertical, idx, count, band.kind,
-      band.loZ, band.hiZ, yaw, (bandIndex ~= nil) and 1 or 0))
+      band.loZ, band.hiZ, yaw, (bandIndex ~= nil) and 1 or 0,
+      theta or 0.0, depth or -1.0, "IMPL", -1.0))
     lastDockLine = "DOCK"
   end)
   if not ok then
     ipLog('E', "dock readout threw: " .. tostring(err))
     dockFail("readout error")
   end
+end
+
+-- =================================================================================================
+--  Ramp mode
+--
+--  The instrument's second answer. Everything above measures FROM an implement TO a load; this
+--  measures from the vehicle you are driving to the drive-in mouth of a ramp on some other
+--  machine. It is a different answer, not a different instrument: it reduces to the same three
+--  scalars, rides the same DOCK: line, and is reached through the same toggle -- so there is no
+--  second mode key to remember and no second set of tones to learn.
+-- =================================================================================================
+
+-- The business end of a machine with no implement: the centroid of its own front contact band.
+-- This is precisely the fallback vehicleScanner already uses when there is no implement
+-- override, reused rather than reinvented so that the ramp readout and the scanner bearing
+-- measure from the same point on the same vehicle.
+--
+-- Forward band unconditionally, never the scanner's activeDirection: you drive forwards into a
+-- cannon. Reversing into one is not a manoeuvre this instrument is for, and making the origin
+-- follow the gear would swap the reference mid-approach every time the driver rocked out of a
+-- bad line.
+local function dockOriginFrame(player)
+  local geo = extensions and extensions.vehicleGeometry or nil
+  if not (geo and geo.contactPoints) then return nil, "vehicleGeometry unavailable" end
+  local okP, pts = pcall(geo.contactPoints, player:getID(), 1)
+  if not (okP and pts and #pts > 0) then return nil, "no contact points for your vehicle" end
+
+  local c = vec3(0, 0, 0)
+  for _, p in ipairs(pts) do c = c + p end
+  c = c / #pts
+
+  local fwd = vec3(player:getDirectionVector())
+  fwd.z = 0
+  -- Same guard, and the same reason, as getImplementFrame's: flattening a heading collapses it
+  -- to numerical residue when the machine is pitched near vertical, and a heading picked from
+  -- residue flips per tick. Holding the last good one is the only graceful failure available,
+  -- because negating fwd negates the derived left vector and MIRRORS the readout.
+  if fwd:length() < 0.2 then
+    if not lastGoodFwd then return nil, "vehicle heading is degenerate" end
+    fwd = lastGoodFwd
+  else
+    fwd = fwd:normalized()
+    lastGoodFwd = fwd
+  end
+
+  local left = vec3(0, 0, 1):cross(fwd)
+  if left:length() < 1e-4 then return nil, "degenerate vehicle heading" end
+  return {pos = c, fwd = fwd, left = left:normalized()}
+end
+
+-- Nearest vehicle with a resolvable ramp. rampGeometry.request is a no-op for anything already
+-- cached, pending or known hopeless, so an ordinary car in the scene costs one cross-VM round
+-- trip for the whole session and nothing thereafter.
+local function findRampTarget(player, originPos)
+  local rg = extensions and extensions.rampGeometry or nil
+  if not (rg and rg.mouthFrame) then return nil, "rampGeometry unavailable" end
+  local playerID = player:getID()
+
+  local best, bestD, seen = nil, math.huge, 0
+  for i = 0, be:getObjectCount() - 1 do
+    local obj = be:getObject(i)
+    if obj and obj:getID() ~= playerID then
+      local okD, d = pcall(function() return originPos:distance(vec3(obj:getPosition())) end)
+      if okD and d and d < RAMP_SEARCH_M then
+        seen = seen + 1
+        local id = obj:getID()
+        pcall(rg.request, id)
+        local okF, mouth = pcall(rg.mouthFrame, id)
+        if okF and mouth then
+          local md = originPos:distance(mouth.centre)
+          if md < bestD then
+            bestD = md
+            best = {id = id, veh = obj, name = nameOf(obj), mouth = mouth}
+          end
+        end
+      end
+    end
+  end
+  if not best then
+    return nil, string.format("no ramp among %d objects within %d metres", seen, RAMP_SEARCH_M)
+  end
+  return best
+end
+
+-- The three continuous channels plus the two things spoken rather than sonified.
+local function rampMeasure(origin, mouth, playerHalfW)
+  local d = mouth.centre - origin.pos
+
+  -- Distance measured ALONG the ramp axis, not straight-line to the mouth centre. Straight-line
+  -- would inflate with lateral offset -- drifting sideways would read as backing away -- and it
+  -- would bottom out at the offset rather than at zero.
+  --
+  -- SIGNED, and it must stay that way. It used to be floored at zero, on the reasoning that
+  -- crossing the mouth plane should read as arrived rather than as going negative. That is true
+  -- of the last half metre and false of everything else: the negative half-space is not "just
+  -- past the mouth", it is the ENTIRE hemisphere behind the mouth plane -- alongside the
+  -- machine, behind it, anywhere in the yard on the far side. A driver circling a sixteen-metre
+  -- cannon looking for its entrance spends nearly all of that time in it, and the floor pinned
+  -- the range channel at 0 for the whole search: the pulse saturated, the speech said "mouth
+  -- 0.0 feet", and the one number that could have said "you are past it, come back round" was
+  -- the number being discarded. Consumers that want a floor apply their own.
+  local range = mouth.axis:dot(d)
+
+  -- Positive means the mouth is to the driver's LEFT, i.e. steer left. Mod-wide convention,
+  -- same construction as the implement readout's.
+  local lateral = mouth.left:dot(d)
+
+  -- Squareness to the ramp axis, and deliberately NOT folded to +/-90 the way the implement's
+  -- is. A pallet has no front or back as far as the tines are concerned, so folding is right
+  -- there; a ramp emphatically does, and entering it backwards is not entering it. Positive
+  -- means turn left to line up.
+  local yaw = 0
+  local c = origin.fwd:dot(mouth.axis)
+  if c > 1 then c = 1 elseif c < -1 then c = -1 end
+  yaw = math.deg(math.acos(c))
+  if origin.left:dot(mouth.axis) < 0 then yaw = -yaw end
+
+  -- Do you fit. -1 is the "not measured" sentinel and must never be 0, which would read as
+  -- exactly touching both walls.
+  local margin = -1.0
+  if playerHalfW and playerHalfW > 0 then
+    margin = mouth.halfW - math.abs(lateral) - playerHalfW
+  end
+
+  return range, lateral, yaw, margin, mouth.pitchDeg
+end
+
+-- Half the width of the vehicle being driven, taken as the WORSE side rather than half the
+-- total. The origin is not necessarily on the vehicle's lateral centreline, and reporting
+-- clearance from the roomier side is the one error here that ends with a mirror torn off.
+local function playerHalfWidth(playerID)
+  local geo = extensions and extensions.vehicleGeometry or nil
+  if not (geo and geo.get) then return nil end
+  local okG, entry = pcall(geo.get, playerID)
+  if not (okG and entry and entry.ext) then return nil end
+  return math.max(math.abs(entry.ext.minR), math.abs(entry.ext.maxR))
+end
+
+local function sendRampDockLine(player, origin, tgt)
+  local mouth = tgt.mouth
+  if mouth.halfW < RAMP_MIN_WIDTH_M then
+    return dockFail(string.format("ramp mouth only %.2f m wide", mouth.halfW * 2))
+  end
+  local range, lateral, yaw, margin, pitch =
+    rampMeasure(origin, mouth, playerHalfWidth(player:getID()))
+  -- The feed ceiling is the IN-PLANE distance to the mouth, not the along-axis range. Two
+  -- reasons, and each on its own is enough. With the along-range signed, testing it directly
+  -- would leave the whole negative half-space permanently under the ceiling, so a mouth
+  -- thirty-five metres behind you would feed as hard as one two metres in front. And on the
+  -- approach side a driver ten metres out but eight metres off to one side is fifteen metres
+  -- from the mouth, not ten -- the ceiling is meant to be "am I near this thing", which is a
+  -- distance, not a projection.
+  local reach = math.sqrt(range * range + lateral * lateral)
+  -- Past the ceiling this NAMES ITSELF rather than going quiet. A bare DOCKCLEAR clears both
+  -- the readout and the reason on the Python side, so F9+I answered "nothing in range" -- which
+  -- is false and, worse, is the same thing it says when the instrument is not working at all.
+  -- Ramp mode therefore never sends DOCKCLEAR: "there is no ramp" is already a DOCKFAIL, and
+  -- "there is one and it is over there" is the single most useful sentence this instrument can
+  -- produce for someone who cannot find it. Rounded to the metre so the dedupe still holds for
+  -- most ticks.
+  if reach > RAMP_REPORT_M then
+    return dockFail(string.format("%s ramp mouth %.0f metres away", tgt.name, reach))
+  end
+
+  -- Field 3 (vertical) is zero and field 12 (entry depth) is -1 because ramp mode has neither.
+  -- Squareness rides on the yaw field, which is where it belongs -- already signed, already in
+  -- degrees, already positive-LEFT -- and it is SPOKEN rather than sonified, the same treatment
+  -- the implement readout gives its own squareness and for the same reason: it matters at the
+  -- instant of entry and not before. The audio side's null channel is the lateral offset, which
+  -- is field 2 and needs nothing special from here.
+  send(string.format("DOCK:%s,%.3f,%.3f,%.3f,%d,%d,%s,%.3f,%.3f,%.1f,%d,%.1f,%.3f,%s,%.3f",
+    tgt.name, range, lateral, 0.0, 0, 0, "RAMP",
+    mouth.floorZ, mouth.floorZ, yaw, 0, pitch or 0.0, -1.0, "RAMP", margin))
+  lastDockLine = "DOCK"
+end
+
+-- The ramp analogue of dockTruth(), and it earns its place by the same argument: this resolve's
+-- failure mode is "it landed on the wrong node", which produces confident, plausible numbers
+-- and is invisible to every kind of inspection except printing what it chose. Run from the
+-- accessible console.
+function M.rampTruth()
+  local out = {}
+  local function p(s) out[#out + 1] = s end
+  local player = be:getPlayerVehicle(0)
+  if not player then return "no player vehicle" end
+
+  local origin, why = dockOriginFrame(player)
+  if not origin then return "no origin: " .. tostring(why) end
+  p(string.format("origin %.2f,%.2f,%.2f", origin.pos.x, origin.pos.y, origin.pos.z))
+
+  local tgt, why2 = findRampTarget(player, origin.pos)
+  if not tgt then return table.concat(out, " | ") .. " | " .. tostring(why2) end
+
+  local rg = extensions.rampGeometry
+  local entry = rg.get(tgt.id)
+  if entry then
+    p(string.format("%s [%d]: %d ramp nodes, span %.2f m, cids %s",
+      tgt.name, tgt.id, entry.nNodes, entry.alongSpan, table.concat(entry.cids, "/")))
+    p(string.format("half-width %.3f m by %s (naive floor-band pick: %.3f m)",
+      entry.halfW,
+      (entry.wallUsed >= 2) and "wall rule"
+        or string.format("wall rule on %d of 2 sides", entry.wallUsed),
+      entry.naiveHalfW))
+  end
+
+  local m = tgt.mouth
+  p(string.format("live mouth half-width %.3f m, floor z %.2f, pitch %.1f deg",
+    m.halfW, m.floorZ, m.pitchDeg))
+  local hw = playerHalfWidth(player:getID())
+  local range, lateral, yaw, margin = rampMeasure(origin, m, hw)
+  -- The sign of the range is the single most useful thing this readout prints while the mouth
+  -- is being hunted for: negative means you are behind the mouth plane, i.e. on the wrong side
+  -- of the machine entirely, and no amount of nulling the other two channels will help until
+  -- it is positive.
+  p(string.format("range %+.2f m (%s), in-plane %.2f m, lateral %+.2f m (+ is LEFT), "
+    .. "yaw %+.1f deg (+ is turn left)",
+    range, (range >= 0) and "in front of the mouth" or "BEHIND the mouth plane",
+    math.sqrt(range * range + lateral * lateral), lateral, yaw))
+  p(string.format("your half-width %s, margin %s",
+    hw and string.format("%.2f m", hw) or "unknown",
+    (margin >= 0) and string.format("%.2f m each side", margin)
+      or (hw and "NEGATIVE -- you do not fit" or "not measured")))
+  return table.concat(out, " | ")
+end
+
+-- Everything ramp mode does in one tick. Every path that cannot produce a reading names what
+-- it saw, the same contract the implement path follows -- a silent instrument and a working one
+-- sound identical from the seat, which is the ambiguity DOCKFAIL exists to remove.
+local function scanRamp(player)
+  local origin, why = dockOriginFrame(player)
+  if not origin then return dockFail(why or "no origin") end
+  local tgt, why2 = findRampTarget(player, origin.pos)
+  if not tgt then return dockFail(why2 or "no ramp nearby") end
+  sendRampDockLine(player, origin, tgt)
+end
+
+-- The low ballistic solution for a stationary target. cannonGeometry predicts launch speed
+-- before firing from the processed launcher spring and complete cannonball mass, so changing
+-- the Powder or Weight configuration takes effect without a sacrificial calibration shot.
+local function ballisticAngle(range, rise, speed)
+  if not speed or speed <= 0 or range <= 0.05 then return nil, false end
+  local gravity = 9.81
+  pcall(function() gravity = math.abs(core_environment.getGravity()) end)
+  gravity = math.max(0.01, gravity)
+  local v2 = speed * speed
+  local disc = v2 * v2 - gravity * (gravity * range * range + 2 * rise * v2)
+  if disc < 0 then return nil, false end
+  return math.deg(math.atan((v2 - math.sqrt(disc)) / (gravity * range))), true
+end
+
+-- Old Cannon aiming uses the scanner's selected target. The scanner continues to own the
+-- horizontal HRTF cue; this packet adds the physical barrel elevation and the vertical
+-- ballistic correction, atomically against that same target id.
+local function sendOldCannonAim(player, frame, cg)
+  local speed = cg.getLaunchSpeed and cg.getLaunchSpeed(player:getID()) or nil
+  local vs = extensions and extensions.vehicleScanner or nil
+  local targetID = vs and vs.getCurrentTargetID and vs.getCurrentTargetID() or nil
+  local target = targetID and scenetree.findObjectById(targetID) or nil
+  if not target then
+    send(string.format("CANNONAIM:%.3f,999,999,999,-1,%.3f,0",
+      frame.elevation, speed or -1))
+    return
+  end
+
+  local targetPos = vec3(target:getPosition())
+  local geo = extensions and extensions.vehicleGeometry or nil
+  if geo and geo.boxCentre then
+    local okC, c = pcall(geo.boxCentre, targetID)
+    if okC and c then targetPos = c end
+  end
+
+  local delta = targetPos - frame.muzzle
+  local range = math.sqrt(delta.x * delta.x + delta.y * delta.y)
+  local los = math.deg(math.atan2(delta.z, math.max(0.001, range)))
+
+  local boreFlat = vec3(frame.bore.x, frame.bore.y, 0)
+  local toFlat = vec3(delta.x, delta.y, 0)
+  local bearing = 0
+  if boreFlat:length() > 1e-4 and toFlat:length() > 1e-4 then
+    boreFlat = boreFlat:normalized()
+    toFlat = toFlat:normalized()
+    local c = math.max(-1, math.min(1, boreFlat:dot(toFlat)))
+    local mag = math.deg(math.acos(c))
+    local left = vec3(0, 0, 1):cross(boreFlat)
+    bearing = mag * ((left:dot(toFlat) < 0) and -1 or 1)
+  end
+
+  local aim, reachable = ballisticAngle(range, delta.z, speed)
+  if not aim then aim = los end
+  send(string.format("CANNONAIM:%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d",
+    frame.elevation, bearing, aim, los, range, speed or -1, reachable and 1 or 0))
 end
 
 local function scan()
@@ -612,6 +1503,32 @@ local function scan()
   -- Cheap, and it means switching vehicles takes effect on the next tick rather than
   -- waiting out a heartbeat.
   applyActivePush()
+
+  -- Are you sitting in either cannon? Sent on change and gated on nothing: this is a fact about
+  -- the vehicle, not part of the docking toggle. Both types are derived from resolved live
+  -- geometry rather than a jbeam filename allowlist.
+  do
+    local cg = extensions and extensions.cannonGeometry or nil
+    local rg = extensions and extensions.rampGeometry or nil
+    local kind = "0"
+    local oldFrame = nil
+    if cg and cg.has then
+      local okO, old = pcall(cg.has, player:getID())
+      if okO and old then
+        local okF, f = pcall(cg.frame, player:getID())
+        if okF and f then oldFrame = f; kind = "OLD" end
+      end
+    end
+    if kind == "0" and rg and rg.has then
+      local okC, r = pcall(rg.has, player:getID())
+      if okC and r then kind = "LARGE" end
+    end
+    if kind ~= lastCannon then
+      lastCannon = kind
+      send("CANNON:" .. kind)
+    end
+    if oldFrame then sendOldCannonAim(player, oldFrame, cg) end
+  end
 
   -- A push we haven't matched to the current vehicle is not usable.
   --
@@ -639,15 +1556,46 @@ local function scan()
     lastSentName = desiredName
     send("IMPLEMENT:" .. desiredName)
   end
+  -- The one structural change ramp mode required. This used to be an early return, which is
+  -- why ramp mode could never have been reached: a machine with no implement is exactly the
+  -- machine you drive INTO a ramp. It is now a fall-through, and every other early return in
+  -- this function is untouched and still names itself -- which is what keeps ramp work from
+  -- being able to regress the implement case.
+  --
+  -- Note the proximity speech above (NEAR:/CLEAR) is implement-only and stays that way: it
+  -- reports what the bucket is about to hit, and on a car there is no bucket.
   if not implCids then
-    sendDockLine(nil, string.format(
-      "mod holds no implement for vehicle %d (last push %s)",
-      player:getID(), implVehID and ("from " .. tostring(implVehID)) or "never arrived"))
+    -- scanRamp names its own failure, and its reasons are deliberately about the RAMP rather
+    -- than about the implement: "there is no ramp near you" and "the mod holds no implement"
+    -- need completely different fixes and sound identical from the seat.
+    if dockActive then scanRamp(player) end
+    if slamState ~= "NONE" then slamState = "NONE" end
     return
   end
 
   local pts = implementPoints(player)
-  if not pts then return end
+  if not pts then
+    -- Reachable when every getNodePosition on the cached cids throws, i.e. straight after a
+    -- part swap and before the vehicle VM's next push. Returning silently here was the last
+    -- hole in the DOCKFAIL contract: the readout went dead and F9+I read back whatever reason
+    -- it had been given last, which is exactly the ambiguity the rest of this function was
+    -- rewritten to remove.
+    sendDockLine(nil, string.format(
+      "implement node positions unavailable (%d cids)", #implCids))
+    return
+  end
+
+  -- The gates below want the five sample cids -- edgeL/C/R and heelL/R -- not the whole
+  -- implement cloud. SLAM_OVER_MIN_PTS and INSIDE_MIN_PTS are both sized for a five-point set,
+  -- and handing them ~120 nodes quietly changes what they mean: two of a hundred and twenty is
+  -- a single corner grazing the target, and since losing the footprint takes ALL the points,
+  -- the state then cannot be dropped again. COMMITTED ended up firing beside the target rather
+  -- than over it. The nearest-approach sweep further down keeps the full cloud on purpose --
+  -- that is the tier that sees a part that has broken off.
+  --
+  -- The fallback is the pre-fix behaviour, for a push that arrived without a sample set: less
+  -- precise, but it still answers rather than going silent.
+  local gatePts = M.getImplementPoints() or pts
 
   local implMinZ, implMaxZ = math.huge, -math.huge
   local implCentre = vec3(0, 0, 0)
@@ -695,16 +1643,21 @@ local function scan()
       minD = math.sqrt(minD)
 
       if minD < REPORT_M then
-        -- "Under the frame, not touching it" needs all three of these. Box overlap alone
-        -- fires constantly, because a solid box also contains the air beside a low car's
-        -- wheels -- which is not a place you can lift from.
+        -- "Under the frame" needs both of these. Box overlap alone fires constantly, because
+        -- a solid box also contains the air beside a low car's wheels -- which is not a place
+        -- you can lift from.
+        --
+        -- It deliberately does NOT also require minD > CONTACT_M. That third clause made
+        -- "under it" and "touching it" mutually exclusive, so tines resting against the
+        -- underside of a load -- the one state an operator most needs confirmed, and the
+        -- state immediately before a lift -- reported contact and dropped the "under"
+        -- entirely. contact is its own field on the NEAR: line, so the two are independent.
         local nInside = 0
-        for _, ip in ipairs(pts) do
+        for _, ip in ipairs(gatePts) do
           if insideBox(ip, frame, box) then nInside = nInside + 1 end
         end
         local boxMidZ = (box.minZ + box.maxZ) * 0.5
         local inside = (nInside >= INSIDE_MIN_PTS)
-                   and (minD > CONTACT_M)
                    and (implCentre.z < boxMidZ)
 
         local relation
@@ -754,7 +1707,7 @@ local function scan()
   -- from the other end, and a second mode key for it would be one more thing to remember
   -- mid-manoeuvre. Sent only on change; these are decision points, not a readout.
   if dockActive then
-    local st = resolveSlam(best, pts, implMinZ)
+    local st = resolveSlam(best, gatePts, implMinZ)
     if st ~= slamState then
       slamState = st
       send("SLAM:" .. st)
@@ -802,6 +1755,7 @@ local function resetState()
   -- now points at unrelated geometry.
   bandIndex, bandTargetID, lastDockLine = nil, nil, nil
   slamState = "NONE"
+  entryOK = false
 end
 
 function M.onExtensionLoaded()
@@ -832,6 +1786,7 @@ function M.onVehicleSwitched(oldId, newId, player)
   -- now points at unrelated geometry.
   bandIndex, bandTargetID, lastDockLine = nil, nil, nil
   slamState = "NONE"
+  entryOK = false
 end
 
 function M.onVehicleResetted(vehId)
@@ -845,6 +1800,7 @@ function M.onVehicleResetted(vehId)
   -- now points at unrelated geometry.
   bandIndex, bandTargetID, lastDockLine = nil, nil, nil
   slamState = "NONE"
+  entryOK = false
 end
 
 function M.onUpdate(dtReal, dtSim, dtRaw)
@@ -857,12 +1813,26 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
         if cmd == "ON" then
           isActive = true
           lastSentName, lastSentLine, nameEverSent = nil, nil, false
+          -- Re-armed for the same reason nameEverSent is: Python probes with ON at startup,
+          -- and a latch left set means the CANNON: line is never re-sent, so a beamtel
+          -- restarted while sitting in the cannon would never learn it was there.
+          lastCannon = nil
         elseif cmd == "OFF" then
           isActive = false
         elseif cmd == "REBUILD" then
           implByVeh = {}
           implVehID, implCids, implName, implSampleCids = nil, nil, nil, nil
           lastSentName, lastSentLine, nameEverSent = nil, nil, false
+          lastCannon = nil
+          -- A rebuild is the one command that says "forget what you resolved", so the ramp
+          -- cache goes with it. Without this a part swap that fits or removes a ramp keeps
+          -- answering from the old node set.
+          if extensions and extensions.rampGeometry then
+            pcall(function() extensions.rampGeometry.invalidate(nil) end)
+          end
+          if extensions and extensions.cannonGeometry then
+            pcall(function() extensions.cannonGeometry.invalidate(nil) end)
+          end
         elseif cmd == "DOCK_ON" then
           dockActive, lastDockLine = true, nil
         elseif cmd == "DOCK_OFF" then

@@ -40,7 +40,15 @@ local BAND_FRAC   = 0.15   -- fore/aft slice at each end that forms the contact 
 -- per-tick cost of a denser set is small and worth paying.
 local HULL_MAX    = 128    -- cap on cached hull cids
 local BAND_MAX    = 16     -- cap on cached front/rear band cids
-local HIST_BINS   = 24     -- vertical occupancy bins, consumed by the band selector
+-- Vertical occupancy bins, consumed by the band selector. Band thickness is quantized to the
+-- bin height, so the bin count sets the finest pocket the mod can see at all: at 24 bins a
+-- 1.63 m target gives 0.068 m per bin, which makes implementProximity's BAND_MIN_HEIGHT_M of
+-- 0.10 mean "at least two bins" and discards every genuine single-bin void regardless of
+-- whether it is real. At 48 that is 0.034 m per bin and the same threshold becomes a real
+-- ~3-bin test. Wire format is table.concat(hist, ","), and both ends ship in the same mod, so
+-- no compatibility shim is needed -- but M.onVehicleGeometry's #hist == HIST_BINS guard is
+-- what makes a half-updated install fail loudly instead of mis-binning, and must stay.
+local HIST_BINS   = 48
 -- A bin holding less than this share of the fullest bin reads as empty space. Judged
 -- relative to the peak rather than as an absolute count because node density varies by an
 -- order of magnitude between a cone and a truck, and the question is only ever "is there
@@ -70,6 +78,14 @@ local MAX_TRIES         = 3
 -- what getNodePosition returns once projected, so they stay valid as the vehicle moves.
 local cache   = {}
 local pending = {}  -- vehID -> {epoch = n, timer = seconds, tries = n}
+-- Vehicles that have used up their retries, or answered with something unusable. Without
+-- this, giving up is not actually giving up: M.request is documented as cheap to call every
+-- tick and every caller does, so clearing `pending` with nothing in `cache` simply re-arms the
+-- resolve on the next frame. A vehicle whose VM never answers would then re-issue the cross-VM
+-- chunk every RESOLVE_TIMEOUT_S and log the same warning forever. Cleared per vehicle on reset
+-- and destroy, so a part swap -- the realistic way a stuck VM starts answering -- gets a fresh
+-- attempt.
+local failed  = {}
 local epochCounter = 0
 
 local function vgLog(level, msg) log(level, 'vehicleGeometry', msg) end
@@ -212,6 +228,9 @@ function M.onVehicleGeometry(vehID, epoch, extCsv, hullCsv, frontCsv, rearCsv, h
 
   local ext = parseNums(extCsv)
   if #ext ~= 6 then
+    -- Terminal, not a retry: a VM answering with the wrong shape will keep answering with the
+    -- wrong shape, and without the flag the caller-driven re-request would spin on it.
+    failed[vehID] = true
     vgLog('W', string.format("vehicle %s returned %d extents, expected 6", tostring(vehID), #ext))
     return
   end
@@ -236,7 +255,7 @@ end
 -- Fire a resolve for this vehicle unless one is already cached or in flight. Cheap to call
 -- every tick; callers are not expected to track state.
 function M.request(vehID)
-  if not vehID or cache[vehID] or pending[vehID] then return end
+  if not vehID or cache[vehID] or pending[vehID] or failed[vehID] then return end
   local veh = scenetree.findObjectById(vehID)
   if not veh then return end
   epochCounter = epochCounter + 1
@@ -494,10 +513,11 @@ local function dropVehicle(vehID)
   if vehID == nil then return end
   cache[vehID] = nil
   pending[vehID] = nil
+  failed[vehID] = nil
 end
 
 local function dropAll()
-  cache, pending = {}, {}
+  cache, pending, failed = {}, {}, {}
 end
 
 function M.invalidate(vehID)
@@ -536,6 +556,10 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
     p.timer = p.timer + dtReal
     if p.timer >= RESOLVE_TIMEOUT_S then
       if p.tries >= MAX_TRIES then
+        -- Flagged before clearing `pending`, so this line is logged exactly once and the
+        -- fallback is genuinely permanent for this vehicle rather than being re-armed by the
+        -- next M.request. See the note on `failed` above.
+        failed[vehID] = true
         vgLog('W', string.format("vehicle %s never returned geometry; staying on box/origin fallback",
           tostring(vehID)))
         pending[vehID] = nil

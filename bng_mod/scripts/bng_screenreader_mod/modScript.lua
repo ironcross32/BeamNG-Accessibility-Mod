@@ -6,6 +6,14 @@ extensions.load("vehicleNaming")
 -- Loaded first: vehicleScanner and implementProximity both query it, and its own onUpdate
 -- only ever retries stalled resolves, so it cannot throw ahead of anything below.
 extensions.load("vehicleGeometry")
+-- Same reasoning, same slot: implementProximity queries it, and its onUpdate only retries
+-- stalled resolves. It is a separate file from vehicleGeometry because it answers a different
+-- question -- "where is this vehicle's ramp mouth" rather than "where is its surface" -- and
+-- folding it in would put a name-matched special case inside the one file whose whole premise
+-- is that it has none.
+extensions.load("rampGeometry")
+-- Old Cannon barrel nodes and configuration-derived pre-shot ballistics.
+extensions.load("cannonGeometry")
 extensions.load("vehicleScanner")
 extensions.load("beamtelAI")
 extensions.load("vehicleSlots")

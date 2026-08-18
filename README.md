@@ -79,11 +79,12 @@ In reverse, the scanner measures from the **back** of your vehicle and reports t
 
 Scanner distances are the **gap** between the two vehicles — the clear space you still have — not the distance between their centres. Earlier versions measured centre to centre, which added roughly half a vehicle at each end and, worse, changed with the target's orientation: a car sitting broadside and the same car nose-on at the same real gap reported the same number. Expect the figures to read smaller than they used to, and to reach zero when you touch.
 
-#### Loader implement (bucket / forks):
+#### Alignment and cannon readout:
 
 - Ctrl+I: Toggle the docking instrument
 - I: Speak the alignment readout — reference band, how far to raise or lower, how far left or right, range, and how square you are to the face
 - Shift+I: Cycle the reference band
+- In the Old Cannon, I reports live barrel elevation and the solution for the scanner target
 
 #### Toggleable modes:
 
@@ -236,9 +237,28 @@ Nothing plays past five metres. From five to two you get only the pulse, because
 
 F9 then I speaks the whole picture in one go: which band, how tall it is, how far to raise or lower, how far left or right, the range, and — only when it is bad enough to jam the tines — how far off square you are to the face. Think of it as a cane tap rather than a continuous field: one deliberate press, one complete answer, silence in between.
 
+The same toggle automatically switches to **ramp alignment** when an ordinary vehicle is approaching a drive-in ramp. While you are outside the approach corridor, the pulse is a beacon: its position is the true bearing to the ramp mouth and its rate reports straight-line distance. The approach handoff begins within 6 m (about 20 ft) of the centreline, with a 9 m exit boundary to prevent chatter. Crossing onto the approach line sounds a centred double pip; that handoff means the continuous cues now describe corrections to the line rather than where to find the mouth. Leaving the corridor or losing the target resets the handoff, so each new approach gets one cue.
+
+On the approach line, every continuous cue has one meaning. Pulse rate still reports distance. Pulse position reports lateral offset only, with offsets up to 15 cm rendered in the centre to agree with the F9+I “centred” readout; the remaining 0.15–3.0 m range is spread across 0–75 degrees. The beat pair reports heading error at 0.5 Hz per degree, reaching its 12 Hz ceiling at 24 degrees. Its tremolo gives the turn direction: slow means turn left and fast means turn right. F9+I always states heading on the approach, including the explicit phrase “heading zero degrees” below half a degree.
+
+The descending alignment chime is a composite ramp lock, not a single-axis null. It sounds only after both lateral offset is at most 15 cm and heading error is at most 3 degrees. It re-arms only after lateral offset reaches 50 cm or heading error reaches 8 degrees. The lock latch is disabled during mouth acquisition, so entering the corridor already aligned produces the handoff double pip but no misleading second chime.
+
 **Using the implement as a tool of destruction** works from the same toggle, because it is the same act approached from the other end — dropping a bucket on a car, or driving forks through a window, is still putting the implement somewhere specific relative to an object. But lining up to *lift* means driving a height error to zero, and lining up to *drop* means the opposite: getting decisively above the thing before you commit. So instead of a continuous tone you get three short cues as you pass through three states. A high tick means the underside of the implement is clear above the target. A lower tick means you are over its footprint looking straight down. When both are true you get a short rising two-note figure and the words "over it, clear" — that is the point at which dropping will land on it. The docking alignment chime falls where this one rises, so the two can never be mistaken for one another.
 
 These states are coarse on purpose. Ramming is forgiving in a way that threading tines into a pallet pocket is not, and they hold once claimed, so idling with a raised bucket will not set them flickering.
+
+**Old Cannon aiming** uses Page Up to raise the barrel and Page Down to lower it. F9 then I
+reports the physical barrel elevation in degrees, measured from the live barrel rather than
+from the input value. Turn on the vehicle scanner and select a vehicle or prop; its ordinary
+spatial beep remains the horizontal cue.
+
+The cannonball drops under gravity, so pointing directly at the target is not a firing
+solution. Before firing, the mod predicts launch speed from the cannon's current Powder and
+Weight configuration and calculates the low ballistic angle. A low centred pulse means raise
+the barrel, a high centred pulse means lower it, and the pulses accelerate as the error grows.
+Silence on that channel means the elevation is within half a degree; the scanner's bright
+aligned beep then requires both bearing and elevation to be aligned. F9 then I also states the
+calculated angle and correction. No calibration shot or reset is required.
 
 **Accessible node grabber** announces node names as the mouse pointer enters them and jumps the pointer to the closest node relative to the camera's center. Holding Ctrl allows free mouse movement. Scrolling the mouse wheel announces the grabber's strength — higher strength can lift a vehicle by a node, or tear a part free if it cannot bear the weight. Middle-click pins or unpins a node; a pinned node is fixed in place, which may prevent driving or tear off the associated part. To exert force on a node: hold Ctrl, move to the desired node, then click and hold the left mouse button — Ctrl can then be released. Middle-click while holding the left button to pin or unpin.
 

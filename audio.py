@@ -128,6 +128,20 @@ SCANNER_TONE_LEVEL_SMOOTH = (
 )
 SCANNER_TONE_AMP = 0.12  # peak amplitude of the steady tone
 
+# Old Cannon vertical channel. The scanner retains horizontal direction and distance; this
+# centred pulse answers only elevation. Low means raise, high means lower, pulse rate grows
+# with error, and silence means the ballistic elevation is within the dead zone.
+CANNON_AIM_STALE_S = 0.6
+CANNON_AIM_DEADZONE_DEG = 0.5
+CANNON_AIM_FULL_ERROR_DEG = 10.0
+CANNON_AIM_RAISE_HZ = 440.0
+CANNON_AIM_LOWER_HZ = 660.0
+CANNON_AIM_MIN_RATE_HZ = 1.5
+CANNON_AIM_MAX_RATE_HZ = 10.0
+CANNON_AIM_DUTY = 0.32
+CANNON_AIM_MIN_DB = -28.0
+CANNON_AIM_MAX_DB = -18.0
+
 # Coupler Tracking Constants
 COUPLER_TONE_FREQ_HZ = 660.0  # Base frequency (E5, distinct from scanner/obstacle)
 COUPLER_TONE_AMP_DB = -18.0  # Volume level
@@ -283,14 +297,39 @@ IMPL_GROUND_INDEX_HI = 2.2  # at contact — rough, but liveable to work in
 IMPL_GROUND_JACK_FULL_M = 0.35  # metres of machine lift that counts as "full"
 IMPL_GROUND_JACK_OCTAVES = 1.5  # carrier rise across that range
 IMPL_GROUND_JACK_INDEX = 1.2  # modulation depth once the ratio is back on an integer
-IMPL_GROUND_MIN_DB = -30.0  # dBFS at the far edge of the range
+IMPL_GROUND_MIN_DB = -30.0  # dBFS at the far edge of the range, AT THE DEFAULT LEVEL
 # Also dropped 3.5 dB for the same reason. This is only the DEFAULT for the loud end —
 # implement_ground_tone_dbfs overrides it, so an existing config keeps whatever it has.
 IMPL_GROUND_MAX_DB = -19.5  # dBFS at contact / full jack
+# What the level map actually uses. The pair above are a play-tested SPAN, not an absolute
+# floor and ceiling: the configured level sets the loud end and the quiet end follows it down.
+# Anchoring the quiet end to the constant instead inverts the whole map as soon as the user
+# configures a level below it — at -40 dBFS the tone came out at -30 two metres off the ground
+# and -40 at contact, i.e. loudest where it had least to say.
+IMPL_GROUND_SPAN_DB = IMPL_GROUND_MAX_DB - IMPL_GROUND_MIN_DB
 # The gate also opens on approach speed, not only on joystick input. Driving forward into a
 # pile with a motionless bucket is the implement's position changing relative to the ground,
 # and going deaf there would silence exactly the approach this tone exists to report.
 IMPL_GROUND_CLOSING_MPS = 0.15
+
+# --- Streaming split ----------------------------------------------------------------------
+# The two implement voices are both continuous, both overlap in register (the 180 Hz carrier
+# sits 1.6 semitones under the tilt scale's 200 Hz floor, and the FM sidebands land right
+# across the middle of it), and they were both rendered CENTRE. Two continuous sounds from one
+# point in space fuse into a single object — the exact argument this file already makes for
+# rendering the docking beat pair centre, here running the other way. "The implement is dead
+# ahead, so azimuth carries no information" was true and beside the point: this split is not a
+# direction cue, it is a STREAMING cue. Without it the pair was reported as one tone that
+# changes character, so lift and tilt could not be told apart.
+# A CONSTANT offset can never be misread as a bearing, because a bearing moves and this does
+# not; and being pure gain it costs two multiplies, not the two np.convolve a real azimuth
+# would. Equal-power, so the summed loudness is unchanged from the centred version.
+IMPL_STREAM_PAN = 0.35  # 0 = centre, 1 = hard. Ground goes left, tilt goes right.
+_IMPL_PAN_THETA = (1.0 - IMPL_STREAM_PAN) * 0.25 * math.pi  # pan -> [0, pi/2], left of centre
+IMPL_GROUND_GAIN_L = math.cos(_IMPL_PAN_THETA)  # ground panned LEFT, hence cos/sin...
+IMPL_GROUND_GAIN_R = math.sin(_IMPL_PAN_THETA)
+IMPL_TILT_GAIN_L = IMPL_GROUND_GAIN_R  # ...and tilt is the mirror of it
+IMPL_TILT_GAIN_R = IMPL_GROUND_GAIN_L
 
 # --- Tilt ---------------------------------------------------------------------------------
 # A pure sine, not FM: against the two FM voices already in play (hydraulic steering and the
@@ -302,8 +341,19 @@ IMPL_TILT_STEPS_PER_OCT = 24  # quarter tones; +-24 steps = +-1 octave = 200..80
 # very first lift rather than needing a calibration sweep.
 IMPL_TILT_FALLBACK_SPAN_DEG = 50.0
 IMPL_TILT_MIN_SPAN_DEG = 5.0  # below this a learned span is noise, keep the fallback
-IMPL_TILT_MIN_DB = -26.0
-IMPL_TILT_MAX_DB = -20.0
+# A running extreme is NOT a mechanical stop. On the very first stroke it equals the CURRENT
+# angle, so tilt/span is 1.0 and the step pins to the top of the scale for the whole travel —
+# heard as a snap to 800 Hz on the first tilt after a load, going smooth only once a real
+# stop has been passed. An extreme only counts as a stop once the implement has come back off
+# it by this much.
+IMPL_TILT_STOP_CONFIRM_DEG = 3.0
+# ...and a newly confirmed stop is only swapped into the scale while within this of level,
+# where every span maps to step 0 and the rescale is therefore inaudible. Adopting it at angle
+# jumps the readout by however much the fallback span over-estimated the real travel.
+IMPL_TILT_SPAN_SWAP_DEG = 2.0
+IMPL_TILT_MIN_DB = -26.0  # at level, AT THE DEFAULT LEVEL — a span, see IMPL_TILT_SPAN_DB
+IMPL_TILT_MAX_DB = -20.0  # at a mechanical stop
+IMPL_TILT_SPAN_DB = IMPL_TILT_MAX_DB - IMPL_TILT_MIN_DB
 # 8 ms: fast enough that a step still reads as a step, slow enough to kill the click. Do NOT
 # glide this across a whole callback — that turns a discrete step into portamento and
 # destroys the countability the quarter-tone scale exists for.
@@ -403,14 +453,60 @@ DOCK_BEAT_DB = -22.0
 DOCK_AM_ABOVE_HZ = 5.5  # implement is above the band: come down
 DOCK_AM_BELOW_HZ = 2.0  # implement is below the band: come up
 DOCK_AM_DEPTH = 0.45
-# Unison lock, armed with hysteresis so hunting around the null cannot machine-gun it. In
-# beat-rate terms rather than cents, for the same reason as above.
+# Implement-mode unison lock thresholds, in beat-rate terms rather than cents. Ramp mode uses
+# the explicit two-axis thresholds below; this lock waveform is shared by both modes.
 DOCK_LOCK_BEAT_HZ = 0.5
 DOCK_LOCK_REARM_BEAT_HZ = 2.5
 DOCK_LOCK_DB = -8.0
 DOCK_LOCK_HI_HZ = 1568.0  # a descending pair; nothing else in the mod uses that figure,
 DOCK_LOCK_LO_HZ = 1046.0  # which keeps it clear of the FM clicks and the noise-burst click
 DOCK_LOCK_DUR_MS = 110.0
+# -------------------------------------------------------------------------------------------
+# Ramp mode. The same four voices, driven from a different question: lining an ordinary vehicle
+# up with the drive-in mouth of a ramp (the stock large_cannon) rather than lining an implement
+# up with a load. Nothing about the synthesis changes — the pulse shaping, the symmetric partner
+# placement, the tremolo, the lock latch and the centre rendering of the pair are all
+# mode-independent by construction, which is the point of reusing the instrument at all. Only
+# the scaling constants below, and what the third scalar means, vary.
+#
+# Must not exceed implementProximity.lua's RAMP_REPORT_M, for the same reason as above: past
+# the mod's ceiling the feed stops and the instrument cuts out with no fade. The margin is now
+# large (45 m feed against 25 m of tones) and that gap is deliberate rather than slack — the mod
+# keeps feeding well past where anything is sonified, so the spoken readout still answers after
+# the tones have faded, which is precisely the moment someone reaches for the key. 25 rather
+# than the original 18 because a ~16 m machine has to be acquirable from beside it, and at 18 m
+# to the MOUTH you can be three metres from the barrel and hear nothing at all.
+# ramp_resolve_sim.lua scenario 10 asserts the invariant, which the implement one went years
+# without.
+DOCK_RAMP_MAX_RANGE_M = 25.0
+# Where the yaw channel fades in. Scaled up from the implement's 3.5-of-6.0 but not
+# proportionally, and for the same reason that value moved from 2.0 to 3.5 after play-testing:
+# the cue has to arrive while there is still room to act on it. Below about four metres a yaw
+# error can no longer be corrected without reversing out and starting again, so arriving at
+# four metres is arriving too late. MEASURE THIS IN-GAME — the failure signature is finding
+# yourself at the mouth already un-squarable.
+DOCK_RAMP_BEAT_RANGE_M = 8.0
+# The lateral offset that maps to full HRTF azimuth. The implement's 1.2 m is a bucket-width
+# number and is far too tight here: on a ramp approach you are routinely three metres off centre
+# at fifteen metres out, so at 1.2 the pan would be pinned hard over for the whole of the acquire
+# phase — the one phase in which the pulse is the ONLY voice and the pan is therefore carrying
+# everything.
+DOCK_RAMP_LATERAL_FULL_M = 3.0
+# On the approach line, lateral offset belongs only to pulse position. The 15 cm dead zone
+# matches the spoken "centred" state; the remaining 0.15..3.0 m spans the full 75 degrees.
+# During acquisition the pulse keeps the mouth's true bearing instead.
+DOCK_RAMP_LATERAL_DEADZONE_M = 0.15
+# Ramp squareness drives the beat pair, reaching its 12 Hz ceiling at 24 degrees. Its sign
+# keeps the established vocabulary: slow tremolo means turn left, fast means turn right.
+DOCK_RAMP_BEAT_HZ_PER_DEG = 0.5
+# Alignment is composite, so its lock thresholds are stated directly in both axes rather
+# than inferred from the beat-rate thresholds used by implement mode.
+DOCK_RAMP_LOCK_LATERAL_M = 0.15
+DOCK_RAMP_LOCK_YAW_DEG = 3.0
+DOCK_RAMP_REARM_LATERAL_M = 0.50
+DOCK_RAMP_REARM_YAW_DEG = 8.0
+# -------------------------------------------------------------------------------------------
+
 DOCK_ATTACK_TAU = 0.04
 DOCK_REL_TAU = 0.20
 DOCK_HYDRO_DUCK_DB = -12.0  # articulation ducked hard, not merely trimmed, while docking
@@ -433,6 +529,28 @@ SLAM_COMMIT_LO_HZ = 523.0
 SLAM_COMMIT_HI_HZ = 1046.0
 SLAM_COMMIT_DUR_MS = 150.0
 SLAM_CUE_DB = -12.0
+
+# Entry gate. Fires once when a band the tines could not go into becomes one they can, so
+# "you can go in now" arrives while the hand is still on the joystick rather than only when
+# the operator thinks to tap for a readout.
+#
+# A SINGLE tone, deliberately: the two two-note figures in the mod are both taken and both
+# mean something else (the docking lock chime descends at the vertical null, the slam commit
+# rises when armed to drop), and a third contour would be one distinction too many to hold
+# mid-manoeuvre. The pitch has to dodge the single-tone slots as well — the compass and cam
+# clicks are FM near 900 Hz, the scanner and coupler beeps are sines near 1 kHz, and the slam
+# ticks sit at 660 and 1320 — so this sits well above all of them, where nothing else lives.
+# Longer than the slam ticks and with a slower decay, which is what keeps a bare sine from
+# reading as another click.
+ENTRY_CUE_HZ = 1760.0
+ENTRY_CUE_DUR_MS = 90.0
+ENTRY_CUE_DB = -14.0
+
+# Ramp acquisition handoff: two centred 40 ms pips with 50 ms of silence between them.
+DOCK_APPROACH_CUE_HZ = 880.0
+DOCK_APPROACH_CUE_PIP_MS = 40.0
+DOCK_APPROACH_CUE_GAP_MS = 50.0
+DOCK_APPROACH_CUE_DB = -12.0
 
 # Node Grabber Hover Beep
 NODE_BEEP_BASE_FREQ_HZ = 800.0  # Base frequency at height 0.5
@@ -544,8 +662,10 @@ class AudioController:
         self.CAM_CLICK_WAVEFORM = None
         self.CAM_HIGHLIGHT_CLICK_WAVEFORM = None
         self.HYDRO_CENTER_CLICK_WAVEFORM = None  # Articulation centre-crossing tick
-        self.DOCK_LOCK_WAVEFORM = None  # Docking vertical-null chime
+        self.DOCK_LOCK_WAVEFORM = None  # Docking alignment chime
         self.SLAM_CUE_WAVEFORMS = {}  # Slam gate: clear / over / committed
+        self.ENTRY_CUE_WAVEFORM = None  # Docking entry gate: the band became enterable
+        self.DOCK_APPROACH_CUE_WAVEFORM = None  # Ramp handoff double-pip
         self.NODE_BEEP_WAVEFORM = None  # Node grabber hover beep
         self.CLICKSPOT_BEEP_WAVEFORM = None  # Clickspot hover beep (forward)
         self.CLICKSPOT_BEEP_REV_WAVEFORM = (
@@ -679,6 +799,17 @@ class AudioController:
         self._scan_tone_overlap_L = None
         self._scan_tone_overlap_R = None
 
+        # Old Cannon elevation solution, fed alongside the scanner's selected target.
+        self._cannon_aim_have = False
+        self._cannon_elevation = 0.0
+        self._cannon_aim_bearing = 0.0
+        self._cannon_target_angle = 0.0
+        self._cannon_aim_solution_available = False
+        self._cannon_aim_reachable = False
+        self._cannon_aim_stamp = 0.0
+        self._cannon_aim_pulse_phase = 0.0
+        self._cannon_aim_carrier_phase = 0.0
+
         # Coupler Tracking State
         self._coupler_active = False
         self._coupler_bearing = 0.0
@@ -772,15 +903,26 @@ class AudioController:
         self._impl_tilt_step = None  # last quantised quarter-tone step
         self._impl_tilt_held_step = None  # frozen while the gate is fading
         self._impl_tilt_dip_left = 0.0  # seconds of step-change notch remaining
-        self._impl_tilt_span_up = 0.0  # learned travel to the up stop, degrees
-        self._impl_tilt_span_dn = 0.0  # ...and to the down stop
+        self._impl_tilt_seen_up = 0.0  # running extreme seen so far, degrees
+        self._impl_tilt_seen_dn = 0.0  # ...and downward
+        self._impl_tilt_stop_up = 0.0  # extreme CONFIRMED as a stop by a retreat off it
+        self._impl_tilt_stop_dn = 0.0
+        self._impl_tilt_span_up = 0.0  # the confirmed stop currently driving the scale
+        self._impl_tilt_span_dn = 0.0  # (swapped in only while passing level)
 
         # Docking instrument (loader implement alignment) state
         self._dock_active = False  # user toggle, mirrored from beamtel
+        # "IMPL" or "RAMP". Carried on the value rather than the toggle — see
+        # update_dock_target for why that distinction is load-bearing rather than stylistic.
+        self._dock_mode = "IMPL"
         self._dock_have = False  # a live readout, as opposed to "in range of nothing"
         self._dock_range = float("inf")
         self._dock_lateral = 0.0
-        self._dock_vertical = 0.0
+        self._dock_null = 0.0
+        # Ramp mode only: hunting for the mouth rather than lined up on the approach to it.
+        # Latched by the caller; see update_dock_target.
+        self._dock_acquire = False
+        self._dock_bearing = 0.0  # ...and the bearing to it while hunting, positive-LEFT
         self._dock_stamp = 0.0  # perf_counter of the last packet, for the stale fade
         self._dock_tones_enabled = True
         self._dock_pulse_db = DOCK_PULSE_DB
@@ -802,8 +944,10 @@ class AudioController:
         self._dock_beat_env = 0.0  # separate fade, so the pair enters inside DOCK_BEAT_RANGE
         self._dock_lock_armed = False
         self._dock_lock_pos = -1.0  # cursor into the lock waveform, -1 = idle
+        self._dock_approach_cue_pos = -1.0
         self._slam_cue_kind = None  # slam gate earcon: which one is playing
         self._slam_cue_pos = -1.0  # ...and how far through it, -1 = idle
+        self._entry_cue_pos = -1.0  # entry gate earcon playback position, -1 = idle
 
         # Coordinate Guidance FM state
         self._coord_guidance_active = False
@@ -912,6 +1056,23 @@ class AudioController:
             self._scan_prev_dist = distance if math.isfinite(distance) else None
             self._scan_prev_dist_t = now
 
+    def update_cannon_aim(
+        self, elevation_deg, bearing_deg, target_angle_deg, solution_available, reachable
+    ):
+        """Update Old Cannon elevation guidance for the scanner's current target."""
+        with self.lock:
+            self._cannon_aim_have = True
+            self._cannon_elevation = float(elevation_deg)
+            self._cannon_aim_bearing = float(bearing_deg)
+            self._cannon_target_angle = float(target_angle_deg)
+            self._cannon_aim_solution_available = bool(solution_available)
+            self._cannon_aim_reachable = bool(reachable)
+            self._cannon_aim_stamp = time.perf_counter()
+
+    def clear_cannon_aim(self):
+        with self.lock:
+            self._cannon_aim_have = False
+
     # Docking instrument control
     def set_dock_mode(self, active):
         with self.lock:
@@ -920,19 +1081,68 @@ class AudioController:
                 self._dock_have = False
                 self._dock_range = float("inf")
 
-    def update_dock_target(self, range_m, lateral_m, vertical_m):
+    def update_dock_target(
+        self, range_m, lateral_m, null_value, mode="IMPL", acquire=False, bearing_deg=0.0
+    ):
+        """The three continuous channels, plus which quantity the third one nulls.
+
+        null_value is vertical error in metres in IMPL mode and yaw error in degrees in RAMP
+        mode. Lateral remains the pulse-position channel in both modes.
+
+        The mode travels WITH the values rather than on set_dock_mode() because the two arrive
+        on different threads: set_dock_mode is called from the F9 keypress handler and this
+        from the 10 Hz listener. A mode change could therefore sit one packet ahead of its own
+        scaling, and 24 Hz/m applied to a figure the other mode's slope was sized for saturates
+        the beat and fires a spurious lock chime — the instrument announcing "aligned" at a
+        moment nothing is aligned. Making the scale atomic with the number closes that race by
+        construction.
+
+        `acquire` (ramp mode only) says the three channels are answering "where is the mouth"
+        rather than "how far off its line are you", and `bearing_deg` is the direction to it,
+        positive-LEFT. Both are decided by the caller from the same packet these numbers came
+        off, for exactly the reason above: a phase that arrived one packet out of step with
+        its own geometry would put a steering correction through a homing pan.
+        """
+        mode = "RAMP" if str(mode).upper() == "RAMP" else "IMPL"
+        acquire = bool(acquire) and mode == "RAMP"
         with self.lock:
+            if mode != self._dock_mode:
+                self._dock_mode = mode
+                # The arm latch is hysteresis on a quantity whose unit and scale just changed,
+                # so a latch left live across the
+                # boundary chimes on the first packet in the new mode. The beat envelope is reset alongside it because
+                # the range at which the pair fades in is also per-mode, so it would otherwise
+                # be part-way through a fade sized for the wrong scale.
+                self._dock_lock_armed = False
+                self._dock_beat_env = 0.0
             self._dock_have = True
-            # The mod reports a surface gap, which legitimately reaches zero on contact.
-            self._dock_range = max(0.0, float(range_m))
+            self._dock_acquire = acquire
+            if acquire:
+                # Hunting. The range channel becomes the straight-line distance TO the mouth
+                # and the pan becomes the bearing to it, so the pulse is a beacon on the thing
+                # being looked for rather than a readout of a line the driver is nowhere near.
+                #
+                # The distance is derived here rather than sent, because the along-range is
+                # signed and the lateral offset is the other leg of the same right triangle:
+                # hypot of the two IS the in-plane distance, and it cannot disagree with the
+                # numbers it was computed from. It is also why the along-range must reach this
+                # method signed — floored at zero it would understate the distance by the
+                # entire depth of the wrong side of the machine.
+                self._dock_range = math.hypot(float(range_m), float(lateral_m))
+                self._dock_bearing = float(bearing_deg)
+            else:
+                # The mod reports a surface gap, which legitimately reaches zero on contact.
+                self._dock_range = max(0.0, float(range_m))
+                self._dock_bearing = 0.0
             self._dock_lateral = float(lateral_m)
-            self._dock_vertical = float(vertical_m)
+            self._dock_null = float(null_value)
             self._dock_stamp = time.perf_counter()
 
     def clear_dock_target(self):
         with self.lock:
             self._dock_have = False
             self._dock_range = float("inf")
+            self._dock_acquire = False
 
     def trigger_slam_cue(self, kind):
         """Fire a slam-gate earcon. The mod only sends these on a state CHANGE, so the
@@ -942,6 +1152,18 @@ class AudioController:
         with self.lock:
             self._slam_cue_kind = kind
             self._slam_cue_pos = 0.0
+
+    def trigger_entry_cue(self):
+        """Fire the docking entry-gate earcon: the selected band just became one the tines
+        can actually go into. Edge-triggered by the caller, and hysteresised in the mod, so
+        this only ever sees a real transition."""
+        with self.lock:
+            self._entry_cue_pos = 0.0
+
+    def trigger_dock_approach_cue(self):
+        """Mark the ramp handoff from mouth acquisition to approach-line guidance."""
+        with self.lock:
+            self._dock_approach_cue_pos = 0.0
 
     # Coupler tracking control methods
     def set_coupler_tracking(self, active):
@@ -1208,6 +1430,8 @@ class AudioController:
         self.SLAM_CUE_WAVEFORMS = {
             k: self._generate_slam_cue(k) for k in ("clear", "over", "committed")
         }
+        self.ENTRY_CUE_WAVEFORM = self._generate_entry_cue()
+        self.DOCK_APPROACH_CUE_WAVEFORM = self._generate_dock_approach_cue()
 
         old_follow = self._follow_default_enabled
         old_device = self._preferred_device_name
@@ -1599,6 +1823,8 @@ class AudioController:
         self.SLAM_CUE_WAVEFORMS = {
             k: self._generate_slam_cue(k) for k in ("clear", "over", "committed")
         }
+        self.ENTRY_CUE_WAVEFORM = self._generate_entry_cue()
+        self.DOCK_APPROACH_CUE_WAVEFORM = self._generate_dock_approach_cue()
         self.NODE_BEEP_WAVEFORM = self._generate_node_beep()
         self.NODE_BEEP_REV_WAVEFORM = self._generate_node_beep_reverse()
         self.CLICKSPOT_BEEP_WAVEFORM = self._generate_clickspot_beep()
@@ -1736,11 +1962,10 @@ class AudioController:
         return (wave * (10.0 ** (HYDRO_CENTER_CLICK_DB / 20.0))).astype(np.float32)
 
     def _generate_dock_lock(self):
-        """Two-note descending chime marking the vertical error passing through zero.
+        """Two-note descending chime marking docking alignment.
 
-        Silence alone cannot report a null: the beat pair goes smooth at unison, but a smooth
-        tone is also what you hear when the instrument has nothing to say. So the arrival has
-        to be marked positively.
+        A sustained texture alone cannot mark the instant alignment is reached, so the arrival
+        is reported positively.
 
         A pitched *pair* rather than a single tone or a noise burst, because both of those
         slots are taken: the compass and cam clicks are FM around 900 Hz, the articulation
@@ -1808,6 +2033,43 @@ class AudioController:
         if peak > 0:
             wave /= peak  # normalise so the dB constant means what it says
         return (wave * (10.0 ** (SLAM_CUE_DB / 20.0))).astype(np.float32)
+
+    def _generate_entry_cue(self):
+        """The docking entry gate: a single high sine, rendered centre.
+
+        Single rather than a figure because both two-note contours in the mod are already
+        spoken for and mean something else entirely — descending is "arrived at the null",
+        rising is "armed to drop". High enough to sit clear of every other single tone
+        (compass/cam FM near 900 Hz, scanner and coupler near 1 kHz, slam ticks at 660 and
+        1320), and given a slower decay than those ticks so it reads as a bell rather than as
+        one more click.
+        """
+        dur_s = ENTRY_CUE_DUR_MS / 1000.0
+        n = int(self.samplerate * dur_s)
+        t = np.arange(n) / self.samplerate
+        wave = np.sin(2.0 * np.pi * ENTRY_CUE_HZ * t) * np.exp(-t * (2.5 / dur_s))
+        edge = max(1, int(self.samplerate * 0.004))
+        wave[:edge] *= np.linspace(0, 1, edge)
+        wave[-edge:] *= np.linspace(1, 0, edge)
+        peak = float(np.max(np.abs(wave)))
+        if peak > 0:
+            wave /= peak  # normalise so the dB constant means what it says
+        return (wave * (10.0 ** (ENTRY_CUE_DB / 20.0))).astype(np.float32)
+
+    def _generate_dock_approach_cue(self):
+        """Two centred pips marking the ramp beacon-to-approach handoff."""
+        pip_n = int(self.samplerate * DOCK_APPROACH_CUE_PIP_MS / 1000.0)
+        gap_n = int(self.samplerate * DOCK_APPROACH_CUE_GAP_MS / 1000.0)
+        pip_t = np.arange(pip_n) / self.samplerate
+        pip = np.sin(2.0 * np.pi * DOCK_APPROACH_CUE_HZ * pip_t)
+        edge = min(pip_n // 2, max(1, int(self.samplerate * 0.004)))
+        pip[:edge] *= np.linspace(0.0, 1.0, edge)
+        pip[-edge:] *= np.linspace(1.0, 0.0, edge)
+        wave = np.concatenate((pip, np.zeros(gap_n), pip))
+        peak = float(np.max(np.abs(wave)))
+        if peak > 0:
+            wave /= peak
+        return (wave * (10.0 ** (DOCK_APPROACH_CUE_DB / 20.0))).astype(np.float32)
 
     def _generate_cam_highlight_click(self):
         dur_samples = int(self.samplerate * CLICK_DUR_MS / 1000.0)
@@ -2171,6 +2433,13 @@ class AudioController:
             scan_active = self._scan_mode_active
             scan_bearing = self._scanner_target_bearing
             scan_dist = self._scanner_target_distance
+            cannon_aim_have = self._cannon_aim_have
+            cannon_elevation = self._cannon_elevation
+            cannon_aim_bearing = self._cannon_aim_bearing
+            cannon_target_angle = self._cannon_target_angle
+            cannon_aim_solution_available = self._cannon_aim_solution_available
+            cannon_aim_reachable = self._cannon_aim_reachable
+            cannon_aim_stamp = self._cannon_aim_stamp
             # Coupler tracking snapshot
             coupler_active = self._coupler_active
             coupler_bearing = self._coupler_bearing
@@ -2206,7 +2475,10 @@ class AudioController:
             dock_have = self._dock_have
             dock_range = self._dock_range
             dock_lateral = self._dock_lateral
-            dock_vertical = self._dock_vertical
+            dock_null = self._dock_null
+            dock_mode = self._dock_mode
+            dock_acquire = self._dock_acquire
+            dock_bearing = self._dock_bearing
             dock_stamp = self._dock_stamp
             dock_pulse_db = self._dock_pulse_db
 
@@ -2854,7 +3126,15 @@ class AudioController:
             else:
                 delta = ((scan_bearing - self._sm_scan_bearing + 180.0) % 360.0) - 180.0
                 beta_sb = 1.0 - math.exp(-(frames / self.samplerate) / SCANNER_BEARING_TAU)
-                self._sm_scan_bearing += beta_sb * delta
+                # Re-wrap after integrating. The shortest-distance delta is bounded but the
+                # ACCUMULATOR is not: turning steadily one way feeds it same-signed deltas
+                # forever, so it walks off to -400, -760... The azimuth survives that (it
+                # takes a % 360) but the pitch does not — it scales on abs(bearing), so a
+                # second lap kept lowering the note below what a target dead astern can
+                # produce. Wrapping keeps the state in the range every consumer assumes.
+                self._sm_scan_bearing = (
+                    (self._sm_scan_bearing + beta_sb * delta + 180.0) % 360.0
+                ) - 180.0
             scan_bearing = self._sm_scan_bearing
         else:
             self._sm_scan_bearing = None
@@ -2892,6 +3172,10 @@ class AudioController:
             # (back->front) with a sharp alignment term so the pitch climbs continuously toward front
             # and peaks at dead-center. base_freq/offset_oct are user-configurable so the top
             # frequency can be tamed. pitch_mult resamples the beep waveform (rendered at BEEP_FREQ).
+            # Scanner alignment is horizontal target alignment, in every vehicle. Cannon
+            # elevation has its own centred pulse below; folding it into this test made the
+            # established bright scanner tone depend on stale, vehicle-specific cannon state
+            # and left the scanner sounding unaligned after switching away from the cannon.
             aligned = abs(scan_bearing) <= SCANNER_ALIGN_THRESHOLD_DEG
             pitch_norm = 1.0 - (
                 abs(scan_bearing) / 180.0
@@ -3082,6 +3366,66 @@ class AudioController:
             self._scan_tone_overlap_L = None
             self._scan_tone_overlap_R = None
             self._scan_tone_level = 0.0
+
+        # Old Cannon elevation cue. It is deliberately centred: left/right already belongs
+        # to the scanner HRTF image, while low/high pitch says raise/lower. The cue is withheld
+        # until the processed launcher data provides a valid pre-shot speed; line-of-sight is
+        # useful in speech but pretending it is a ballistic null would reproduce the miss this
+        # feature fixes.
+        cannon_gate = (
+            scan_active
+            and not coupler_active
+            and self._dock_gate_env <= 0.0
+            and cannon_aim_have
+            and cannon_aim_solution_available
+            and cannon_aim_reachable
+            and (time.perf_counter() - cannon_aim_stamp) < CANNON_AIM_STALE_S
+        )
+        cannon_error = cannon_target_angle - cannon_elevation
+        if cannon_gate and abs(cannon_error) > CANNON_AIM_DEADZONE_DEG:
+            norm = min(
+                1.0,
+                (abs(cannon_error) - CANNON_AIM_DEADZONE_DEG)
+                / max(1e-6, CANNON_AIM_FULL_ERROR_DEG - CANNON_AIM_DEADZONE_DEG),
+            )
+            pulse_rate = CANNON_AIM_MIN_RATE_HZ + (
+                CANNON_AIM_MAX_RATE_HZ - CANNON_AIM_MIN_RATE_HZ
+            ) * norm
+            cyc = self._cannon_aim_pulse_phase + (
+                pulse_rate / self.samplerate
+            ) * np.arange(frames)
+            frac = (cyc % 1.0) / CANNON_AIM_DUTY
+            env = np.where(
+                frac < 1.0,
+                np.sin(np.pi * np.minimum(frac, 1.0)) ** 2,
+                0.0,
+            )
+            freq = CANNON_AIM_RAISE_HZ if cannon_error > 0.0 else CANNON_AIM_LOWER_HZ
+            carrier = self._cannon_aim_carrier_phase + (
+                freq / self.samplerate
+            ) * np.arange(frames)
+            amp_db = CANNON_AIM_MIN_DB + (
+                CANNON_AIM_MAX_DB - CANNON_AIM_MIN_DB
+            ) * norm
+            mono = (
+                np.sin(2.0 * np.pi * carrier)
+                * env
+                * (10.0 ** (amp_db / 20.0))
+            ).astype(np.float32)
+            bufL += mono
+            bufR += mono
+            self._cannon_aim_pulse_phase = float(
+                (self._cannon_aim_pulse_phase + pulse_rate * frames / self.samplerate)
+                % 1.0
+            )
+            self._cannon_aim_carrier_phase = float(
+                (self._cannon_aim_carrier_phase + freq * frames / self.samplerate)
+                % 1.0
+            )
+        else:
+            # A correction that resumes after a null starts with a pulse immediately instead
+            # of returning halfway through the cycle it was in before alignment.
+            self._cannon_aim_pulse_phase = 0.0
 
         # Node grabber hover beep (pitch varies by node height, forward on enter, reverse on leave)
         if self._node_beep_playback_pos >= 0 and self.NODE_BEEP_WAVEFORM is not None:
@@ -3798,7 +4142,8 @@ class AudioController:
 
         # =============================================================================
         # Loader implement: ground-proximity FM tone and quarter-tone tilt tone.
-        # Both gated by one shared fade envelope, both centre-panned. Silent unless the
+        # Both gated by one shared fade envelope, split left/right by a fixed equal-power pan
+        # so they stay two streams rather than fusing (see IMPL_STREAM_PAN). Silent unless the
         # telemetry says an implement was actually resolved on this vehicle.
         # =============================================================================
         dt_impl = frames / self.samplerate
@@ -3906,13 +4251,14 @@ class AudioController:
                     self._impl_ground_phase = float(ph[-1])
                     self._impl_ground_mod_phase = float(mph[-1])
 
+                # The configured level is the LOUD end and the span hangs below it, so the
+                # gradient keeps both its shape and its direction at any setting.
                 g_amp = float(
                     10.0
                     ** (
                         (
-                            IMPL_GROUND_MIN_DB
-                            + (self._impl_ground_db - IMPL_GROUND_MIN_DB)
-                            * max(prox, jb)
+                            self._impl_ground_db
+                            - IMPL_GROUND_SPAN_DB * (1.0 - max(prox, jb))
                         )
                         / 20.0
                     )
@@ -3921,8 +4267,8 @@ class AudioController:
                     2.0 * np.pi * ph + index_arr * np.sin(2.0 * np.pi * mph)
                 )
                 mono_g = (mono_g * gate_arr).astype(np.float32)
-                bufL += mono_g
-                bufR += mono_g
+                bufL += mono_g * IMPL_GROUND_GAIN_L
+                bufR += mono_g * IMPL_GROUND_GAIN_R
             else:
                 self._impl_ground_inc = 0.0
                 self._impl_ground_ratio = 0.0
@@ -3932,10 +4278,22 @@ class AudioController:
             # Learn the real mechanical stops rather than assuming a symmetric range: the
             # two ends are not equidistant from level on any implement, and mapping them
             # to 200/800 Hz is what puts the whole scale in use.
-            if impl_tilt_deg > self._impl_tilt_span_up:
-                self._impl_tilt_span_up = impl_tilt_deg
-            if impl_tilt_deg < -self._impl_tilt_span_dn:
-                self._impl_tilt_span_dn = -impl_tilt_deg
+            # A running extreme is only a stop once the implement has come back OFF it: while
+            # it is still being pushed outward the extreme IS the current angle, tilt/span is
+            # 1.0, and the step pins to the top of the scale for the entire stroke.
+            if impl_tilt_deg > self._impl_tilt_seen_up:
+                self._impl_tilt_seen_up = impl_tilt_deg
+            elif impl_tilt_deg < self._impl_tilt_seen_up - IMPL_TILT_STOP_CONFIRM_DEG:
+                self._impl_tilt_stop_up = self._impl_tilt_seen_up
+            if -impl_tilt_deg > self._impl_tilt_seen_dn:
+                self._impl_tilt_seen_dn = -impl_tilt_deg
+            elif -impl_tilt_deg < self._impl_tilt_seen_dn - IMPL_TILT_STOP_CONFIRM_DEG:
+                self._impl_tilt_stop_dn = self._impl_tilt_seen_dn
+            # Swap a newly confirmed stop into the scale only while passing level, where every
+            # span maps to step 0 and the change costs nothing audible.
+            if abs(impl_tilt_deg) < IMPL_TILT_SPAN_SWAP_DEG:
+                self._impl_tilt_span_up = self._impl_tilt_stop_up
+                self._impl_tilt_span_dn = self._impl_tilt_stop_dn
             span = (
                 self._impl_tilt_span_up if impl_tilt_deg >= 0 else self._impl_tilt_span_dn
             )
@@ -3978,13 +4336,19 @@ class AudioController:
             if frames > 0:
                 self._impl_tilt_phase = float(ph_t[-1])
 
+            # Same span-below-the-configured-level map as the ground tone above.
             t_amp = float(
                 10.0
                 ** (
                     (
-                        IMPL_TILT_MIN_DB
-                        + (self._impl_tilt_db - IMPL_TILT_MIN_DB)
-                        * self._clamp(abs(step) / float(IMPL_TILT_STEPS_PER_OCT))
+                        self._impl_tilt_db
+                        - IMPL_TILT_SPAN_DB
+                        * (
+                            1.0
+                            - self._clamp(
+                                abs(step) / float(IMPL_TILT_STEPS_PER_OCT)
+                            )
+                        )
                     )
                     / 20.0
                 )
@@ -4000,8 +4364,8 @@ class AudioController:
                 self._impl_tilt_dip_left = max(0.0, self._impl_tilt_dip_left - dt_impl)
 
             mono_t = (mono_t * gate_arr).astype(np.float32)
-            bufL += mono_t
-            bufR += mono_t
+            bufL += mono_t * IMPL_TILT_GAIN_L
+            bufR += mono_t * IMPL_TILT_GAIN_R
         else:
             # Idle: reset the glide anchors so the next onset starts from the real value
             # rather than gliding up from a stale one.
@@ -4016,12 +4380,31 @@ class AudioController:
         #  Docking instrument
         # =================================================================================
         # Two voices, three dimensions. The panned pulse carries lateral offset on the
-        # stereo image and range on its repetition rate; the beat pair carries vertical
-        # error, nulling to unison at alignment. Phased by range so no more than three
-        # dimensions are ever live at once: silent past DOCK_MAX_RANGE_M, pulse only from
-        # there in to DOCK_BEAT_RANGE_M, pair fading in inside that.
+        # stereo image and range on its repetition rate; the beat pair carries the null
+        # channel, going to unison at alignment. Phased by range so no more than three
+        # dimensions are ever live at once: silent past the mode's max range, pulse only from
+        # there in to its beat range, pair fading in inside that.
+        #
+        # It serves two questions. In IMPL mode the null channel is the implement's height
+        # error against the reference band, in metres. In RAMP mode it is the vehicle's
+        # squareness to a ramp's drive-in axis, in degrees, because on a car nothing goes up
+        # or down and squareness is what actually decides whether you fit between the walls.
+        # Everything below is shared: the mode selects constants, never a code path.
         dt_dock = frames / self.samplerate
         dock_produced_audio = False
+
+        # Everything that differs between the implement and ramp answers, resolved once. There
+        # is deliberately nothing else: no branch in the synthesis, no second set of voices,
+        # no mode test further down. A ramp is a different set of numbers, not a different
+        # instrument, which is the only reason it costs no new listening vocabulary.
+        dock_ramp = dock_mode == "RAMP"
+        dock_max_range = DOCK_RAMP_MAX_RANGE_M if dock_ramp else DOCK_MAX_RANGE_M
+        dock_beat_range = DOCK_RAMP_BEAT_RANGE_M if dock_ramp else DOCK_BEAT_RANGE_M
+        dock_lat_full = DOCK_RAMP_LATERAL_FULL_M if dock_ramp else DOCK_LATERAL_FULL_M
+        # The null is vertical metres for an implement and yaw degrees for a ramp.
+        dock_beat_slope = (
+            DOCK_RAMP_BEAT_HZ_PER_DEG if dock_ramp else DOCK_BEAT_HZ_PER_M
+        )
 
         # Stale-guard on wall time rather than on a packet counter: the mod scans at 10 Hz
         # and stops sending entirely when it goes CLEAR, so "nothing arrived recently" is
@@ -4029,7 +4412,7 @@ class AudioController:
         dock_live = (
             dock_on
             and dock_have
-            and dock_range < DOCK_MAX_RANGE_M
+            and dock_range < dock_max_range
             and (time.perf_counter() - dock_stamp) < DOCK_STALE_S
         )
 
@@ -4050,7 +4433,7 @@ class AudioController:
         # buffer is legal from PortAudio and would raise straight out of the callback.
         if frames > 0 and (dock_gate_end > 0.0 or dock_gate_was > 0.0):
             # ---- Voice 1: panned pulse (lateral + range) --------------------------------
-            rng_norm = self._clamp(1.0 - (dock_range / DOCK_MAX_RANGE_M))
+            rng_norm = self._clamp(1.0 - (dock_range / dock_max_range))
             pulse_hz = DOCK_PULSE_MIN_HZ + (DOCK_PULSE_MAX_HZ - DOCK_PULSE_MIN_HZ) * (
                 rng_norm**2
             )
@@ -4099,11 +4482,25 @@ class AudioController:
             self._dock_pulse_cycle = float(cyc[-1] % 1.0)
             self._dock_pulse_rate = float(pulse_hz)
 
-            # ---- Voice 2: vertical beat pair --------------------------------------------
-            # Fades in only inside DOCK_BEAT_RANGE_M. Its own envelope rather than the shared
-            # gate, so the acquire phase really is two-dimensional instead of three quiet
-            # ones.
-            beat_tgt = 1.0 if (dock_live and dock_range < DOCK_BEAT_RANGE_M) else 0.0
+            # ---- Voice 2: the null channel ----------------------------------------------
+            # Vertical error in implement mode, squareness to the ramp axis in ramp mode. One
+            # voice for both because the beat pair is the right instrument for either: it nulls
+            # to unison, its magnitude is signless, and its sign rides on the tremolo rate.
+            #
+            # Fades in only inside the mode's beat range. Its own envelope rather than the
+            # shared gate, so the acquire phase really is two-dimensional instead of three
+            # quiet ones.
+            # Held out entirely while hunting for a ramp mouth. Heading error is a correction
+            # to an approach line; from beside or behind the machine there is no useful line
+            # to become square with. Its absence is
+            # also the cue that you have not yet reached the approach: the pair arriving as you
+            # come round into the corridor is the instrument saying "now you are lined up on
+            # it", which is precisely the moment the driver could not otherwise detect.
+            beat_tgt = (
+                1.0
+                if (dock_live and not dock_acquire and dock_range < dock_beat_range)
+                else 0.0
+            )
             tau_b = DOCK_ATTACK_TAU if beat_tgt > self._dock_beat_env else DOCK_REL_TAU
             beat_end = self._dock_beat_env + (1.0 - math.exp(-dt_dock / tau_b)) * (
                 beat_tgt - self._dock_beat_env
@@ -4115,12 +4512,16 @@ class AudioController:
             ).astype(np.float32)
             self._dock_beat_env = beat_end
 
-            # Beat rate straight from the vertical error, and the pair placed symmetrically
-            # about DOCK_REF_HZ so the centre pitch never moves. See the constants block: a
-            # fixed reference with one sliding partner is heard as a single gliding PITCH,
-            # not as beating, because the fused percept sits at their average.
+            # Beat rate straight from the null error, scaled by the mode's slope — this is
+            # the one place vertical metres and yaw degrees are told apart, and
+            # dock_beat_slope arrives bound to the same packet as the value, so it can never
+            # be one behind it (the race that reset is guarding against). The pair
+            # is placed symmetrically about DOCK_REF_HZ so the centre pitch never moves. See
+            # the constants block: a fixed reference with one sliding partner is heard as a
+            # single gliding PITCH, not as beating, because the fused percept sits at their
+            # average.
             beat_hz = min(
-                abs(dock_vertical) * DOCK_BEAT_HZ_PER_M, DOCK_BEAT_MAX_HZ
+                abs(dock_null) * dock_beat_slope, DOCK_BEAT_MAX_HZ
             )
             pair = None
             if beat_end > 0.0 or beat_arr.max() > 0.0:
@@ -4141,15 +4542,29 @@ class AudioController:
                 ph_ref = self._dock_ref_phase + np.cumsum(inc_ref_arr)
                 ph_mov = self._dock_mov_phase + np.cumsum(inc_mov_arr)
 
-                # Sign carrier. Beating is signless, so above-versus-below rides on the
-                # tremolo RATE. Suppressed inside the lock window: at the null there is
+                # Sign carrier. Beating is signless, so the direction of the correction rides
+                # on the tremolo RATE. Suppressed close to the beat null: there is
                 # nothing to correct, and a steady unison is the clearest "stop" available.
+                #
+                # The same two rates serve both modes — above/below in IMPL, and left/right
+                # heading correction in RAMP. Reused rather than given
+                # a second pair because the modes are never live at once, the mode is announced
+                # on every change, and asking a listener to hold four tremolo speeds in mind is
+                # one distinction too many mid-manoeuvre.
+                #
+                # In ramp mode yaw is positive-LEFT, and the fast rate is selected on a
+                # NEGATIVE value, so FAST means turn right; slow means turn left. Arbitrary,
+                # like every categorical mapping, and therefore stated
+                # here, asserted in dock_tone_sim.py and named nowhere else. It is a
+                # categorical cue rather than a spatial one, which makes it the one of the
+                # three side channels that survives on speakers, where the pan's
+                # low-frequency image largely does not.
                 if beat_hz <= DOCK_LOCK_BEAT_HZ:
                     am = np.ones(frames, dtype=np.float32)
                     self._dock_am_phase = 0.0
                 else:
                     am_hz = (
-                        DOCK_AM_ABOVE_HZ if dock_vertical < 0.0 else DOCK_AM_BELOW_HZ
+                        DOCK_AM_ABOVE_HZ if dock_null < 0.0 else DOCK_AM_BELOW_HZ
                     )
                     inc_am = am_hz / self.samplerate
                     ph_am = self._dock_am_phase + np.arange(frames) * inc_am
@@ -4181,10 +4596,40 @@ class AudioController:
             mono_dock = (mono_dock * dock_gate_arr).astype(np.float32)
 
             # ---- Lateral -> HRTF azimuth ------------------------------------------------
-            lat_norm = self._clamp(dock_lateral / DOCK_LATERAL_FULL_M, -1.0, 1.0)
-            # Game bearing is positive-LEFT, and the in-callback HRTF convention takes the
-            # raw bearing mod 360 (unlike the mirrored one used by the one-shot earcons).
-            hrtf_az_dock = (DOCK_MAX_AZIMUTH_DEG * lat_norm) % 360.0
+            if dock_acquire:
+                # Hunting: the pulse is placed at the mouth's TRUE bearing, over the whole
+                # circle, exactly as the compass clicks place a heading. Not squeezed into
+                # DOCK_MAX_AZIMUTH_DEG the way the lateral error is — that ceiling exists
+                # because a steering error is a front-hemisphere quantity and the KEMAR set's
+                # level difference folds back past 67.5 degrees, whereas a mouth genuinely can
+                # be behind you and saying so is the entire job of this phase. The pan-gain
+                # fallback below has no back hemisphere, so it takes the sine, which at least
+                # keeps the side right.
+                lat_norm = self._clamp(
+                    math.sin(math.radians(dock_bearing)), -1.0, 1.0
+                )
+                hrtf_az_dock = dock_bearing % 360.0
+            else:
+                lat_abs = abs(dock_lateral)
+                if dock_ramp and lat_abs <= DOCK_RAMP_LATERAL_DEADZONE_M:
+                    lat_norm = 0.0
+                elif dock_ramp:
+                    usable = dock_lat_full - DOCK_RAMP_LATERAL_DEADZONE_M
+                    lat_norm = math.copysign(
+                        self._clamp(
+                            (lat_abs - DOCK_RAMP_LATERAL_DEADZONE_M) / usable,
+                            0.0,
+                            1.0,
+                        ),
+                        dock_lateral,
+                    )
+                else:
+                    lat_norm = self._clamp(
+                        dock_lateral / dock_lat_full, -1.0, 1.0
+                    )
+                # Game bearing is positive-LEFT, and the in-callback HRTF convention takes the
+                # raw bearing mod 360 (unlike the mirrored one used by the one-shot earcons).
+                hrtf_az_dock = (DOCK_MAX_AZIMUTH_DEG * lat_norm) % 360.0
             if self._hrtf is not None and self._hrtf_user_enabled:
                 ir_l, ir_r = self._hrtf.get_hrir(hrtf_az_dock)
                 if ir_l is not None:
@@ -4212,20 +4657,40 @@ class AudioController:
             # Summing the two voices before panning put them at the same point in space, and
             # two sounds from one point fuse into one object — which is exactly what the
             # first version sounded like: a single stuttering tone rather than a pulse and a
-            # pair. Splitting them is also honest, because the vertical null is not a
-            # directional quantity: an azimuth on it would carry no information. And it is
+            # pair. Splitting them is also honest, because null magnitude is not a directional
+            # quantity: its sign already rides on tremolo rate. And it is
             # free, since centre needs no convolution at all — the same argument the loader's
             # ground and tilt tones already make for being centre-panned.
             if pair is not None:
                 bufL += pair
                 bufR += pair
 
-            # ---- Unison lock earcon -----------------------------------------------------
+            # ---- Alignment lock earcon -------------------------------------------------
             # Armed latch entirely inside the callback, the way the articulation
-            # centre-crossing click works: hysteresis on a continuous quantity, fired from
-            # here so it is sample-accurate against the tone it is marking and cannot
-            # double-fire while hunting around the null.
-            if beat_hz > DOCK_LOCK_REARM_BEAT_HZ:
+            # centre-crossing click works: hysteresis on the active mode's alignment axes,
+            # fired from here so it is sample-accurate and cannot double-fire while hunting
+            # around the thresholds.
+            if dock_ramp:
+                # Acquisition has no meaningful alignment state. Clearing the latch here also
+                # prevents an already-centred corridor entry from producing a second cue after
+                # the handoff pip.
+                if dock_acquire:
+                    self._dock_lock_armed = False
+                elif (
+                    abs(dock_lateral) >= DOCK_RAMP_REARM_LATERAL_M
+                    or abs(dock_null) >= DOCK_RAMP_REARM_YAW_DEG
+                ):
+                    self._dock_lock_armed = True
+                elif (
+                    self._dock_lock_armed
+                    and abs(dock_lateral) <= DOCK_RAMP_LOCK_LATERAL_M
+                    and abs(dock_null) <= DOCK_RAMP_LOCK_YAW_DEG
+                    and beat_end > 0.5
+                ):
+                    self._dock_lock_armed = False
+                    if self.DOCK_LOCK_WAVEFORM is not None:
+                        self._dock_lock_pos = 0.0
+            elif beat_hz > DOCK_LOCK_REARM_BEAT_HZ:
                 self._dock_lock_armed = True
             elif (
                 self._dock_lock_armed
@@ -4279,6 +4744,41 @@ class AudioController:
                     bufR[:n_sl] += chunk
                 nxt = start + frames
                 self._slam_cue_pos = float(nxt) if nxt < len(wf_s) else -1.0
+
+        # Entry gate earcon, centre, and outside the dock gate for the same reason as the slam
+        # cues: a cue that started as the instrument was switched off should finish rather than
+        # be cut mid-note.
+        if self._entry_cue_pos >= 0:
+            wf_e = self.ENTRY_CUE_WAVEFORM
+            if wf_e is None:
+                self._entry_cue_pos = -1.0
+            else:
+                start = int(self._entry_cue_pos)
+                n_en = min(frames, len(wf_e) - start)
+                if n_en > 0:
+                    chunk = wf_e[start : start + n_en]
+                    bufL[:n_en] += chunk
+                    bufR[:n_en] += chunk
+                nxt = start + frames
+                self._entry_cue_pos = float(nxt) if nxt < len(wf_e) else -1.0
+
+        # Ramp acquisition handoff, centred and independent of the sustained dock gate so the
+        # two-pip figure always finishes once its edge has fired.
+        if self._dock_approach_cue_pos >= 0:
+            wf_a = self.DOCK_APPROACH_CUE_WAVEFORM
+            if wf_a is None:
+                self._dock_approach_cue_pos = -1.0
+            else:
+                start = int(self._dock_approach_cue_pos)
+                n_ap = min(frames, len(wf_a) - start)
+                if n_ap > 0:
+                    chunk = wf_a[start : start + n_ap]
+                    bufL[:n_ap] += chunk
+                    bufR[:n_ap] += chunk
+                nxt = start + frames
+                self._dock_approach_cue_pos = (
+                    float(nxt) if nxt < len(wf_a) else -1.0
+                )
 
         # Coordinate Guidance FM tone
         if coord_guide_active:

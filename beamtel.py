@@ -25,7 +25,7 @@ from collections import deque
 import wx
 
 from bnh_logger import get_logger, LOG_FILENAME
-from audio import AudioController
+from audio import AudioController, DOCK_RAMP_MAX_RANGE_M
 
 logger = get_logger()
 
@@ -504,6 +504,7 @@ def scanner_listener(audio_controller, stop_event):
         last_scanner_distance, \
         last_scanner_approach_deg, \
         last_scanner_bearing, \
+        scanner_ref_reversed, \
         _last_vehicle_switch_ts, \
         _speech_protected_until, \
         _loading_pending_vehicle
@@ -704,10 +705,17 @@ def scanner_listener(audio_controller, stop_event):
                                 exclude_from_buffer=True,
                             )
                     else:
-                        # Text protocol: "bearing,distance,approachDeg". distance is the
-                        # surface GAP between the two vehicles, not centre-to-centre, so it
+                        # Text protocol: "bearing,distance,approachDeg,direction". distance is
+                        # the surface GAP between the two vehicles, not centre-to-centre, so it
                         # legitimately reaches zero on contact — floor it so the "%.0f"
                         # readouts below can never say a negative distance.
+                        #
+                        # The direction field is the scanner's own resolved reference end, and
+                        # it wins over the gear we pushed: the Lua side ages that push out and
+                        # falls back to velocity, so the two used to disagree whenever the
+                        # vehicle moved against its gear (rolling back in D) or right after a
+                        # switch. Missing on an older mod, where the pushed gear is still the
+                        # best guess available.
                         parts = text.split(",")
                         if len(parts) >= 2:
                             bearing = float(parts[0])
@@ -717,6 +725,8 @@ def scanner_listener(audio_controller, stop_event):
                                 last_scanner_distance = distance
                                 last_scanner_approach_deg = approach
                                 last_scanner_bearing = bearing
+                                if len(parts) >= 4:
+                                    scanner_ref_reversed = int(float(parts[3])) < 0
                             audio_controller.update_scanner_target(bearing, distance)
                 except (ValueError, UnicodeDecodeError):
                     # Fallback: old binary '<ff' format
@@ -756,14 +766,19 @@ def scanner_callout_thread_fn(stop_event):
             dist = last_scanner_distance
             brg = last_scanner_bearing
             tname = last_scanner_target_name
+            reversed_ref = scanner_ref_reversed
         if dist == float("inf"):
             continue
         last_callout_ts = now
         a = abs(brg)
+        # Fore/aft is stated in the DRIVER's frame, not the bearing's. The bearing is
+        # referenced to the direction of travel, so in reverse its 0 is the back of the
+        # vehicle; only these two words flip. Left and right do not — the mod deliberately
+        # keeps them the driver's physical left and right in every gear.
         if a < 45:
-            direction = "in front of you"
+            direction = "behind you" if reversed_ref else "in front of you"
         elif a > 135:
-            direction = "behind you"
+            direction = "in front of you" if reversed_ref else "behind you"
         elif brg > 0:
             direction = "to the left of you"
         else:
@@ -945,7 +960,46 @@ IMPL_PROX_LEAVE_HOLD = 0.30
 # cannot be made.
 IMPL_DOCK_LEVEL_M = 0.05    # below this an axis is called level / centred rather than numbered
 IMPL_DOCK_YAW_DEG = 8.0     # squareness is only worth saying once it would jam the tines
+# Insertion depth at or above which the mod calls the band enterable. Mirrors
+# IMPL_ENTRY_MIN_DEPTH_M in implementProximity.lua; the gate itself (including its hysteresis)
+# is decided over there, next to the geometry. This copy exists only so the phrase can say
+# "too steep" about the same number the mod judged, and so a mod that omits the fields (an
+# older half of the install) simply produces no clause at all.
+IMPL_DOCK_ENTRY_MIN_M = 0.40
+IMPL_DOCK_ENTRY_EXIT_M = 0.34   # ...and how far back through it must fall to be lost again
 IMPL_ANNOUNCE_PROBE_S = 2.0  # keep asking the mod which implement is fitted until it answers
+
+# Ramp-mode readout thresholds. Separate from the IMPL_DOCK_* pair above because they describe
+# a car in a four-metre trough, not tines in a pallet pocket. IMPL_DOCK_LEVEL_M is 5 cm, which
+# is a hydraulic-precision figure: applied to a car it would report an offset the driver cannot
+# hold and cannot act on, and would chatter over the vehicle's own suspension.
+RAMP_DOCK_CENTRE_M = 0.15    # at or under this, "centred" rather than a number
+RAMP_DOCK_SQUARE_DEG = 3.0   # under this a bearing counts as dead ahead
+RAMP_DOCK_HEADING_ZERO_DEG = 0.5
+RAMP_DOCK_TIGHT_M = 0.25     # clearance under this is called tight; <= 0 is "too narrow"
+RAMP_DOCK_PITCH_DEG = 5.0    # ramp inclination worth mentioning at all
+CANNON_READOUT_STALE_S = 1.5
+
+# The approach corridor, and the one thing that decides which QUESTION the ramp instrument is
+# answering.
+#
+# Lateral offset and squareness are corrections to a line you are already on. They are the
+# right answer from inside the corridor and useless outside it: told "four metres right, 120
+# degrees left" while sitting beside the machine, there is nothing to do with either number,
+# because the thing you need first is simply WHERE THE MOUTH IS. So outside the corridor the
+# same three channels answer that instead — distance to the mouth and bearing to it — and the
+# handover is the corridor boundary.
+#
+# Hysteretic, because it swaps what the pan means and a boundary crossed twice a second would
+# make the pulse jump between "the mouth is over there" and "you are off to the left". The
+# wider handoff gives a diagonally approaching driver time to hear a large lateral offset,
+# back up and straighten before reaching the mouth; the exit remains 1.5x wider.
+RAMP_CORRIDOR_ENTER_M = 6.0
+RAMP_CORRIDOR_EXIT_M = 9.0
+# ...and how far in front of the mouth plane you must be for the corridor to mean anything at
+# all. Behind the plane there is no corridor: driving straight ahead does not lead to the
+# mouth from there no matter how well centred you are on its axis.
+RAMP_CORRIDOR_MIN_RANGE_M = 0.5
 
 # Slam gate states -> the audio cue each fires. NONE is deliberately absent: leaving the
 # gate is not itself an event worth marking, and a cue on every exit would fire constantly
@@ -992,7 +1046,165 @@ def _band_name(kind: str, idx: int, count: int) -> str:
     return "body"
 
 
+def _ramp_bearing_deg(range_m: float, lateral_m: float, yaw_deg: float) -> float:
+    """Bearing to the ramp mouth from the driver's own heading, positive-LEFT.
+
+    Derived rather than sent, because the mod already puts every term on the wire and a
+    derived value cannot arrive one packet out of step with the numbers it was derived from.
+    Writing the mouth offset in the ramp's frame as d = range*axis + lateral*left, and the
+    driver's frame as axis = cos(yaw)*fwd + sin(yaw)*driverLeft, the angle to d from fwd comes
+    out as atan2(lateral, range) + yaw exactly. Wrapped to (-180, 180] so a mouth just behind
+    one shoulder never reads as most of a lap around the other.
+
+    This is a BEARING, not the lateral steering error: it nulls when you are POINTING at the
+    mouth, which is what you want while hunting for it, and does not null when you are sitting
+    on its centreline, which is what the lateral channel is for.
+    """
+    beta = math.degrees(math.atan2(lateral_m, range_m)) + yaw_deg
+    return ((beta + 180.0) % 360.0) - 180.0
+
+
+def _ramp_acquire(range_m: float, lateral_m: float, prev: bool) -> bool:
+    """Are we still hunting for the mouth, or lined up on the approach to it?
+
+    One authority for both consumers: the phrase spoken on F9+I and the tones being generated
+    have to agree about which question is being answered, or the pan will point at the mouth
+    while the speech reads out a steering correction. Derived here in the listener, from the
+    numbers of the packet being handled, so it is atomic with them by construction.
+    """
+    if range_m < RAMP_CORRIDOR_MIN_RANGE_M:
+        return True
+    limit = RAMP_CORRIDOR_EXIT_M if not prev else RAMP_CORRIDOR_ENTER_M
+    return abs(lateral_m) > limit
+
+
 def _dock_phrase(dock: dict) -> str:
+    """The cane tap. Dispatches on the mode the mod reported.
+
+    A different answer, not a branch: the two readouts share no wording, because a ramp has no
+    reference band, no thickness and nothing to raise. Splitting them rather than threading
+    conditionals through one function is also what makes the implement phrasing provably
+    unchanged — dock_readout_sim.py asserts it byte for byte.
+    """
+    if dock.get("mode") == "RAMP":
+        return _dock_phrase_ramp(dock)
+    return _dock_phrase_impl(dock)
+
+
+def _dock_phrase_ramp(dock: dict) -> str:
+    """The ramp cane tap. Compact geometry, and then only what is wrong.
+
+    This readout was cut down hard after play-testing, on the operator's report that it was
+    "too much verbiage". The old form opened with "Cannon ramp, Large Cannon standard white"
+    on every single tap — twelve syllables identifying a machine you are already looking at —
+    and then read four facts whether or not any of them needed acting on, twice a minute,
+    while driving. The rules it follows now:
+
+      * The target is named ONCE, when it is acquired, by the mode announcement in the
+        listener. A tap is a question about geometry, not about identity.
+      * Lateral and range first, followed by the heading that drives the beat pair.
+      * The unit is spoken once per utterance, on the distance. Both figures are in it.
+      * Clearance and the ramp's own pitch are BAD NEWS ONLY,
+        the rule the implement readout already follows for its entry depth. Silence on those
+        means there is nothing to fix, which is exactly what "square. 0.9 meters clearance
+        each side" was taking two seconds to say.
+    """
+    bits = []
+
+    rng = dock["range"]
+    lat = dock["lateral"]
+    yaw = dock["yaw"]
+
+    if dock.get("acquire"):
+        # Hunting. The mouth is a PLACE to get to, so it is named the way any other place is:
+        # which way to turn, and how far. The along-axis range and the lateral offset are
+        # still true here but neither is actionable — being "one metre left of the axis"
+        # while parked beside the machine is a fact about a line you are nowhere near, and
+        # acting on it drives you past the mouth rather than into it.
+        dist = math.hypot(rng, lat)
+        dv, du = fmt_distance(dist)
+        bearing = _ramp_bearing_deg(rng, lat, yaw)
+        if abs(bearing) < RAMP_DOCK_SQUARE_DEG:
+            bits.append(f"ahead, {dv} {du}")
+        else:
+            bits.append(f"{abs(bearing):.0f} {'left' if bearing > 0 else 'right'}, {dv} {du}")
+        # Which side of the mouth plane. The whole reason this phase exists: from the far
+        # side, steering toward the mouth arrives at its BACK, so "turn left and drive" is
+        # wrong advice however well aimed. One word, because it is a state and not a quantity.
+        #
+        # The word is NOT "behind". This clause and the bearing clause above are in different
+        # reference frames — the bearing is measured from the driver's nose, this is measured
+        # against the mouth plane — and both can be true at once, which produced the reading
+        # "ahead, 73.9 feet. behind" and a fair question about how that could possibly be
+        # interpreted. It was not contradictory, it was two frames wearing the same kind of
+        # word. "Wrong side" cannot be mistaken for a bearing, which is what makes it safe to
+        # stand next to one.
+        #
+        # Fired on the SIGN of the range, not on the corridor threshold. The corridor's half
+        # metre is the point at which "on the approach" stops meaning anything, and a car
+        # sitting 0.3 m short of the mouth plane is in the doorway, not on the wrong side of
+        # it — the threshold would have called that state wrong side too.
+        if rng <= -RAMP_CORRIDOR_MIN_RANGE_M:
+            bits.append("wrong side")
+    else:
+        # On the approach. Lateral first: it is the axis carried by pulse position, so the tap
+        # confirms what the spatial cue is already saying.
+        # Positive is LEFT, matching the compass clicks, the scanner bearing and the
+        # implement readout. dock_readout_sim.py asserts this in both directions.
+        rv, ru = fmt_distance(max(0.0, rng))
+        if abs(lat) <= RAMP_DOCK_CENTRE_M:
+            bits.append(f"centred, {rv} {ru}")
+        else:
+            lv, _lu = fmt_distance(abs(lat))
+            bits.append(f"{lv} {'left' if lat > 0 else 'right'}, {rv} {ru}")
+
+        # Heading is always explicit on the approach because it is the beat pair's null.
+        if abs(yaw) < RAMP_DOCK_HEADING_ZERO_DEG:
+            bits.append("heading zero degrees")
+        else:
+            heading = max(1, int(math.floor(abs(yaw) + 0.5)))
+            bits.append(
+                f"heading {heading} degrees {'left' if yaw > 0 else 'right'}"
+            )
+
+    # Whether the vehicle fits between the walls, and now only when it does not comfortably.
+    # A negative margin is the whole reason the number exists, so it is stated as an overlap
+    # rather than as a negative clearance. None or a negative sentinel means the mod could not
+    # measure it, which is silence rather than a guess — reporting zero would read as exactly
+    # touching both walls.
+    #
+    # Held back entirely while hunting, because the margin is the mouth's half-width minus your
+    # CURRENT lateral offset: parked beside the machine that is several metres negative, and
+    # "too narrow by four metres" about a mouth you have not begun to line up with is a fact
+    # about where you happen to be standing, not about whether the car fits.
+    margin = None if dock.get("acquire") else dock.get("margin")
+    if margin is not None and margin > -0.999:
+        if margin <= 0.0:
+            mv, mu = fmt_distance(abs(margin))
+            bits.append(f"too narrow by {mv} {mu}")
+        elif margin < RAMP_DOCK_TIGHT_M:
+            mv, mu = fmt_distance(margin)
+            bits.append(f"tight, {mv} {mu} each side")
+
+    # The ramp's own inclination. Context, not an instruction — the driver of the car cannot
+    # change it — but a steeply raised ramp is one you are about to drive UP, which changes the
+    # approach speed, so it is worth a word once it is steep enough to matter.
+    pitch = dock.get("entry_theta")
+    if pitch is not None and abs(pitch) >= RAMP_DOCK_PITCH_DEG:
+        bits.append(f"ramp {'up' if pitch > 0 else 'down'} {abs(pitch):.0f} degrees")
+
+    # The mod now feeds this readout from far outside the range at which anything is sonified,
+    # so the tap keeps answering after the tones have faded. That is the whole point — it is
+    # the state someone reaches for the key IN — but unexplained silence from the speakers is
+    # the ambiguity this project keeps having to pay for, so it is named rather than left to be
+    # inferred. Distance is the in-plane one, the same figure the tone gate is applied to.
+    if math.hypot(rng, lat) >= DOCK_RAMP_MAX_RANGE_M:
+        bits.append("too far for tones")
+
+    return ". ".join(bits)
+
+
+def _dock_phrase_impl(dock: dict) -> str:
     """The cane tap: the whole docking picture in one utterance.
 
     Deliberately a single sentence fired on a keypress rather than anything continuous. A
@@ -1032,6 +1244,17 @@ def _dock_phrase(dock: dict) -> str:
     if abs(yaw) >= IMPL_DOCK_YAW_DEG:
         bits.append(f"face {abs(yaw):.0f} degrees {'left' if yaw > 0 else 'right'}")
 
+    # The entry gate, and the reason the whole docking instrument was re-aimed. Every other
+    # axis can be nulled perfectly and the tines still not go in, because a tilted implement
+    # climbs through the band's thickness after a few centimetres of travel. Spoken only when
+    # it is bad news: an enterable band is the expected case and saying so on every tap would
+    # be four words of nothing, four times a minute. A negative depth means the mod could not
+    # measure it (or is older than this field), which is silence rather than a guess.
+    depth = dock.get("entry_depth")
+    if depth is not None and depth >= 0.0 and depth < IMPL_DOCK_ENTRY_MIN_M:
+        dv, du = fmt_distance(max(0.0, depth))
+        bits.append(f"tines enter {dv} {du}, too steep")
+
     return ". ".join(bits)
 
 
@@ -1041,7 +1264,8 @@ def implement_listener(audio_controller, stop_event):
     Only ever announces the NEAREST object. The extension may report a different one from
     tick to tick in a crowded yard, and narrating all of them would be unusable.
     """
-    global _implement_word_current, last_dock, last_dock_fail
+    global _implement_word_current, last_dock, last_dock_fail, cannon_active, last_dock_name
+    global last_dock_mode, cannon_kind, last_cannon_aim
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         sock.bind(("127.0.0.1", IMPLEMENT_LISTEN_PORT))
@@ -1070,6 +1294,14 @@ def implement_listener(audio_controller, stop_event):
         pending_relation = None
         pending_inside = None
         pending_leave = None
+        # Which side of the entry gate the last DOCK: line was on. None means "not known
+        # yet", which is what stops the earcon firing on first acquisition — arriving with
+        # the tines already level is not an event.
+        entry_ok = None
+        # Which side of the ramp approach corridor the last DOCK: line was on. Starts hunting,
+        # because that is what acquiring a ramp target from nothing IS, and because the
+        # hysteresis then has to be satisfied before the instrument claims you are lined up.
+        ramp_acquire = True
 
         while not stop_event.is_set():
             try:
@@ -1091,9 +1323,13 @@ def implement_listener(audio_controller, stop_event):
                     tracked = None
                     tracked_relation, tracked_inside = None, False
                     pending_relation = pending_inside = pending_leave = None
+                    entry_ok = None
+                    ramp_acquire = True
                     with state_lock:
                         last_dock = None
                         last_dock_fail = None
+                        last_dock_mode = None
+                        last_dock_name = None
                     audio_controller.clear_dock_target()
                     continue
 
@@ -1101,6 +1337,12 @@ def implement_listener(audio_controller, stop_event):
                 # they are a separate instrument with its own toggle, and the two would
                 # otherwise fight over the same tracked/pending state machine.
                 if text == "DOCKCLEAR":
+                    # Losing the target drops the gate back to "not known": re-acquiring is
+                    # not the same act as tilting into range, and only the second deserves
+                    # the earcon. The corridor latch goes back to hunting for the same
+                    # reason — whatever you re-acquire, you have not lined up with it yet.
+                    entry_ok = None
+                    ramp_acquire = True
                     with state_lock:
                         last_dock = None
                         last_dock_fail = None
@@ -1110,10 +1352,64 @@ def implement_listener(audio_controller, stop_event):
                 if text.startswith("DOCKFAIL:"):
                     # Not spoken unprompted — it would nag while manoeuvring. Held for the
                     # F9+I readout, which is where someone asks "why is this silent".
+                    entry_ok = None
+                    ramp_acquire = True
                     with state_lock:
                         last_dock = None
                         last_dock_fail = text[9:].strip()
                     audio_controller.clear_dock_target()
+                    continue
+
+                if text.startswith("CANNON:"):
+                    # Which cannon is being driven. "1" is the pre-Old-Cannon spelling for
+                    # the Large Cannon and remains accepted across a live mod/app version skew.
+                    payload = text[7:].strip().upper()
+                    kind = (
+                        "OLD"
+                        if payload == "OLD"
+                        else "LARGE"
+                        if payload in ("1", "LARGE")
+                        else "NONE"
+                    )
+                    with state_lock:
+                        cannon_kind = kind
+                        cannon_active = kind != "NONE"
+                        if kind != "OLD":
+                            last_cannon_aim = None
+                    if kind != "OLD":
+                        audio_controller.clear_cannon_aim()
+                    continue
+
+                if text.startswith("CANNONAIM:"):
+                    fields = text[10:].split(",")
+                    if len(fields) != 7:
+                        continue
+                    try:
+                        aim = {
+                            "elevation": float(fields[0]),
+                            "bearing": float(fields[1]),
+                            "target_angle": float(fields[2]),
+                            "line_angle": float(fields[3]),
+                            "range": float(fields[4]),
+                            "speed": float(fields[5]),
+                            "reachable": fields[6].strip() == "1",
+                        }
+                    except ValueError:
+                        continue
+                    aim["solution_available"] = aim["speed"] > 0.0
+                    aim["stamp"] = time.monotonic()
+                    with state_lock:
+                        last_cannon_aim = aim
+                    if aim["range"] < 0.0:
+                        audio_controller.clear_cannon_aim()
+                    else:
+                        audio_controller.update_cannon_aim(
+                            aim["elevation"],
+                            aim["bearing"],
+                            aim["target_angle"],
+                            aim["solution_available"],
+                            aim["reachable"],
+                        )
                     continue
 
                 if text.startswith("SLAM:"):
@@ -1133,10 +1429,28 @@ def implement_listener(audio_controller, stop_event):
                 if text.startswith("DOCK:"):
                     # rsplit so a target name containing a stray separator cannot shift the
                     # numeric fields, the same way the NEAR parse below does it.
-                    fields = text[5:].rsplit(",", 10)
-                    if len(fields) != 11:
+                    #
+                    # Two entry-gate fields were appended to the end of this line. Try the
+                    # long form first and fall back to the short one, so a mod half older
+                    # than this build keeps its docking readout instead of losing it — the
+                    # same optional-tail contract the scanner packet's fourth field uses.
+                    # bng_mod/ is a live junction into the game install, so the two halves
+                    # genuinely do go out of step.
+                    # The ladder is longest-first. Two more fields — the MODE and the ramp
+                    # width margin — were appended after the entry-gate pair, so there are now
+                    # three shapes on the wire and all three must keep working.
+                    fields = text[5:].rsplit(",", 14)
+                    if len(fields) != 15:
+                        fields = text[5:].rsplit(",", 12)
+                        # elif, not a second if: a successful 15-field split leaves len 15, which
+                        # is also != 13, so an independent test would immediately re-split it down
+                        # to 11 and throw the mode and margin away on every ramp packet.
+                        if len(fields) != 13:
+                            fields = text[5:].rsplit(",", 10)
+                    if len(fields) not in (11, 13, 15):
                         continue
                     try:
+                        long_tail = len(fields) >= 13
                         parsed = {
                             "name": fields[0].strip(),
                             "range": float(fields[1]),
@@ -1150,15 +1464,113 @@ def implement_listener(audio_controller, stop_event):
                             "yaw": float(fields[9]),
                             "manual": fields[10].strip() == "1",
                             "impl_word": impl_word,
+                            "entry_theta": float(fields[11]) if long_tail else None,
+                            "entry_depth": float(fields[12]) if long_tail else None,
+                            # A mod older than this build has no other mode to be in, so
+                            # defaulting to IMPL is not a guess — it is the only thing it can
+                            # mean. The margin stays None rather than 0, which would read as
+                            # exactly touching both walls.
+                            "mode": (
+                                fields[13].strip().upper() if len(fields) == 15 else "IMPL"
+                            ),
+                            "margin": float(fields[14]) if len(fields) == 15 else None,
                         }
                     except ValueError:
                         continue
+                    if parsed["mode"] not in ("IMPL", "RAMP"):
+                        parsed["mode"] = "IMPL"
+                    # Which question the ramp instrument is answering this tick: where IS the
+                    # mouth, or how far off the line into it are you. Latched here, once, and
+                    # handed to both consumers — the tones below and the phrase spoken on
+                    # F9+I — so the pan cannot be pointing at the mouth while the speech reads
+                    # out a steering correction. Never set in implement mode: there is no
+                    # corridor to be outside of when the load is a metre from the tines.
+                    if parsed["mode"] == "RAMP":
+                        was_acquiring = ramp_acquire
+                        ramp_acquire = _ramp_acquire(
+                            parsed["range"], parsed["lateral"], ramp_acquire
+                        )
+                        if was_acquiring and not ramp_acquire:
+                            audio_controller.trigger_dock_approach_cue()
+                        parsed["acquire"] = ramp_acquire
+                    else:
+                        # Keep the next ramp acquisition armed without marking an implement
+                        # packet as being in a ramp-only phase.
+                        ramp_acquire = True
+                        parsed["acquire"] = False
                     with state_lock:
                         last_dock = parsed
                         last_dock_fail = None
+                    # The packet stays unchanged: its existing yaw field is the ramp null,
+                    # while implement mode retains vertical metres.
                     audio_controller.update_dock_target(
-                        parsed["range"], parsed["lateral"], parsed["vertical"]
+                        parsed["range"],
+                        parsed["lateral"],
+                        (
+                            parsed["yaw"]
+                            if parsed["mode"] == "RAMP"
+                            else parsed["vertical"]
+                        ),
+                        parsed["mode"],
+                        acquire=parsed["acquire"],
+                        bearing_deg=(
+                            _ramp_bearing_deg(
+                                parsed["range"], parsed["lateral"], parsed["yaw"]
+                            )
+                            if parsed["acquire"]
+                            else 0.0
+                        ),
                     )
+                    # Announced once on change. Not cosmetic: the same two tones mean different
+                    # things in the two modes, so an unannounced switch — driving away from a
+                    # cannon, or picking up a set of forks — leaves the operator reading degrees
+                    # as metres.
+                    #
+                    # In ramp mode the announcement also carries the machine's NAME, and
+                    # re-fires when that changes. This is the only place the target is named
+                    # now: the cane tap used to open with it on every press, which is twelve
+                    # syllables of an answer nobody asked for twice a minute. Identity belongs
+                    # to acquisition; geometry belongs to the tap. Implement mode is left
+                    # alone, because there the proximity speech already names what is being
+                    # approached and its target changes constantly in a yard.
+                    with state_lock:
+                        ramp_named = (
+                            parsed["mode"] == "RAMP" and parsed["name"] != last_dock_name
+                        )
+                        changed = parsed["mode"] != last_dock_mode
+                        announce = (changed or ramp_named) and dock_mode_active
+                        if changed:
+                            last_dock_mode = parsed["mode"]
+                        last_dock_name = parsed["name"]
+                    if announce:
+                        say(
+                            f"Ramp alignment, {parsed['name']}"
+                            if parsed["mode"] == "RAMP"
+                            else "Implement alignment",
+                            exclude_from_buffer=True,
+                        )
+                    # Entry-gate earcon, on the transition INTO enterable only. Without it the
+                    # gate is only ever discoverable by tapping F9+I, which means tilting
+                    # blind and re-asking — and the whole point of the cue is that the answer
+                    # arrives while the hand is still on the joystick. The mod already applies
+                    # hysteresis to the depth, so the edge detected here cannot chatter; all
+                    # that is tracked on this side is which side of it we were last on.
+                    depth = parsed["entry_depth"] if parsed["mode"] == "IMPL" else None
+                    if depth is None or depth < 0.0:
+                        entry_ok = None
+                    else:
+                        # Same two thresholds as the mod, applied the same way round. Reading
+                        # only the enter threshold here would re-introduce exactly the chatter
+                        # the mod's hysteresis exists to prevent: a machine breathing on its
+                        # suspension between 0.34 and 0.40 m would fire the earcon on every
+                        # packet while the mod itself considered nothing to have changed.
+                        thresh = (
+                            IMPL_DOCK_ENTRY_EXIT_M if entry_ok else IMPL_DOCK_ENTRY_MIN_M
+                        )
+                        now_ok = depth >= thresh
+                        if now_ok and entry_ok is False:
+                            audio_controller.trigger_entry_cue()
+                        entry_ok = now_ok
                     continue
 
                 if text == "CLEAR":
@@ -1307,8 +1719,14 @@ def _push_gear_direction(gear):
     gear out of the telemetry struct, and it is sent only on change, so the 60 Hz loop
     does not turn into a 60 Hz send. The Lua side ages it and falls back to velocity if
     these stop arriving, so an older mod or a stopped beamtel degrades rather than sticks.
+
+    The local flag set here is only a seed for the speech reference: once scanner packets
+    start arriving they carry the direction Lua actually resolved, and that wins. Setting
+    it from the push alone is what let the two disagree in the cases Lua ignores the push.
     """
+    global scanner_ref_reversed
     reverse = str(gear or "").strip().upper().startswith("R")
+    scanner_ref_reversed = reverse
     _send_scanner_cmd("GEAR:R" if reverse else "GEAR:F")
 
 
@@ -2201,6 +2619,18 @@ last_scanner_target_name = ""
 last_scanner_distance = float("inf")
 last_scanner_approach_deg = 0.0
 last_scanner_bearing = 0.0
+# Which end of the vehicle the scanner is currently measuring and referencing its bearing
+# from. The bearing on the wire is relative to the DIRECTION OF TRAVEL: in reverse a target
+# dead astern arrives as ~0 deg, and speech that reads that literally says "in front of you"
+# about the thing you are backing into. The tones need no equivalent — a bearing of 0 is dead
+# ahead on the stereo image either way, which is the point of re-referencing it.
+#
+# Taken from the scanner packet's fourth field, i.e. from the direction Lua actually resolved,
+# not from the GEAR:R/GEAR:F we pushed. Mirroring the push was wrong in both of the cases where
+# Lua does not use it: it ages the push out after two seconds and falls back to velocity, and
+# it clears the push on a vehicle switch. This only falls back to the pushed gear against a mod
+# too old to send the field.
+scanner_ref_reversed = False
 
 # Scanner periodic distance callout settings (applied via _apply_live_config)
 scanner_distance_callout_enabled = False
@@ -2221,6 +2651,25 @@ last_dock = None
 # Why the instrument has nothing to say, when it has nothing to say. Held rather than
 # spoken, and read out by F9+I on request.
 last_dock_fail = None
+# True while the vehicle being driven has a ramp of its own, i.e. you are sitting in the
+# cannon rather than lining up with it. Pushed by the mod on change; see the F9+I handler,
+# which uses it to answer the question you actually have at that point.
+cannon_active = False
+cannon_kind = "NONE"
+# Old Cannon live barrel/target solution. The range sentinel is negative when no scanner
+# target is selected, while elevation remains valid for the on-demand angle readout.
+last_cannon_aim = None
+# Which answer the alignment instrument last gave ("IMPL"/"RAMP"), or None for "not known
+# yet". Shared between the listener and the F9 handlers so the two cannot both announce the
+# same change. Deliberately NOT cleared on DOCKCLEAR or DOCKFAIL: losing the target is not a
+# change of mode, and clearing it there would re-announce every time you drifted across the
+# feed's edge. Only a part swap, a vehicle change or the toggle resets it.
+last_dock_mode = None
+# ...and which ramp machine it last named, so acquiring a different one re-announces while
+# tapping the same one does not. Latched under exactly the same rules as the mode above and
+# for the same reason: cleared on DOCKCLEAR it would re-announce every time the feed's edge
+# was crossed, which on a ramp approach is several times a minute.
+last_dock_name = None
 
 # Monotonic timestamp of the last vehicle-switch announcement. The camera
 # compass listener checks this and skips its own callout briefly afterwards
@@ -2568,9 +3017,9 @@ _F9_HELP = {
     ("n", True, False, False): "Toggle accessible node grabber",
     ("c", True, True, False): "Toggle clickspot detection",
     ("c", True, True, True): "Browse clickspots",
-    ("i", False, False, False): "Implement alignment readout",
-    ("i", False, True, False): "Cycle implement alignment reference band",
-    ("i", True, False, False): "Toggle implement docking instrument",
+    ("i", False, False, False): "Alignment readout, or cannon aim when in a cannon",
+    ("i", False, True, False): "Cycle alignment reference band",
+    ("i", True, False, False): "Toggle alignment instrument (implement or ramp)",
 }
 
 # F10 (AI) command descriptions
@@ -3459,7 +3908,7 @@ def open_clickspot_browser():
 
 def _on_next_key_press(event, audio_controller):
     global marked_coord_x, marked_coord_y, _last_coord_bearing_ts, _input_help_mode
-    global dock_mode_active, last_dock, last_dock_fail
+    global dock_mode_active, last_dock, last_dock_fail, last_dock_mode, last_dock_name
     if event.event_type != "down":
         return
     name = (event.name or "").lower()
@@ -3794,7 +4243,71 @@ def _on_next_key_press(event, audio_controller):
         # more specific answer — "no implement fitted" was reported for three separate
         # underlying causes, none of which it could distinguish. Ask, and report what comes
         # back.
-        if not dock_mode_active:
+        with state_lock:
+            in_cannon = cannon_active
+            active_cannon_kind = cannon_kind
+            cannon_aim = dict(last_cannon_aim) if last_cannon_aim else None
+            rpm_now = last_rpm
+            gear_now = last_gear_str
+        if active_cannon_kind == "OLD":
+            if (
+                cannon_aim is None
+                or time.monotonic() - cannon_aim.get("stamp", 0.0)
+                > CANNON_READOUT_STALE_S
+            ):
+                say("Old Cannon elevation unavailable", exclude_from_buffer=True)
+            else:
+                elevation = cannon_aim["elevation"]
+                bits = [f"Elevation {elevation:.1f} degrees"]
+                if cannon_aim["range"] < 0.0:
+                    bits.append("select a scanner target")
+                else:
+                    bearing = cannon_aim["bearing"]
+                    if abs(bearing) <= 0.5:
+                        bits.append("bearing aligned")
+                    else:
+                        bits.append(
+                            f"{abs(bearing):.1f} degrees "
+                            f"{'left' if bearing > 0 else 'right'}"
+                        )
+                    rv, ru = fmt_distance(cannon_aim["range"])
+                    if not cannon_aim["solution_available"]:
+                        bits.append(
+                            f"line of sight {cannon_aim['line_angle']:.1f} degrees"
+                        )
+                        bits.append("ballistic solution unavailable")
+                    elif not cannon_aim["reachable"]:
+                        bits.append("target out of ballistic range")
+                    else:
+                        target_angle = cannon_aim["target_angle"]
+                        error = target_angle - elevation
+                        if abs(error) <= 0.5:
+                            bits.append(f"elevation aligned at {target_angle:.1f} degrees")
+                        else:
+                            bits.append(
+                                f"{'raise' if error > 0 else 'lower'} "
+                                f"{abs(error):.1f} degrees to {target_angle:.1f}"
+                            )
+                    bits.append(f"{rv} {ru}")
+                say(". ".join(bits), exclude_from_buffer=True)
+        elif in_cannon:
+            # Sitting in the cannon, the alignment task is over and the aiming task has begun,
+            # so the same key answers the question you actually have. Folded in rather than
+            # given a binding of its own: there is no alignment readout to displace, and a
+            # second key is one more thing to remember mid-manoeuvre.
+            #
+            # Both numbers already arrive on ordinary telemetry, because large_cannon's
+            # controller publishes them there itself — rpm = inclination * 1000 and the gear
+            # string is the shoot strength as a percentage. Nothing extra is polled.
+            incl = max(0.0, min(1.0, (rpm_now or 0.0) / 1000.0))
+            strength = (gear_now or "").strip()
+            if not strength.endswith("%"):
+                strength = "unknown"
+            say(
+                f"Inclination {incl * 100:.0f} percent, strength {strength}",
+                exclude_from_buffer=True,
+            )
+        elif not dock_mode_active:
             say("Docking instrument is off", exclude_from_buffer=True)
         else:
             with state_lock:
@@ -3819,7 +4332,13 @@ def _on_next_key_press(event, audio_controller):
         # forks, the tallest face for a bucket — and this overrides it when you want a
         # different part of the same object: a window rather than the sill, the roofline
         # rather than the pocket.
-        if not _implement_word_current:
+        with state_lock:
+            snap_mode = (last_dock or {}).get("mode")
+        if snap_mode == "RAMP":
+            # A ramp has one reference — its mouth — so there is nothing to cycle. Saying so
+            # beats silently sending a command that mutates an index governing nothing.
+            say("No reference bands in ramp alignment", exclude_from_buffer=True)
+        elif not _implement_word_current:
             say("No implement fitted", exclude_from_buffer=True)
         else:
             _send_implement_cmd("BANDNEXT")
@@ -3857,6 +4376,8 @@ def _on_next_key_press(event, audio_controller):
             with state_lock:
                 last_dock = None
                 last_dock_fail = None
+                last_dock_mode = None
+                last_dock_name = None
             say("Docking instrument off", exclude_from_buffer=True)
         else:
             # The re-announce above travels to the mod and back, and the mod scans at 10 Hz,
@@ -3868,13 +4389,30 @@ def _on_next_key_press(event, audio_controller):
             _send_implement_cmd("BANDAUTO")
             with state_lock:
                 why = last_dock_fail
+                mode = (last_dock or {}).get("mode")
+                tgt = (last_dock or {}).get("name")
+                # Claim both latches, so the listener does not also announce the mode and the
+                # machine we are about to name here.
+                last_dock_mode = mode
+                last_dock_name = tgt
+            # Name the mode on the way in, and in ramp mode the machine with it — this and the
+            # listener's announcement are now the only two places the target is named, since
+            # the cane tap dropped it. The instrument auto-selects the mode, so without this
+            # the only way to know which of two meanings the tones carry is to infer it from
+            # what you happen to be sitting in.
+            which = (
+                ("ramp alignment" + (f", {tgt}" if tgt else ""))
+                if mode == "RAMP"
+                else "implement alignment" if mode == "IMPL" else None
+            )
+            head = "Docking instrument on" + (f", {which}" if which else "")
             # Report the MOD's reason, not a guess from this side's own state. "No implement
             # fitted" used to be said here on the strength of a Python variable, which was
             # true for three different underlying causes and pointed at none of them.
             if why:
-                say(f"Docking instrument on. {why}", exclude_from_buffer=True)
+                say(f"{head}. {why}", exclude_from_buffer=True)
             else:
-                say("Docking instrument on", exclude_from_buffer=True)
+                say(head, exclude_from_buffer=True)
     elif name == "w" and not (
         _capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]
     ):
@@ -5762,7 +6300,24 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         unpacked[1].decode("utf-8", errors="ignore").strip("\x00")
                     )
                     if gear_str != last_gear_str:
-                        if announce_gear and not baseline_frame:
+                        # Suppressed in a cannon. large_cannon's controller writes the shoot
+                        # strength into electrics.values.gear as "80%", and rewrites it on
+                        # every press of the strength keys — so aiming would produce a stream
+                        # of gear announcements over the whole manoeuvre. The strength is not
+                        # lost: F9+I reads it out on demand, which is the right shape for a
+                        # value you sweep and then check.
+                        #
+                        # Read directly, NOT under a `with state_lock:` of its own. This
+                        # whole block already runs inside the telemetry loop's state_lock,
+                        # and state_lock is a plain (non-reentrant) Lock, so re-acquiring it
+                        # here deadlocks the telemetry thread *while holding the lock* — on
+                        # the very first packet, since last_gear_str starts as None. Every
+                        # other feature then hangs behind it: no telemetry, and no F9 layered
+                        # key either, because _on_next_key_press takes state_lock before
+                        # dispatching. F9 and F11 keep working, which is what makes it look
+                        # like a Lua fault rather than a Python one.
+                        in_cannon = cannon_active
+                        if announce_gear and not baseline_frame and not in_cannon:
                             phrase = extended_gear_to_phrase(gear_str)
                             if (gear_str or "").strip().upper() == "N":
                                 say("neutral", exclude_from_buffer=True)
@@ -6081,6 +6636,8 @@ class BeamTelFrame(wx.Frame):
         super().__init__(None, title="BeamNG Accessibility", size=(700, 700))
         self.SetMinSize((600, 500))
         self._engine_thread = None
+        self._shutting_down = False
+        self._wx_log_handler = None
 
         # Accessible-console state
         self._console_history = _load_console_history()
@@ -6176,6 +6733,7 @@ class BeamTelFrame(wx.Frame):
             )
         )
         logging.getLogger("bnvdahook").addHandler(wx_handler)
+        self._wx_log_handler = wx_handler
 
         # Events
         btn_app_log.Bind(wx.EVT_BUTTON, self._on_open_app_log)
@@ -6439,6 +6997,11 @@ class BeamTelFrame(wx.Frame):
 
     def on_console_message(self, text):
         """Handle one record from consoleAccessible.lua (runs on the wx thread)."""
+        # CallAfter events queued before the frame was destroyed still fire after it,
+        # and touching a dead control raises a C++ assertion out of wx's CallAfter
+        # lambda rather than a catchable Python error at the call site.
+        if self._shutting_down:
+            return
         parts = text.split("|")
         tag = parts[0]
         if tag == "CTX":
@@ -6496,6 +7059,15 @@ class BeamTelFrame(wx.Frame):
     # ---- Shutdown ----
 
     def _on_close(self, evt):
+        # Stop feeding the wx event queue before anything else: the join below does
+        # not pump events, so everything the listener threads emit while they wind
+        # down would run against destroyed controls.
+        global console_frame
+        self._shutting_down = True
+        console_frame = None
+        if self._wx_log_handler is not None:
+            logging.getLogger("bnvdahook").removeHandler(self._wx_log_handler)
+            self._wx_log_handler = None
         # The Configuration tab debounces its writes by two seconds (as does the
         # AI Describer tab's base-URL field), so closing right after an edit
         # would drop it silently. Commit them first.

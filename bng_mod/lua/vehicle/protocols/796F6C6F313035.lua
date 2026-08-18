@@ -137,6 +137,14 @@ local IMPL_DETACH_SLOP_M  = 0.6   -- implement drifting this far past its design
 -- Fraction of the implement's fore/aft extent that counts as "the leading edge" (and, at
 -- the other end, "the heel"). The lateral extremes are then taken from within that band.
 local IMPL_EDGE_BAND      = 0.30
+-- Fraction of the implement's design-space VERTICAL extent that counts as its floor. The
+-- edge and heel picks are restricted to it so the edge->heel axis is the implement's floor
+-- plane -- the tine underside on forks, the bowl floor on a bucket -- rather than a diagonal
+-- across it. Without this, the forks' heel picks land on the top of the backplate (the
+-- lateral extremes of the rear band with no height constraint), and the resulting axis sits
+-- ~38 degrees off the tine plane. That is what made the tilt readout report level at an
+-- angle nothing can be driven into.
+local IMPL_FLOOR_BAND     = 0.35
 local IMPL_EDGE_MIN_WIDTH = 0.30  -- narrower than this and the derived heading gets noisy
 local IMPL_ACT_RATE_FULL  = 0.30  -- ram travel fraction per second that counts as full
 -- Soft-body rams never sit perfectly still, so the rate term needs a floor it must clear
@@ -159,7 +167,7 @@ local _implNodesScanned = false
 local _implNodeTries    = 0
 local _implEdgeCids     = nil  -- {left, centre, right} of the cutting edge / tine tips
 local _implHeelCids     = nil  -- {left, right} of the implement's rear-bottom
-local _implTiltZeroDeg  = 0.0  -- design-pose pitch of the edge->heel axis, subtracted out
+local _implTiltZeroDeg  = 0.0  -- design-pose pitch of the floor plane; LOGGED ONLY, see below
 local _implPushed       = false -- the cid list has been handed to the GE proximity extension
 local _implClock        = 0     -- seconds of sim time, for the push heartbeat
 local _implPushAt       = -1e9  -- when the cid list was last sent
@@ -430,25 +438,67 @@ local function resolveImplementNodes()
   local frontCut = maxF - span * IMPL_EDGE_BAND
   local rearCut  = minF + span * IMPL_EDGE_BAND
 
-  -- Widest pair in a band, plus the one nearest the centreline (lowest wins ties, since
-  -- that is the point that touches the ground first).
+  -- ...and the third stage: keep only what sits in the implement's FLOOR band. The band
+  -- picks above are lateral extremes with no height constraint, which on the block-handler
+  -- forks puts the heel pair on top of the backplate. edgeMid -> heelMid is then a diagonal
+  -- across the attachment rather than the plane the load actually rides on, and every angle
+  -- derived from it -- the tilt readout, the entry gate -- is wrong by however tall the
+  -- implement is. Not a per-vehicle table: the floor of a bucket and the underside of a
+  -- tine are both "the low part of this thing", which is all this measures.
+  local minZ, maxZ = math.huge, -math.huge
+  for _, cid in ipairs(cids) do
+    local z = v.data.nodes[cid].pos.z
+    if z < minZ then minZ = z end
+    if z > maxZ then maxZ = z end
+  end
+  local floorCut = minZ + (maxZ - minZ) * IMPL_FLOOR_BAND
+
+  -- Widest pair in a band, plus the one nearest the MIDPOINT of that pair (lowest wins ties,
+  -- since that is the point that touches the ground first).
   local function bandPicks(inBand)
-    local l, r, c = nil, nil, nil
-    local lx, rx, cx, cz = -math.huge, math.huge, math.huge, math.huge
-    for _, cid in ipairs(cids) do
-      local p = v.data.nodes[cid].pos
-      if inBand(p.y * fwdSign) then
-        if p.x > lx then l, lx = cid, p.x end
-        if p.x < rx then r, rx = cid, p.x end
-        local ax = math.abs(p.x)
-        if ax < cx or (ax == cx and p.z < cz) then c, cx, cz = cid, ax, p.z end
+    local function gather(lowOnly)
+      local out = {}
+      for _, cid in ipairs(cids) do
+        local p = v.data.nodes[cid].pos
+        if inBand(p.y * fwdSign) and ((not lowOnly) or p.z <= floorCut) then
+          out[#out + 1] = cid
+        end
       end
+      return out
     end
-    return l, r, c, (lx - rx)
+    -- Fall back to the unconstrained set if the floor band holds fewer than a pair, so a
+    -- flat implement with no vertical spread still resolves rather than refusing outright.
+    local pool = gather(true)
+    if #pool < 2 then pool = gather(false) end
+
+    local l, r = nil, nil
+    local lx, rx = -math.huge, math.huge
+    local lowZ, highZ = math.huge, -math.huge
+    for _, cid in ipairs(pool) do
+      local p = v.data.nodes[cid].pos
+      if p.x > lx then l, lx = cid, p.x end
+      if p.x < rx then r, rx = cid, p.x end
+      if p.z < lowZ then lowZ = p.z end
+      if p.z > highZ then highZ = p.z end
+    end
+    if not (l and r) then return nil end
+
+    -- Nearest the midpoint of that pair, NOT nearest the vehicle centreline. Forks have
+    -- nothing in the middle, so the centreline rule lands on an inner node of the left tine
+    -- -- 0.6 m off centre and well behind the tips -- and drags mean(edgeL, edgeC, edgeR)
+    -- with it, biasing every lateral reading the docking instrument produces.
+    local midX = (lx + rx) * 0.5
+    local c, cd, cz = nil, math.huge, math.huge
+    for _, cid in ipairs(pool) do
+      local p = v.data.nodes[cid].pos
+      local d = math.abs(p.x - midX)
+      if d < cd or (d == cd and p.z < cz) then c, cd, cz = cid, d, p.z end
+    end
+    return l, r, c, (lx - rx), (highZ - lowZ)
   end
 
   local edgeL, edgeR, edgeC, edgeWidth = bandPicks(function(f) return f >= frontCut end)
-  local heelL, heelR = bandPicks(function(f) return f <= rearCut end)
+  local heelL, heelR, _, _, heelZSpread = bandPicks(function(f) return f <= rearCut end)
   if not (edgeC and edgeL and edgeR and heelL and heelR) then return end
   -- A band that collapsed to a single point gives the GE side no usable heading; it falls
   -- back to the along-axis there, so just note it rather than refusing the implement.
@@ -460,8 +510,12 @@ local function resolveImplementNodes()
   _implEdgeCids = {edgeL, edgeC, edgeR}
   _implHeelCids = {heelL, heelR}
 
-  -- Zero the tilt against the pose the implement was drawn in, so 0 degrees means "as
-  -- modelled" (the carry pose for a bucket) on every implement, with no per-part table.
+  -- Design-pose pitch of the floor plane. This USED to be subtracted from the live pitch, so
+  -- that 0 degrees meant "as modelled". With a genuine floor axis that offset is not wanted:
+  -- world pitch already IS the angle from level, which is the only thing the operator can
+  -- act on -- an implement modelled nose-down reads nose-down, as it should. It is still
+  -- computed and logged, because a large value now means the floor band resolved onto
+  -- something that is not the floor, and that should be visible rather than silent.
   local function designMid(list)
     local x, y, z = 0, 0, 0
     for _, cid in ipairs(list) do
@@ -471,7 +525,9 @@ local function resolveImplementNodes()
     local n = #list
     return vec3(x / n, y / n, z / n)
   end
-  local dA, dB = designMid(_implEdgeCids), designMid(_implHeelCids)
+  -- Same two-point edge axis the live tilt uses, so the logged design pitch is comparable
+  -- with what the readout reports rather than being a different measurement.
+  local dA, dB = designMid({edgeL, edgeR}), designMid(_implHeelCids)
   local dLen = dA:distance(dB)
   if dLen > 1e-4 then
     _implTiltZeroDeg = math.deg(math.asin(math.max(-1, math.min(1, (dA.z - dB.z) / dLen))))
@@ -512,9 +568,10 @@ local function resolveImplementNodes()
   -- Resolution is entirely name-driven, so say out loud what it landed on. If a machine
   -- ever reports nothing, this line is the first thing to look at.
   log('I', 'beamtel.implement', string.format(
-    "implement '%s' (%s): %d nodes, edge cids %s/%s/%s, heel %s/%s, tilt zero %.1f deg",
+    "implement '%s' (%s): %d nodes, edge cids %s/%s/%s, heel %s/%s, heel band z spread "
+    .. "%.2f m, floor-plane design pitch %.1f deg (diagnostic only; live tilt is world pitch)",
     tostring(partName), tostring(friendly), #cids, tostring(edgeL), tostring(edgeC),
-    tostring(edgeR), tostring(heelL), tostring(heelR), _implTiltZeroDeg))
+    tostring(edgeR), tostring(heelL), tostring(heelR), heelZSpread or -1.0, _implTiltZeroDeg))
   pushImplementToGE(partName, friendly, cids)
 end
 
@@ -653,17 +710,23 @@ local function updateImplement(dt, articulation)
   end
 
   -- Tilt, measured in world space so it stays right on a slope -- which is the case that
-  -- decides whether a load spills.
+  -- decides whether a load spills. edgeMid -> heelMid is the implement's FLOOR plane (see
+  -- the floor-band constraint in resolveImplementNodes), so its world pitch is directly the
+  -- angle from level and needs no design-pose offset: 0 means level tines, positive means
+  -- the edge is above the heel, i.e. racked back.
   local function worldMid(list)
     local acc = vec3(0, 0, 0)
     for _, cid in ipairs(list) do acc = acc + implNodeWorld(vehPos, cid) end
     return acc / #list
   end
-  local A, B = worldMid(_implEdgeCids), worldMid(_implHeelCids)
+  -- edgeL/edgeR only, NOT all three edge picks. The GE-side entry gate measures this same
+  -- axis from getImplementFrame, whose origin is the edgeL/edgeR midpoint, and two halves of
+  -- one instrument reporting angles that differ by a degree or two is the kind of
+  -- disagreement that costs an afternoon to chase. edgeC is a contact point, not a centre.
+  local A, B = worldMid({_implEdgeCids[1], _implEdgeCids[3]}), worldMid(_implHeelCids)
   local len = A:distance(B)
   if len > 1e-4 then
-    local pitch = math.deg(math.asin(math.max(-1, math.min(1, (A.z - B.z) / len))))
-    _implTiltDeg = pitch - _implTiltZeroDeg
+    _implTiltDeg = math.deg(math.asin(math.max(-1, math.min(1, (A.z - B.z) / len))))
   end
 
   if _implTiltCyls then

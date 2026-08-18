@@ -645,8 +645,17 @@ local function scanAndSendVehicleData()
   local targetLeftVec  = targetUpVec:cross(targetFwdVec) -- left, as above
   local approachDeg    = math.deg(approachRad) * (targetLeftVec:dot(toPlayerVec) < 0 and -1 or 1)
 
-  -- Send as plain text "bearing,distance,approachDeg" — parsed by Python with split(',')
-  local packet = string.format("%.4f,%.4f,%.4f", bearingDegrees, currentTargetDist, approachDeg)
+  -- Send as plain text "bearing,distance,approachDeg,direction" — parsed by Python with
+  -- split(','). The direction rides along because the bearing is measured against the
+  -- DIRECTION OF TRAVEL, and Python has to know which end 0 deg refers to before it can turn
+  -- the number into speech. It used to mirror the GEAR:R/GEAR:F it had pushed, which is only
+  -- one of the three ways activeDirection gets set here: resolveDirection also ages that push
+  -- out after GEAR_STALE_SEC and falls back to velocity, and a vehicle switch clears it
+  -- outright. Rolling backwards down a slope in D, this side re-referenced to the rear while
+  -- Python still believed forward, and speech said "in front of you" about the thing being
+  -- reversed into. Sending the resolved value leaves exactly one authority for it.
+  local packet = string.format("%.4f,%.4f,%.4f,%d",
+    bearingDegrees, currentTargetDist, approachDeg, activeDirection)
   udpSend:send(packet)
 end
 
