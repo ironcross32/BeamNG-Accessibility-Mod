@@ -14,23 +14,27 @@ Use of AI coding agents and tooling have been heavily used in this project.
 1. Unzip the contents to a directory of your choice (If you're seeing this, hopefully you have already done this)
 2. Launch beamtel.exe - granting admin access (explanation in later section)
 3. Navigate to the "Install Mod" button and activate it which will copy the zipped BeamNG mod to the appropriate place
-4. Launch the game and enter a free roam session in the map of your choice
-5. (optionally) get Xinyi OCR as it helps with the next steps
-6. Press escape in the game, then scan for, route mouse to and click UI apps (normal NVDA OCR tends to say UL apps)
-7. Scan for, route mouse to and click "Add app" (normal NVDA scan tends to only have one p)
-8. Find nvda hook, route and click. This may be difficult due to the amount of apps available
+4. Launch the game and play
 
-At this point, you should have speech in game menus, as well as when changing gears.
+### What about BeamNG.drive updates?
+
+Some game updates have little to no bearing on the way this mod functions, while others do. The 0.39 update (end of July / beginning of August 2026) meant a lot of the UI code had to be reworked. As such, when a game update drops, you may lose functionality for a while until I update this mod to match.
+
+BeamNG deactivates mods when the game updates. The idea here is that users can enable mods one by one to see which ones work and which do not. Because of this, after a game update, it's very likely that you won't have speech when you launch the game. The next part must therefore be done with the aid of OCR:
+
+1. From the main menu, click repository
+2. Once the repository loads, click mod manager near the top
+3. Click Activate all mods
+4. OCR again and answer the `are you sure` prompt
+5. The mod should load and begin working
 
 ### How to Use
 
-The mod speaks speed announcements every 25mph or 25kph. It speaks your heading every 45 degrees and plays compass clicks every 15 degrees. The higher the pitch of the click, the closer to north you are. It also automatically announces gear changes.
-
-You have access to most game screens, even if in some of them it's rudimentary. You can change vehicles, add or remove parts, and tune them with this mod. You can also change your map accessibly, though there is, and likely never will be, main menu reading for technical reasons. You will always have to OCR your way into the world, but once done, you'll be able to change maps with speech.
+By default, you have automatic speed and gear change announcements. These can be tailored to taste in the config tab of the UI. You have access to most game screens, even if in some of them it's rudimentary. You can change vehicles, add or remove parts, and tune them with this mod. You can also change your map accessibly.
 
 ### Input Help Mode
 
-Press ? (Shift+/) in either the F9 or F10 layer to toggle input help mode. While on, the layer stays open and every key press speaks what that command does instead of executing it. Press ? again to turn it off and exit the layer.
+Press Shift+/ in either the F9 or F10 layer to toggle input help mode. While on, the layer stays open and every key press speaks what that command does instead of executing it. Press it again to turn it off and exit the layer.
 
 ### F9 Layer (Vehicle Commands)
 
@@ -58,6 +62,7 @@ Press F9, then one of the following keys. If you press an invalid key or allow t
 
 - 1-9: Speak the 1st through 9th most recent message
 - 0: Speak the 10th most recent message
+- Ctrl+B: Enable buffer mode which commandeers the bracket keys and allows traversal back through speech history
 
 #### Waypoints:
 
@@ -75,9 +80,7 @@ Press F9, then one of the following keys. If you press an invalid key or allow t
 - Shift+V: Align to trailer coupler — vehicle scanner must be on, target must be a trailer, couplers on source vehicle and target must be compatible
 - Ctrl+Shift+D: Automatic coupler distance callouts — vehicle scanner must be on
 
-In reverse, the scanner measures from the **back** of your vehicle and reports the bearing relative to the way you are travelling, so a target directly behind you reads straight ahead rather than straight behind. Left and right are unchanged — they stay the left and right you are sitting in, in every gear. This applies to any vehicle, not just the loader, so backing up to a wall, a trailer or a parking space now gives you a real bumper-to-surface distance.
-
-Scanner distances are the **gap** between the two vehicles — the clear space you still have — not the distance between their centres. Earlier versions measured centre to centre, which added roughly half a vehicle at each end and, worse, changed with the target's orientation: a car sitting broadside and the same car nose-on at the same real gap reported the same number. Expect the figures to read smaller than they used to, and to reach zero when you touch.
+In reverse, the scanner measures from the back of your vehicle and reports the bearing relative to the way you are travelling, so a target directly behind you reads straight ahead rather than straight behind.
 
 #### Alignment and cannon readout:
 
@@ -146,6 +149,8 @@ Press F10, then one of the following keys.
 - L: Toggle lane driving
 - ?: Toggle input help mode
 
+Some AI modes require a road network to be present, thus, they will not work on maps like Grid Small Pure.
+
 ### F11 Layer (Vehicle Spawner)
 
 Press F11 to open the accessible vehicle spawner. F11 is suppressed while the spawner is open so the game's world editor cannot activate. The spawner has four pages: the main vehicle browser, the to-be-spawned list, the manage screen, and the arrangement presets screen. Tab cycles forward through pages and Shift+Tab cycles backward.
@@ -200,8 +205,8 @@ A quick tap moves exactly one foot or one degree. Holding a key escalates the st
 
 #### Arrangement presets screen (opened with G from any page)
 
-- Up/Down: Move between rows — Type, Variant, Spacing, Apply Queue, Arrange Active
-- Left/Right: Change the value of the current row
+- Up/Down: Move between rows
+- Left/Right: Adjust the value
 - Enter: Activate Apply Queue (spawns queued vehicles in the chosen arrangement) or Arrange Active (teleports in-world vehicles into the arrangement)
 - Escape: Return to the previous page
 
@@ -209,7 +214,7 @@ Arrangement types are: line (all vehicles in a row), side by side (abreast), two
 
 ### Special Modes
 
-**Pedal tone mode** allows you to hear tones that identify how much input the game is receiving from you. You'll hear three tones: one near the center for brake, one at the right for gas, and one at the left for clutch. If the vehicle is automatic or DCT, the clutch tone will never play, even if the input is actuated. The tones also require input of each type before they will begin.
+**Pedal tone mode** allows you to hear tones that identify how much input the game is receiving from you. You'll hear four tones: one near the center for brake, one at the right for gas, one at the left for clutch, and a buzzy tone that hard pans left and right, increasing pitch which indicates steering input. If the vehicle is automatic or DCT, the clutch tone will never play, even if the input is actuated. The tones also require input of each type before they will begin.
 
 **Status mode** commandeers the arrow keys for itself. Up and down step through each telemetry item; left or right give an up-to-date readout of the currently selected item. This mode must be turned off in order to use a screen reader effectively. It must also not be used if you play with a keyboard, because you will not be able to accelerate, brake, or steer.
 
