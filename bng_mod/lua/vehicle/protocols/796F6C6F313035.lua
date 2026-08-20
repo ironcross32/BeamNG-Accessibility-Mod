@@ -146,6 +146,15 @@ local IMPL_EDGE_BAND      = 0.30
 -- angle nothing can be driven into.
 local IMPL_FLOOR_BAND     = 0.35
 local IMPL_EDGE_MIN_WIDTH = 0.30  -- narrower than this and the derived heading gets noisy
+-- How many nodes a part sitting in an attachment slot has to have before that slot alone is
+-- taken as evidence it is an implement. A slot named "...attachment" says nothing about what
+-- was fitted into it: EVERY stock car has a towhitch_receiver_attachment slot, and a fitted
+-- ball hitch is five nodes carrying a matching partPath -- which is exactly the shape the
+-- slot tier accepts. The smallest stock implement is the block handler forks at 36 nodes and
+-- the tow hitches are 5, so this sits an order of magnitude clear of both. It applies ONLY to
+-- the slot tiers: a part whose own name says bucket/fork/grapple has named itself and keeps
+-- the ordinary four-node floor.
+local IMPL_MIN_ATTACH_NODES = 12
 local IMPL_ACT_RATE_FULL  = 0.30  -- ram travel fraction per second that counts as full
 -- Soft-body rams never sit perfectly still, so the rate term needs a floor it must clear
 -- before it counts as movement at all. Real operation runs near 0.5/s, so this costs
@@ -197,11 +206,31 @@ local _implLift      = 0.0
 local _implActivity  = 0.0
 local _implArticDeg  = 0.0
 
+-- Keyword matching, boundary-aware. A keyword only counts where it STARTS a word: after a
+-- separator or a digit, at the start of the string, or at a camelCase hump. Plain substring
+-- matching is what let stock parts claim to be implements -- "us_semi_ramplow" (the rollback
+-- bed's loading ramp) matched "plow", "covet_roofscoop" and "sunburst2_hoodscoop" matched
+-- "scoop" -- and every one of those is a false implement on a vehicle that has none.
+--
+-- The hump test must run against the ORIGINAL string, not the lowered copy: lowering
+-- "wl40_liftarm_blockForks" makes "fork" follow a "k", so a boundary rule that only looked
+-- at the lowered form would reject the WL-40's block handler forks, which are a real
+-- implement. Lowered for the search, original for the boundary -- both, or neither works.
 local function matchesAnyWord(s, words)
   if type(s) ~= "string" then return false end
-  s = s:lower()
+  local low = s:lower()
   for _, w in ipairs(words) do
-    if s:find(w, 1, true) then return true end
+    local from = 1
+    while true do
+      local i = low:find(w, from, true)
+      if not i then break end
+      -- %W is "not alphanumeric", which counts "_" and "/" as separators, as intended.
+      local prev = (i > 1) and low:sub(i - 1, i - 1) or nil
+      local atBoundary = (prev == nil) or prev:match("%W") ~= nil or prev:match("%d") ~= nil
+      local atHump = s:sub(i, i):match("%u") ~= nil
+      if atBoundary or atHump then return true end
+      from = i + 1
+    end
   end
   return false
 end
@@ -308,6 +337,41 @@ local function resolveImplementNodes()
     return
   end
 
+  -- ACTUATION GATE. An implement is not a part with a suggestive name -- it is the thing the
+  -- machine's lift and tilt rams move. Resolving nodes before that is established is what let
+  -- ordinary vehicles claim one: the tiers below are pure name matching, and the game is full
+  -- of names that satisfy them (bucket SEATS on half the fleet, hood and roof SCOOPS, a tow
+  -- hitch in an "...attachment" slot). Every one of those pushed a cid list to the GE side,
+  -- which is the docking instrument's ONLY test for "does this vehicle have an implement" --
+  -- so the readout measured from a seat frame, the scanner aimed from a tow ball, and ramp
+  -- mode, whose whole premise is a vehicle with no implement, could never be reached on the
+  -- cars that need it.
+  --
+  -- This is not a new rule, it is the rule the rest of the block already used: IMPL_FLAG_PRESENT
+  -- has always required (_implEdgeCids and (_implLiftCyls or _implTiltCyls)), so on a car that
+  -- name-matched, the tones and status metrics stayed correctly silent and only the GE push
+  -- escaped -- one half of this file's own definition of an implement leaking out past the
+  -- other. Everything downstream of the cylinders needs them anyway (activity, jacking, the
+  -- stall test are all read off currentExtendPercent), so a machine that fails this gate could
+  -- never have produced a working readout even if its node set were the genuine article.
+  --
+  -- Gating on the cylinders costs nothing on a real loader (they classify on the first tick
+  -- the powertrain is built) and is silent by construction everywhere else: an ordinary car
+  -- has no hydraulicPowerSource at all, so the scan finds nothing and this returns for the
+  -- rest of the session. Wait for the scan to COMMIT rather than failing on the first miss,
+  -- and do not spend node tries while waiting -- both scans run off the same 20 Hz tick and
+  -- the powertrain may not be built yet.
+  if not (_implLiftCyls or _implTiltCyls) then
+    if not _implCylScanned then return end
+    _implNodesScanned = true
+    if not _implPushed then
+      log('I', 'beamtel.implement',
+        "no implement lift/tilt cylinders on this vehicle; implement features stay off")
+      pushImplementToGE(nil, "", nil)
+    end
+    return
+  end
+
   _implNodeTries = _implNodeTries + 1
   if _implNodeTries >= IMPL_NODE_MAX_TRIES then _implNodesScanned = true end
 
@@ -337,17 +401,52 @@ local function resolveImplementNodes()
     return out
   end
 
+  -- Choose between the candidates a slot tier proposes, rather than taking whichever one
+  -- pairs() happened to hand over first. Two reasons, and the second is the bug:
+  --   * pairs() order is arbitrary, so on a machine with two filled attachment slots the
+  --     resolution was nondeterministic between runs.
+  --   * a slot named "...attachment" is not evidence about what is IN it. A ball hitch in a
+  --     towhitch_receiver_attachment slot matched the tier and won, and five nodes of tow
+  --     ball then became "the implement" -- on any vehicle that got past the actuation gate,
+  --     e.g. a rollback tow truck, whose bed rams are named tilt1/tilt2.
+  -- So: a part whose own name says implement wins outright; otherwise the largest node set
+  -- wins and has to clear IMPL_MIN_ATTACH_NODES. Ties break on the name so the answer is
+  -- stable across sessions.
+  local function pickCandidate(names)
+    local namedN, namedC, bigN, bigC = nil, nil, nil, nil
+    for name in pairs(names) do
+      local got = collect(name)
+      if got then
+        if matchesAnyWord(name, IMPL_PART_WORDS) then
+          if not namedC or #got > #namedC or (#got == #namedC and name < namedN) then
+            namedN, namedC = name, got
+          end
+        elseif #got >= IMPL_MIN_ATTACH_NODES then
+          if not bigC or #got > #bigC or (#got == #bigC and name < bigN) then
+            bigN, bigC = name, got
+          end
+        end
+      end
+    end
+    if namedN then return namedN, namedC end
+    return bigN, bigC
+  end
+
   -- Tier 1: a node whose partPath runs through an attachment/implement slot.
   -- Note the explicit ~= "": slotSystem appends a reset row that blanks every slot option
   -- to the EMPTY STRING, not to nil, and "" is truthy in Lua. Without this guard a node
   -- carrying a blanked partOrigin could win the match and then collect every other blanked
   -- node in the vehicle as "the implement".
+  local slotNames = {}
   for _, nd in pairs(v.data.nodes) do
     if nd.partOrigin and nd.partOrigin ~= ""
         and matchesAnyWord(nd.partPath, IMPL_SLOT_WORDS) then
-      local got = collect(nd.partOrigin)
-      if got then partName, cids = nd.partOrigin, got break end
+      slotNames[nd.partOrigin] = true
     end
+  end
+  do
+    local n, got = pickCandidate(slotNames)
+    if n then partName, cids = n, got end
   end
 
   -- Tier 2: a partOrigin that names itself as an implement (wl40_bucket,
@@ -364,12 +463,14 @@ local function resolveImplementNodes()
   -- Tier 3: the slot-path table, if beamstate happens to have populated it. Last because it
   -- is not guaranteed to exist here and its values are not guaranteed to be plain names.
   if not partName then
+    local pathNames = {}
     for path, name in pairs(v.data.activeParts or {}) do
-      if matchesAnyWord(path, IMPL_SLOT_WORDS) then
-        local got = collect(name)
-        if got then partName, cids = name, got break end
+      if matchesAnyWord(path, IMPL_SLOT_WORDS) and type(name) == "string" then
+        pathNames[name] = true
       end
     end
+    local n, got = pickCandidate(pathNames)
+    if n then partName, cids = n, got end
   end
 
   if not partName then

@@ -118,6 +118,11 @@ local function ipLog(level, msg) log(level, 'implementProximity', msg) end
 -- the scanner's origin then flips between the bucket's cutting edge and the loader's
 -- reference node on a four-second cycle. Nothing logged it, because the re-push is
 -- idempotent and only speaks up when the payload changes.
+--
+-- The vehicle side now gates its resolution on the machine actually having implement lift/tilt
+-- rams, so a car can no longer claim one at all -- but this scoping is not made redundant by
+-- that and must stay: two loaders in the same scene both legitimately push, and only the one
+-- being driven may own the globals.
 local implByVeh = {}  -- vehID -> {cids = {...}, sample = {...}|nil, name = string} or false
 
 -- Promote whichever stored push belongs to the vehicle currently being driven. Cheap enough
@@ -1787,6 +1792,18 @@ function M.onVehicleSwitched(oldId, newId, player)
   bandIndex, bandTargetID, lastDockLine = nil, nil, nil
   slamState = "NONE"
   entryOK = false
+end
+
+-- Vehicle ids are handed out per session, but a scene reload starts them again from zero, so
+-- a stored push can outlive the machine that sent it and be inherited by whatever spawns into
+-- its id. That inherited entry is a vehicle believing it has an implement it has never had --
+-- the same failure the name matching produces, arrived at from the other direction -- and it
+-- would stand until the new vehicle's own push landed. resetState() covers the level reload;
+-- this covers a delete mid-session.
+function M.onVehicleDestroyed(vehId)
+  if implByVeh[vehId] == nil then return end
+  implByVeh[vehId] = nil
+  applyActivePush()
 end
 
 function M.onVehicleResetted(vehId)
