@@ -24,9 +24,56 @@ local M = {}
 -- as the implement node set in 796F6C6F313035.lua. Anchored so that a node called
 -- "guardramp_3" cannot join the set.
 local RAMP_NODE_PAT = "^ramp_"
+-- ...and the PART tier, which is what every ramp that is not large_cannon's needs.
+--
+-- A scan of all 124 stock vehicle zips says the node-name tier above resolves exactly one
+-- drivable thing: large_cannon. Every other stock ramp names its nodes opaquely -- the tilt
+-- deck's are b0rr/b1r/b11rr, the dry van's cd1rr, the rollback's tf01r -- and carries its
+-- identity only in the jbeam PART it came from. So a second tier matches nd.partOrigin (the
+-- part NAME, proven present and a plain string; the implement resolver in 796F6C6F313035.lua
+-- already rests on it) and, failing that, nd.group.
+--
+-- An ALLOWLIST rather than a substring test for "ramp", because the substring test is wrong in
+-- both directions on the shipped data. It misses every entry below except the cannon's, and it
+-- hits tiltframe_rampiston and tiltframe_ramcylinder, which are the hydraulic ram that TILTS a
+-- rollback deck -- structure you must not drive at.
+--
+-- Verified against the shipped jbeam, one line per source file:
+--   cannon_ramp            large_cannon/large_cannon_ramp.jbeam        (also tier 1)
+--   tsfb_ramp              tsfb/tsfb_ramp.jbeam                        tandem semi flatbed
+--   dryvan_ramp            dryvan/dryvan_ramp.jbeam                    dry van
+--   dryvan_rampextension   dryvan/dryvan_ramp.jbeam                    ...its fold-out tip
+--   us_semi_rollback_deck  us_semi/rollback/us_semi_rollback_deck.jbeam
+--   tiltdeck_deck          tiltdeck/tiltdeck_deck_{22,30,40}ft.jbeam   tilt deck trailer
+--   us_semi_ramplow        us_semi/us_semi_ramplow.jbeam
+--   md_series_ramplow      md_series/md_series_ramplow{,_small}.jbeam
+--
+-- The last two sit in a *_bumper_F slot rather than a rear one, so they are the entries most
+-- likely to be wrong; they are also the first to drop if they ever misresolve in game.
+local RAMP_PART_WORDS = {
+  "cannon_ramp", "tsfb_ramp", "dryvan_ramp", "dryvan_rampextension",
+  "us_semi_rollback_deck", "tiltdeck_deck", "us_semi_ramplow", "md_series_ramplow",
+}
+-- Checked BEFORE the allowlist, and as plain substrings rather than whole words, because each
+-- of these is a near-miss the zip scan actually turned up rather than a hypothetical:
+--   tailgate / door   cargotrailer, boxutility, frameless_dump -- hinged, not drivable
+--   dumptruck_deck    the bed SIDES of a dump truck, despite the name
+--   tiltframe_ram     the rollback's ram cylinder and piston, i.e. what moves the deck
+--   spinner_wall      large_spinner's nodes are literally ramp_0..ramp_5b, so it passes the
+--                     NAME tier today. It is a spinning wall. This closes a standing false
+--                     positive rather than guarding against a new one.
+local RAMP_PART_DENY = {
+  "tailgate", "door", "dumptruck_deck", "tiltframe_ram", "spinner_wall",
+}
 -- A floor, not a fit. The real large_cannon mouth row alone holds around seventeen nodes;
 -- anything under eight is not a ramp and is not worth trying to find two end rows in.
 local MIN_RAMP_NODES = 8
+-- How many distinct partOrigin values a "no ramp here" reply carries back with it. The
+-- allowlist above is a data question that only in-game testing settles, so the resolve has to
+-- say what it DID see -- otherwise identifying a machine the list missed means a log dive on a
+-- line that is emitted once, at D level, from another VM. lastReason is already rendered
+-- verbatim by M.stateOf and by implementProximity.rampTruth(), so this costs no new plumbing.
+local REASON_PARTS_MAX = 10
 -- Fraction of the along-ramp span forming each end row.
 --
 -- Much wider than the implement resolver's 0.15 fore/aft band, and deliberately so: a mouth is
@@ -40,6 +87,22 @@ local MIN_RAMP_NODES = 8
 -- 4.528 / 5.792 = 0.782 or the INNER row's band would start swallowing mouth nodes. 0.35 sits
 -- with 60% margin above the floor and well clear of the ceiling.
 local ROW_BAND = 0.35
+-- ...and an ABSOLUTE ceiling on what that fraction is allowed to produce.
+--
+-- A mouth is a mouth-sized thing. The fraction was tuned on large_cannon, whose ramp is a fixed
+-- 5.792 m, so 0.35 of it is 2.03 m and the question of a cap never came up. It comes up the
+-- moment the ramp is part of a machine that changes its own length: a us_semi rollback deck is
+-- 9.24 m home and grows to about 12 m with the bed run out, which makes the "mouth row" a 4.2 m
+-- slab. Measured on that vehicle at full extension, the two wall picks came out 1.49 m apart
+-- ALONG the ramp -- not a row at all, and the live half-width then disagreed with the resolve's
+-- own meta (1.168 m against 0.94 m) because one is a 3-D distance between two nodes at
+-- different stations and the other is a pure lateral difference.
+--
+-- 2.0 m rather than something tighter because large_cannon's three mouth rows span 1.264 m and
+-- must all stay in the band; at 2.0 the cannon's membership is unchanged (its uncapped band is
+-- 2.03 m and there is nothing between 1.264 and 2.03 to admit or drop), so this cannot regress
+-- the vehicle the rule was built on.
+local ROW_BAND_MAX_M = 2.0
 -- A mouth-row node this far above the mouth floor plane counts as WALL. The real wall sits
 -- 0.483 m above the toe floor, so this is 3x below it and comfortably above any modelling seam
 -- or soft-body sag.
@@ -65,6 +128,30 @@ local WALL_MAX_H = 1.0
 -- it back in scope. That is what the height cap is for. 0.40 m is comfortably inside the
 -- innermost real floor node (0.546 m) and outside anything describable as on the centreline.
 local MIN_WALL_LATERAL_M = 0.40
+-- The along-ramp spread the centreline reference nodes must cover before their slope is
+-- believed. Two nodes a centimetre apart define a line, but not one worth extrapolating a metre
+-- up-ramp from: a modelling seam between them would be read as the whole ramp's pitch. Below
+-- this the floor falls back to the flat lowest-z plane, which is what every vehicle used before.
+-- large_cannon's mouth row spreads its centreline nodes over 1.0 m, i.e. 4x this.
+local FLOOR_FIT_MIN_SPAN_M = 0.25
+-- How far the centreline reference nodes may lie off their own fitted line before the fit is
+-- disbelieved -- i.e. before this row is declared NOT ONE PLANE.
+--
+-- Deliberately equal to WALL_MIN_H, and that is the entire argument: a wall is a node more than
+-- WALL_MIN_H above the floor, so if the floor itself is uncertain by more than WALL_MIN_H then
+-- every wall this row could report is inside the fit's own error bar. Believing it anyway is
+-- how the rule invents walls that are not there.
+--
+-- Which is exactly what it did. A us_semi rollback deck is TWO structural levels -- an
+-- understructure at u 0.07-0.14 and the drivable surface at u 0.49-0.55 -- and the uncapped row
+-- band above swept both into one row. The line then fitted through the middle of them, landing
+-- the "floor" near u 0.30 where nothing physically exists, so every node of the real deck
+-- surface read as 0.22 m of wall and the rule took the smallest lateral: the INNER rail at
+-- 1.017 instead of the outer edge at 1.732. Measured half-width 0.936 m against a true 1.296 m,
+-- at the HOME pose, with no tilt and no extension involved. The residual there is 0.23 m
+-- against this 0.15 m, so the guard trips with margin; large_cannon's mouth row is a single
+-- ramp floor and fits it to near zero.
+local FLOOR_FIT_MAX_RESIDUAL_M = WALL_MIN_H
 -- The along-ramp axis is derived from the displacement of the ramp's centroid from the whole
 -- machine's centroid, and that displacement must beat the other two axes by this factor or the
 -- resolve is REJECTED rather than guessed at.
@@ -80,19 +167,43 @@ local MIN_WALL_LATERAL_M = 0.40
 -- many metres along the ramp axis and near zero on the other two. It also derives which end is
 -- the mouth in the same step, which the longest-axis rule cannot do at all. Same
 -- centroid-comparison trick 796F6C6F313035.lua uses for the implement's fore/aft sign.
+--
+-- ...and when that displacement does not exist, the resolve falls to a DECK tier rather than
+-- being rejected. See the axis block in the chunk below for why that is a second tier and not
+-- a relaxation of this one.
 local AXIS_DOMINANCE = 3.0
 local MIN_AXIS_DISP_M = 1.0  -- ...and it must be a real displacement, not numerical residue
+-- The deck tier's own guard: a drive-on deck is long and narrow, so its along-machine span must
+-- beat its lateral span by this factor. large_spinner's wall -- the one thing besides the
+-- cannon that clears the NAME tier -- is the shape this rejects. 1.5 rather than
+-- AXIS_DOMINANCE's 3.0 because a 22 ft tilt deck is only about 2.7x, and a 6.7 m rollback deck
+-- on a 2.5 m body is 2.7x too; 3.0 would reject both of the vehicles the tier exists for.
+local DECK_LENGTH_DOMINANCE = 1.5
 -- Degenerate baseline guard, mirroring the implement resolver's MIN_EDGE_WIDTH_M and there for
 -- the same reason: a two-point baseline shorter than this points wherever soft-body jitter
 -- says it does, and every angle derived from it inherits that.
 local MIN_MOUTH_WIDTH_M = 0.30
+-- Two nodes this close laterally are the SAME EDGE, so the station they sit at decides between
+-- them rather than whichever pairs() reached first.
+--
+-- A row band holds several stations by design, and a deck's side rail runs through all of them
+-- at the same lateral offset. The extremes are then a tie to within a millimetre, and a strict
+-- comparison resolves it by table order -- which is how the mouth pair came out 1.45 m apart
+-- ALONG the ramp on a rollback whose lateral half-width was by then perfectly correct. Nothing
+-- in the meta could show it: halfW there is a pure lateral difference, while mouthFrame
+-- measures the two nodes in 3-D, so the same resolve read 1.29 m on one side of the wire and
+-- 1.42 m on the other, and the derived axis and centre were skewed with it.
+--
+-- The mouth row breaks ties toward the mouth end, the inner row toward the inside. Both are the
+-- same rule: take the marker from the end of the ramp the row is supposed to represent.
+local EDGE_TIE_M = 0.02
 
 -- Copied from vehicleGeometry deliberately, so there is one retry cadence across the mod.
 local RESOLVE_TIMEOUT_S = 3.0
 local MAX_TRIES         = 3
 
 -- cache[vehID] = {cids = {mouthL, mouthC, mouthR, innerL, innerR},
---                 halfW, alongSpan, floorU, nNodes, wallUsed, naiveHalfW}
+--                 halfW, alongSpan, floorU, nNodes, wallUsed, naiveHalfW, axisTier, isCannon}
 local cache   = {}
 local pending = {}  -- vehID -> {epoch = n, timer = seconds, tries = n}
 -- Vehicles that answered with nothing usable, or used up their retries. Same flag and the same
@@ -107,9 +218,58 @@ local failed  = {}
 -- how a cannon becomes permanently invisible depending on when the first resolve happened to
 -- fire. Bounded by MAX_TRIES so it cannot become an unbounded retry loop.
 local notReady = {}
+-- Why each vehicle is in the state it is in, kept for M.diag() and for the "no ramp near you"
+-- readout. This resolve's failure mode is that it lands on nothing and says so once at D level,
+-- in a log nobody is reading from the driver's seat; the difference between "that car has no
+-- ramp", "the cannon's VM never answered" and "the mouth resolved but is 80 m away" is the
+-- whole diagnosis, and none of it was reachable in game.
+local lastReason = {}
+-- ...and WHICH KIND of answer it is, which is not the same question. "It answered, and it has
+-- no ramp" is a settled fact about the vehicle; "it never answered" is a fact about the attempt
+-- and may not be true a minute from now. Collapsing both into `failed` and rendering both as
+-- "GAVE UP" is the same class of confusion this file keeps running into: two states that want
+-- different reactions from the driver, reported in identical words.
+--   resolved | pending | none | silent | malformed | inactive | unasked
+local stateKind = {}
+-- Epoch below which a reply for this vehicle is genuinely stale, i.e. it was issued before the
+-- last invalidation. NOT the same thing as "not the chunk we are currently waiting on" -- see
+-- M.onRampGeometry.
+local staleBefore = {}
+local staleBeforeAll = 0
 local epochCounter = 0
 
+local function markStale(vehID)
+  if vehID == nil then staleBeforeAll = epochCounter else staleBefore[vehID] = epochCounter end
+end
+
+local function staleFloor(vehID)
+  local v = staleBefore[vehID] or 0
+  if staleBeforeAll > v then v = staleBeforeAll end
+  return v
+end
+
+-- A vehicle whose VM is not running cannot answer a queueLuaCommand at all. Asking anyway
+-- spends the retry budget on silence and lands the vehicle in `failed` permanently, which is
+-- indistinguishable from "this machine has no ramp" -- and the vehicle most likely to be
+-- inactive is a big map prop like a cannon sitting at the far end of the map, i.e. exactly the
+-- one this file exists for.
+local function vehIsActive(veh)
+  if not veh or not veh.getActive then return true end
+  local ok, active = pcall(function() return veh:getActive() end)
+  if not ok then return true end
+  return active and active ~= 0
+end
+
 local function rgLog(level, msg) log(level, 'rampGeometry', msg) end
+
+-- Renders a Lua list literal for embedding in VEH_SCRIPT. The chunk is built by concatenation
+-- for the reason documented below -- it is itself the subject of an outer string.format -- so
+-- the word lists have to travel as source text rather than as upvalues.
+local function luaList(t)
+  local parts = {}
+  for i, w in ipairs(t) do parts[i] = '"' .. w .. '"' end
+  return "{" .. table.concat(parts, ",") .. "}"
+end
 
 -- =================================================================================================
 --  Resolution (vehicle VM -> GE)
@@ -140,8 +300,104 @@ local function reply(cidCsv, metaCsv, reason)
     .. obj:getID() .. "," .. EPOCH .. ",'" .. cidCsv .. "','" .. metaCsv
     .. "','" .. reason .. "') end")
 end
+-- ------------------------------------------------------------------------------------------
+-- Part matching. NOT ONE PERCENT SIGN may appear anywhere below -- not in code, not in a
+-- string, not in a comment. That rules out string.format AND every Lua character class, so no
+-- alphanumeric class, no escaped hyphen, no gsub pattern of any kind. This whole chunk is the
+-- subject of an outer string.format and a stray percent breaks the resolve at load time, in
+-- another VM, silently -- which is precisely what the first draft of this comment did, by
+-- spelling out the very classes it was warning against. Every test here is therefore a plain
+-- find (the `true` fourth argument) or a byte comparison.
+-- ------------------------------------------------------------------------------------------
+local ALLOW = ]] .. luaList(RAMP_PART_WORDS) .. [[
+local DENY  = ]] .. luaList(RAMP_PART_DENY) .. [[
+
+local function isAlnum(b)
+  if not b then return false end
+  return (b >= 48 and b <= 57) or (b >= 65 and b <= 90) or (b >= 97 and b <= 122)
+end
+
+-- Boundary-aware, the same rule the implement resolver applies to its own keywords and for the
+-- same reason: a bare substring test is what lets ramplow match a bumper and rampiston match a
+-- hydraulic ram. A word counts only where it is bounded at both ends by a separator or by the
+-- end of the string, so tiltdeck_deck matches tiltdeck_deck_22ft and does not match
+-- tiltdeck_deck22ft. Unlike the implement resolver there is no camelCase-hump clause, because
+-- every verified part name is snake_case; a camelCase ramp part would need one adding.
+local function partIsRamp(s)
+  if type(s) ~= "string" or s == "" then return false end
+  local l = s:lower()
+  for _, d in ipairs(DENY) do
+    if l:find(d, 1, true) then return false end
+  end
+  for _, w in ipairs(ALLOW) do
+    local from = 1
+    while true do
+      local a, b = l:find(w, from, true)
+      if not a then break end
+      if (not isAlnum(l:byte(a - 1))) and (not isAlnum(l:byte(b + 1))) then return true end
+      from = a + 1
+    end
+  end
+  return false
+end
+
+-- partOrigin first, group second. group is jbeam data and may be a STRING or an ARRAY of them
+-- (a node can belong to several), so it is normalised rather than assumed.
+local function nodeIsRampPart(nd)
+  if partIsRamp(nd.partOrigin) then return true end
+  local g = nd.group
+  if type(g) == "string" then return partIsRamp(g) end
+  if type(g) == "table" then
+    for _, gv in ipairs(g) do
+      if partIsRamp(gv) then return true end
+    end
+  end
+  return false
+end
+
+-- Sanitised for the reason string, which travels inside single quotes through a queueLuaCommand
+-- and must not carry a quote, a comma or a percent. Byte-wise for the same no-percent reason.
+local function safeName(s)
+  local out = {}
+  for i = 1, #s do
+    local b = s:byte(i)
+    if isAlnum(b) or b == 95 or b == 45 then
+      out[#out + 1] = s:sub(i, i)
+    else
+      out[#out + 1] = "-"
+    end
+  end
+  return table.concat(out)
+end
+
 local ok, err = pcall(function()
   if not (v.data and v.data.nodes) then return reply("", "", "no node data") end
+
+  -- POSITIVE EVIDENCE THAT THIS MACHINE IS THE STOCK large_cannon, and it is not the same
+  -- question as "does it have a drive-in ramp".
+  --
+  -- beamtel's firing readout used to key off M.has, on the reasoning that the only vehicle
+  -- naming its nodes ramp_ WAS the cannon. The part tiers above ended that: they exist so a
+  -- rollback, a tilt deck and a dry van resolve too, and every one of them then latched
+  -- CANNON. Measured in a us_semi tc82s_rollback, F9 I answered "Inclination 100 percent,
+  -- strength unknown" -- because the two aiming figures are read off electrics that only
+  -- large_cannon's controller hijacks, so on a real truck the inclination is its ENGINE RPM
+  -- over a thousand (the rollback's hydraulicsCombustionEngineControl raises idle to 1500,
+  -- i.e. a pegged 100 percent the moment the pump engages) and the strength is a gear string
+  -- that is not a percentage. It also made the rollback's own ramp readout unreachable,
+  -- because the cannon branch of the alignment key wins before _dock_phrase_ramp is consulted.
+  --
+  -- The honest test is the controller that PUBLISHES those two values: large_cannon.jbeam
+  -- declares ["large_cannon", {}], so the machine that can be aimed is exactly the machine
+  -- carrying that controller. Same shape of argument as cannonGeometry demanding a beamType 7
+  -- launcher beam rather than trusting a filename -- a capability check on the source of the
+  -- readout, not a jbeam allowlist that needs maintaining. It costs nothing: v.data is already
+  -- in hand and this rides back in the same reply.
+  local isCannon = 0
+  for _, c in pairs(v.data.controller or {}) do
+    if type(c) == "table" and tostring(c.fileName) == "large_cannon" then isCannon = 1 end
+  end
+
   local fwd = vec3(obj:getDirectionVector())
   local up  = vec3(obj:getDirectionVectorUp())
   -- MUST be up:cross(fwd), never the negation. implementProximity projects onto its own
@@ -149,48 +405,138 @@ local ok, err = pcall(function()
   -- disagree every lateral reading mirrors, and nothing but a grep enforces it.
   local rgt = up:cross(fwd)
 
+  -- Two candidate sets, filled in ONE pass. The node-name tier is tried first and wins
+  -- outright when it is populated, so large_cannon resolves through exactly the code it always
+  -- did and the part tier can never change an answer that already worked.
+  local T = {
+    {n = 0, c = {}, f = {}, r = {}, u = {}, sf = 0, sr = 0, su = 0},  -- 1: node name
+    {n = 0, c = {}, f = {}, r = {}, u = {}, sf = 0, sr = 0, su = 0},  -- 2: part / group
+  }
+  local function keep(t, cid, f, r, u)
+    local i = t.n + 1
+    t.n = i
+    t.c[i], t.f[i], t.r[i], t.u[i] = cid, f, r, u
+    t.sf, t.sr, t.su = t.sf + f, t.sr + r, t.su + u
+  end
+
   local mn, mf, mr, mu = 0, 0, 0, 0
-  local rn, sf, sr, su = 0, 0, 0, 0
-  local rc, xf, xr, xu = {}, {}, {}, {}
+  local partSeen, partOrder = {}, {}
   for _, nd in pairs(v.data.nodes) do
     local lp = vec3(obj:getNodePosition(nd.cid))
     local f, r, u = fwd:dot(lp), rgt:dot(lp), up:dot(lp)
     mn = mn + 1
     mf, mr, mu = mf + f, mr + r, mu + u
     if nd.name and nd.name:find("]] .. RAMP_NODE_PAT .. [[") then
-      rn = rn + 1
-      rc[rn], xf[rn], xr[rn], xu[rn] = nd.cid, f, r, u
-      sf, sr, su = sf + f, sr + r, su + u
+      keep(T[1], nd.cid, f, r, u)
+    end
+    if nodeIsRampPart(nd) then
+      keep(T[2], nd.cid, f, r, u)
+    end
+    -- Collected unconditionally, because it is only ever read on the FAILURE path and that is
+    -- precisely the path that has nothing else to say.
+    if type(nd.partOrigin) == "string" and nd.partOrigin ~= ""
+       and not partSeen[nd.partOrigin] and #partOrder < ]] .. REASON_PARTS_MAX .. [[ then
+      partSeen[nd.partOrigin] = true
+      partOrder[#partOrder + 1] = safeName(nd.partOrigin)
     end
   end
   if mn < 1 then return reply("", "", "no nodes") end
-  if rn < ]] .. MIN_RAMP_NODES .. [[ then
-    return reply("", "", "only " .. rn .. " ramp nodes")
+
+  local pick, tierName = nil, ""
+  if T[1].n >= ]] .. MIN_RAMP_NODES .. [[ then
+    pick, tierName = T[1], "node name"
+  elseif T[2].n >= ]] .. MIN_RAMP_NODES .. [[ then
+    pick, tierName = T[2], "part"
   end
+  if not pick then
+    return reply("", "", "only " .. T[1].n .. " named and " .. T[2].n
+      .. " part-matched ramp nodes; parts seen: " .. table.concat(partOrder, " "))
+  end
+
+  local rn = pick.n
+  local rc, xf, xr, xu = pick.c, pick.f, pick.r, pick.u
+  local sf, sr, su = pick.sf, pick.sr, pick.su
 
   mf, mr, mu = mf / mn, mr / mn, mu / mn
   sf, sr, su = sf / rn, sr / rn, su / rn
   local df, dr, du = sf - mf, sr - mr, su - mu
   local af, ar, au = math.abs(df), math.abs(dr), math.abs(du)
 
-  -- Dominant axis of the centroid displacement. Vertical is rejected outright: a node set
-  -- displaced from the machine centroid mostly in Z is not a ramp we understand, and guessing
-  -- would be worse than saying so.
-  local along, lat, disp, oth
+  -- Dominant axis of the centroid displacement, and TWO separate guards that used to be one.
+  --
+  -- Guard one: vertical is rejected outright. A node set displaced from the machine centroid
+  -- mostly in Z is not a ramp we understand, and guessing would be worse than saying so. That
+  -- is enforced structurally by the branch conditions below -- if au is the largest of the
+  -- three, neither branch fires, disp stays nil, and we fall to the deck tier.
+  --
+  -- Guard two: `oth` is the OTHER HORIZONTAL component, never max(other, vertical). The axis
+  -- this ratio protects is horizontal -- mouthFrame flattens it to vec3(raw.x, raw.y, 0) and
+  -- the vertical survives only as the scalar pitchDeg -- so weighing it against a vertical
+  -- quantity tests the answer against something the answer does not contain. Worse, vertical
+  -- displacement carries no information about whether the along-axis is well determined: a
+  -- ramp hangs low and a machine is tall, so every ramp on a tall machine has one. And on a
+  -- machine whose ramp is DESIGNED to move in Z it is not even a constant. large_cannon tilts
+  -- its whole assembly on the ramL/ramR cylinders; at full inclination the ramp swings down,
+  -- au grows to 2.85 m against a displacement of 8.46 m, and the old form's ratio of 2.966
+  -- missed the 3.0 threshold by about three centimetres. The cannon then resolved only while
+  -- its barrel was near level -- true at spawn, so nothing ever saw it, but a reset, a part
+  -- swap, a level reload or M.retry at elevation killed ramp mode for the session and
+  -- reported NO RAMP ON IT. A raised tilt deck and a rollback with the bed up fail the same
+  -- way. ramp_resolve_sim.lua scenario 8 asserts both halves against a rotated pose, and
+  -- asserts the old form fails at an angle the machine can actually reach.
+  local along, lat, disp, oth, axisTier
   if af >= ar and af >= au then
-    along, lat, disp, oth = xf, xr, df, math.max(ar, au)
+    along, lat, disp, oth = xf, xr, df, ar
   elseif ar >= af and ar >= au then
-    along, lat, disp, oth = xr, xf, dr, math.max(af, au)
-  else
-    return reply("", "", "ramp displaced vertically, not along the machine")
+    along, lat, disp, oth = xr, xf, dr, af
   end
-  local dm = math.abs(disp)
-  if dm < ]] .. MIN_AXIS_DISP_M .. [[ or dm < ]] .. AXIS_DOMINANCE .. [[ * oth then
+  local dm = 0
+  if disp then dm = math.abs(disp) end
+  if disp and dm >= ]] .. MIN_AXIS_DISP_M .. [[ and dm >= ]] .. AXIS_DOMINANCE .. [[ * oth then
+    axisTier = 1
+  else
+    -- ==========================================================================================
+    -- THE DECK TIER, and it is a SECOND tier rather than a relaxation of the first.
+    --
+    -- The displacement rule works because a bolt-on ramp hangs off one end of a much larger
+    -- machine, so the ramp cloud's centroid is metres away from the machine's. A tilt deck is
+    -- the exact opposite: the deck IS the trailer, its centroid sits on the machine's, dm is
+    -- numerical residue, and the rule above rejects it. Loosening the rule to admit that would
+    -- also admit every cloud whose displacement is residue for the ordinary reason -- it isn't
+    -- a ramp -- and would put the cannon's correctness at risk to fix a case the cannon is not.
+    --
+    -- So: when there is no displacement to read, do not read one. Fall back to the two facts
+    -- that hold for a deck and cannot be derived from the cloud alone -- the machine's own
+    -- fore/aft axis, and the fact that you drive onto a trailer FROM BEHIND. Forcing the sign
+    -- negative below is what makes the rearward end the mouth. That is right for the tilt deck,
+    -- the rollback deck, the dry van ramp and the tsfb ramp alike.
+    --
     -- No string.format anywhere in this chunk, not even in a comment: this text is itself the
     -- subject of an outer string.format, so a percent sign here breaks the resolve at load
     -- time, in another VM, silently. That is what the sim's format check is for.
-    return reply("", "", "along-axis not dominant (" .. tostring(dm)
-      .. " m vs " .. tostring(oth) .. " m)")
+    -- ==========================================================================================
+    local fLo, fHi, rLo, rHi = math.huge, -math.huge, math.huge, -math.huge
+    for i = 1, rn do
+      if xf[i] < fLo then fLo = xf[i] end
+      if xf[i] > fHi then fHi = xf[i] end
+      if xr[i] < rLo then rLo = xr[i] end
+      if xr[i] > rHi then rHi = xr[i] end
+    end
+    local fSpan, rSpan = fHi - fLo, rHi - rLo
+    if fSpan < ]] .. MIN_AXIS_DISP_M .. [[
+       or fSpan < ]] .. DECK_LENGTH_DOMINANCE .. [[ * rSpan then
+      -- Every component by name, not a bare pair of numbers. The old form printed the winning
+      -- displacement against `oth` with nothing to say which axis `oth` came from, and reading
+      -- 8.46 vs 2.85 off a tilted cannon told you the ratio missed without telling you that the
+      -- 2.85 was VERTICAL -- which is the entire diagnosis. dm is not printed because it is
+      -- whichever of the first two won, and on the vertical-fallthrough path it is 0.
+      return reply("", "", "along-axis not dominant (fore/aft " .. tostring(af)
+        .. " m, lateral " .. tostring(ar) .. " m, vertical " .. tostring(au)
+        .. " m; deck span " .. tostring(fSpan)
+        .. " m vs " .. tostring(rSpan) .. " m wide)")
+    end
+    -- disp is forced negative rather than measured: the mouth is the REAR of the machine.
+    along, lat, disp, oth, axisTier = xf, xr, -1, 0, 2
   end
 
   -- The ramp hangs off the machine in the direction of `disp`, so the MOUTH is its far end.
@@ -208,7 +554,10 @@ local ok, err = pcall(function()
   if span < ]] .. MIN_AXIS_DISP_M .. [[ then
     return reply("", "", "ramp span only " .. tostring(span) .. " m")
   end
+  -- Capped absolutely. A fraction alone tracks the length of whatever the ramp happens to be
+  -- right now, and a rollback deck runs its own length out by half.
   local rowBand = span * ]] .. ROW_BAND .. [[
+  if rowBand > ]] .. ROW_BAND_MAX_M .. [[ then rowBand = ]] .. ROW_BAND_MAX_M .. [[ end
 
   local mouth, inner = {}, {}
   for i = 1, rn do
@@ -219,14 +568,84 @@ local ok, err = pcall(function()
     return reply("", "", "end rows too sparse (" .. #mouth .. "/" .. #inner .. ")")
   end
 
-  -- Floor plane of each row, and the classification every pick below depends on.
-  local function floorOf(row)
+  -- ===========================================================================================
+  -- Floor of each row, as a LINE ALONG THE RAMP rather than a single lowest z. Every pick below
+  -- classifies a node by its height above this, and getting that wrong picks different nodes.
+  --
+  -- The lowest-z form was pose-dependent, and badly. A row is a BAND, not a plane: the mouth
+  -- row spans 1.26 m of a 5.79 m ramp -- the toe on the ground, the floor lip, the raised wall.
+  -- Tilt the assembly and that along-extent turns into vertical extent, so "height above the
+  -- lowest node in the row" starts reporting the ramp's PITCH as though it were wall height.
+  -- On large_cannon the floor lip is 1.0 m up-ramp of the toe and 0.1 m above it, so past
+  -- 2.9 degrees of tilt the lip alone clears WALL_MIN_H, and the wall rule then picks
+  -- ramp_L_1a at 0.546 m instead of ramp_L_6a at 2.148 m. That is a mouth reported as a
+  -- quarter of its true width -- the same class of confidently-wrong clearance the wall rule
+  -- exists to prevent, arriving through the back door.
+  --
+  -- Fitting a line absorbs the pitch exactly, because a rotation maps a straight row to a
+  -- straight row. The reference nodes are the ones within MIN_WALL_LATERAL_M of the centreline:
+  -- the wall rule already refuses to call those walls, so treating them as floor is the same
+  -- judgement, not a new one. Nodes more than WALL_MAX_H above the row's lowest are excluded --
+  -- that is overhead structure by this file's own definition, and large_cannon has exactly one,
+  -- ramp_M_0, sitting 2 m up on the centreline where it would otherwise drag the fit with it.
+  --
+  -- With too few reference nodes, or too little along-spread to define a slope, this falls back
+  -- to the lowest-z plane, which is the behaviour every vehicle had before.
+  -- ===========================================================================================
+  -- Returns a fourth value now: whether the reference nodes actually LIE on the line that was
+  -- fitted to them. A row can be two structural levels rather than one plane, and a
+  -- least-squares line through both is a floor at a height where the machine has no floor.
+  -- Everything below classifies nodes by their height above that line, so an incoherent fit
+  -- does not degrade the answer, it inverts it -- see FLOOR_FIT_MAX_RESIDUAL_M.
+  local function floorFitOf(row)
     local lo = math.huge
     for _, i in ipairs(row) do if xu[i] < lo then lo = xu[i] end end
-    return lo
+    local n, st, su, stt, stu = 0, 0, 0, 0, 0
+    local tLo, tHi = math.huge, -math.huge
+    local ref = {}
+    for _, i in ipairs(row) do
+      if math.abs(xr[i]) <= ]] .. MIN_WALL_LATERAL_M .. [[
+         and (xu[i] - lo) <= ]] .. WALL_MAX_H .. [[ then
+        n = n + 1
+        ref[n] = i
+        st, su = st + t[i], su + xu[i]
+        stt, stu = stt + t[i] * t[i], stu + t[i] * xu[i]
+        if t[i] < tLo then tLo = t[i] end
+        if t[i] > tHi then tHi = t[i] end
+      end
+    end
+    local den = n * stt - st * st
+    if n >= 2 and (tHi - tLo) >= ]] .. FLOOR_FIT_MIN_SPAN_M .. [[
+       and math.abs(den) > 1e-9 then
+      local k = (n * stu - st * su) / den
+      local a = (su - k * st) / n
+      -- COUNT the nodes that miss the line, do not take the worst one. A single reference node
+      -- off the fit is an ordinary feature -- a spine down the middle of a trough, a modelling
+      -- seam -- and condemning the whole row for it would send large_cannon down the two-level
+      -- path over one rib. Two structural levels are not one outlier: they put a substantial
+      -- SHARE of the reference set off the line, because both levels run the length of the row.
+      -- On the rollback that share is 2 of 4; the ribbed cannon is 1 of 4 and stays coherent.
+      local off = 0
+      for j = 1, n do
+        local i = ref[j]
+        local d = xu[i] - (a + k * t[i])
+        if d < 0 then d = -d end
+        if d > ]] .. FLOOR_FIT_MAX_RESIDUAL_M .. [[ then off = off + 1 end
+      end
+      return a, k, lo, not (off >= 2 and off * 3 >= n)
+    end
+    -- The flat lowest-z plane, which is what every vehicle used before the fit existed. Reported
+    -- as coherent because it is not a fit and has no residual to disbelieve; falling back here
+    -- must keep behaving exactly as it always did.
+    return lo, 0, lo, true
   end
-  local mouthFloorU = floorOf(mouth)
-  local innerFloorU = floorOf(inner)
+  local mouthFitA, mouthFitK, mouthFloorU, mouthCoherent = floorFitOf(mouth)
+  local innerFitA, innerFitK, innerFloorU, innerCoherent = floorFitOf(inner)
+  -- Height above the fitted floor. mouthFloorU/innerFloorU stay the plain lowest z, because the
+  -- naive half-width is the floor-band rule reproduced literally as a negative control and the
+  -- meta field is a reported measurement, not a classifier.
+  local function mouthH(i) return xu[i] - (mouthFitA + mouthFitK * t[i]) end
+  local function innerH(i) return xu[i] - (innerFitA + innerFitK * t[i]) end
 
   -- ===========================================================================================
   -- THE WALL RULE. The single most important block in this file.
@@ -253,28 +672,85 @@ local ok, err = pcall(function()
   -- The naive answer is computed alongside and shipped purely so the log line can print both.
   -- A disagreement between them is then one line to diagnose instead of a session.
   -- ===========================================================================================
-  local wallL, wallR, floorL, floorR = nil, nil, nil, nil
-  local floorLatHi, floorLatLo = -math.huge, math.huge
+  -- The top of the mouth row, which is the surface you DRIVE ON when the row turns out not to
+  -- be one plane. A deck is a plate with structure hanging under it; you drive on the plate.
+  --
+  -- Overhead structure is excluded by the file's existing definition of it -- more than
+  -- WALL_MAX_H above the row's lowest node -- and that exclusion is load-bearing, not tidiness.
+  -- large_cannon's ramp_M_0 sits 2.1 m up on the centreline, so a bare maximum would make the
+  -- "top surface" a single node in mid-air and collapse the mouth to nothing.
+  local mouthLoU, mouthTopU = math.huge, -math.huge
+  for _, i in ipairs(mouth) do if xu[i] < mouthLoU then mouthLoU = xu[i] end end
   for _, i in ipairs(mouth) do
-    local h = xu[i] - mouthFloorU
-    local raised = h > ]] .. WALL_MIN_H .. [[ and h <= ]] .. WALL_MAX_H .. [[
-    local off = math.abs(xr[i])
-    if raised and off > ]] .. MIN_WALL_LATERAL_M .. [[ then
-      if xr[i] > 0 then
-        if (not wallL) or xr[i] < xr[wallL] then wallL = i end
-      else
-        if (not wallR) or xr[i] > xr[wallR] then wallR = i end
-      end
-    elseif h <= ]] .. WALL_MIN_H .. [[ then
-      -- Explicitly the floor band, not merely "not a wall": an overhead node fails the wall
-      -- test too, and letting it fall through to here would let it set the floor extreme.
-      if xr[i] > floorLatHi then floorLatHi, floorL = xr[i], i end
-      if xr[i] < floorLatLo then floorLatLo, floorR = xr[i], i end
+    if (xu[i] - mouthLoU) <= ]] .. WALL_MAX_H .. [[ and xu[i] > mouthTopU then
+      mouthTopU = xu[i]
     end
   end
+  local function mouthIsFloor(i)
+    if mouthCoherent then return mouthH(i) <= ]] .. WALL_MIN_H .. [[ end
+    return (mouthTopU - xu[i]) <= ]] .. WALL_MIN_H .. [[
+  end
+
+  local wallL, wallR, floorL, floorR = nil, nil, nil, nil
+  local floorLatHi, floorLatLo = -math.huge, math.huge
+  -- Lateral extreme first, and the station only where the lateral is a tie. See EDGE_TIE_M.
+  local function takeMouthEdge(i)
+    if (not floorL) or xr[i] > floorLatHi + ]] .. EDGE_TIE_M .. [[
+       or (xr[i] > floorLatHi - ]] .. EDGE_TIE_M .. [[ and t[i] > t[floorL]) then
+      floorL = i
+    end
+    if xr[i] > floorLatHi then floorLatHi = xr[i] end
+    if (not floorR) or xr[i] < floorLatLo - ]] .. EDGE_TIE_M .. [[
+       or (xr[i] < floorLatLo + ]] .. EDGE_TIE_M .. [[ and t[i] > t[floorR]) then
+      floorR = i
+    end
+    if xr[i] < floorLatLo then floorLatLo = xr[i] end
+  end
   local wallUsed = 0
-  if wallL then wallUsed = wallUsed + 1 else wallL = floorL end
-  if wallR then wallUsed = wallUsed + 1 else wallR = floorR end
+  if mouthCoherent then
+    for _, i in ipairs(mouth) do
+      local h = mouthH(i)
+      local raised = h > ]] .. WALL_MIN_H .. [[ and h <= ]] .. WALL_MAX_H .. [[
+      local off = math.abs(xr[i])
+      if raised and off > ]] .. MIN_WALL_LATERAL_M .. [[ then
+        if xr[i] > 0 then
+          if (not wallL) or xr[i] < xr[wallL] then wallL = i end
+        else
+          if (not wallR) or xr[i] > xr[wallR] then wallR = i end
+        end
+      elseif h <= ]] .. WALL_MIN_H .. [[ then
+        -- Explicitly the floor band, not merely "not a wall": an overhead node fails the wall
+        -- test too, and letting it fall through to here would let it set the floor extreme.
+        takeMouthEdge(i)
+      end
+    end
+    if wallL then wallUsed = wallUsed + 1 else wallL = floorL end
+    if wallR then wallUsed = wallUsed + 1 else wallR = floorR end
+  else
+    -- THE ROW IS NOT ONE PLANE, so the wall rule does not run on it at all.
+    --
+    -- Not a degraded version of the rule -- its input is missing. Every one of its tests is
+    -- "how far above the floor is this node", and there is no single floor here to be above.
+    -- Running it anyway is precisely what reported a us_semi rollback deck as 1.87 m wide when
+    -- it is 2.59 m: the fit landed between the deck's two levels and the drivable surface
+    -- itself came out as wall, so the rule -- which conservatively takes the SMALLEST
+    -- qualifying lateral -- chose an inner rail 0.36 m inboard of the real edge on each side.
+    --
+    -- The answer for this shape is the lateral extremes of the top surface, and that is not a
+    -- fallback so much as the right rule for the machine: a deck has no side walls, so there is
+    -- nothing between the driver and its edges. wallUsed stays 0, which is already how the rest
+    -- of the mod reads "the wall rule did not answer here", and the meta carries the naive
+    -- figure alongside so the log line shows both.
+    --
+    -- The trade this makes, stated plainly: on a machine with real walls AND a multi-level
+    -- floor this over-reports clearance where the old form under-reported it. That is the right
+    -- direction for a deck, which has nothing to hit, and it is the direction that stops
+    -- RAMPALIGN warning that a car will not fit through a mouth it fits through easily.
+    for _, i in ipairs(mouth) do
+      if mouthIsFloor(i) then takeMouthEdge(i) end
+    end
+    wallL, wallR = floorL, floorR
+  end
   if not (wallL and wallR) then
     return reply("", "", "could not find both mouth edges")
   end
@@ -293,7 +769,7 @@ local ok, err = pcall(function()
   local midLat = (xr[wallL] + xr[wallR]) * 0.5
   local mouthC, bestC = nil, math.huge
   for _, i in ipairs(mouth) do
-    if (xu[i] - mouthFloorU) <= ]] .. WALL_MIN_H .. [[ then
+    if mouthIsFloor(i) then
       local d = math.abs(xr[i] - midLat)
       if d < bestC then bestC, mouthC = d, i end
     end
@@ -306,10 +782,32 @@ local ok, err = pcall(function()
   -- would make a needlessly jittery baseline for a value that is then averaged away anyway.
   local innerL, innerR = nil, nil
   local iHi, iLo = -math.huge, math.huge
+  local innerLoU, innerTopU = math.huge, -math.huge
+  for _, i in ipairs(inner) do if xu[i] < innerLoU then innerLoU = xu[i] end end
   for _, i in ipairs(inner) do
-    if (xu[i] - innerFloorU) <= ]] .. WALL_MIN_H .. [[ then
-      if xr[i] > iHi then iHi, innerL = xr[i], i end
-      if xr[i] < iLo then iLo, innerR = xr[i], i end
+    if (xu[i] - innerLoU) <= ]] .. WALL_MAX_H .. [[ and xu[i] > innerTopU then
+      innerTopU = xu[i]
+    end
+  end
+  local function innerIsFloor(i)
+    if innerCoherent then return innerH(i) <= ]] .. WALL_MIN_H .. [[ end
+    return (innerTopU - xu[i]) <= ]] .. WALL_MIN_H .. [[
+  end
+  for _, i in ipairs(inner) do
+    if innerIsFloor(i) then
+      -- Ties toward the INSIDE here (smaller t), the mirror of the mouth row's rule: the inner
+      -- row's only job is to give the axis a second point, and that point wants to be as far
+      -- from the mouth as the row goes.
+      if (not innerL) or xr[i] > iHi + ]] .. EDGE_TIE_M .. [[
+         or (xr[i] > iHi - ]] .. EDGE_TIE_M .. [[ and t[i] < t[innerL]) then
+        innerL = i
+      end
+      if xr[i] > iHi then iHi = xr[i] end
+      if (not innerR) or xr[i] < iLo - ]] .. EDGE_TIE_M .. [[
+         or (xr[i] < iLo + ]] .. EDGE_TIE_M .. [[ and t[i] < t[innerR]) then
+        innerR = i
+      end
+      if xr[i] < iLo then iLo = xr[i] end
     end
   end
   if not (innerL and innerR) then
@@ -319,8 +817,13 @@ local ok, err = pcall(function()
   local cids = rc[wallL] .. "," .. rc[mouthC] .. "," .. rc[wallR] .. ","
             .. rc[innerL] .. "," .. rc[innerR]
   local meta = tostring(halfW) .. "," .. tostring(span) .. "," .. tostring(mouthFloorU) .. ","
-            .. tostring(rn) .. "," .. tostring(wallUsed) .. "," .. tostring(naiveHalfW)
-  reply(cids, meta, "")
+            .. tostring(rn) .. "," .. tostring(wallUsed) .. "," .. tostring(naiveHalfW) .. ","
+            .. tostring(axisTier) .. "," .. tostring(isCannon)
+  -- The reason field is used on the SUCCESS path too, purely to carry which tiers fired. Both
+  -- are name-driven choices that produce confident, plausible numbers when they land on the
+  -- wrong thing, so which one answered is the first line worth reading when a half-width or a
+  -- mouth end looks wrong.
+  reply(cids, meta, "by " .. tierName .. " tier, axis tier " .. tostring(axisTier))
 end)
 if not ok then
   obj:queueGameEngineLua("log('E','rampGeometry','vehicle-side resolve failed: "
@@ -341,13 +844,28 @@ end
 -- id survives a reset, so an id check alone would install pre-reset cids for a part
 -- configuration that has since changed.
 function M.onRampGeometry(vehID, epoch, cidCsv, metaCsv, reason)
-  local p = pending[vehID]
-  if not p or p.epoch ~= epoch then
-    rgLog('D', string.format("stale ramp reply for %s (epoch %s)",
+  epoch = tonumber(epoch) or 0
+  -- Stale means "issued before the last invalidation", NOT "not the chunk I am waiting on".
+  -- The old test was the second one, and it threw away the very reply this file needs most: a
+  -- vehicle VM that takes longer than RESOLVE_TIMEOUT_S to run its queued command -- a cannon
+  -- spawning with a level, on a loaded frame -- answers the FIRST chunk after the retry has
+  -- already issued a second. Every such answer was dropped as stale, three times over, and the
+  -- vehicle then landed in `failed` for the rest of the session with the resolve having in fact
+  -- succeeded every single time. Nothing above D level said so.
+  --
+  -- The guard that actually matters is still intact, because it is the one the epoch was for:
+  -- a reply describing a part configuration that has since been reset or swapped carries an
+  -- epoch below the invalidation mark and is still rejected.
+  if epoch <= staleFloor(vehID) then
+    rgLog('D', string.format("stale ramp reply for %s (epoch %s, superseded by an invalidation)",
       tostring(vehID), tostring(epoch)))
     return
   end
-  pending[vehID] = nil
+  local p = pending[vehID]
+  -- Whether this reply is the newest chunk's decides only whether a FAILURE is terminal: a
+  -- success is a success whenever it arrives, but giving up on the strength of a superseded
+  -- chunk's "nothing here" would discard an answer that is still in flight.
+  local newest = (p == nil) or (epoch >= p.epoch)
 
   local cids = parseNums(cidCsv)
   local meta = parseNums(metaCsv)
@@ -366,6 +884,16 @@ function M.onRampGeometry(vehID, epoch, cidCsv, metaCsv, reason)
     -- restart". Retried under the same budget as a silent VM, so a vehicle that answers this
     -- way forever still costs MAX_TRIES chunks and no more.
     local why = tostring(reason or "")
+    lastReason[vehID] = why ~= "" and why or "no reason given"
+    stateKind[vehID] = "none"
+    if not newest then
+      -- A superseded chunk said no. The newest one has not answered yet, so this decides
+      -- nothing; leave `pending` alone and wait for it.
+      rgLog('D', string.format("ignoring superseded 'no ramp' reply for %s: %s",
+        tostring(vehID), lastReason[vehID]))
+      return
+    end
+    pending[vehID] = nil
     if why == "no node data" or why == "no nodes" then
       local n = (notReady[vehID] or 0) + 1
       notReady[vehID] = n
@@ -373,23 +901,33 @@ function M.onRampGeometry(vehID, epoch, cidCsv, metaCsv, reason)
         rgLog('D', string.format(
           "vehicle %s was not ready to answer the ramp resolve (%s), attempt %d of %d",
           tostring(vehID), why, n, MAX_TRIES))
+        stateKind[vehID] = "pending"
         return  -- pending is already cleared, so the next M.request re-issues
       end
     end
     failed[vehID] = true
     rgLog('D', string.format("vehicle %s has no usable ramp: %s",
-      tostring(vehID), why ~= "" and why or "no reason given"))
+      tostring(vehID), lastReason[vehID]))
     return
   end
   -- A VM answering with the wrong shape will keep answering with the wrong shape, so this is
   -- terminal too -- the same guard, and the same reasoning, as vehicleGeometry's #ext ~= 6.
-  if #cids ~= 5 or #meta ~= 6 then
+  if #cids ~= 5 or #meta ~= 8 then
+    lastReason[vehID] = string.format("malformed reply: %d cids, %d meta", #cids, #meta)
+    stateKind[vehID] = "malformed"
+    if not newest then return end
+    pending[vehID] = nil
     failed[vehID] = true
-    rgLog('W', string.format("vehicle %s returned %d cids and %d meta, expected 5 and 6",
+    rgLog('W', string.format("vehicle %s returned %d cids and %d meta, expected 5 and 8",
       tostring(vehID), #cids, #meta))
     return
   end
 
+  -- A usable answer, whatever chunk asked for it.
+  pending[vehID] = nil
+  failed[vehID], notReady[vehID] = nil, nil
+  lastReason[vehID] = "resolved"
+  stateKind[vehID] = "resolved"
   cache[vehID] = {
     cids       = cids,
     halfW      = meta[1],
@@ -398,16 +936,29 @@ function M.onRampGeometry(vehID, epoch, cidCsv, metaCsv, reason)
     nNodes     = meta[4],
     wallUsed   = meta[5],
     naiveHalfW = meta[6],
+    -- 1 = the ramp cloud's displacement from the machine centroid named the axis and the mouth
+    -- end. 2 = it did not, and the machine's own fore/aft axis was used with the REAR taken as
+    -- the mouth. Carried rather than discarded because the two tiers can disagree about which
+    -- end of a machine you drive into, and nothing else in a readout would reveal which one
+    -- answered.
+    axisTier   = meta[7],
+    -- Whether this machine carries large_cannon's controller. Kept as a separate fact from
+    -- "it has a ramp" because the two came apart the moment the part tiers admitted trailers;
+    -- see the chunk for what reading one as the other did to the firing readout.
+    isCannon   = meta[8] == 1,
   }
   -- The naive half-width is printed even when the wall rule worked. It is the one line that
   -- turns "the clearance feels wrong" into an answer, and it costs nothing to carry.
   rgLog('I', string.format(
     "ramp on vehicle %d: %d nodes, span %.2f m along, mouth half-width %.3f m (%s; "
-    .. "naive floor-band pick would have said %.3f m)",
+    .. "naive floor-band pick would have said %.3f m); %s; axis %s",
     vehID, meta[4], meta[2], meta[1],
     (meta[5] >= 2) and "wall rule both sides"
       or string.format("wall rule on %d of 2 sides, floor extreme on the rest", meta[5]),
-    meta[6]))
+    meta[6],
+    tostring(reason or ""),
+    (meta[7] == 2) and "by machine fore/aft, mouth at the rear (deck)"
+      or "by centroid displacement"))
 end
 
 -- Fire a resolve for this vehicle unless one is cached, in flight, or known hopeless. Cheap to
@@ -416,9 +967,111 @@ function M.request(vehID)
   if not vehID or cache[vehID] or pending[vehID] or failed[vehID] then return end
   local veh = scenetree.findObjectById(vehID)
   if not veh then return end
+  -- Asking a sleeping VM is not a resolve attempt, it is a message into a queue nobody is
+  -- draining. Say so and come back later rather than spending a try on it.
+  if not vehIsActive(veh) then
+    lastReason[vehID] = "vehicle VM is inactive (pooled out)"
+    stateKind[vehID] = "inactive"
+    return
+  end
   epochCounter = epochCounter + 1
   pending[vehID] = {epoch = epochCounter, timer = 0, tries = 1}
+  lastReason[vehID] = "asked, waiting for the vehicle VM"
+  stateKind[vehID] = "pending"
   pcall(function() veh:queueLuaCommand(string.format(VEH_SCRIPT, epochCounter)) end)
+end
+
+-- One line per vehicle this extension has an opinion about. The whole point is that "no ramp
+-- near you" has half a dozen causes that sound identical from the seat, and until this existed
+-- none of them could be told apart without reading the log at D level.
+-- The one classification both renderings read from, so the console line and the spoken line can
+-- never disagree about what state a vehicle is in.
+local function classify(vehID)
+  if cache[vehID] then return "resolved" end
+  if pending[vehID] then return "pending" end
+  if failed[vehID] then return stateKind[vehID] or "silent" end
+  return stateKind[vehID] or "unasked"
+end
+
+function M.stateOf(vehID)
+  local kind = classify(vehID)
+  local why = tostring(lastReason[vehID] or "no reason recorded")
+  if kind == "resolved" then
+    local e = cache[vehID]
+    -- The axis tier is named here rather than left in the log, because "it resolved" and "it
+    -- resolved by guessing the mouth is at the rear" are different amounts of trust, and this
+    -- string is what rampTruth() and the spoken reason both render.
+    return string.format("RESOLVED (%d nodes, half-width %.2f m, axis %s)%s",
+      e.nNodes, e.halfW,
+      (e.axisTier == 2) and "by machine fore/aft, mouth at rear" or "by displacement",
+      e.isCannon and " [large_cannon]" or "")
+  elseif kind == "pending" then
+    local p = pending[vehID]
+    if p then
+      return string.format("PENDING (attempt %d of %d, %.1fs)", p.tries, MAX_TRIES, p.timer)
+    end
+    return "PENDING (asked, waiting for the vehicle VM)"
+  elseif kind == "none" then
+    -- Deliberately NOT "gave up". The vehicle answered; this is the answer. An ordinary car
+    -- and a cannon with no drive-in ramp both land here and both are correct.
+    return "NO RAMP ON IT (asked and answered): " .. why
+  elseif kind == "inactive" then
+    return "WAITING: " .. why
+  elseif kind == "unasked" then
+    return lastReason[vehID] and ("WAITING: " .. why) or "never asked"
+  end
+  return "GAVE UP: " .. why
+end
+
+-- Speech-sized. The spoken readout gets one clause, not a diagnosis: the point from the seat is
+-- whether to keep waiting, look elsewhere, or stop looking at this machine altogether.
+function M.shortStateOf(vehID)
+  local kind = classify(vehID)
+  if kind == "resolved" then return "ramp found" end
+  if kind == "pending" then return "still checking" end
+  if kind == "none" then return "no ramp on it" end
+  if kind == "inactive" then return "asleep" end
+  if kind == "unasked" then return "not checked yet" end
+  return "not answering"
+end
+
+function M.diag()
+  local out = {}
+  local ids = {}
+  local seen = {}
+  for _, t in ipairs({cache, pending, failed, notReady, lastReason}) do
+    for id in pairs(t) do
+      if not seen[id] then seen[id] = true; ids[#ids + 1] = id end
+    end
+  end
+  table.sort(ids)
+  if #ids == 0 then return "rampGeometry: nothing asked yet" end
+  for _, id in ipairs(ids) do
+    local veh = scenetree.findObjectById(id)
+    local name = "gone"
+    if veh then
+      local ok, n = pcall(function() return veh.JBeam or veh:getField("name", 0) end)
+      name = (ok and n and n ~= "") and tostring(n) or "?"
+    end
+    out[#out + 1] = string.format("%s [%s]: %s", name, tostring(id), M.stateOf(id))
+  end
+  return table.concat(out, "\n")
+end
+
+-- Forget everything about a vehicle and ask again. The manual escape hatch for a resolve that
+-- gave up for a reason that has since gone away -- the VM was asleep, the level was still
+-- loading -- without having to reset the vehicle or reload the level.
+-- Goes through M.invalidate rather than the local dropVehicle/dropAll, which are declared
+-- further down the file and would resolve to a nil GLOBAL from up here.
+function M.retry(vehID)
+  if vehID == nil then
+    M.invalidate(nil)
+    return "rampGeometry: cleared everything; resolves will re-arm on the next query"
+  end
+  M.invalidate(vehID)
+  M.request(vehID)
+  return string.format("rampGeometry: vehicle %s re-armed -- %s",
+    tostring(vehID), M.stateOf(vehID))
 end
 
 function M.get(vehID)
@@ -432,6 +1085,22 @@ end
 function M.has(vehID)
   M.request(vehID)
   return cache[vehID] ~= nil
+end
+
+-- Is this machine the stock large_cannon? A DIFFERENT question from M.has, and the separation
+-- is the whole point: has() means "you can drive into this", isCannon() means "this can be
+-- aimed and fired". They were the same predicate only for as long as large_cannon was the only
+-- vehicle whose ramp resolved at all, and the part tiers ended that -- a rollback, a tilt deck
+-- and a dry van all answer yes to the first and no to the second. Resolved from the presence
+-- of large_cannon's own controller, in the vehicle VM, in the same round trip; see the chunk.
+--
+-- Self-arming like has(), so beamtel's per-tick poll needs no request of its own. False for
+-- anything unresolved, which is the conservative way round: the readout it gates reads live
+-- electrics that mean nothing on an ordinary vehicle.
+function M.isCannon(vehID)
+  M.request(vehID)
+  local e = cache[vehID]
+  return (e ~= nil) and e.isCannon == true
 end
 
 -- The resolved cross-VM chunk, for diagnostics. Exists for the reason vehicleGeometry's does:
@@ -519,10 +1188,17 @@ local function dropVehicle(vehID)
   -- acquires or loses a ramp, and it is the only thing that makes a fresh attempt possible.
   failed[vehID]  = nil
   notReady[vehID] = nil
+  lastReason[vehID] = nil
+  stateKind[vehID] = nil
+  -- Everything already in flight described the part configuration that just went away, so it
+  -- must not be installed when it lands. This is the ONLY thing the epoch is for.
+  markStale(vehID)
 end
 
 local function dropAll()
-  cache, pending, failed, notReady = {}, {}, {}, {}
+  cache, pending, failed, notReady, lastReason, stateKind = {}, {}, {}, {}, {}, {}
+  staleBefore = {}
+  markStale(nil)
 end
 
 function M.invalidate(vehID)
@@ -546,6 +1222,23 @@ function M.onVehicleDestroyed(vehId)
   dropVehicle(vehId)
 end
 
+-- A vehicle coming back from the active pool is the one event that can turn a hopeless resolve
+-- into a workable one without anything about the vehicle changing: an inactive VM cannot run a
+-- queued chunk, so everything it "failed" is an artefact of it having been asleep. Only the
+-- give-up state is cleared -- a cached ramp is still a ramp, and dropping it here would re-issue
+-- a chunk every time a machine crossed the pooling boundary.
+function M.onVehicleActiveChanged(vehId, active)
+  if not active or active == 0 then return end
+  if cache[vehId] or pending[vehId] then return end
+  if failed[vehId] or notReady[vehId] then
+    failed[vehId], notReady[vehId] = nil, nil
+    lastReason[vehId] = "re-armed: vehicle VM became active again"
+    stateKind[vehId] = "unasked"
+    rgLog('D', string.format("vehicle %s became active; re-arming the ramp resolve",
+      tostring(vehId)))
+  end
+end
+
 function M.onUpdate(dtReal, dtSim, dtRaw)
   -- Retry genuinely stalled resolves only. A vehicle VM that is still spawning cannot answer,
   -- and without this the entry would stay pending forever. A vehicle that answered "no ramp" is
@@ -553,10 +1246,21 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
   for vehID, p in pairs(pending) do
     p.timer = p.timer + dtReal
     if p.timer >= RESOLVE_TIMEOUT_S then
-      if p.tries >= MAX_TRIES then
+      local veh0 = scenetree.findObjectById(vehID)
+      if veh0 and not vehIsActive(veh0) then
+        -- Time spent asleep is not a failed attempt. Hold the entry open and keep waiting;
+        -- onVehicleActiveChanged re-arms properly once the VM is running again.
+        p.timer = 0
+        lastReason[vehID] = "vehicle VM is inactive (pooled out)"
+        stateKind[vehID] = "inactive"
+      elseif p.tries >= MAX_TRIES then
         -- Flagged before clearing `pending`, so this is logged exactly once and the give-up is
         -- genuinely permanent rather than being re-armed by the next M.request.
         failed[vehID] = true
+        lastReason[vehID] = string.format(
+          "vehicle VM never answered %d chunks over %.0fs", MAX_TRIES,
+          MAX_TRIES * RESOLVE_TIMEOUT_S)
+        stateKind[vehID] = "silent"
         rgLog('W', string.format("vehicle %s never answered the ramp resolve", tostring(vehID)))
         pending[vehID] = nil
       else

@@ -2483,11 +2483,109 @@ export function installBNVDA($rootScope, dependencies) {
             return true;
           }
 
+          // ========== PAUSE > ENVIRONMENT: TIME OF DAY + TRAFFIC SUMMARY ==========
+          // Two controls on this tab reach the generic path and announce a raw
+          // internal number that is not the one on screen.
+          //
+          // The time-of-day slider is an <input type="range"> over MINUTES SINCE
+          // MIDNIGHT (0-1440, step 5), so vueControlState finds it inside the row
+          // and speaks "725". It is not merely unformatted, it is not even the
+          // current time: a range element snaps its own .value to its step, so a
+          // clock reading 12:03 reads back as 725, i.e. 12:05. The honest figure
+          // is the sibling text input, which carries the game's own formatted
+          // HH:MM -- so read that for BOTH controls and never convert the slider
+          // position. The seconds live in a separate .suffix span that reruns
+          // every second, and it was being taken as the row's LABEL (":05, 12:03");
+          // it is deliberately dropped rather than appended, because the focus
+          // signature is what re-announces a control and a per-second signature
+          // would re-announce the time continuously while it plays.
+          //
+          // The traffic summary is four counts identified only by icon glyphs.
+          // cleanText strips those (U+E000-U+F8FF, and it must), leaving the bare
+          // "0 0 0 0" -- four numbers naming nothing. The names come from the
+          // panel's own popover legend, matched by GLYPH rather than by position,
+          // so a reordered or extended row falls back to the count alone instead
+          // of confidently mislabelling it.
+          var TRAFFIC_COUNT_ICONS = { cars: 'active', carPlus: 'pooled', carChase01: 'police', parking: 'parked' };
+
+          function iconGlyphOf(name) {
+            var catalog = iconCatalog || (window.bngVue && window.bngVue.icons) || {};
+            var icon = catalog[name];
+            return (icon && icon.glyph) || '';
+          }
+
+          function todTimeText(tod) {
+            var input = tod && tod.querySelector('.tod-time-input input');
+            return cleanText(scalarValue(input && input.value));
+          }
+
+          function todPlayLabel(button) {
+            // The button carries an icon and nothing else, so which icon it is IS
+            // the state: TodControl renders pause while time advances and play
+            // while it is held. Compared against the catalog rather than against a
+            // hard-coded code point, which is a font build detail.
+            var glyphs = (button.innerText || button.textContent || '').replace(/[^\uE000-\uF8FF]/g, '');
+            var pauseGlyph = iconGlyphOf('pause'), playGlyph = iconGlyphOf('play');
+            if (pauseGlyph && glyphs.indexOf(pauseGlyph) !== -1) return 'Pause time';
+            if (playGlyph && glyphs.indexOf(playGlyph) !== -1) return 'Resume time';
+            return 'Play or pause time';
+          }
+
+          function trafficSummaryText(panel) {
+            var items = toArray(panel.querySelectorAll('.traffic-summary-item'));
+            if (!items.length) return '';
+            var byGlyph = {}, names = Object.keys(TRAFFIC_COUNT_ICONS);
+            for (var i = 0; i < names.length; i++) {
+              var glyph = iconGlyphOf(names[i]);
+              if (glyph) byGlyph[glyph] = TRAFFIC_COUNT_ICONS[names[i]];
+            }
+            var parts = [];
+            for (var j = 0; j < items.length; j++) {
+              var count = cleanText(items[j].innerText || items[j].textContent);
+              if (!count) continue;
+              var iconEl = items[j].querySelector('.icon-base');
+              var raw = iconEl ? (iconEl.innerText || iconEl.textContent || '') : '';
+              var name = byGlyph[raw.charAt(0)] || '';
+              parts.push(name ? count + ' ' + name : count);
+            }
+            return parts.length ? 'Traffic, ' + parts.join(', ') : '';
+          }
+
+          function vueEnvironmentText(target) {
+            if (!target) return '';
+            var traffic = closest(target, '.traffic-count-panel');
+            if (traffic) return trafficSummaryText(traffic);
+            var tod = closest(target, '.tod-control');
+            if (!tod) return '';
+            if (closest(target, '.tod-play-step-button')) return todPlayLabel(target);
+            // Not navigable today (tabindex -1, bng-no-nav), but it lives inside
+            // .tod-slider and would otherwise inherit the slider's label.
+            if (closest(target, '.bng-slider-popover-button')) return '';
+            var time = todTimeText(tod);
+            if (closest(target, '.tod-slider')) return ['Time of day', time].filter(Boolean).join(', ');
+            if (closest(target, '.tod-time-input')) return ['Set time, edit', time].filter(Boolean).join(', ');
+            // The step buttons carry real labels (-1h, +10m) and the day-length
+            // and date controls on the full panel already read correctly; leave
+            // every one of them to the generic path.
+            return '';
+          }
+
+          function speakVueEnvironment(element, src) {
+            var text = vueEnvironmentText(closest(element, VUE_TARGET_SELECTOR) || element);
+            if (!text) return false;
+            scheduleSpeak(text, src);
+            return true;
+          }
+
           function speakVueScreen(element, src) {
             var bindingPopup = vueBindingEditorPopup();
             if (bindingPopup && speakVueBindingEditor(element, src, bindingPopup)) return true;
             var root = vueScreenRoot();
             if (!root) return false;
+            // Ahead of the screen-kind handlers: the environment controls appear
+            // both on the pause Environment tab and inside its "More Time &
+            // Weather Options" panel, and only the element itself says which.
+            if (speakVueEnvironment(element, src)) return true;
             if (speakVueVehicleConfig(element, src, root, _vueConfigFocusEntry)) return true;
             if (speakVueVehicleSelector(element, src, root)) return true;
             if (speakVueOptions(element, src, root)) return true;
@@ -2520,6 +2618,12 @@ export function installBNVDA($rootScope, dependencies) {
             if (!el) return '';
             var bindingPopup = vueBindingEditorPopup();
             if (bindingPopup && bindingPopup.contains(el)) return vueBindingEditorSignature(el, bindingPopup);
+            // Sign the environment controls on what they will actually say, so
+            // arrowing the slider re-announces the new time and nothing else in
+            // the row (a per-second seconds field, a live traffic count) can
+            // retrigger an announcement on its own.
+            var environmentText = vueEnvironmentText(closest(el, VUE_TARGET_SELECTOR) || el);
+            if (environmentText) return 'environment|' + environmentText;
             var screenKind = vueScreenKind(root);
             if (screenKind === 'vehicle-config') {
               var configRow = closest(el, '.input-container, .bng-accitem, .bng-row, .folder-button, .pack-button, .multi-paint-setup-item, .mirror-button, .saveload-row') || el;
@@ -2548,6 +2652,7 @@ export function installBNVDA($rootScope, dependencies) {
               scheduleVuePoll(1000);
               var nextDelay = 1000;
               var root = vueScreenRoot();
+              updateTuningSliderDebounce(root);
               if (!root) {
                 clearPartsDropdownActivation(true);
                 resetVueHintLifecycle();
@@ -3221,6 +3326,180 @@ export function installBNVDA($rootScope, dependencies) {
               }
             });
             selectCloseObserver.observe(document.body, { childList: true });
+          }
+
+          // ========== TUNING SLIDER COMMIT DEBOUNCE ==========
+          // Holding a direction to sweep a value on the vehicle tuning page makes
+          // the game reload the vehicle MID-SWEEP, and the value then bounces as
+          // the rebuilt list re-reads it. That is stock behaviour, and it is a
+          // race between three pieces of stock timing:
+          //
+          //   bngSlider.vue     debounces its valueChanged emit by 500ms
+          //   Tuning.vue        debounces the apply (a vehicle reload) by 1000ms
+          //   BngOnUiNavFocus   delivers the 2nd step of a held direction at
+          //                     HOLD_DELAY(400) + REPEAT_INTERVAL(100) = 500ms
+          //
+          // So the slider's timer and the second step are scheduled for the same
+          // millisecond -- and the nav path loses CONSISTENTLY, because it is two
+          // chained timers each paying its own dispatch latency while the debounce
+          // is a single one. Measured first-gaps over four runs: 511, 524, 510 and
+          // 525ms, never below 500. The slider therefore commits during the hold,
+          // which starts the 1000ms apply, which reloads the car a second later
+          // while the value is still racing.
+          //
+          // Raising the emit debounce past the repeat gap is enough. Once the fast
+          // run starts, the steps are ~100ms apart and clear the timer every time,
+          // so nothing about the sweep itself changes; the only difference is that
+          // the commit lands TUNING_SLIDER_DEBOUNCE_MS after release rather than
+          // 500ms. Verified in game: one apply, after release, no mid-hold reload.
+          var TUNING_SLIDER_DEBOUNCE_MS = 800;
+
+          // Vue normalizes a component's props declaration ONCE and caches the
+          // result in appContext.propsCache (a WeakMap). comp.props is never read
+          // again, so writing the new default there alone does nothing -- that
+          // cached copy is what resolvePropValue reads for every future instance.
+          // (Patching only comp.props is exactly what silently failed first: the
+          // value read back as 800 and every new slider still debounced at 500.)
+          // Both are written, and the cache's own set() is hooked as well, because
+          // the FIRST slider of a session is normalized the moment the Tuning tab
+          // opens, when there is no instance yet for us to walk up from.
+          //
+          // The value is captured at setup into each slider's own debounce
+          // closure, so this only reaches sliders built AFTER it is applied -- and
+          // NOT ones already on screen. That is why it goes on when the config
+          // screen opens: the tuning sliders are created later, when the Tuning
+          // tab itself is opened. It is put back on the way out, so sliders
+          // elsewhere in the UI keep stock timing.
+          var _sliderComp = null;            // the bngSlider component definition
+          var _sliderCtx = null;             // its Vue appContext
+          var _sliderStockDebounce = null;   // whatever the game shipped
+          var _sliderCacheHooked = false;
+          var _sliderPatched = false;      // config screen is open
+          var _sliderDebounceWritten = false;  // our value is currently installed
+
+          function sliderDeclaresDebounce(comp) {
+            return !!(comp && comp.props && comp.props.debounce);
+          }
+
+          function sliderNormalizedProps() {
+            var cached = _sliderCtx && _sliderCtx.propsCache && _sliderComp &&
+              _sliderCtx.propsCache.get(_sliderComp);
+            return (cached && cached[0]) ? cached[0] : null;
+          }
+
+          // Keyed on the debounce prop rather than on the component name, so an
+          // upstream rename disables the fix instead of silently patching some
+          // other component. The walk starts inside the slider, so bngSlider is
+          // the first ancestor that can match.
+          function findTuningSliderComponent() {
+            var row = document.querySelector('.innerTuningCard .input-container');
+            if (!row) return null;
+            var node = row.querySelector('input') || row;
+            while (node) {
+              var vc = node.__vueParentComponent, hops = 0;
+              while (vc && hops < 8) {
+                if (sliderDeclaresDebounce(vc.type)) { _sliderCtx = vc.appContext; return vc.type; }
+                vc = vc.parent; hops++;
+              }
+              node = node.parentElement;
+            }
+            return null;
+          }
+
+          // The app does NOT mount on #app in 0.39 (measured: no such element), so
+          // the Vue screen root the focus watcher already resolves is the reliable
+          // handle; #app is only a fallback for other builds.
+          function vueAppContext(probeRoot) {
+            if (_sliderCtx) return _sliderCtx;
+            var probe = probeRoot || document.querySelector('.pause-tab-combined, .innerTuningCard');
+            while (probe) {
+              if (probe.__vueParentComponent && probe.__vueParentComponent.appContext) {
+                return probe.__vueParentComponent.appContext;
+              }
+              probe = probe.parentElement;
+            }
+            var host = document.querySelector('#app');
+            if (host && host.__vue_app__ && host.__vue_app__._context) return host.__vue_app__._context;
+            return null;
+          }
+
+          function hookSliderPropsCache(ctx) {
+            if (_sliderCacheHooked || !ctx || !ctx.propsCache || typeof ctx.propsCache.set !== 'function') return;
+            var cache = ctx.propsCache;
+            var originalSet = cache.set;
+            cache.set = function (comp, normalized) {
+              try {
+                // <script setup> components expose __name; others expose name.
+                // Testing only one of them is how this silently matched nothing.
+                var named = comp && (comp.__name === 'bngSlider' || comp.name === 'bngSlider');
+                if (named && sliderDeclaresDebounce(comp) &&
+                  normalized && normalized[0] && normalized[0].debounce) {
+                  // Record the component even when we are not patching right now:
+                  // this is the ONLY moment it can be captured before the first
+                  // slider is built, and the whole point is to be ready in advance.
+                  _sliderComp = comp; _sliderCtx = ctx;
+                  if (_sliderStockDebounce === null) _sliderStockDebounce = normalized[0].debounce.default;
+                  if (_sliderPatched) {
+                    normalized[0].debounce.default = TUNING_SLIDER_DEBOUNCE_MS;
+                    log('info', '[bnvda] Tuning slider commit debounce ' + _sliderStockDebounce +
+                      'ms -> ' + TUNING_SLIDER_DEBOUNCE_MS + 'ms (at first normalize).');
+                  }
+                }
+              } catch (e) {}
+              return originalSet.call(this, comp, normalized);
+            };
+            onCleanup(function () { if (cache.set !== originalSet) cache.set = originalSet; });
+            _sliderCacheHooked = true;
+          }
+
+          function writeSliderDebounce(value) {
+            if (value === null || value === undefined || !_sliderComp) return false;
+            var norm = sliderNormalizedProps();
+            if (_sliderStockDebounce === null) {
+              _sliderStockDebounce = (norm && norm.debounce) ? norm.debounce.default
+                : (_sliderComp.props && _sliderComp.props.debounce ? _sliderComp.props.debounce.default : null);
+            }
+            if (_sliderComp.props && _sliderComp.props.debounce) _sliderComp.props.debounce.default = value;
+            if (norm && norm.debounce) norm.debounce.default = value;
+            return true;
+          }
+
+          // Hooked from the ordinary focus poll, and deliberately NOT only on the
+          // screen transition. Two orderings have to be survived:
+          //
+          //   * The cache hook has to be armed LONG before the config screen, so
+          //     it is installed on any Vue screen. bngSlider is normalized the
+          //     first time one is rendered anywhere in the UI, which may well be
+          //     a settings screen earlier in the session -- once that has
+          //     happened set() never fires for it again.
+          //   * At config-screen entry the PARTS tab is showing, so there is no
+          //     tuning slider in the DOM to walk up from and the resolve fails.
+          //     Retrying while the screen is open is what the first fix was
+          //     missing: it tried exactly once, at the transition, and gave up.
+          //
+          // The DOM resolve is still only a fallback -- by the time a tuning
+          // slider exists it was already built at the stock 500ms -- so it fixes
+          // the NEXT rebuild. The cache hook is what makes the first visit right.
+          function updateTuningSliderDebounce(root) {
+            if (!_sliderCacheHooked && root) hookSliderPropsCache(vueAppContext(root));
+            var onConfigScreen = !!(root && vehicleConfigRoot(root));
+            if (onConfigScreen) {
+              if (!_sliderPatched) _sliderPatched = true;
+              if (!_sliderComp) _sliderComp = findTuningSliderComponent();
+              if (_sliderComp && !_sliderDebounceWritten) {
+                if (writeSliderDebounce(TUNING_SLIDER_DEBOUNCE_MS)) {
+                  _sliderDebounceWritten = true;
+                  log('info', '[bnvda] Tuning slider commit debounce ' + _sliderStockDebounce +
+                    'ms -> ' + TUNING_SLIDER_DEBOUNCE_MS + 'ms.');
+                }
+              }
+            } else if (_sliderPatched) {
+              _sliderPatched = false;
+              if (_sliderDebounceWritten && writeSliderDebounce(_sliderStockDebounce)) {
+                _sliderDebounceWritten = false;
+                log('info', '[bnvda] Tuning slider commit debounce restored to ' + _sliderStockDebounce + 'ms.');
+              }
+            }
           }
 
           // ---------- EVENT HOOKS AND INITIALIZATION ----------

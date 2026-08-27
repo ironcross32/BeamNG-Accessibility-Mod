@@ -71,14 +71,47 @@ local RAMP_REPORT_M   = 45.0
 local RAMP_SEARCH_M   = 70.0
 -- Degenerate mouth baseline guard, mirroring MIN_EDGE_WIDTH_M and there for the same reason.
 local RAMP_MIN_WIDTH_M = 0.30
+-- Clear air left between the vehicle's NOSE and the mouth by the align teleport. 20 ft.
+--
+-- Measured nose-to-mouth rather than origin-to-mouth, which is the whole reason the forward
+-- extent is looked up below: the reference node is nowhere near the front bumper on most
+-- vehicles and is metres from it on a semi, so an origin-referenced standoff would give a
+-- hatchback twenty feet of run-up and a truck about eight. The number the driver is being
+-- promised is the gap they can see, so that is the number that has to be constant.
+local RAMP_ALIGN_STANDOFF_M = 6.096
+-- ...and what to assume when vehicleGeometry has not resolved the player yet. Deliberately a
+-- generous nose rather than zero: over-estimating it parks you further back, which costs a
+-- second of driving, while under-estimating it parks you inside the ramp mouth.
+local RAMP_ALIGN_NOSE_FALLBACK_M = 3.0
+-- How high the ramp's own lip may sit above the ground before driving at it is a collision
+-- rather than an approach. Reported, never enforced: lining up before deploying the ramp is a
+-- perfectly reasonable order to do things in, and refusing the teleport would make the key
+-- useless in exactly that case. Measured on a us_semi tc82s_rollback, where the whole span is
+-- decided by the bed rather than by the tilt: home and level the lip sits 1.30 m up, full tilt
+-- alone brings it to 0.95 m, and only running the bed fully out AND tilting puts it at 0.15 m.
+-- So a threshold anywhere in the middle separates "deployed" from "you are about to hit the
+-- back of a truck" with a wide margin on both sides, which is what this bug turned out to be:
+-- the align placed the driver twenty feet in front of a four-foot wall and said only where
+-- they were.
+local RAMP_ALIGN_LIP_SAY_M = 0.30
 
 local udpSend, udpCmd = nil, nil
+-- ...and retried, because a failed bind is otherwise permanent. The most likely cause is a
+-- socket leaked by a previous extensions.reload(), which the GC frees moments later -- so the
+-- condition that breaks the extension for a whole session clears itself within seconds if
+-- anything ever looks again. Cheap: one comparison per frame while bound, one socket call
+-- every few seconds while not.
+local CMD_BIND_RETRY_S = 3.0
+local cmdBindRetry = 0
 -- Active by default, unlike the scanner and obstacle detector which are keybind-toggled.
 -- This one needs no handshake because it is silent by construction: with no implement
 -- resolved, a tick costs one getPlayerVehicle and an early return. That also means it works
 -- when BeamNG is started after beamtel, which an ON-on-startup message would not.
 local isActive     = true
 local scanTimer    = 0
+-- Monotonic seconds since load, for the RAMPSELF: heartbeat. scanTimer is reset on every tick
+-- and so cannot answer "how long since we last sent", which is a different question.
+local scanClock    = 0
 
 -- Implement node set, pushed to us by the vehicle VM's telemetry protocol when it resolves
 -- (on spawn and after every reset). Pushed rather than pulled on purpose: the resolution is
@@ -101,6 +134,19 @@ local lastDockLine = nil
 -- Which cannon the player is sitting in: OLD (ballistic barrel), LARGE (drive-in ramp), or
 -- "0". Latched so the type line is only sent on change.
 local lastCannon   = nil
+-- What the ramp machine you are SITTING IN is doing with its own deck, latched so the line is
+-- only sent on change. Stored per vehicle for exactly the reason implByVeh is: every vehicle VM
+-- pushes its own hydraulics, and only the one being driven may answer the readout.
+local rampHydByVeh = {}
+local lastRampSelf = nil
+-- ...and re-sent on a heartbeat as well as on change, the same correction 796F6C6F313035.lua's
+-- cid push already carries. A latch here cannot be cleared by beamtel restarting, and beamtel
+-- restarting while the game keeps running is the normal way to pick up a change. The ON probe
+-- does re-arm it, but relying on that alone leaves the readout mute for any other way the two
+-- halves can fall out of step, and the failure is silent: the key answers "docking instrument
+-- is off", which is a real answer for a real reason, so nothing looks broken.
+local RAMP_SELF_HEARTBEAT_S = 4.0
+local rampSelfSentAt = -1e9
 -- Last heading we were confident in, so a momentarily degenerate frame holds position rather
 -- than mirroring. See the length guard in getImplementFrame.
 local lastGoodFwd  = nil
@@ -187,6 +233,16 @@ function M.onImplementCids(vehID, friendlyName, sampleCsv, cidCsv)
     implByVeh[vehID] = false  -- "asked and has none", distinct from "never heard from"
   end
   applyActivePush()
+end
+
+-- How far each of the machine's hydraulic groups has run out of its own stroke, pushed by
+-- 796F6C6F313035.lua at 5 Hz and only when the rounded figures change. The payload is opaque
+-- here and is forwarded verbatim: this extension knows where the ramp is, the vehicle VM knows
+-- where the rams are, and neither needs to learn the other's job. An EMPTY string is a real
+-- answer -- "this machine has no hydraulics" -- and must not be confused with never having
+-- heard from the VM at all, which is what the nil default already means.
+function M.onRampHydraulics(vehID, payload)
+  rampHydByVeh[vehID] = tostring(payload or "")
 end
 
 -- Where the implement is and which way it points, in world space. Returns nil on anything
@@ -1265,6 +1321,12 @@ local function findRampTarget(player, originPos)
   local playerID = player:getID()
 
   local best, bestD, seen = nil, math.huge, 0
+  -- The nearest object that did NOT produce a mouth, and why. "No ramp near you" has half a
+  -- dozen causes that are identical from the seat -- the machine is out of range, its VM has
+  -- not answered yet, it answered and has no ramp nodes, the resolve gave up three chunks ago
+  -- -- and reporting only the count of objects seen distinguishes none of them. Which one it
+  -- is decides whether the driver should reverse, wait, or stop looking.
+  local nearMiss, nearMissD = nil, math.huge
   for i = 0, be:getObjectCount() - 1 do
     local obj = be:getObject(i)
     if obj and obj:getID() ~= playerID then
@@ -1280,12 +1342,39 @@ local function findRampTarget(player, originPos)
             bestD = md
             best = {id = id, veh = obj, name = nameOf(obj), mouth = mouth}
           end
+        elseif d < nearMissD then
+          nearMissD = d
+          nearMiss = {id = id, name = nameOf(obj), dist = d}
         end
       end
     end
   end
   if not best then
-    return nil, string.format("no ramp among %d objects within %d metres", seen, RAMP_SEARCH_M)
+    -- Two reasons, deliberately: the first is SPOKEN on every F9+I press and gets one clause,
+    -- the second goes to rampTruth and gets the whole diagnosis. Handing the long one to speech
+    -- makes the key useless -- it is pressed while manoeuvring, and "no ramp among 1 objects
+    -- within 70 metres, nearest is Old Cannon white at 5 metres, gave up, only 0 ramp nodes" is
+    -- a paragraph read out over the approach it is supposed to be helping with.
+    if nearMiss then
+      local short, long = "no state recorded", "no state recorded"
+      if rg.shortStateOf then
+        local okS, sv = pcall(rg.shortStateOf, nearMiss.id)
+        if okS and sv then short = sv end
+      end
+      if rg.stateOf then
+        local okL, lv = pcall(rg.stateOf, nearMiss.id)
+        if okL and lv then long = lv end
+      end
+      return nil,
+        -- Naming the machine you are standing next to is the useful half: "no ramp nearby" on
+        -- its own leaves you wondering whether the mod can see the thing in front of you at all.
+        string.format("nearest is %s, %.0f metres, %s", nearMiss.name, nearMiss.dist, short),
+        string.format("no ramp among %d objects within %d metres; nearest is %s at %.0f m -- %s",
+          seen, RAMP_SEARCH_M, nearMiss.name, nearMiss.dist, long)
+    end
+    local none = string.format("nothing within %d metres has a ramp", RAMP_SEARCH_M)
+    return nil, none, string.format("no ramp among %d objects within %d metres",
+      seen, RAMP_SEARCH_M)
   end
   return best
 end
@@ -1344,6 +1433,30 @@ local function playerHalfWidth(playerID)
   return math.max(math.abs(entry.ext.minR), math.abs(entry.ext.maxR))
 end
 
+-- The body's own lateral centre and half-span, as opposed to the worse-side figure above. The
+-- two answer different questions and the align needs both: where the car's MIDDLE is relative
+-- to the reference node the teleport actually places, and how wide it is about that middle.
+--
+-- These are not the same number on a real vehicle and the difference is not small. An etk800
+-- wagon measures minR -0.680 / maxR +1.340 -- 2.02 m wide, but with its reference node 0.33 m
+-- off its own centreline. Placing that node on the ramp axis therefore puts the BODY a third
+-- of a metre off centre, which in a 2.58 m mouth leaves 0.61 m on one side and -0.05 m on the
+-- other. The readout then correctly announced "you do not fit" about a car with a comfortable
+-- 0.28 m a side -- correct about where the align had just put it, and wrong about the car.
+--
+-- The worse-side rule stays exactly as it is for the live DOCK: readout, where the driver is
+-- wherever they are and the margin has to be measured from the side that will hit first. It is
+-- only the align, which gets to CHOOSE the lateral position, that should be centring the body.
+local function playerLateralBody(playerID)
+  local geo = extensions and extensions.vehicleGeometry or nil
+  if not (geo and geo.get) then return nil, nil end
+  local okG, entry = pcall(geo.get, playerID)
+  if not (okG and entry and entry.ext) then return nil, nil end
+  local lo, hi = entry.ext.minR, entry.ext.maxR
+  if not (lo and hi) or hi <= lo then return nil, nil end
+  return (lo + hi) * 0.5, (hi - lo) * 0.5
+end
+
 local function sendRampDockLine(player, origin, tgt)
   local mouth = tgt.mouth
   if mouth.halfW < RAMP_MIN_WIDTH_M then
@@ -1396,8 +1509,33 @@ function M.rampTruth()
   if not origin then return "no origin: " .. tostring(why) end
   p(string.format("origin %.2f,%.2f,%.2f", origin.pos.x, origin.pos.y, origin.pos.z))
 
-  local tgt, why2 = findRampTarget(player, origin.pos)
-  if not tgt then return table.concat(out, " | ") .. " | " .. tostring(why2) end
+  local tgt, _, why2 = findRampTarget(player, origin.pos)
+  if not tgt then
+    -- Every object in the search radius, with what rampGeometry makes of it. This is the line
+    -- that answers "why is it not seeing the cannon" without a log dive: it separates "that is
+    -- not the cannon" from "the cannon is there and its resolve gave up", and names the reason
+    -- in the second case.
+    p(tostring(why2))
+    local rg2 = extensions and extensions.rampGeometry or nil
+    local playerID = player:getID()
+    for i = 0, be:getObjectCount() - 1 do
+      local obj = be:getObject(i)
+      if obj and obj:getID() ~= playerID then
+        local okD, d = pcall(function() return origin.pos:distance(vec3(obj:getPosition())) end)
+        if okD and d and d < RAMP_SEARCH_M then
+          local state = "rampGeometry unavailable"
+          if rg2 and rg2.stateOf then
+            local okS, sv = pcall(rg2.stateOf, obj:getID())
+            if okS and sv then state = sv end
+          end
+          p(string.format("  %s [%d] at %.1f m: %s",
+            nameOf(obj), obj:getID(), d, state))
+        end
+      end
+    end
+    p("retry a stuck resolve with: extensions.rampGeometry.retry(<id>)  (or retry() for all)")
+    return table.concat(out, "\n")
+  end
 
   local rg = extensions.rampGeometry
   local entry = rg.get(tgt.id)
@@ -1429,6 +1567,164 @@ function M.rampTruth()
     (margin >= 0) and string.format("%.2f m each side", margin)
       or (hw and "NEGATIVE -- you do not fit" or "not measured")))
   return table.concat(out, " | ")
+end
+
+-- =================================================================================================
+--  Ramp align teleport
+--
+--  The other half of the act vehicleScanner's ALIGN performs. That one places you to REVERSE
+--  onto a trailer coupler; this one places you to DRIVE UP a ramp. Same key (F9 + Shift+V),
+--  disambiguated by whether the docking instrument is on -- which is not a flag invented for
+--  the purpose, it is the instrument you would already be running to drive onto something, and
+--  it is the one that knows a ramp is there at all. A second keybind would be one more thing
+--  to remember mid-manoeuvre, which is the argument the slam gate already made for riding on
+--  the docking toggle rather than claiming a key.
+--
+--  It lives here rather than in vehicleScanner because everything it needs is already local:
+--  dockActive, dockOriginFrame, findRampTarget and playerHalfWidth. Moving any of that into
+--  the scanner would be a second copy of the ramp search, and the two would drift.
+-- =================================================================================================
+
+local function rampAlignFail(why)
+  send("RAMPALIGN:FAIL," .. cleanName(why))
+end
+
+function M.rampAlign()
+  -- The gate the whole feature hangs on. Checked here rather than only in Python so the mod is
+  -- correct on its own terms: a RAMPALIGN arriving with the instrument off is a version skew,
+  -- not a request to teleport somebody onto a machine they were trying to tow.
+  if not dockActive then return rampAlignFail("docking instrument is off") end
+  -- ...and the instrument has to be in RAMP mode, which is decided the same way scan() decides
+  -- it: an implement fitted means implement mode, byte for byte. Refusing here rather than
+  -- searching anyway keeps one rule for what mode the instrument is in, so the key cannot
+  -- teleport you somewhere the readout was never talking about.
+  if implCids then
+    return rampAlignFail("implement fitted, so the instrument is not in ramp mode")
+  end
+
+  local player = be:getPlayerVehicle(0)
+  if not player then return rampAlignFail("no player vehicle") end
+
+  local ok, err = pcall(function()
+    local origin, why = dockOriginFrame(player)
+    if not origin then return rampAlignFail(why or "no origin") end
+    -- The same search the readout runs, so what you are teleported to is by construction the
+    -- machine the tones and the F9+I readout have been talking about. Its short reason is
+    -- already speech-sized, which is exactly what this failure path needs.
+    local tgt, why2 = findRampTarget(player, origin.pos)
+    if not tgt then return rampAlignFail(why2 or "no ramp nearby") end
+
+    local mouth = tgt.mouth
+    if mouth.halfW < RAMP_MIN_WIDTH_M then
+      return rampAlignFail(string.format("ramp mouth only %.2f m wide", mouth.halfW * 2))
+    end
+
+    -- Forward extent of the player's own node cloud, measured from its reference node along its
+    -- own heading. Gap-trimmed by vehicleGeometry, so a bumper lying in the dirt does not buy
+    -- the driver an extra three metres of standoff.
+    local nose = RAMP_ALIGN_NOSE_FALLBACK_M
+    local geo = extensions and extensions.vehicleGeometry or nil
+    if geo and geo.get then
+      local okG, entry = pcall(geo.get, player:getID())
+      if okG and entry and entry.ext and entry.ext.maxF then nose = entry.ext.maxF end
+    end
+    local back = RAMP_ALIGN_STANDOFF_M + nose
+
+    -- mouth.axis points INTO the ramp -- it is the direction of travel, derived in
+    -- rampGeometry.mouthFrame from the inner row's displacement from the mouth row. So
+    -- subtracting it walks BACK out of the mouth, and facing along it faces the driver AT the
+    -- ramp. That is the opposite of vehicleScanner's align, which faces the truck AWAY from
+    -- the coupler because that manoeuvre is reversed into. Negating either one is a mistake
+    -- that looks perfectly reasonable in isolation, which is why both are asserted.
+    -- Centre the car's BODY on the ramp axis, not its reference node. minR/maxR are measured
+    -- along vehicleGeometry's lateral vector, which is up:cross(fwd) and therefore points to
+    -- the driver's LEFT -- the same vector mouth.left is built from, so the offset needs no
+    -- sign gymnastics: shift the placement by the body centre and the body lands on the axis.
+    local bodyMid, bodyHalf = playerLateralBody(player:getID())
+    local pos = mouth.centre - mouth.axis * back
+    if bodyMid then pos = pos - mouth.left * bodyMid end
+
+    -- Ground height. The player is by definition sitting on the ground right now, so its own Z
+    -- is the best available reference -- the mouth's floorZ is NOT, because a tilt deck's mouth
+    -- is a metre in the air until the deck is fully down. Floored against the terrain so a
+    -- teleport across a dip cannot bury the vehicle; safeTeleport settles the rest.
+    pos.z = player:getPosition().z + 0.3
+    if core_terrain and core_terrain.getTerrainHeight then
+      local okT, th = pcall(core_terrain.getTerrainHeight, pos)
+      if okT and th and th > pos.z - 0.5 then pos.z = th + 0.5 end
+    end
+
+    local rot = quatFromDir(mouth.axis, vec3(0, 0, 1))
+    -- checkOnlyStatics and visibilityPoint stay nil. vehicleScanner records the bug:
+    -- visibilityPoint must be a vec3 because spawn.lua feeds it to getVisibilityStatus, which
+    -- subtracts it from a position, so a boolean there throws inside LuaVec3.__sub and the
+    -- teleport silently never happens.
+    --
+    -- The 8th argument is resetVehicle and MUST be false. Its default of true makes spawn.lua
+    -- setPosRot + resetBrokenFlexMesh and re-place from the vehicle's INITIAL node positions,
+    -- which is a respawn: all damage repaired, and the engine killed for anyone running
+    -- "reset stops the engine". Lining up to drive up a ramp is a placement, not a repair --
+    -- and the car about to be launched out of a cannon is exactly the one whose damage the
+    -- driver came to keep. False still runs the safe-position search, the cluster move and the
+    -- velocity zeroing, against the deformed body.
+    spawn.safeTeleport(player, pos, rot, nil, nil, nil, false, false)
+
+    -- A teleport is a discontinuity the readout should not have to infer. Clearing the dedupe
+    -- latch makes the next tick re-send whatever it now sees rather than suppressing it as
+    -- unchanged, which matters because the most likely next line is a mode or target
+    -- announcement.
+    lastDockLine = nil
+
+    -- Lateral is zero by construction after this, so halfW minus your own half-width IS the
+    -- clearance you will have. Reported rather than acted on: a machine that does not fit is
+    -- still a machine somebody may want to be lined up with.
+    --
+    -- "Not measured" travels as the literal NA rather than as the -1 the DOCK: line uses. There
+    -- the margin is a continuous channel that -1 can only ever mean the sentinel on, because it
+    -- is recomputed ten times a second and a real -1 would be transient. Here it is a one-shot
+    -- clearance figure, a real -1.00 m margin is exactly the case the readout exists to warn
+    -- about, and a sentinel that can be a real value is a sentinel that silences the warning.
+    -- ...and because the body is now centred, the clearance is the same on both sides, so the
+    -- margin is the SYMMETRIC half-span rather than the worse-side figure the live readout uses.
+    -- Quoting the worse side here would report the asymmetry of the reference node as though it
+    -- were a property of the parking job that has just removed it.
+    local hw = bodyHalf or playerHalfWidth(player:getID())
+    local margin, marginStr = nil, "NA"
+    if hw and hw > 0 then
+      margin = mouth.halfW - hw
+      marginStr = string.format("%.2f", margin)
+    end
+
+    -- How far the lip is off the ground, which is the one thing this readout could not say and
+    -- most needed to. The comment on the teleport height above already knew a mouth can be a
+    -- metre in the air; it used that fact to avoid burying the vehicle and then never passed it
+    -- on. be:getSurfaceHeightBelow reports failure as a huge NEGATIVE number rather than nil --
+    -- the vehicle VM's implement block documents the same trap -- so this is a magnitude band,
+    -- not a nil check, and NA travels rather than a zero that would read as "lip on the ground".
+    local lipStr = "NA"
+    local okL, lip = pcall(function()
+      local g = be:getSurfaceHeightBelow(mouth.centre)
+      if not g or math.abs(g) > 1e5 then return nil end
+      return mouth.floorZ - g
+    end)
+    if okL and lip then lipStr = string.format("%.2f", lip) end
+
+    ipLog('I', string.format(
+      "ramp align: %s [%d], mouth (%.1f,%.1f,%.1f), nose %.2f m, standing off %.2f m, "
+      .. "margin %s m, lip %s m above ground",
+      tgt.name, tgt.id, mouth.centre.x, mouth.centre.y, mouth.centre.z, nose, back,
+      marginStr, lipStr))
+
+    -- The lip is a FIFTH field on an already-positional payload, and Python parses it with a
+    -- length guard for the reason the DOCK: line's entry-gate tail carries: bng_mod/ is a live
+    -- junction into the game install, so the two halves genuinely do go out of step.
+    send(string.format("RAMPALIGN:OK,%s,%.2f,%s,%s",
+      cleanName(tgt.name), RAMP_ALIGN_STANDOFF_M, marginStr, lipStr))
+  end)
+  if not ok then
+    ipLog('E', "ramp align threw: " .. tostring(err))
+    rampAlignFail("align failed")
+  end
 end
 
 -- Everything ramp mode does in one tick. Every path that cannot produce a reading names what
@@ -1524,8 +1820,16 @@ local function scan()
         if okF and f then oldFrame = f; kind = "OLD" end
       end
     end
-    if kind == "0" and rg and rg.has then
-      local okC, r = pcall(rg.has, player:getID())
+    -- isCannon, NOT has. "This machine has a drive-in ramp" and "this machine is a cannon"
+    -- were the same predicate only while large_cannon was the only vehicle that resolved at
+    -- all; rampGeometry's part tiers exist precisely so a rollback, a tilt deck and a dry van
+    -- resolve too, and each of them then latched LARGE. From the seat of a us_semi rollback
+    -- that read out as "Inclination 100 percent, strength unknown" -- the inclination being
+    -- the truck's own engine RPM over a thousand, pegged because its hydraulic pump raises
+    -- idle to 1500 -- and it also masked the ramp readout that machine SHOULD get, since this
+    -- kind wins ahead of _dock_phrase_ramp on the alignment key.
+    if kind == "0" and rg and rg.isCannon then
+      local okC, r = pcall(rg.isCannon, player:getID())
       if okC and r then kind = "LARGE" end
     end
     if kind ~= lastCannon then
@@ -1533,6 +1837,54 @@ local function scan()
       send("CANNON:" .. kind)
     end
     if oldFrame then sendOldCannonAim(player, oldFrame, cg) end
+  end
+
+  -- What the deck of the ramp machine you are SITTING IN is doing. A fact about your own
+  -- vehicle, gated on nothing, which is why it sits beside the CANNON: line rather than inside
+  -- the docking toggle: you tilt a deck and run it out while parked, with the instrument off,
+  -- before any alignment work has begun. Everything else in this file measures from one machine
+  -- to another; this is the one readout about the machine under you.
+  --
+  -- The tilt travels as an ANGLE off live geometry, not as a percentage off the tilt ram. It is
+  -- the figure the driver of the car about to go up the ramp actually needs, it is the same one
+  -- _dock_phrase_ramp already speaks, and it survives on a ramp with no hydraulics at all -- a
+  -- fixed dry-van ramp still reports its pitch. The rams then say how much stroke is LEFT,
+  -- which the angle cannot.
+  do
+    local rg = extensions and extensions.rampGeometry or nil
+    local pid = player:getID()
+    local line = "NONE"
+    if rg and rg.has then
+      local okH, hasRamp = pcall(rg.has, pid)
+      if okH and hasRamp then
+        local pitch, lip = nil, nil
+        local okF, f = pcall(rg.mouthFrame, pid)
+        if okF and f then
+          pitch = f.pitchDeg
+          -- How far the lip is off the ground. Neither of the other two numbers answers "can a
+          -- car get onto this" on its own: on a rollback the tilt alone only brings the lip
+          -- from 1.30 m to 0.95 m, and it is running the BED out that does the rest. Same
+          -- magnitude band as the align's copy, because getSurfaceHeightBelow reports failure
+          -- as a huge negative rather than nil.
+          local okL, v = pcall(function()
+            local g = be:getSurfaceHeightBelow(f.centre)
+            if not g or math.abs(g) > 1e5 then return nil end
+            return f.floorZ - g
+          end)
+          if okL and v then lip = v end
+        end
+        -- -999 is the "could not measure" sentinel for BOTH figures and must never be 0, which
+        -- reads as a perfectly level ramp with its lip on the ground -- the single most
+        -- reassuring thing this readout can say. Rounded before the change test below, so a
+        -- machine at rest sends nothing while its deck breathes on its own springs.
+        line = string.format("%.1f,%.2f;%s",
+          pitch or -999, lip or -999, rampHydByVeh[pid] or "")
+      end
+    end
+    if line ~= lastRampSelf or (scanClock - rampSelfSentAt) >= RAMP_SELF_HEARTBEAT_S then
+      lastRampSelf, rampSelfSentAt = line, scanClock
+      send("RAMPSELF:" .. line)
+    end
   end
 
   -- A push we haven't matched to the current vehicle is not usable.
@@ -1738,21 +2090,40 @@ local function setupSockets()
     ipLog('E', "Failed to create UDP send socket.")
   end
 
+  -- setsockname RETURNS nil plus a message on failure -- it does not throw. So a pcall around
+  -- it reports success, udpCmd is a perfectly real socket object that is simply not bound to
+  -- anything, and the error branch below never runs. That is how this extension spent a whole
+  -- session deaf with nothing in the log: every other command port in the mod was listening and
+  -- 4470 was absent from netstat entirely, while the extension carried on sending normally,
+  -- because a UDP sender needs no bind. DOCK_ON, REBUILD and RAMPALIGN all went into the void,
+  -- so F9+Shift+V spoke "Aligning to ramp" and then did nothing -- not even a failure, since
+  -- the failure path is on the far side of the socket that never opened.
+  --
+  -- Checked explicitly, therefore, and the reason is recorded rather than inferred: "address
+  -- already in use" (a leaked socket from a previous reload) and "permission denied" want
+  -- completely different things done about them.
   local ok, err = pcall(function()
     udpCmd = socket.udp()
-    udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
+    local bound, berr = udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
+    if not bound then error(tostring(berr), 0) end
     udpCmd:settimeout(0)
   end)
   if not (ok and udpCmd) then
-    ipLog('E', "Failed to create UDP command socket: " .. tostring(err))
+    ipLog('E', string.format(
+      "Failed to bind UDP command socket on %d: %s -- commands will be ignored until this "
+      .. "succeeds; retrying every %.0f s",
+      CMD_LISTEN_PORT, tostring(err), CMD_BIND_RETRY_S))
+    if udpCmd then pcall(function() udpCmd:close() end) end
     udpCmd = nil
   end
+  cmdBindRetry = 0
 end
 
 local function resetState()
   isActive = true
   scanTimer = 0
   implByVeh = {}
+  rampHydByVeh, lastRampSelf = {}, nil
   implVehID, implCids, implName, implSampleCids = nil, nil, nil, nil
   lastSentName, lastSentLine, nameEverSent = nil, nil, false
   -- A manual band pick is tied to a target and to the implement that was fitted when it was
@@ -1767,6 +2138,27 @@ function M.onExtensionLoaded()
   setExtensionUnloadMode(M, "manual")
   ipLog('I', "Implement proximity extension loaded.")
   setupSockets()  -- here too, so a Ctrl+L Lua reload re-opens them
+end
+
+-- Fired by extensions.reload() and by an explicit unload, and it is load-bearing rather than
+-- tidy-up. setupSockets closes the sockets held by THIS module instance, and a reload builds a
+-- fresh instance whose locals are nil -- so it closes nothing, and the outgoing instance keeps
+-- CMD_LISTEN_PORT bound. The second bind does not fail on Windows and nothing is logged; the
+-- port simply ends up with two owners and the datagram is delivered to one of them, which is
+-- not reliably the instance that is running.
+--
+-- The result is an extension that goes half dead in the most confusing way available. udpSend
+-- needs no bind, so it re-opens cleanly and the mod keeps talking -- readouts, DOCKFAIL, the
+-- deck line, all fine -- while silently hearing nothing. Measured: DOCK_ON and RAMPALIGN both
+-- went into the void, so F9+Shift+V spoke "Aligning to ramp" and then did nothing at all. Not
+-- even a failure, because the failure path is on the far side of the socket that died.
+--
+-- Every listening extension in this mod had the same three holes; all of them now carry the
+-- same three fixes, in the same shape, so a grep can check for them.
+function M.onExtensionUnloaded()
+  if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
+  if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
+  ipLog('I', "Implement proximity extension unloaded; sockets closed.")
 end
 
 function M.onWorldReadyState(state)
@@ -1786,6 +2178,11 @@ function M.onVehicleSwitched(oldId, newId, player)
   -- re-derived.
   applyActivePush()
   lastSentLine = nil
+  -- Only the LATCH, never the stored pushes: the hauler you climbed out of is still holding its
+  -- deck where you left it, and its heartbeat keeps that current. Clearing the latch is what
+  -- forces the line to be re-stated for whichever machine you are now in, including the NONE
+  -- that says the new one has no ramp at all.
+  lastRampSelf = nil
   -- A manual band pick is tied to a target and to the implement that was fitted when it was
   -- made; both may have just changed, so fall back to auto rather than keeping an index that
   -- now points at unrelated geometry.
@@ -1801,6 +2198,7 @@ end
 -- would stand until the new vehicle's own push landed. resetState() covers the level reload;
 -- this covers a delete mid-session.
 function M.onVehicleDestroyed(vehId)
+  rampHydByVeh[vehId], lastRampSelf = nil, nil
   if implByVeh[vehId] == nil then return end
   implByVeh[vehId] = nil
   applyActivePush()
@@ -1810,6 +2208,10 @@ function M.onVehicleResetted(vehId)
   -- Drop only the vehicle that reset; its own re-push will refill it. Other vehicles' cids
   -- are unaffected and must not be thrown away.
   implByVeh[vehId] = nil
+  -- The reset re-arms the vehicle VM's own scan, so its next push refills this. Clearing the
+  -- latch too is what makes the readout re-state itself rather than waiting for the deck to
+  -- move before it will admit to a position it has held all along.
+  rampHydByVeh[vehId], lastRampSelf = nil, nil
   applyActivePush()
   lastSentLine = nil
   -- A manual band pick is tied to a target and to the implement that was fitted when it was
@@ -1820,7 +2222,37 @@ function M.onVehicleResetted(vehId)
   entryOK = false
 end
 
+-- Re-arm a bind that failed, so the extension is not deaf for the rest of the session. This is
+-- the recovery path, not a precaution, and it has been watched doing the job: the first reload
+-- of the patched files leaked eight ports, because the OUTGOING code had no unload hook yet.
+-- The retry could not take them while the old module tables were still referenced -- a socket
+-- held that way is not one the collector is about to free -- and ticked uselessly for two
+-- minutes. The Ctrl+L that followed did NOT re-load these extensions (no load line for any of
+-- them in the log at that timestamp, so setupSockets never ran again); all thirteen ports came
+-- back through this function instead, within one frame of each other, the moment those tables
+-- went away. Without it the mod would have stayed deaf until the game was restarted.
+--
+-- Named and shaped identically in every listening extension, so one grep can tell whether a
+-- file has it; vehicle_geometry_sim.lua scenario 12 is that grep.
+local function retryCmdBind(dtReal)
+  if udpCmd then return end
+  cmdBindRetry = cmdBindRetry + (dtReal or 0)
+  if cmdBindRetry < CMD_BIND_RETRY_S then return end
+  cmdBindRetry = 0
+  local ok = pcall(function()
+    local sk = socket.udp()
+    local bound = sk:setsockname("127.0.0.1", CMD_LISTEN_PORT)
+    if not bound then sk:close(); error("still in use", 0) end
+    sk:settimeout(0)
+    udpCmd = sk
+  end)
+  if ok and udpCmd then
+    ipLog('I', string.format("UDP command socket bound on %d after retry.", CMD_LISTEN_PORT))
+  end
+end
+
 function M.onUpdate(dtReal, dtSim, dtRaw)
+  retryCmdBind(dtReal)
   if udpCmd then
     local data
     repeat
@@ -1832,15 +2264,16 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
           lastSentName, lastSentLine, nameEverSent = nil, nil, false
           -- Re-armed for the same reason nameEverSent is: Python probes with ON at startup,
           -- and a latch left set means the CANNON: line is never re-sent, so a beamtel
-          -- restarted while sitting in the cannon would never learn it was there.
-          lastCannon = nil
+          -- restarted while sitting in the cannon would never learn it was there. RAMPSELF:
+          -- is latched the same way and re-arms with it.
+          lastCannon, lastRampSelf = nil, nil
         elseif cmd == "OFF" then
           isActive = false
         elseif cmd == "REBUILD" then
           implByVeh = {}
           implVehID, implCids, implName, implSampleCids = nil, nil, nil, nil
           lastSentName, lastSentLine, nameEverSent = nil, nil, false
-          lastCannon = nil
+          lastCannon, rampHydByVeh, lastRampSelf = nil, {}, nil
           -- A rebuild is the one command that says "forget what you resolved", so the ramp
           -- cache goes with it. Without this a part swap that fits or removes a ramp keeps
           -- answering from the old node set.
@@ -1860,6 +2293,8 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
           cycleBand(-1)
         elseif cmd == "BANDAUTO" then
           bandIndex = nil
+        elseif cmd == "RAMPALIGN" then
+          M.rampAlign()
         end
       end
     until not data
@@ -1868,6 +2303,7 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
   if not isActive then return end
 
   scanTimer = scanTimer + dtReal
+  scanClock = scanClock + dtReal
   if scanTimer >= SCAN_INTERVAL then
     scanTimer = 0
     -- The GE onUpdate hook chain is dispatched WITHOUT pcall, so a throw here would

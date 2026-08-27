@@ -985,6 +985,51 @@ class ConfigPanel(wx.ScrolledWindow):
         impl_sizer.Add(impl_grid, 0, wx.EXPAND | wx.ALL, 6)
         vbox.Add(impl_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
+        # --- Terrain Scanner Group ---
+        sb_scan, scan_sizer = _group(self, "Terrain Scanner")
+
+        self.chk_scan_tones = wx.CheckBox(sb_scan, label="Terrain Scan Tones")
+        self.chk_scan_tones.SetToolTip(
+            "The terrain sonification scan, fired in game with F9 then Space while "
+            "you are driving. Plays a reference tone and then a two second sweep of the "
+            "ground ahead, where "
+            "pitch is height, time is distance and the stereo position is the direction. "
+            "Water is brighter, and vehicles and props are short bright pings."
+        )
+        scan_sizer.Add(self.chk_scan_tones, 0, wx.ALL, 6)
+
+        scan_grid = wx.FlexGridSizer(0, 2, 6, 8)
+        scan_grid.AddGrowableCol(1, 1)
+
+        lbl_scan = wx.StaticText(sb_scan, label="Terrain Scan Level (dBFS):")
+        self.spin_scan = wx.SpinCtrlDouble(sb_scan, min=-120.0, max=0.0, inc=1.0)
+        self.spin_scan.SetDigits(1)
+        self.spin_scan.SetToolTip(
+            "Level of the whole scan. Water and the vehicle pings sit at fixed offsets "
+            "from it, so they stay in proportion at any setting."
+        )
+        self.spin_scan.SetName("Terrain Scan Level")
+        _label_spin(self.spin_scan, "Terrain Scan Level")
+        scan_grid.Add(lbl_scan, 0, wx.ALIGN_CENTER_VERTICAL)
+        scan_grid.Add(self.spin_scan, 0, wx.EXPAND)
+
+        scan_sizer.Add(scan_grid, 0, wx.EXPAND | wx.ALL, 6)
+        vbox.Add(scan_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
+
+        # --- Large Cannon Group ---
+        sb_cannon, cannon_sizer = _group(self, "Large Cannon")
+
+        self.chk_cannon_shot = wx.CheckBox(sb_cannon, label="Announce Shot Outcome")
+        self.chk_cannon_shot.SetToolTip(
+            "After a car is fired out of the large cannon, speak where it ended up once it "
+            "comes to rest: how far downrange it went, how far off the firing line, and how "
+            "much further or shorter than your previous shot. There is no key to press; the "
+            "readout announces itself, because the moment the car stops is the only moment it "
+            "has anything to say."
+        )
+        cannon_sizer.Add(self.chk_cannon_shot, 0, wx.ALL, 6)
+        vbox.Add(cannon_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
+
         # --- Audio Device Group ---
         sb_audio, audio_sizer = _group(self, "Audio Device")
 
@@ -1029,6 +1074,37 @@ class ConfigPanel(wx.ScrolledWindow):
 
         vbox.Add(audio_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
+        # --- Developer Group ---
+        sb_dev, dev_sizer = _group(self, "Developer")
+
+        self.chk_mcp_server = wx.CheckBox(
+            sb_dev, label="Enable MCP automation server"
+        )
+        self.chk_mcp_server.SetToolTip(
+            "Lets an AI assistant running on this computer drive the mod and execute "
+            "code inside BeamNG.drive, so it can test features without you having to "
+            "set each one up by hand. Listens on this machine only. Leave this off "
+            "unless you are actively working with an assistant. Takes effect the next "
+            "time BeamTel starts."
+        )
+        dev_sizer.Add(self.chk_mcp_server, 0, wx.ALL, 6)
+
+        mcp_row = wx.FlexGridSizer(0, 2, 6, 8)
+        mcp_row.AddGrowableCol(1, 1)
+        lbl_mcp_port = wx.StaticText(sb_dev, label="MCP Server Port:")
+        self.spin_mcp_port = wx.SpinCtrl(sb_dev, min=1024, max=65535)
+        self.spin_mcp_port.SetName("MCP Server Port")
+        _label_spin(self.spin_mcp_port, "MCP Server Port")
+        self.spin_mcp_port.SetToolTip(
+            "Which local port the automation server listens on. Change this only if "
+            "another program already uses it."
+        )
+        mcp_row.Add(lbl_mcp_port, 0, wx.ALIGN_CENTER_VERTICAL)
+        mcp_row.Add(self.spin_mcp_port, 1, wx.EXPAND)
+        dev_sizer.Add(mcp_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+
+        vbox.Add(dev_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
+
         # --- Buttons ---
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.btn_reset = wx.Button(self, label="Reset to Defaults")
@@ -1068,6 +1144,9 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_impl_tones,
             self.chk_impl_proximity,
             self.chk_dock_tones,
+            self.chk_scan_tones,
+            self.chk_cannon_shot,
+            self.chk_mcp_server,
         ):
             ctrl.Bind(wx.EVT_CHECKBOX, self._schedule_save)
 
@@ -1086,6 +1165,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.spin_compass_interval,
             self.spin_compass_highlight_nth,
             self.spin_scanner_base_freq,
+            self.spin_mcp_port,
         ):
             ctrl.Bind(wx.EVT_SPINCTRL, self._schedule_save)
 
@@ -1097,6 +1177,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.spin_impl_ground,
             self.spin_impl_tilt,
             self.spin_dock,
+            self.spin_scan,
             self.spin_compass_click_level,
             self.spin_lowspeed_click_level,
             self.spin_lowspeed_stop_level,
@@ -1263,7 +1344,10 @@ class ConfigPanel(wx.ScrolledWindow):
             )
             self.spin_impl_tilt.SetValue(cfg.get("implement_tilt_tone_dbfs", -20.0))
             self.chk_dock_tones.SetValue(cfg.get("dock_tones_enabled", True))
+            self.chk_scan_tones.SetValue(cfg.get("scan_tones_enabled", True))
+            self.chk_cannon_shot.SetValue(cfg.get("cannon_shot_readout", True))
             self.spin_dock.SetValue(cfg.get("dock_tone_dbfs", -18.0))
+            self.spin_scan.SetValue(cfg.get("scan_tone_dbfs", -20.0))
 
             self.spin_compass_interval.SetValue(cfg.get("compass_click_interval", 15))
             self.chk_compass_highlight.SetValue(
@@ -1315,6 +1399,8 @@ class ConfigPanel(wx.ScrolledWindow):
             self.spin_scanner_base_freq.SetValue(int(round(cfg.get("scanner_base_freq_hz", 1000.0))))
             self.spin_scanner_offset.SetValue(cfg.get("scanner_pitch_offset_oct", 1.0))
             self.chk_ui_nav_hold.SetValue(cfg.get("ui_nav_hold_suppression", True))
+            self.chk_mcp_server.SetValue(cfg.get("mcp_server_enabled", False))
+            self.spin_mcp_port.SetValue(int(cfg.get("mcp_server_port", 4481)))
             self._update_speed_interval_labels()
             interval_val = cfg.get("speed_announce_interval", 25)
             interval_choices = [25, 50, 75, 100]
@@ -1346,7 +1432,10 @@ class ConfigPanel(wx.ScrolledWindow):
         cfg["implement_ground_tone_dbfs"] = self.spin_impl_ground.GetValue()
         cfg["implement_tilt_tone_dbfs"] = self.spin_impl_tilt.GetValue()
         cfg["dock_tones_enabled"] = self.chk_dock_tones.GetValue()
+        cfg["scan_tones_enabled"] = self.chk_scan_tones.GetValue()
+        cfg["cannon_shot_readout"] = self.chk_cannon_shot.GetValue()
         cfg["dock_tone_dbfs"] = self.spin_dock.GetValue()
+        cfg["scan_tone_dbfs"] = self.spin_scan.GetValue()
 
         cfg["compass_click_interval"] = self.spin_compass_interval.GetValue()
         cfg["compass_highlight_enabled"] = self.chk_compass_highlight.GetValue()
@@ -1379,6 +1468,8 @@ class ConfigPanel(wx.ScrolledWindow):
         # Snap the octave offset to whole semitones so it stays on a musical grid.
         cfg["scanner_pitch_offset_oct"] = round(self.spin_scanner_offset.GetValue() * 12.0) / 12.0
         cfg["ui_nav_hold_suppression"] = self.chk_ui_nav_hold.GetValue()
+        cfg["mcp_server_enabled"] = self.chk_mcp_server.GetValue()
+        cfg["mcp_server_port"] = int(self.spin_mcp_port.GetValue())
         interval_choices = [25, 50, 75, 100]
         sel_idx = self.choice_speed_interval.GetSelection()
         cfg["speed_announce_interval"] = interval_choices[sel_idx] if 0 <= sel_idx < len(interval_choices) else 25

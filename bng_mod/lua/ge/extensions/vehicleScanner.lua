@@ -53,15 +53,53 @@ local alignPending      = false
 local alignTimeout      = 0
 local ALIGN_TIMEOUT_SEC = 3.0
 
--- Delayed fifth-wheel auto-coupling (wait for physics to settle after teleport)
-local _fwCouplePending  = false
-local _fwCoupleTimer    = 0
-local _fwCoupleRetries  = 0
-local FW_COUPLE_DELAY   = 0.5    -- seconds to wait before first attempt
-local FW_COUPLE_MAX_RETRIES = 6  -- retry coupling several times
-local FW_COUPLE_RETRY_INTERVAL = 0.3
-local _fwCouplePlayerTag = ""
-local _fwCoupleTargetTag = ""
+-- Standoff for a fifth-wheel align. The gap is DERIVED from the two vehicles' bodies
+-- (how far the truck extends behind its fifth wheel, plus how far the trailer extends
+-- ahead of its king pin) and this is the clearance added on top.
+--
+-- There is no auto-coupling here, and that is the design. `beamstate.activateAutoCoupling()`
+-- CANNOT couple a fifth wheel: the T-series' `fwk2` carries `couplerLock = true`, and
+-- beamstate builds its visible tag set from `not couplerWeld and not couplerLock and
+-- couplerTag`, so the fifth wheel is excluded and only the pintle is armed. The trailer
+-- side is worse -- a stock tanker has ZERO couplerTag nodes (712 nodes, 0 matches); its
+-- king pin carries only `tag = "fifthwheel_v2"`, read by the game's couplings/kingpin
+-- controller. The real attach is done by couplings/fifthwheel.lua's updateGFX, which
+-- needs the two vehicles physically COLLIDING and the king pin within
+-- `couplerRadius * 0.8` = 0.08 m. So the mod parks you square and short, and the driver
+-- reverses the last few metres under the coupler homing tone -- exactly as a ball hitch
+-- has always worked.
+local FW_ALIGN_CLEARANCE_M = 1.0
+
+-- A body overhang is a max over every node, and a detached part stays in the vehicle's own
+-- node cloud, so a wrecked truck could otherwise ask to be parked absurdly far back.
+-- Over-estimating only parks you further away, so a loose ceiling is enough.
+local ALIGN_OVERHANG_MAX_M = 20.0
+
+-- How far the vehicle may end up from the position the align asked for before the readout
+-- has to admit it. safeTeleport relocates rather than refusing when the requested spot
+-- intersects something, and it moves SIDEWAYS as well as back -- which silently destroys
+-- the very alignment this key exists to produce.
+local ALIGN_DISPLACE_SAY_M = 0.5
+
+-- The align teleports TWICE, and the second one is not a retry -- it is the placement.
+--
+-- `spawn.safeTeleport` does not put the reference node where you ask when the HEADING also
+-- changes. It converts the requested reference position into a box centre using the vehicle's
+-- CURRENT rotation, then re-derives the reference node from the box centre using the NEW one,
+-- so the reference node lands off by `(I - diffRot) * (centre - ref)`. On a T-series that
+-- offset is 0.658 m, and a 37 degree turn therefore misses by 0.40 m -- measured, against an
+-- 0.08 m attach radius. Aligning from a truck already pointing the right way misses by
+-- 0.001 m, which is why this hid: the obvious test starts from the pose the last align left.
+-- Re-issuing once the heading already matches makes diffRot identity and the artifact
+-- vanishes: measured 0.3985 m on the first pass, 0.0175 m on the second.
+--
+-- The wait exists because `getPosition()` does not reflect a teleport within the same frame
+-- (setSafePosition defers the cluster move), so both the second placement and the landing
+-- check have to happen on a later tick. Reading it immediately returns the PRE-teleport
+-- position, which would report a displacement of however far the vehicle just travelled and
+-- fire the warning on every single align.
+local ALIGN_SETTLE_S = 0.15
+local _alignSettle = nil
 
 -- Coupler Tracking State
 local couplerTrackActive  = false
@@ -111,6 +149,15 @@ end
 
 local function normalizeSpeechValue(value, source)
   while type(value) == "table" do
+    -- BeamNG's localized text shape: {txt = "<i18n key>", ctx = {...}}. Two entries, so the
+    -- single-entry unwrap below would refuse it anyway -- but quietly, after logging a warning
+    -- on every call. Translate it instead; core_locales handles both the plain and the
+    -- context-substituted forms.
+    if value.txt ~= nil and extensions and extensions.core_locales then
+      local ok, translated = pcall(extensions.core_locales.translateWithOrWithoutContext, value)
+      if ok and type(translated) == "string" and translated ~= "" then return translated end
+      return nil
+    end
     local count, only = 0, nil
     for _, item in pairs(value) do count = count + 1; only = item end
     local contents = "<unserializable>"
@@ -129,6 +176,33 @@ local function normalizeSpeechValue(value, source)
   end
   if kind == "number" or kind == "boolean" then return tostring(value) end
   return nil
+end
+
+-- Human-readable name for a vehicle, resolved ENTIRELY ON THE GE SIDE.
+--
+-- This used to be a cross-VM round trip that read `v.data.information.name` in the vehicle
+-- VM and sent the string back. BeamNG localized that field: it is no longer a string but a
+-- `{txt = "<i18n key>", ctx = {brand1 = "<i18n key>"}}` structure, and the vehicle VM has no
+-- translator at all (`_tr` is installed only by the GE-side core_locales, which is why
+-- `lua/common/jbeam/io.lua` guards its own use of it with `and _tr`). So the round trip could
+-- only ever come back with a two-entry table, `normalizeSpeechValue` rightly refused to speak
+-- it, and every vehicle fell through to the JBeam basename -- "midsize" for a Pessima.
+--
+-- `vehicleNaming.describe` reads `core_vehicles.getVehicleList()`, where the game has already
+-- run the model name through `_tr`, so it needs no translation of its own and no round trip.
+-- The JBeam basename stays as the last-resort fallback, which is the answer the broken path
+-- was accidentally giving for everything.
+local function describeVehicle(veh, source)
+  if not veh then return "unknown" end
+  if extensions and extensions.vehicleNaming and extensions.vehicleNaming.describe then
+    local ok, name = pcall(extensions.vehicleNaming.describe, veh)
+    if ok then
+      local normalized = normalizeSpeechValue(name, source)
+      if normalized and normalized ~= "" then return normalized end
+    end
+  end
+  local f = veh:getJBeamFilename() or "unknown"
+  return f:match("([^/\\]+)%.jbeam$") or f
 end
 
 local function areCouplerTagsCompatible(tag1, tag2)
@@ -246,12 +320,25 @@ local function _tryCompleteCouplerSetup()
   local alignPos, alignDist
 
   if isFifthWheel then
-    -- Fifth wheel: position truck so its coupler lands on the trailer's king pin.
-    -- pi.ny is the forward-projected distance from reference node to coupler.
-    -- Use abs() because the truck center must always be on the AWAY side of the king pin —
-    -- the fifth wheel (behind the truck center) reaches back to meet the king pin.
-    -- truckCenter = kingPin + |offset| * awayDir, fifthWheel = truckCenter - |offset| * awayDir = kingPin
-    alignDist = math.abs(pi.ny or 0)
+    -- Fifth wheel: park the truck SHORT of the king pin by a gap wide enough that the two
+    -- bodies do not overlap, and let the driver reverse the rest.
+    --
+    -- This used to ask for a ZERO gap -- fifth wheel exactly on the king pin. That places
+    -- the truck's body inside the trailer's, so spawn.safeTeleport's collision search
+    -- (placeVehicle -> placeVehRec) relocated the vehicle instead of using the requested
+    -- spot. Measured on a T-series and a stock tanker: shoved 4.43 m back AND 1.26 m
+    -- sideways, leaving a 4.725 m gap to a coupler with an 0.08 m attach radius, and
+    -- destroying the squareness that is the whole point of the key. The align was asking
+    -- for a position the game was always going to refuse.
+    --
+    -- The gap is derived rather than fixed because it is a property of the PAIR: the
+    -- truck's tail reaches back past its fifth wheel and the trailer's nose reaches
+    -- forward past its king pin, and both vary by vehicle. Measured for this pair:
+    -- 1.680 + 0.866, i.e. the boxes touch at 2.546 m -- a fixed 1.5 m gap of the sort the
+    -- ball-hitch path uses would still have overlapped.
+    local rearOverhang  = math.min(pi.rearOverhang or 0, ALIGN_OVERHANG_MAX_M)
+    local frontOverhang = math.min(ti.frontOverhang or 0, ALIGN_OVERHANG_MAX_M)
+    alignDist = math.abs(pi.ny or 0) + rearOverhang + frontOverhang + FW_ALIGN_CLEARANCE_M
     alignPos = couplerPos + awayDir * alignDist
   else
     -- Ball hitch: leave a 1.5m gap so the player reverses to couple up.
@@ -261,49 +348,62 @@ local function _tryCompleteCouplerSetup()
     alignPos = couplerPos + awayDir * alignDist
   end
 
+  -- Put the COUPLER on the target's axis, not the reference node.
+  --
+  -- The two are not the same point on a real vehicle: the T-series' fifth wheel sits
+  -- 0.434 m off its own reference node laterally, so placing the reference node on the
+  -- king pin axis left the fifth wheel a third of a metre to one side of a coupler with an
+  -- 0.08 m attach radius. `pi.nlat` is the coupler's offset along the vehicle's own left
+  -- vector (up:cross(fwd), the mod-wide positive-is-LEFT convention); subtracting it along
+  -- the ALIGNED left vector cancels it, because after the teleport the vehicle is facing
+  -- awayDir. Same correction RAMPALIGN already carries, applied to a different point --
+  -- there it is the body centre, here it is the coupler itself.
+  local alignLeft = vec3(0, 0, 1):cross(awayDir)
+  alignPos = alignPos - alignLeft * (pi.nlat or 0)
+
   -- Use the player's current Z for ground level — the player truck is already on the ground.
   -- Don't use the coupler Z, which may be elevated (e.g. trailer deck height).
   alignPos.z = player:getPosition().z + 0.3
 
   scannerLog('info', string.format(
-    "Align: couplerPos=(%.1f,%.1f,%.1f) targetCenter=(%.1f,%.1f,%.1f) alignDist=%.2f finalPos=(%.1f,%.1f,%.1f) fifthWheel=%s localNy=%.2f",
+    "Align: couplerPos=(%.1f,%.1f,%.1f) targetCenter=(%.1f,%.1f,%.1f) alignDist=%.2f finalPos=(%.1f,%.1f,%.1f) fifthWheel=%s localNy=%.2f lat=%.2f rearOverhang=%.2f frontOverhang=%.2f",
     couplerPos.x, couplerPos.y, couplerPos.z,
     targetCenter.x, targetCenter.y, targetCenter.z,
     alignDist,
     alignPos.x, alignPos.y, alignPos.z,
-    tostring(isFifthWheel), (pi.ny or 0)))
+    tostring(isFifthWheel), (pi.ny or 0), (pi.nlat or 0),
+    (pi.rearOverhang or 0), (ti.frontOverhang or 0)))
 
   local rot = quatFromDir(awayDir, vec3(0, 0, 1))
   -- 4th/5th params are checkOnlyStatics and visibilityPoint. visibilityPoint must
   -- be a vec3: spawn.lua feeds it to getVisibilityStatus, which does
   -- `randPoint - intendedPos`, so a boolean there throws inside LuaVec3.__sub
-  -- and the alignment teleport never happened. The defaults are what the game
-  -- itself uses, including resetVehicle, which settles physics at the new spot --
-  -- exactly what the fifth-wheel coupling below waits for.
-  spawn.safeTeleport(player, alignPos, rot)
+  -- and the alignment teleport never happened. So those two stay nil.
+  --
+  -- The 8th argument is resetVehicle, and it MUST be false. It defaults to true, which
+  -- makes spawn.lua call setPosRot + resetBrokenFlexMesh and re-place the vehicle from
+  -- its INITIAL node positions -- i.e. a full respawn: every dent repaired, and the
+  -- engine stopped for anyone who has "reset stops the engine" set in gameplay options.
+  -- An align is a placement, never a repair. With it false the cluster move, the
+  -- velocity zeroing and setOriginalTransform all still run against the DEFORMED body,
+  -- so physics still settles at the new spot.
+  spawn.safeTeleport(player, alignPos, rot, nil, nil, nil, false, false)
 
-  if isFifthWheel then
-    -- Delay auto-coupling to let physics settle after teleport.
-    -- The onUpdate loop will retry coupling until it succeeds or times out.
-    _fwCouplePending = true
-    _fwCoupleTimer = 0
-    _fwCoupleRetries = 0
-    _fwCouplePlayerTag = pTag
-    _fwCoupleTargetTag = tTag
-    scannerLog('info', "Fifth wheel teleport done, scheduling delayed auto-coupling. Player: " .. pTag .. " Target: " .. tTag)
-  else
-    -- Start coupler tracking for manual reverse-to-couple
-    _playerCouplerCid = _pendingPlayerInfo.cid
-    _targetCouplerCid = _pendingTargetInfo.cid
-    _couplerTargetID = currentTargetID
-    couplerTrackActive = true
-    couplerTrackTimer = 0
-
-    if udpSend then
-      udpSend:send("COUPLER_START:" .. pTag .. "," .. tTag)
-    end
-    scannerLog('info', "Coupler tracking started. Player: " .. pTag .. " Target: " .. tTag)
-  end
+  -- Hand off to the settle state machine: it re-issues the placement now that the heading is
+  -- right, then checks where the vehicle actually ended up before announcing anything. See
+  -- ALIGN_SETTLE_S for why both halves have to wait a tick.
+  _alignSettle = {
+    phase    = 1,
+    timer    = 0,
+    pos      = alignPos,
+    rot      = rot,
+    pTag     = pTag,
+    tTag     = tTag,
+    gap      = alignDist - math.abs(pi.ny or 0),
+    pCid     = _pendingPlayerInfo.cid,
+    tCid     = _pendingTargetInfo.cid,
+    targetID = currentTargetID,
+  }
 end
 
 -- =================================================================================================
@@ -354,29 +454,7 @@ local function cycleTarget(direction)  -- direction: 1 = next, -1 = prev
   currentTargetDist = entry.dist
   scannerLog('info', "Target cycled to vehicle ID " .. entry.id)
 
-  local fallback = newVeh:getJBeamFilename() or "unknown"
-  newVeh:queueLuaCommand(string.format([[
-    local info = (v.data and v.data.information) or {}
-    local function speechValue(value, source)
-      while type(value) == "table" do
-        local count, only = 0, nil
-        for _, item in pairs(value) do count = count + 1; only = item end
-        local contents = "<unserializable>"; pcall(function() contents = jsonEncode(value) end)
-        pcall(function() log('W', 'vehicleScanner', '[LUA_TABLE_SPEECH] source=' .. source .. ' count=' .. count .. ' contents=' .. contents) end)
-        if count ~= 1 then return nil end
-        value = only
-      end
-      local kind = type(value)
-      if kind == "string" or kind == "number" or kind == "boolean" then return tostring(value) end
-      return nil
-    end
-    local brand = speechValue(info.brand, "cycleTarget.information.brand") or ""
-    local model = speechValue(info.name, "cycleTarget.information.name") or %q
-    local display = brand ~= "" and (brand .. " " .. model) or model
-    obj:queueGameEngineLua(string.format(
-      "extensions.vehicleScanner.onTargetNameReady(%%q)", display
-    ))
-  ]], fallback))
+  udpSend:send("TARGET_NAME:" .. describeVehicle(newVeh, "cycleTarget.vehicleNaming.describe"))
 end
 
 -- Lock onto the non-player vehicle closest to the player. Used by F9+CTRL+Tab.
@@ -413,17 +491,7 @@ local function targetClosest()
   scannerLog('info', string.format("Closest target locked: id=%d dist=%.1fm", closestID, closestDist))
 
   local newVeh = scenetree.findObjectById(closestID)
-  if newVeh and extensions and extensions.vehicleNaming and extensions.vehicleNaming.describe then
-    local ok, name = pcall(extensions.vehicleNaming.describe, newVeh)
-    local normalized = ok and normalizeSpeechValue(name, "targetClosest.vehicleNaming.describe") or nil
-    if normalized and normalized ~= "" then
-      udpSend:send("TARGET_NAME:" .. normalized)
-      return
-    end
-  end
-  -- Fallback to JBeam basename if the helper is unavailable.
-  local f = newVeh and newVeh:getJBeamFilename() or "unknown"
-  udpSend:send("TARGET_NAME:" .. (f:match("([^/\\]+)%.jbeam$") or f))
+  udpSend:send("TARGET_NAME:" .. describeVehicle(newVeh, "targetClosest.vehicleNaming.describe"))
 end
 
 -- =================================================================================================
@@ -475,32 +543,10 @@ local function scanAndSendVehicleData()
     if not closestVehID then return end
     currentTargetID   = closestVehID
     currentTargetDist = closestVehDist
-    -- Look up name for the auto-selected target
+    -- Name the auto-selected target. GE-side; see describeVehicle.
     local autoVeh = scenetree.findObjectById(closestVehID)
-    if autoVeh then
-      local fallback = autoVeh:getJBeamFilename() or "unknown"
-      autoVeh:queueLuaCommand(string.format([[
-        local info = (v.data and v.data.information) or {}
-        local function speechValue(value, source)
-          while type(value) == "table" do
-            local count, only = 0, nil
-            for _, item in pairs(value) do count = count + 1; only = item end
-            local contents = "<unserializable>"; pcall(function() contents = jsonEncode(value) end)
-            pcall(function() log('W', 'vehicleScanner', '[LUA_TABLE_SPEECH] source=' .. source .. ' count=' .. count .. ' contents=' .. contents) end)
-            if count ~= 1 then return nil end
-            value = only
-          end
-          local kind = type(value)
-          if kind == "string" or kind == "number" or kind == "boolean" then return tostring(value) end
-          return nil
-        end
-        local brand = speechValue(info.brand, "autoTarget.information.brand") or ""
-        local model = speechValue(info.name, "autoTarget.information.name") or %q
-        local display = brand ~= "" and (brand .. " " .. model) or model
-        obj:queueGameEngineLua(string.format(
-          "extensions.vehicleScanner.onTargetNameReady(%%q)", display
-        ))
-      ]], fallback))
+    if autoVeh and udpSend then
+      udpSend:send("TARGET_NAME:" .. describeVehicle(autoVeh, "autoTarget.vehicleNaming.describe"))
     end
   end
 
@@ -678,15 +724,57 @@ local function setupSockets()
 
   local ok, err = pcall(function()
     udpCmd = socket.udp()
-    udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
+    -- setsockname RETURNS nil plus a message; it does not THROW. A pcall around it reports
+    -- success on a socket bound to nothing, and the extension then goes deaf with nothing in
+    -- the log -- it still sends normally, because a UDP sender needs no bind.
+    local bound, berr = udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
+    if not bound then error(tostring(berr), 0) end
     udpCmd:settimeout(0)
   end)
   if ok and udpCmd then
     scannerLog('info', "UDP command socket listening on port " .. CMD_LISTEN_PORT)
   else
     scannerLog('error', "Failed to create UDP command socket: " .. tostring(err))
+    if udpCmd then pcall(function() udpCmd:close() end) end
     udpCmd = nil
   end
+end
+
+-- A failed bind is otherwise permanent for the session, so re-arm it. This is the recovery
+-- path, not a precaution, and it has been watched doing the job: the first reload of the
+-- patched files leaked eight ports, because the OUTGOING code had no unload hook yet. The
+-- retry could not take them while the old module tables were still referenced -- a socket held
+-- that way is not one the collector is about to free -- and ticked uselessly for two minutes.
+-- The Ctrl+L that followed did NOT re-load these extensions (no load line for any of them in
+-- the log at that timestamp, so setupSockets never ran again); all thirteen ports came back
+-- through THIS function instead, within one frame of each other, the moment those tables went
+-- away. Without it the mod would have stayed deaf until the game was restarted.
+local CMD_BIND_RETRY_S = 3.0
+local cmdBindRetry = 0
+
+local function retryCmdBind(dtReal)
+  if udpCmd then return end
+  cmdBindRetry = cmdBindRetry + (dtReal or 0)
+  if cmdBindRetry < CMD_BIND_RETRY_S then return end
+  cmdBindRetry = 0
+  local ok = pcall(function()
+    local sk = socket.udp()
+    local bound = sk:setsockname("127.0.0.1", CMD_LISTEN_PORT)
+    if not bound then sk:close(); error("still in use", 0) end
+    sk:settimeout(0)
+    udpCmd = sk
+  end)
+  if ok and udpCmd then
+    scannerLog('info', "UDP command socket bound on port " .. CMD_LISTEN_PORT .. " after retry.")
+  end
+end
+
+-- setupSockets closes the sockets held by THIS module instance, and extensions.reload builds a
+-- fresh instance whose locals are nil -- so it closes nothing and the outgoing instance keeps
+-- the port, leaving the reloaded copy permanently deaf. Hence this hook.
+function M.onExtensionUnloaded()
+  if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
+  if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
 end
 
 function M.onExtensionLoaded()
@@ -711,7 +799,7 @@ function M.onWorldReadyState(state)
     gearDirection     = nil
     gearStaleTimer    = 0
     alignPending      = false
-    _fwCouplePending  = false
+    _alignSettle      = nil
     couplerTrackActive = false
     _playerCouplerCid  = nil
     _targetCouplerCid  = nil
@@ -738,6 +826,7 @@ function M.onWorldReadyState(state)
 end
 
 function M.onUpdate(dtReal, dtSim, dtRaw)
+  retryCmdBind(dtReal)
   -- Age the pushed gear. If Python stops sending -- it exited, or this is an older build --
   -- direction resolution falls back to velocity rather than freezing on the last gear seen.
   gearStaleTimer = gearStaleTimer + dtReal
@@ -762,8 +851,9 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
         scannerLog('info', "Scan mode activated via UDP.")
       elseif cmd == "OFF" and isScanModeActive then
         isScanModeActive = false
-        couplerTrackActive = false
-        couplerAttachMonitor = false
+        -- couplerTrackActive, couplerAttachMonitor and _alignSettle deliberately SURVIVE.
+        -- Switching the scanner off silences its periodic callouts; it is not a request to
+        -- abandon a coupling you are halfway through. See section 2d.
         scannerLog('info', "Scan mode deactivated via UDP.")
       elseif cmd == "NEXT" then
         cycleTarget(1)
@@ -784,14 +874,16 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
             tmpSock:close()
           end
         else
-          local fallback = player:getJBeamFilename() or "unknown"
+          -- The vehicle name is resolved GE-side (see describeVehicle) and injected into the
+          -- chunk; the vehicle VM cannot translate the localized name field. speechValue stays
+          -- because the detached-part naming below still reads jbeam part information.
+          local vehName = describeVehicle(player, "damage.vehicleNaming.describe")
           player:queueLuaCommand(string.format([[
             local _ds = require("socket").udp()
             _ds:setpeername("127.0.0.1", 4447)
-            -- Send vehicle name first
-            local info = (v.data and v.data.information) or {}
             local function speechValue(value, source)
               while type(value) == "table" do
+                if value.txt ~= nil then return nil end -- localized {txt=,ctx=}; untranslatable here
                 local count, only = 0, nil
                 for _, item in pairs(value) do count = count + 1; only = item end
                 local contents = "<unserializable>"; pcall(function() contents = jsonEncode(value) end)
@@ -803,10 +895,7 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
               if kind == "string" or kind == "number" or kind == "boolean" then return tostring(value) end
               return nil
             end
-            local brand = speechValue(info.brand, "damage.information.brand") or ""
-            local model = speechValue(info.name, "damage.information.name") or %q
-            local vehName = brand ~= "" and (brand .. " " .. model) or model
-            _ds:send("NAME:" .. vehName)
+            _ds:send("NAME:" .. %q)
             local found = false
             local ok, err = pcall(function()
               local bodyParts = {"FL", "FR", "ML", "MR", "RL", "RR"}
@@ -936,7 +1025,7 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
             if not found then _ds:send("NONE") end
             _ds:send("DONE")
             _ds:close()
-          ]], fallback))
+          ]], vehName))
         end
       elseif cmd == "DUMP" then
         scannerLog('info', "DUMP command received, routing to active vehicle.")
@@ -1145,6 +1234,29 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
               -- Query player vehicle for coupler node
               player:queueLuaCommand([[
                 local best, btag, bpri = nil, "", 0
+                -- ROLE beats tag, and the game declares the role itself.
+                --
+                -- `fifthwheel_v2` is a coupling STANDARD, not a role: the plate and the pin
+                -- both carry it. A log_trailer has both -- its own king pin at the front
+                -- (fwdOffset +7.193) and a fifth wheel of its own at the back (-3.075) so it
+                -- can pull a second trailer -- and the name ladder below scores them
+                -- identically, leaving `pairs()` order to decide. It picked the rear plate,
+                -- so the align aimed the truck at a point 10.3 m behind the real king pin
+                -- and reversed it into the trailer. A tanker worked only by luck: it has no
+                -- couplerTag node at all, so its king pin won by default.
+                --
+                -- couplings/fifthwheel owns the TOWING end and couplings/kingpin the TOWED
+                -- end, each naming its node in jbeam. That is a capability check on the
+                -- thing that actually does the coupling -- the same shape of argument
+                -- rampGeometry.isCannon() makes -- and it needs no allowlist of trailers.
+                local roleName, roleTag = nil, nil
+                for _, cc in pairs(v.data.controller or {}) do
+                  local fn = tostring(cc.fileName or "")
+                  if fn:find("couplings/fifthwheel", 1, true) and cc.fifthwheelNode then
+                    roleName = cc.fifthwheelNode
+                    roleTag = cc.fifthwheelKey or "fifthwheel_v2"
+                  end
+                end
                 for _, nd in pairs(v.data.nodes) do
                   local p, t = 0, ""
                   if nd.couplerTag then
@@ -1165,39 +1277,107 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
                     p = 1; t = nd.couplerTag or nd.tag or "coupler"
                   end
                   if p > bpri then best = nd; btag = t; bpri = p end
+                  if roleName and nd.name == roleName then best = nd; btag = roleTag; bpri = 4 end
                 end
                 if best then
                   -- Compute local forward offset by projecting node position onto vehicle forward.
                   -- getNodePosition returns world-relative offsets, so we project onto the vehicle's
                   -- actual forward direction to get the orientation-independent forward distance.
                   local np = vec3(obj:getNodePosition(best.cid))
+                  -- BODY frame, not a ground frame: full 3-D forward and the vehicle's OWN
+                  -- up, giving an orthonormal basis that rotates with the vehicle. These are
+                  -- "where is the coupler on this truck", which must not change when the
+                  -- truck rocks on its springs.
+                  --
+                  -- A flattened forward paired with world up is a GROUND frame, and it is
+                  -- roll-sensitive: the fifth-wheel plate sits about 1.1 m above the
+                  -- reference node, so ten degrees of roll swings it 0.19 m sideways and the
+                  -- align cancels a lateral offset the settled truck does not have. Measured
+                  -- while the truck was still rocking after a teleport: 0.224 m off axis,
+                  -- against 0.001 m from a settled one. up:cross(fwd) is also the mod-wide
+                  -- positive-is-LEFT convention (vehicleGeometry, implementProximity,
+                  -- rampGeometry).
+                  --
+                  -- The align cancels along vec3(0,0,1):cross(awayDir), a WORLD frame -- and
+                  -- the two agree because the teleport puts the truck level and facing
+                  -- awayDir, which is exactly the pose in which body and ground frames
+                  -- coincide.
                   local fwd = vec3(obj:getDirectionVector())
-                  fwd.z = 0
                   if fwd:length() > 0.01 then fwd = fwd:normalized() end
+                  local up = vec3(obj:getDirectionVectorUp())
+                  if up:length() > 0.01 then up = up:normalized() end
+                  local left = up:cross(fwd)
+                  if left:length() > 0.01 then left = left:normalized() end
                   local forwardOffset = np:dot(fwd)
+                  -- The old code sent the raw world-relative np.x here, which is a lateral
+                  -- offset only on an axis-aligned vehicle -- and nothing ever read it, so
+                  -- the align put the reference node on the target's axis instead of the
+                  -- coupler.
+                  local lateralOffset = np:dot(left)
+                  -- Rear overhang: how far the body reaches BEHIND the coupler. This is what
+                  -- decides whether the requested align position overlaps the target, and so
+                  -- whether safeTeleport will relocate us. Same sweep the COUPLER_DIST
+                  -- discovery already does.
+                  local rearOverhang = 0
+                  for _, nd2 in pairs(v.data.nodes) do
+                    local behindDist = -fwd:dot(vec3(obj:getNodePosition(nd2.cid)) - np)
+                    if behindDist > rearOverhang then rearOverhang = behindDist end
+                  end
+                  -- Measured along the same body forward, so it is the truck's reach behind
+                  -- its own plate rather than a figure that shrinks when the nose lifts.
                   obj:queueGameEngineLua(string.format(
-                    'extensions.vehicleScanner.onPlayerCouplerInfo(%d, %q, %.4f, %.4f, %.4f)',
-                    best.cid, btag, np.x, forwardOffset, np.z))
+                    'extensions.vehicleScanner.onPlayerCouplerInfo(%d, %q, %.4f, %.4f, %.4f, %.4f)',
+                    best.cid, btag, lateralOffset, forwardOffset, np.z, rearOverhang))
                 else
-                  obj:queueGameEngineLua('extensions.vehicleScanner.onPlayerCouplerInfo(-1, "", 0, 0, 0)')
+                  obj:queueGameEngineLua('extensions.vehicleScanner.onPlayerCouplerInfo(-1, "", 0, 0, 0, 0)')
                 end
               ]])
               -- Query target vehicle for coupler node (with position/direction for alignment)
               targetVeh:queueLuaCommand(string.format([[
                 local best, btag, bpri = nil, "", 0
+                -- ROLE beats tag, and the game declares the role itself.
+                --
+                -- `fifthwheel_v2` is a coupling STANDARD, not a role: the plate and the pin
+                -- both carry it. A log_trailer has both -- its own king pin at the front
+                -- (fwdOffset +7.193) and a fifth wheel of its own at the back (-3.075) so it
+                -- can pull a second trailer -- and the name ladder below scores them
+                -- identically, leaving `pairs()` order to decide. It picked the rear plate,
+                -- so the align aimed the truck at a point 10.3 m behind the real king pin
+                -- and reversed it into the trailer. A tanker worked only by luck: it has no
+                -- couplerTag node at all, so its king pin won by default.
+                --
+                -- couplings/fifthwheel owns the TOWING end and couplings/kingpin the TOWED
+                -- end, each naming its node in jbeam. That is a capability check on the
+                -- thing that actually does the coupling -- the same shape of argument
+                -- rampGeometry.isCannon() makes -- and it needs no allowlist of trailers.
+                local roleName, roleTag = nil, nil
+                for _, cc in pairs(v.data.controller or {}) do
+                  local fn = tostring(cc.fileName or "")
+                  if fn:find("couplings/kingpin", 1, true) and cc.kingpinNode then
+                    roleName = cc.kingpinNode
+                    roleTag = cc.kingpinKey or "fifthwheel_v2"
+                  end
+                end
                 for _, nd in pairs(v.data.nodes) do
                   local p, t = 0, ""
                   if nd.couplerTag then
                     local cl = nd.couplerTag:lower()
                     p = 1; t = nd.couplerTag
-                    if cl == "tow_bar" then p = 2 end
-                    if cl:find("fifthwheel") or cl:find("tow_hitch") then p = 3 end
+                    -- TOWED end wins here, the mirror of the player chunk. A tow_bar is the
+                    -- drawbar you hook up TO; a tow_hitch is a hitch for towing something
+                    -- else. Both ladders used to rank tow_hitch above tow_bar, which is
+                    -- right for the truck and backwards for the trailer: on any trailer
+                    -- carrying a rear hitch as well as its own drawbar it picked the hitch,
+                    -- the same role confusion the log trailer hit with fifthwheel_v2, just
+                    -- spelled with two different tags instead of one shared one.
+                    if cl:find("tow_hitch") then p = 2 end
+                    if cl:find("fifthwheel") or cl == "tow_bar" then p = 3 end
                   end
                   if p == 0 and nd.tag and type(nd.tag) == "string" then
                     local tl = nd.tag:lower()
-                    if tl:find("fifthwheel") or tl:find("fifth_wheel") or tl:find("tow_hitch") then
+                    if tl:find("fifthwheel") or tl:find("fifth_wheel") or tl:find("tow_bar") then
                       p = 3; t = nd.couplerTag or nd.tag
-                    elseif tl:find("tow_bar") then
+                    elseif tl:find("tow_hitch") then
                       p = 2; t = nd.couplerTag or nd.tag
                     end
                   end
@@ -1205,17 +1385,37 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
                     p = 1; t = nd.couplerTag or nd.tag or "coupler"
                   end
                   if p > bpri then best = nd; btag = t; bpri = p end
+                  if roleName and nd.name == roleName then best = nd; btag = roleTag; bpri = 4 end
                 end
                 if best then
                   local np = vec3(obj:getNodePosition(best.cid))
                   local op = vec3(obj:getPosition())
                   local wp = op + np
+                  -- Front overhang: how far this vehicle's body reaches PAST its coupler,
+                  -- toward whoever is coupling to it. On a tanker that is the nose ahead of
+                  -- the king pin, and it is the other half of the clearance the align needs.
+                  --
+                  -- Measured along the vehicle's own flattened FORWARD, flipped to point at
+                  -- the coupler -- which is exactly how the align derives awayDir, so the
+                  -- overhang is measured along the same axis the standoff is applied along.
+                  -- The COUPLER_DIST discovery uses the raw origin-to-coupler vector here
+                  -- instead, which is skewed on any trailer whose king pin sits off the
+                  -- centreline; that is tolerable for a spoken gap figure and is not
+                  -- tolerable for a teleport.
+                  local couplerDir = vec3(obj:getDirectionVector())
+                  if couplerDir:length() > 0.01 then couplerDir = couplerDir:normalized() end
+                  if couplerDir:dot(np) < 0 then couplerDir = -couplerDir end
+                  local frontOverhang = 0
+                  for _, nd2 in pairs(v.data.nodes) do
+                    local aheadDist = couplerDir:dot(vec3(obj:getNodePosition(nd2.cid)) - np)
+                    if aheadDist > frontOverhang then frontOverhang = aheadDist end
+                  end
                   obj:queueGameEngineLua(string.format(
-                    "extensions.vehicleScanner.onTargetCouplerForAlign(%d, %%d, %%.4f, %%.4f, %%.4f, %%.4f, %%.4f, %%.4f, '%%s')",
-                    best.cid, wp.x, wp.y, wp.z, op.x, op.y, op.z, btag
+                    "extensions.vehicleScanner.onTargetCouplerForAlign(%d, %%d, %%.4f, %%.4f, %%.4f, %%.4f, %%.4f, %%.4f, '%%s', %%.4f)",
+                    best.cid, wp.x, wp.y, wp.z, op.x, op.y, op.z, btag, frontOverhang
                   ))
                 else
-                  obj:queueGameEngineLua("extensions.vehicleScanner.onTargetCouplerForAlign(%d, -1, 0, 0, 0, 0, 0, 0, '')")
+                  obj:queueGameEngineLua("extensions.vehicleScanner.onTargetCouplerForAlign(%d, -1, 0, 0, 0, 0, 0, 0, '', 0)")
                 end
               ]], tid, tid))
             end
@@ -1251,32 +1451,48 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
     end
   end
 
-  -- 2b. Delayed fifth-wheel auto-coupling (retry until attached or timeout)
-  if _fwCouplePending then
-    _fwCoupleTimer = _fwCoupleTimer + dtReal
-    local delay = _fwCoupleRetries == 0 and FW_COUPLE_DELAY or FW_COUPLE_RETRY_INTERVAL
-    if _fwCoupleTimer >= delay then
-      _fwCoupleTimer = 0
-      _fwCoupleRetries = _fwCoupleRetries + 1
-      local p = be:getPlayerVehicle(0)
-      local t = currentTargetID and scenetree.findObjectById(currentTargetID) or nil
-      if p and t then
-        p:queueLuaCommand('beamstate.activateAutoCoupling()')
-        t:queueLuaCommand('beamstate.activateAutoCoupling()')
-        scannerLog('info', "Fifth wheel auto-coupling attempt " .. _fwCoupleRetries)
-      end
-      if _fwCoupleRetries >= FW_COUPLE_MAX_RETRIES then
-        _fwCouplePending = false
-        if p and t then
-          -- Retract landing gear and release trailer brakes
-          t:queueLuaCommand('electrics.values.feet = 1')
-          t:queueLuaCommand('electrics.values.parkingbrake = 0')
-          t:queueLuaCommand('electrics.values.brake = 0')
+  -- 2b. Align settle: place, re-place, then verify before announcing.
+  if _alignSettle then
+    _alignSettle.timer = _alignSettle.timer + dtReal
+    if _alignSettle.timer >= ALIGN_SETTLE_S then
+      _alignSettle.timer = 0
+      local st = _alignSettle
+      local player = be:getPlayerVehicle(0)
+      local target = st.targetID and scenetree.findObjectById(st.targetID) or nil
+      if not player or not target then
+        _alignSettle = nil
+        if udpSend then udpSend:send("COUPLER_FAIL:Lost the vehicle during alignment") end
+      elseif st.phase == 1 then
+        -- The heading is right now, so this pass lands where it is asked to. See
+        -- ALIGN_SETTLE_S: this is the placement, not a retry.
+        spawn.safeTeleport(player, st.pos, st.rot, nil, nil, nil, false, false)
+        st.phase = 2
+      else
+        _alignSettle = nil
+        local landed = player:getPosition()
+        local shifted = (vec3(landed.x, landed.y, 0) - vec3(st.pos.x, st.pos.y, 0)):length()
+        if shifted > ALIGN_DISPLACE_SAY_M then
+          scannerLog('warn', string.format(
+            "Align: vehicle ended up %.2f m from the requested position "
+            .. "(requested %.2f,%.2f landed %.2f,%.2f) -- the spot was not clear.",
+            shifted, st.pos.x, st.pos.y, landed.x, landed.y))
         end
+
+        _playerCouplerCid = st.pCid
+        _targetCouplerCid = st.tCid
+        _couplerTargetID  = st.targetID
+        couplerTrackActive = true
+        couplerTrackTimer = 0
+
         if udpSend then
-          udpSend:send("COUPLER_ATTACHED:" .. _fwCouplePlayerTag .. "," .. _fwCoupleTargetTag)
+          -- Fields 3 and 4 are an optional positional tail: the gap the driver has to
+          -- reverse, and how far the placement was displaced. Python guards on length.
+          udpSend:send(string.format("COUPLER_START:%s,%s,%.2f,%.2f",
+            st.pTag, st.tTag, st.gap, shifted))
         end
-        scannerLog('info', "Fifth wheel coupling sequence complete after " .. _fwCoupleRetries .. " attempts.")
+        scannerLog('info', string.format(
+          "Coupler tracking started. Player: %s Target: %s gap=%.2f m shifted=%.2f m",
+          st.pTag, st.tTag, st.gap, shifted))
       end
     end
   end
@@ -1293,6 +1509,8 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
     -- measuring off the rear bumper because the last vehicle happened to be reversing.
     activeDirection   = 1
     gearDirection     = nil
+    -- A pending placement belongs to the machine you just climbed out of.
+    _alignSettle      = nil
     if couplerTrackActive then
       couplerTrackActive = false
       if udpSend then udpSend:send("COUPLER_LOST") end
@@ -1323,16 +1541,17 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
     end
   end
 
-  if not isScanModeActive then return end
-
-  -- 3. Rate-limit scans to SCAN_INTERVAL seconds
-  scanTimer = scanTimer + dtReal
-  if scanTimer >= SCAN_INTERVAL then
-    scanTimer = 0
-    scanAndSendVehicleData()
-  end
-
-  -- 4. Coupler tracking (send bearing/distance between coupler nodes)
+  -- 2d. Coupler tracking (send bearing/distance between coupler nodes).
+  --
+  -- Deliberately ABOVE the scan-mode gate. Once you have aligned, the homing tone is the
+  -- instrument you are steering by, and the natural reason to switch the scanner off
+  -- mid-manoeuvre is to stop its periodic "169 feet, behind you" callouts -- i.e. exactly
+  -- when the tone matters most. Below the gate, that toggle silently ended the run: no
+  -- tone for the last few metres, and no "Coupled" afterwards, because the OFF handler
+  -- cleared the attach monitor too and switching the scanner back on re-armed neither.
+  -- Observed on the first real coupling: aligned, scanner toggled 4 s later, coupled 19 s
+  -- after that in silence. The run now ends only when it is actually over -- coupled,
+  -- target lost, or a vehicle switch.
   if couplerTrackActive then
     couplerTrackTimer = couplerTrackTimer + dtReal
     if couplerTrackTimer >= (1.0 / COUPLER_TRACK_HZ) then
@@ -1346,13 +1565,27 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
 
         -- Bearing from player's REAR direction to target coupler
         -- 0° = directly behind = aligned for reversing
+        --
+        -- Both vectors are FLATTENED before the angle is taken. This is a steering error,
+        -- and a coupler sits about a metre off the ground on both vehicles, so any height
+        -- difference between the two plates was being reported as horizontal error --
+        -- worst exactly where it matters least tolerably: at 0.3 m separation a 0.15 m
+        -- height difference is 27 degrees of phantom steering command, with a sign taken
+        -- from an almost-vertical vector, i.e. arbitrary and flipping per tick. Same rule
+        -- the scanner bearing already follows for the implement boom ("`toTargetVec` is
+        -- also flattened, or three metres of boom travel ... appears to steer the machine").
         local playerFwd = player:getDirectionVector()
         local playerUp  = player:getDirectionVectorUp()
-        local rearDir   = vec3(-playerFwd.x, -playerFwd.y, -playerFwd.z)
-        local toTarget  = (tPos - pPos):normalized()
+        local rearDir   = vec3(-playerFwd.x, -playerFwd.y, 0)
+        if rearDir:length() > 0.01 then rearDir = rearDir:normalized() end
+        local toTargetRaw = tPos - pPos
+        local toTarget  = vec3(toTargetRaw.x, toTargetRaw.y, 0)
+        if toTarget:length() > 0.01 then toTarget = toTarget:normalized() end
         local cosAngle  = math.max(-1, math.min(1, rearDir:dot(toTarget)))
         local angleRad  = math.acos(cosAngle)
-        local leftVec   = playerUp:cross(playerFwd) -- left, as above
+        -- leftVec keeps the UN-negated forward: the driver's physical left does not move
+        -- when they select reverse, and positive stays LEFT in every gear.
+        local leftVec   = playerUp:cross(playerFwd)
         local dot       = leftVec:dot(toTarget)
         local bearing   = math.deg(angleRad) * (dot < 0 and -1 or 1)
 
@@ -1364,6 +1597,15 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
         scannerLog('warn', "Coupler tracking stopped: vehicle lost.")
       end
     end
+  end
+
+  if not isScanModeActive then return end
+
+  -- 3. Rate-limit scans to SCAN_INTERVAL seconds
+  scanTimer = scanTimer + dtReal
+  if scanTimer >= SCAN_INTERVAL then
+    scanTimer = 0
+    scanAndSendVehicleData()
   end
 
   -- 5. Coupler Distance Mode (periodic speech callouts)
@@ -1533,25 +1775,37 @@ end
 --  Coupler / Alignment Callbacks (called from vehicle VM via queueGameEngineLua)
 -- =================================================================================================
 
--- Called from player vehicle VM with coupler info + local node position
-function M.onPlayerCouplerInfo(cid, tag, nx, ny, nz)
+-- Called from player vehicle VM with coupler info + local node position.
+-- `nlat` replaced the old `nx`: that field was the raw world-axis x of the node offset,
+-- which is a lateral offset only on an axis-aligned vehicle, and nothing ever read it.
+-- `rearOverhang` is how far the body reaches behind the coupler, and is half of the
+-- standoff the align needs to avoid asking safeTeleport for an occupied space.
+-- Both are optional so a mod half older than this file still aligns, just without the
+-- lateral correction and with the old zero-gap standoff.
+function M.onPlayerCouplerInfo(cid, tag, nlat, ny, nz, rearOverhang)
   scannerLog('info', "Player coupler info: cid=" .. tostring(cid) .. " tag=" .. tostring(tag)
-    .. " nodePos=(" .. tostring(nx) .. "," .. tostring(ny) .. "," .. tostring(nz) .. ")")
+    .. " lat=" .. tostring(nlat) .. " fwd=" .. tostring(ny) .. " z=" .. tostring(nz)
+    .. " rearOverhang=" .. tostring(rearOverhang))
   if cid == -1 then
     _pendingPlayerInfo = false
   else
-    _pendingPlayerInfo = {cid = cid, tag = tag, nx = nx or 0, ny = ny or 0, nz = nz or 0}
+    _pendingPlayerInfo = {cid = cid, tag = tag, nlat = nlat or 0, ny = ny or 0, nz = nz or 0,
+                          rearOverhang = rearOverhang or 0}
   end
   _tryCompleteCouplerSetup()
 end
 
--- Called from target vehicle VM with coupler info + coupler world pos + target center pos
-function M.onTargetCouplerForAlign(tid, cid, cx, cy, cz, ox, oy, oz, tag)
-  scannerLog('info', "Target coupler info: tid=" .. tid .. " cid=" .. tostring(cid) .. " tag=" .. tostring(tag))
+-- Called from target vehicle VM with coupler info + coupler world pos + target center pos.
+-- `frontOverhang` (optional, see onPlayerCouplerInfo) is how far the target's body reaches
+-- past its own coupler toward us -- the other half of the align standoff.
+function M.onTargetCouplerForAlign(tid, cid, cx, cy, cz, ox, oy, oz, tag, frontOverhang)
+  scannerLog('info', "Target coupler info: tid=" .. tid .. " cid=" .. tostring(cid)
+    .. " tag=" .. tostring(tag) .. " frontOverhang=" .. tostring(frontOverhang))
   if cid == -1 then
     _pendingTargetInfo = false
   else
-    _pendingTargetInfo = {cid = cid, tag = tag, cx = cx, cy = cy, cz = cz, ox = ox, oy = oy, oz = oz}
+    _pendingTargetInfo = {cid = cid, tag = tag, cx = cx, cy = cy, cz = cz, ox = ox, oy = oy, oz = oz,
+                          frontOverhang = frontOverhang or 0}
   end
   _tryCompleteCouplerSetup()
 end
@@ -1657,7 +1911,22 @@ end
 -- Called from vehicle VM (via queueGameEngineLua) when the player presses L to toggle couplers.
 -- isActive=true means coupler mode was just enabled (visual indicators on);
 -- isActive=false means it was just disabled.
-function M.onCouplerModeChange(isActive)
+--
+-- vehID is filtered against the driven vehicle because EVERY spawned VM runs the telemetry
+-- protocol and wraps its own couplings table. A trailer activating its own auto-coupling is
+-- not the driver pressing L, and announcing it as such is indistinguishable from the real
+-- thing. The id is optional so a mod half older than this file still reports (unfiltered)
+-- rather than going silent -- bng_mod/ is a live junction and the two halves do go out of
+-- step.
+function M.onCouplerModeChange(vehID, isActive)
+  if isActive == nil then
+    -- Old one-argument form: the first parameter is the flag.
+    isActive, vehID = vehID, nil
+  end
+  if vehID then
+    local player = be:getPlayerVehicle(0)
+    if not player or player:getID() ~= vehID then return end
+  end
   if udpSend then
     udpSend:send(isActive and "COUPLER_MODE:ON" or "COUPLER_MODE:OFF")
   end

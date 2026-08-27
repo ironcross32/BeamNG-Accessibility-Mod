@@ -12,7 +12,20 @@ local _airKeySearched = false -- true once we have committed to a result
 
 -- Coupler mode detection: wrap extensions.couplings hooks to notify the GE extension
 -- when the player toggles couplers on/off with the L key.
+--
+-- This local is ONLY a per-tick short-circuit for the retry harness in fillStruct; it is
+-- NOT the guard against double-wrapping. See COUPLER_HOOK_MARK.
 local _couplerHooksWrapped = false
+
+-- The real guard, and it lives on the table being patched rather than in this module.
+-- `extensions.couplings` is the GAME's module: it survives everything that resets our
+-- locals, so a module-local flag cannot protect it. reset() used to clear the local and
+-- re-wrap, which read back the PREVIOUS wrapper and wrapped that -- one layer per re-init,
+-- each layer sending its own notification. Measured in game: a single hook call produced
+-- five "Couplers on" announcements, and the depth grew during one session. Marking the
+-- couplings table itself gives the flag the same lifetime as the function it protects, so
+-- re-init is a no-op while a genuinely fresh vehicle VM (fresh table, no mark) wraps once.
+local COUPLER_HOOK_MARK = "__beamScreenreaderCouplerHookWrapped"
 
 -- Articulation / hydraulic steering: cache of the steering hydraulic cylinders.
 -- Machines like the WL-40 wheel loader steer by bending the frame with a pair of
@@ -328,6 +341,94 @@ local function pushImplementToGE(partName, friendly, cids)
     "if extensions.implementProximity then extensions.implementProximity.onImplementCids(%d, %q, %q, %q) end",
     obj:getID(), tostring(friendly or partName or ""),
     table.concat(sample, ","), table.concat(list, ",")))
+end
+
+-- ==================================================================================================
+--  Ramp hydraulics
+-- ==================================================================================================
+-- What the deck of a ramp machine is actually doing: how far each hydraulic group has travelled
+-- out of its own stroke. Pushed to the GE side, where implementProximity pairs it with the ramp's
+-- live pitch and sends the pair on to the F9+I readout.
+--
+-- Deliberately NOT derived from geometry, which is the obvious route and is wrong in exactly the
+-- pose the readout exists for. Measuring the mouth's displacement from the machine's reference
+-- node along the deck axis is exact at rest and picks the TILT up as false extension, because the
+-- reference node does not lie on the axis the deck rotates about: measured on a us_semi rollback,
+-- a pure 10.2 degree tilt with the bed fully home slid the mouth 0.123 m along its own axis, so
+-- the readout would have announced four inches of extension on a deck that had not moved, growing
+-- with the angle. The ram's own extension carries no such term -- against that same vehicle it
+-- tracked the geometrically measured deck travel to within 1 cm over a 4.88 m stroke.
+--
+-- Grouped by directionElectricsName rather than classified against a word list. That field is the
+-- vehicle's OWN vocabulary -- the very string its Special Vehicle Keys bindings drive -- so the
+-- readout names each control the way the machine's own controls are named, and a machine nobody
+-- has thought about reports correctly with no entry anywhere. Grouped rather than listed because
+-- a deck is run out by a PAIR of rams reporting the same figure to six decimal places, and
+-- reading that out twice is noise.
+local RAMP_HYD_PUSH_S       = 0.2   -- 5 Hz: this feeds a key-press readout, not a tone
+local RAMP_HYD_MIN_TRAVEL_M = 0.02  -- below this a "group" is a linkage detail, not a control
+-- Re-sent on a heartbeat as well as on change, for the reason IMPL_PUSH_HEARTBEAT_S already
+-- records: a latch that lives in THIS VM cannot be cleared by the other side restarting, and
+-- the other side drops what it holds on a GE Lua reload, a vehicle switch or an extension
+-- reload. Change-only, a machine sitting still never volunteers its position again -- measured:
+-- reloading implementProximity emptied its table, the change test here then suppressed every
+-- push, and the deck readout stayed silent until the bed was physically moved. Four seconds of
+-- one small cross-VM call is what makes the handoff self-healing.
+local RAMP_HYD_HEARTBEAT_S  = 4.0
+local _rampHydAt   = -1e9
+local _rampHydSent = -1e9
+local _rampHydLast = nil
+
+local function pushRampHydraulics()
+  if (_implClock - _rampHydAt) < RAMP_HYD_PUSH_S then return end
+  _rampHydAt = _implClock
+  if not (powertrain and powertrain.getDevicesByCategory) then return end
+  local pumps = powertrain.getDevicesByCategory("hydraulicPowerSource")
+  if not pumps then return end
+
+  local order, byName = {}, {}
+  for _, pump in pairs(pumps) do
+    for _, cyl in ipairs(pump.connectedConsumers or {}) do
+      local dirName = cyl.directionElectricsName
+      local pct = tonumber(cyl.currentExtendPercent)
+      local lo, hi = tonumber(cyl.minExtend), tonumber(cyl.maxExtend)
+      -- Steering valves are excluded by the same table the articulation tone uses. A bent
+      -- frame is not a ramp, and it already has a continuous tone of its own.
+      if pct and lo and hi and type(dirName) == "string" and dirName ~= ""
+         and not STEER_VALVE_ELECTRICS[dirName]
+         and (hi - lo) >= RAMP_HYD_MIN_TRAVEL_M then
+        local g = byName[dirName]
+        if not g then
+          g = {n = 0, sum = 0, travel = hi - lo}
+          byName[dirName] = g
+          order[#order + 1] = dirName
+        end
+        g.n, g.sum = g.n + 1, g.sum + pct
+      end
+    end
+  end
+
+  -- Rounded to a whole percent and a centimetre BEFORE the change test. A deck sitting on its
+  -- own springs jitters in the sixth decimal place, so an unrounded comparison would re-push at
+  -- the full rate forever on a machine that is doing nothing.
+  local parts = {}
+  for _, dirName in ipairs(order) do
+    local g = byName[dirName]
+    parts[#parts + 1] = dirName .. ":"
+      .. tostring(math.floor(g.sum / g.n * 100 + 0.5)) .. ":"
+      .. tostring(math.floor(g.travel * 100 + 0.5))
+  end
+  local payload = table.concat(parts, ";")
+  if payload == _rampHydLast and (_implClock - _rampHydSent) < RAMP_HYD_HEARTBEAT_S then
+    return
+  end
+  _rampHydLast, _rampHydSent = payload, _implClock
+  -- An EMPTY payload is pushed too, and is not the same as never pushing: it is this VM saying
+  -- "I have no hydraulics", which is what stops the GE side waiting for an answer that is never
+  -- coming on an ordinary car. Same argument rampGeometry's chunk makes for always replying.
+  obj:queueGameEngineLua(string.format(
+    "if extensions.implementProximity then extensions.implementProximity.onRampHydraulics(%d, %q) end",
+    obj:getID(), payload))
 end
 
 local function resolveImplementNodes()
@@ -920,16 +1021,26 @@ local function tryCouplerHookWrap()
   if _couplerHooksWrapped then return end
   if not extensions or not extensions.couplings then return end
   local couplings = extensions.couplings
+  -- Already wrapped by an earlier incarnation of this module: adopt it, don't re-wrap.
+  if couplings[COUPLER_HOOK_MARK] then
+    _couplerHooksWrapped = true
+    return
+  end
+  -- The vehicle id is carried so the GE side can ignore vehicles the driver is not in.
+  -- Every spawned VM runs this protocol and wraps its own couplings table, so without it
+  -- a trailer's own auto-coupling would announce as though it were the player's.
+  local notify = "if extensions.vehicleScanner then extensions.vehicleScanner.onCouplerModeChange(%s, "
   local origActivate = couplings.onBeamstateActivateAutoCoupling
   couplings.onBeamstateActivateAutoCoupling = function(...)
     if origActivate then origActivate(...) end
-    obj:queueGameEngineLua('if extensions.vehicleScanner then extensions.vehicleScanner.onCouplerModeChange(true) end')
+    obj:queueGameEngineLua(string.format(notify .. "true) end", objectId))
   end
   local origDisable = couplings.onBeamstateDisableAutoLatching
   couplings.onBeamstateDisableAutoLatching = function(...)
     if origDisable then origDisable(...) end
-    obj:queueGameEngineLua('if extensions.vehicleScanner then extensions.vehicleScanner.onCouplerModeChange(false) end')
+    obj:queueGameEngineLua(string.format(notify .. "false) end", objectId))
   end
+  couplings[COUPLER_HOOK_MARK] = true
   _couplerHooksWrapped = true
 end
 
@@ -942,6 +1053,8 @@ end
 local function destroy() end
 
 local function reset()
+  -- Clearing the LOCAL only re-arms the retry harness; the mark on extensions.couplings
+  -- is what stops this becoming a second wrapper. See COUPLER_HOOK_MARK.
   _couplerHooksWrapped = false
   tryCouplerHookWrap()
   -- Parts (and therefore the hydraulic cylinders) can change across a reset.
@@ -1261,6 +1374,11 @@ local function fillStruct(o, dtSim)
   if _implPushCids and (_implClock - _implPushAt) >= IMPL_PUSH_HEARTBEAT_S then
     pcall(pushImplementToGE, nil, _implPushName, _implPushCids)
   end
+  -- Outside the IMPL_TICK_INTERVAL block on purpose: that one is throttled because it
+  -- RAYCASTS, and this walks a handful of already-resolved device tables. It has its own,
+  -- looser throttle and its own change test, so on a machine that is not moving a ram it
+  -- costs one table walk every 200 ms and sends nothing at all.
+  pcall(pushRampHydraulics)
   if _implAccum >= IMPL_TICK_INTERVAL then
     local dt = _implAccum
     _implAccum = 0

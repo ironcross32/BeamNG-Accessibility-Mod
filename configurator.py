@@ -113,6 +113,9 @@ DEFAULT_CONFIG = {
     "implement_proximity_speech": True,
     "dock_tones_enabled": True,
     "dock_tone_dbfs": -18.0,
+    "scan_tones_enabled": True,
+    "cannon_shot_readout": True,
+    "scan_tone_dbfs": -20.0,
     "ai_describer_provider": "gemini",
     # Gemini's key/model keep their original names so existing configs migrate
     # for free; every other provider is namespaced.
@@ -124,6 +127,10 @@ DEFAULT_CONFIG = {
     "ai_describer_openai_reasoning_effort": "low",
     "ai_describer_openai_detail": "auto",
     "ai_describer_disable_ui_toggle": False,
+    # MCP automation server. Must exist in BOTH DEFAULT_CONFIG dicts: a key absent from
+    # this one is dropped on save and never gets a _coerce -- the trap documented above.
+    "mcp_server_enabled": False,
+    "mcp_server_port": 4481,
 }
 
 
@@ -331,6 +338,9 @@ def load_config():
         _coerce("implement_proximity_speech", bool, True)
         _coerce("dock_tones_enabled", bool, True)
         _coerce("dock_tone_dbfs", float, -18.0)
+        _coerce("scan_tones_enabled", bool, True)
+        _coerce("cannon_shot_readout", bool, True)
+        _coerce("scan_tone_dbfs", float, -20.0)
         _coerce("preferred_device_name", str, "")
         _coerce("audio_poll_interval_sec", float, 2.0)
         _coerce("ai_describer_provider", str, "gemini")
@@ -342,6 +352,8 @@ def load_config():
         _coerce("ai_describer_openai_reasoning_effort", str, "low")
         _coerce("ai_describer_openai_detail", str, "auto")
         _coerce("ai_describer_disable_ui_toggle", bool, False)
+        _coerce("mcp_server_enabled", bool, False)
+        _coerce("mcp_server_port", int, 4481)
 
         try:
             import ai_describer
@@ -388,7 +400,7 @@ def load_config():
                     "slip_tone_level_dbfs", "placement_ping_volume_db",
                     "hrtf_front_emphasis_db",
                     "implement_ground_tone_dbfs", "implement_tilt_tone_dbfs",
-                    "dock_tone_dbfs"]:
+                    "dock_tone_dbfs", "scan_tone_dbfs"]:
             db = merged.get(key, -12.0)
             merged[key] = max(-120.0, min(0.0, db))
         merged["hrtf_distance_gain_db"] = max(-24.0, min(6.0, merged.get("hrtf_distance_gain_db", 0.0)))

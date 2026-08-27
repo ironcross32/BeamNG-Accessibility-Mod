@@ -21,6 +21,7 @@ import sys
 import ctypes
 import ctypes.wintypes
 from collections import deque
+from types import SimpleNamespace
 
 import wx
 
@@ -141,6 +142,12 @@ DEFAULT_CONFIG = {
     "implement_proximity_speech": True,
     "dock_tones_enabled": True,
     "dock_tone_dbfs": -18.0,
+    # Terrain sonification scanner (F9 then Space, while the world is live).
+    "scan_tones_enabled": True,
+    "scan_tone_dbfs": -20.0,
+    # Spoken outcome of a shot fired out of the large cannon. No keybind: it announces itself
+    # when the car comes to rest, which is the only moment it has anything to say.
+    "cannon_shot_readout": True,
     "ai_describer_provider": "gemini",
     # Gemini's key/model keep their original names so existing configs migrate
     # for free; every other provider is namespaced.
@@ -152,6 +159,10 @@ DEFAULT_CONFIG = {
     "ai_describer_openai_reasoning_effort": "low",
     "ai_describer_openai_detail": "auto",
     "ai_describer_disable_ui_toggle": False,
+    # MCP automation server. Off by default: it executes arbitrary Lua in the game on
+    # behalf of a local agent, so a shipped build listens on nothing unless asked.
+    "mcp_server_enabled": False,
+    "mcp_server_port": 4481,
 }
 
 # =========================
@@ -160,6 +171,59 @@ DEFAULT_CONFIG = {
 import speech
 
 SPEECH_BUFFER = deque(maxlen=100)
+
+# --- Speech tap (MCP) --------------------------------------------------------------
+# SPEECH_BUFFER only holds text the user can replay, and most mod output passes
+# exclude_from_buffer=True -- so it is not a record of what the mod said. This is.
+# Every say() call lands here, including the ones suppressed during loading (flagged
+# spoken=False), because "the mod correctly stayed quiet" is as worth asserting on as
+# what it announced. Sequence numbers rather than timestamps: a reader needs a cursor
+# with exactly-once semantics, and time.time() ties and skews.
+SPEECH_TAP = deque(maxlen=1000)
+_speech_tap_lock = threading.Lock()  # dedicated; never nested with state_lock
+_speech_tap_seq = 0
+
+
+def _speech_tap_record(text, source, interrupt, excluded, spoken, reason=None):
+    global _speech_tap_seq
+    try:
+        with _speech_tap_lock:
+            _speech_tap_seq += 1
+            SPEECH_TAP.append(
+                {
+                    "seq": _speech_tap_seq,
+                    "t": time.time(),
+                    "text": text,
+                    "source": source,
+                    "interrupt": bool(interrupt),
+                    "excluded": bool(excluded),
+                    "spoken": bool(spoken),
+                    "reason": reason,
+                }
+            )
+    except Exception:
+        pass
+
+
+def get_speech_log(since_seq=None, last_n=50, source=None, contains=None, spoken_only=False):
+    """Read the speech tap. `since_seq` is a cursor; `dropped` says history was lost."""
+    with _speech_tap_lock:
+        entries = list(SPEECH_TAP)
+        newest = _speech_tap_seq
+    oldest = entries[0]["seq"] if entries else 0
+    dropped = bool(since_seq is not None and entries and since_seq < oldest - 1)
+    if since_seq is not None:
+        entries = [e for e in entries if e["seq"] > since_seq]
+    if source:
+        entries = [e for e in entries if e.get("source") == source]
+    if contains:
+        needle = contains.lower()
+        entries = [e for e in entries if needle in (e.get("text") or "").lower()]
+    if spoken_only:
+        entries = [e for e in entries if e.get("spoken")]
+    if last_n:
+        entries = entries[-int(last_n):]
+    return {"entries": entries, "next_seq": newest, "dropped": dropped}
 
 # Loading lifecycle state is driven by the UI's official screen-cover state.
 _loading_active = False
@@ -218,6 +282,7 @@ def say(text: str, interrupt: bool = True, exclude_from_buffer: bool = False, so
         suppress_for_loading = _loading_active or _loading_settling
     if suppress_for_loading and not _command_context and source != "loading_lifecycle":
         logger.info("Suppressed speech during loading: source=%s text=%r", source, t)
+        _speech_tap_record(t, source, interrupt, exclude_from_buffer, False, "loading_suppressed")
         return
 
     if _command_context:
@@ -248,6 +313,7 @@ def say(text: str, interrupt: bool = True, exclude_from_buffer: bool = False, so
     if not exclude_from_buffer:
         SPEECH_BUFFER.append(t)
 
+    _speech_tap_record(t, source, interrupt, exclude_from_buffer, True)
     speech.speak(t, bool(interrupt))
 
 
@@ -500,6 +566,7 @@ def scanner_listener(audio_controller, stop_event):
     global \
         scan_mode_active, \
         coupler_dist_mode, \
+        coupler_run_active, \
         last_scanner_target_name, \
         last_scanner_distance, \
         last_scanner_approach_deg, \
@@ -530,29 +597,48 @@ def scanner_listener(audio_controller, stop_event):
                     text = data.decode("ascii").strip()
                     # Coupler tracking responses
                     if text.startswith("COUPLER_START:"):
-                        tags = text[len("COUPLER_START:") :]
-                        parts_tags = tags.split(",")
+                        # Positional tail, guarded by length: fields 3 and 4 (the gap to
+                        # reverse and how far the teleport was displaced) are optional, so a
+                        # mod half older than this build still reads the two tags.
+                        parts_tags = text[len("COUPLER_START:") :].split(",")
                         ptag = parts_tags[0] if len(parts_tags) > 0 else "unknown"
                         ttag = parts_tags[1] if len(parts_tags) > 1 else "unknown"
-                        say(
-                            f"Aligned. {ptag} and {ttag}. Tracking couplers. Reverse to couple.",
-                            exclude_from_buffer=True,
-                        )
+                        def _tail(idx):
+                            if len(parts_tags) <= idx:
+                                return None
+                            try:
+                                return float(parts_tags[idx])
+                            except ValueError:
+                                return None
+
+                        gap_m = _tail(2)
+                        shifted_m = _tail(3)
+                        msg = f"Aligned. {ptag} and {ttag}."
+                        if gap_m is not None:
+                            gap_v, gap_u = fmt_distance(gap_m)
+                            msg += f" Reverse {gap_v} {gap_u} to couple."
+                        else:
+                            msg += " Tracking couplers. Reverse to couple."
+                        # Bad news only. The align is solicited and already speaks, so a
+                        # clause confirming it worked would be one nobody asked for -- but
+                        # a displacement makes the gap figure above untrue, and silence
+                        # there is how the old build announced a perfect alignment while
+                        # the truck sat 4.6 metres away and a metre off line.
+                        if shifted_m is not None and shifted_m > 0.5:
+                            sh_v, sh_u = fmt_distance(shifted_m)
+                            msg += (
+                                f" Could not park you square, moved {sh_v} {sh_u}."
+                                " Something is in the way."
+                            )
+                        say(msg, exclude_from_buffer=True)
+                        coupler_run_active = True
                         audio_controller.set_coupler_tracking(True)
-                    elif text.startswith("COUPLER_ATTACHED:"):
-                        tags = text[len("COUPLER_ATTACHED:") :]
-                        parts_tags = tags.split(",")
-                        ptag = parts_tags[0] if len(parts_tags) > 0 else "unknown"
-                        ttag = parts_tags[1] if len(parts_tags) > 1 else "unknown"
-                        say(
-                            f"Fifth wheel coupled. {ptag} and {ttag}.",
-                            exclude_from_buffer=True,
-                        )
                     elif text.startswith("COUPLER_FAIL:"):
                         reason = text[len("COUPLER_FAIL:") :]
                         say(reason, exclude_from_buffer=True)
                     elif text == "COUPLER_LOST":
                         say("Coupler tracking lost", exclude_from_buffer=True)
+                        coupler_run_active = False
                         audio_controller.set_coupler_tracking(False)
                     elif text.startswith("COUPLER:"):
                         cparts = text[len("COUPLER:") :].split(",")
@@ -602,6 +688,13 @@ def scanner_listener(audio_controller, stop_event):
                         # Attach monitor detected the trailer is now physically coupled.
                         # Disable coupler distance mode and vehicle scanner.
                         parts_disabled = []
+                        # Unconditional: the homing tone is armed by COUPLER_START, which no
+                        # longer implies the scanner is still on by the time we couple. Left
+                        # inside the scan-mode branch below it could be skipped, and the tone
+                        # would then run for the rest of the session. It now outlives the
+                        # scanner toggle, so this is the only thing that reliably stops it.
+                        coupler_run_active = False
+                        audio_controller.set_coupler_tracking(False)
                         if coupler_dist_mode:
                             coupler_dist_mode = False
                             try:
@@ -626,7 +719,6 @@ def scanner_listener(audio_controller, stop_event):
                             except Exception:
                                 pass
                             audio_controller.set_scan_mode(False)
-                            audio_controller.set_coupler_tracking(False)
                             parts_disabled.append("scanner")
                         msg = "Coupled"
                         if parts_disabled:
@@ -978,6 +1070,28 @@ RAMP_DOCK_SQUARE_DEG = 3.0   # under this a bearing counts as dead ahead
 RAMP_DOCK_HEADING_ZERO_DEG = 0.5
 RAMP_DOCK_TIGHT_M = 0.25     # clearance under this is called tight; <= 0 is "too narrow"
 RAMP_DOCK_PITCH_DEG = 5.0    # ramp inclination worth mentioning at all
+# The deck readout: what the ramp machine you are SITTING IN is doing with its own ramp, as
+# opposed to every other figure in this section, which measures from one machine to another.
+RAMP_SELF_LEVEL_DEG = 1.0    # under this the ramp is called level rather than given a number
+# Above this stroke a hydraulic group is read out as a DISTANCE ("14 of 18 feet") rather than as
+# a percentage. Both are always available; the question is which one a driver can act on. For a
+# deck that runs out five and a half metres the answer is obviously the distance — that is the
+# run-up they are about to drive — while for a tilt ram with half a metre of travel "1 of 2 feet"
+# is a worse way of saying 34 percent, so the short strokes keep the percentage. It is a property
+# of the ram, not of the machine, so nothing here needs to know what vehicle it is on.
+RAMP_SELF_DISTANCE_STROKE_M = 1.0
+# Width margin after a ramp align teleport. Lateral is zero by construction at that moment, so
+# the margin IS the clearance the driver will have. Two bands rather than one because "you have
+# four centimetres a side" and "you are twenty centimetres too wide" want different decisions,
+# and because -1 is the not-measured sentinel and must never be read as a negative clearance.
+RAMP_ALIGN_TIGHT_M = 0.0     # at or below: it will not fit
+RAMP_ALIGN_SNUG_M = 0.10     # ...and above that, but under this, it fits but barely
+# How high the ramp's lip may sit above the ground before it is a wall rather than a ramp. Must
+# match the mod's RAMP_ALIGN_LIP_SAY_M. Measured on a us_semi rollback: 1.30 m home and level,
+# 0.95 m on full tilt alone, 0.15 m with the bed fully out AND tilted — so the deployed and
+# undeployed cases sit either side of this with a wide margin, and the threshold is not
+# balancing anything finely.
+RAMP_ALIGN_LIP_SAY_M = 0.30
 CANNON_READOUT_STALE_S = 1.5
 
 # The approach corridor, and the one thing that decides which QUESTION the ramp instrument is
@@ -1000,6 +1114,17 @@ RAMP_CORRIDOR_EXIT_M = 9.0
 # all. Behind the plane there is no corridor: driving straight ahead does not lead to the
 # mouth from there no matter how well centred you are on its axis.
 RAMP_CORRIDOR_MIN_RANGE_M = 0.5
+
+# Cannon shot outcome (cannonShot.lua). Two numbers and then only what is notable, the rule the
+# ramp cane tap arrived at after the "too much verbiage" play-test. Nothing here confirms that a
+# shot went well; there is no such thing, and the numbers already say what happened.
+CANNON_SHOT_CENTRE_M = 3.0    # at or under this the shot went straight; no lateral number
+# Apex is a fact about every shot, so it earns its place in the utterance only when it is the
+# interesting thing about that shot. A low flat shot has nothing to say about height.
+CANNON_SHOT_APEX_SAY_M = 15.0
+# Below this, two shots went the same distance and saying so is noise. It is deliberately coarse:
+# the point of the comparison is "that change did something", not a measurement.
+CANNON_SHOT_COMPARE_M = 5.0
 
 # Slam gate states -> the audio cue each fires. NONE is deliberately absent: leaving the
 # gate is not itself an event worth marking, and a cue on every exit would fire constantly
@@ -1076,6 +1201,135 @@ def _ramp_acquire(range_m: float, lateral_m: float, prev: bool) -> bool:
         return True
     limit = RAMP_CORRIDOR_EXIT_M if not prev else RAMP_CORRIDOR_ENTER_M
     return abs(lateral_m) > limit
+
+
+def _ramp_align_phrase(payload: str) -> str:
+    """Speak the outcome of a ramp align teleport.
+
+    Pure, and separate from the listener, for the reason every other readout in this file is:
+    the wording and the margin bands are the part worth checking without the game, and
+    ramp_resolve_sim mirrors this rather than the socket loop around it.
+
+    OK carries the target name, the promised nose-to-mouth gap, and the width margin. FAIL
+    carries one clause from the mod, which already names the machine and is already
+    speech-sized -- so it is spoken verbatim, exactly as COUPLER_FAIL is.
+    """
+    if payload.startswith("FAIL,"):
+        return payload[5:].strip()
+    if not payload.startswith("OK,"):
+        return ""
+
+    bits = payload[3:].split(",")
+    target = bits[0].strip() or "ramp"
+
+    def num(i):
+        try:
+            return float(bits[i])
+        except (IndexError, ValueError):
+            return None
+
+    gap, margin, lip = num(1), num(2), num(3)
+    if gap is None:
+        phrase = f"Aligned to {target}"
+    else:
+        val, unit = fmt_distance(gap)
+        phrase = f"Aligned to {target}, {val} {unit} back"
+
+    # How high the ramp's lip is off the ground, and the reason this clause exists: the align
+    # is geometrically perfect against a ramp that has not been deployed, so it will happily
+    # park you twenty feet in front of the back of a truck and say only where you are. First
+    # in the tail because it is the one that stops you driving — a ramp you cannot get onto
+    # makes the width margin beside the point.
+    #
+    # A missing field is silence, not zero. Zero reads as "lip on the ground", which is the
+    # single most reassuring thing this readout can say and would be being said by a mod half
+    # that does not measure it at all.
+    if lip is not None and lip >= RAMP_ALIGN_LIP_SAY_M:
+        lv, lu = fmt_distance(lip)
+        phrase += f", ramp not down, lip {lv} {lu} up"
+
+    # The mod sends the literal NA when it could not measure, which parses to None here and is
+    # spoken as silence -- not as a clearance of zero, which would read as exactly touching both
+    # walls. Only bad news is added: the driver already knows they were aligned, and confirming
+    # it twice is noise.
+    if margin is not None:
+        if margin <= RAMP_ALIGN_TIGHT_M:
+            phrase += ", you do not fit"
+        elif margin < RAMP_ALIGN_SNUG_M:
+            phrase += ", tight"
+    return phrase
+
+
+def _cannon_shot_long_distance(metres: float) -> str:
+    """A cannon shot is hundreds of metres, so this is not fmt_distance.
+
+    fmt_distance is tuned for implement clearances — two decimal places metric, one imperial —
+    and asked for a 300 m shot it says "984.3 feet", which is four syllables of precision nobody
+    can use about a car that bounced. This is the whole-number form the scanner callout already
+    uses for long ranges.
+    """
+    if UNITS_MODE == "imperial":
+        return f"{metres * FEET_PER_M:.0f} feet"
+    return f"{metres:.0f} meters"
+
+
+def _cannon_shot_phrase(shot: dict) -> str:
+    """What happened to the car you just fired. Two numbers, then only what is notable.
+
+    Same doctrine as _dock_phrase_ramp, for the same reason: this fires unprompted, right after
+    a crash, and every clause it adds is one the listener did not ask for. So distance and how
+    far off line it went, always — those two ARE the outcome — and everything else only when it
+    is the interesting thing about this particular shot.
+
+    Nothing in here confirms that a shot went well. There is no such thing as a good shot out of
+    a cannon with no horizontal aim, and a clause saying "on target" would be inventing a target.
+    """
+    # A shot that never came to rest has no distance, and must not be given one. The car is
+    # still falling, still rolling, or wedged somewhere on its roof — reporting where it happened
+    # to be when the timer ran out would state a landing place for a flight that did not land,
+    # which is the one error here the listener has no way to catch.
+    if not shot.get("settled", True):
+        return "Shot did not settle"
+
+    bits = []
+
+    downrange = shot["downrange"]
+    lateral = shot["lateral"]
+
+    # Positive is LEFT: the compass clicks, the scanner bearing, the docking readout and the ramp
+    # tap all agree on that, and cannon_shot_sim.py asserts it in both directions.
+    dist = _cannon_shot_long_distance(abs(downrange))
+    if downrange < 0:
+        # Backwards out of the barrel. Rare, absurd, and exactly the kind of thing worth being
+        # told plainly rather than as an unsigned number that reads like a normal shot.
+        bits.append(f"{dist} backwards")
+    elif abs(lateral) <= CANNON_SHOT_CENTRE_M:
+        bits.append(f"{dist}, straight")
+    else:
+        side = "left" if lateral > 0 else "right"
+        bits.append(f"{dist}, {_cannon_shot_long_distance(abs(lateral))} {side}")
+
+    apex = shot.get("apex", 0.0)
+    if apex >= CANNON_SHOT_APEX_SAY_M:
+        bits.append(f"peaked at {_cannon_shot_long_distance(apex)}")
+
+    # What it stopped next to, when there is something. Silence means open ground, which is the
+    # ordinary case and needs no words.
+    near = shot.get("near_name") or ""
+    if near and shot.get("near_dist", -1.0) >= 0.0:
+        bits.append(f"next to {near}")
+
+    # The comparison against the previous shot is what makes a session-only log worth keeping
+    # without a key to read it back: the answer to "did raising the barrel do anything" arrives
+    # in the announcement of the shot that answered it.
+    prev = shot.get("prev_downrange")
+    if prev is not None:
+        delta = downrange - prev
+        if abs(delta) >= CANNON_SHOT_COMPARE_M:
+            word = "further" if delta > 0 else "shorter"
+            bits.append(f"{_cannon_shot_long_distance(abs(delta))} {word}")
+
+    return ". ".join(bits)
 
 
 def _dock_phrase(dock: dict) -> str:
@@ -1204,6 +1458,160 @@ def _dock_phrase_ramp(dock: dict) -> str:
     return ". ".join(bits)
 
 
+def _parse_ramp_self(payload: str):
+    """The RAMPSELF: line -> the deck state of the machine you are sitting in, or None.
+
+    Wire form is `<pitchDeg>;<name>:<pct>:<strokeCm>;<name>:<pct>:<strokeCm>...`, or the literal
+    NONE when the player's vehicle has no ramp at all. The hydraulic tail is optional and may be
+    empty: a ramp with no rams on it (a fixed dry-van ramp) still has a pitch worth reading, and
+    the mod pushes an empty tail rather than withholding the line.
+
+    Anything unparseable is dropped rather than guessed at. A deck readout is a set of absolute
+    numbers with no sanity check available to the listener, so a half-decoded one is worse than
+    silence — the same reason the mod sends -999 for an unmeasurable pitch instead of 0.
+    """
+    payload = (payload or "").strip()
+    if not payload or payload.upper() == "NONE":
+        return None
+    fields = payload.split(";")
+    # The head is `<pitchDeg>` or `<pitchDeg>,<lipM>`. Parsed with a length guard rather than a
+    # fixed shape, the same optional-tail contract the DOCK: line's entry-gate fields use:
+    # bng_mod/ is a live junction into the game install, so the two halves genuinely do go out
+    # of step, and a mod half that cannot measure the lip should lose that clause rather than
+    # taking the whole readout down.
+    head = fields[0].split(",")
+    try:
+        pitch = float(head[0])
+    except (ValueError, IndexError):
+        return None
+    try:
+        lip = float(head[1])
+    except (ValueError, IndexError):
+        lip = None
+    groups = []
+    for chunk in fields[1:]:
+        if not chunk:
+            continue
+        bits = chunk.split(":")
+        if len(bits) != 3:
+            continue
+        try:
+            groups.append((bits[0], int(bits[1]), int(bits[2]) / 100.0))
+        except ValueError:
+            continue
+    # -999 is the mod's "could not measure" sentinel for both figures. Carried as None so the
+    # phrase drops the clause entirely; rendering it would announce a ramp pointing 999 degrees
+    # into the ground, or a lip a thousand metres underneath one.
+    return {
+        "pitch": None if pitch < -180.0 else pitch,
+        "lip": None if (lip is None or lip < -900.0) else lip,
+        "groups": groups,
+    }
+
+
+def _ramp_hyd_words(name: str) -> str:
+    """A hydraulic group's own electrics name, said out loud.
+
+    Mechanical: underscores and camelCase humps become spaces. Deliberately not a lookup table —
+    this is the string the vehicle's own Special Vehicle Keys bindings are driven by, so speaking
+    it is what lets a machine nobody has thought about report its controls under the names its
+    own key list already uses, with no entry anywhere.
+    """
+    out = []
+    for i, ch in enumerate(name):
+        if ch == "_":
+            out.append(" ")
+        elif ch.isupper() and i > 0 and not name[i - 1].isupper() and name[i - 1] != "_":
+            out.append(" ")
+            out.append(ch.lower())
+        else:
+            out.append(ch.lower())
+    return " ".join("".join(out).split())
+
+
+def _ramp_hyd_strip_namespace(names: list) -> list:
+    """Drop a leading name segment that every group shares.
+
+    A us_semi's rams are upfit_tilt, upfit_extendRetract and upfit_extendRetractFeet, and
+    "upfit" is a namespace rather than a description — three groups into one readout it is six
+    wasted syllables that distinguish nothing.
+
+    Requires TWO or more groups, and that is the whole justification rather than a guard bolted
+    on: a prefix is only identifiable as a namespace by the fact that several names share it. On
+    a machine with a single hydraulic group its first segment may well be the only word that says
+    what the thing does, and stripping it there would be inventing an allowlist by the back door.
+    """
+    if len(names) < 2:
+        return names
+    heads = {n.split("_")[0] for n in names}
+    if len(heads) != 1:
+        return names
+    head = next(iter(heads))
+    stripped = [n[len(head) + 1:] for n in names]
+    # A group whose entire name IS the shared prefix has nothing left to be called.
+    if any(not s for s in stripped):
+        return names
+    return stripped
+
+
+def _ramp_self_phrase(state: dict) -> str:
+    """The deck readout: what your own ramp machine's ramp is doing.
+
+    Everything else the alignment key can say measures from one machine to another. This is the
+    one answer about the machine under you, and it exists because F9+I had nothing at all to say
+    from the seat of a hauler — the cannon branch used to claim that key by mistake, and removing
+    that left the correct answer ("docking instrument is off") and no useful one.
+
+    It reads out unconditionally rather than following the ramp tap's bad-news-only rule. That
+    rule is about clauses nobody asked for, appended to an utterance that was already going to
+    happen; these two numbers ARE the question being asked, and a readout that stayed silent
+    because the deck was level would be indistinguishable from a broken one.
+    """
+    bits = []
+
+    pitch = state.get("pitch")
+    if pitch is None:
+        # No angle available. Named rather than skipped: this readout is mostly the angle, and
+        # an utterance that quietly drops it reads as a level ramp.
+        bits.append("Ramp angle unavailable")
+    elif abs(pitch) < RAMP_SELF_LEVEL_DEG:
+        bits.append("Ramp level")
+    else:
+        bits.append(
+            f"Ramp {'up' if pitch > 0 else 'down'} {abs(pitch):.0f} degrees"
+        )
+
+    # Whether a car can actually get onto it, which is the question the other two numbers only
+    # answer between them: on a rollback the tilt alone brings the lip from 1.30 m to 0.95 m and
+    # it is running the BED out that does the rest, so neither figure alone is the answer.
+    # Stated in BOTH directions rather than as bad news only — this readout is solicited, so
+    # silence here would be indistinguishable from a mod half that cannot measure it, and
+    # "lip on the ground" is precisely the confirmation somebody presses the key for.
+    lip = state.get("lip")
+    if lip is not None:
+        if lip < RAMP_ALIGN_LIP_SAY_M:
+            bits.append("Lip on the ground")
+        else:
+            lv, lu = fmt_distance(lip)
+            bits.append(f"Lip {lv} {lu} up")
+
+    groups = state.get("groups") or []
+    labels = _ramp_hyd_strip_namespace([g[0] for g in groups])
+    for (_name, pct, stroke), label in zip(groups, labels):
+        words = _ramp_hyd_words(label)
+        if stroke >= RAMP_SELF_DISTANCE_STROKE_M:
+            # "14 of 18 feet", not "14 feet, 78 percent". One figure per group: the percentage
+            # and the distance are the same fact twice, and the unit is spoken once because
+            # both halves of the fraction are in it.
+            out_v, out_u = fmt_distance(stroke * pct / 100.0)
+            full_v, _full_u = fmt_distance(stroke)
+            bits.append(f"{words} {out_v} of {full_v} {out_u}")
+        else:
+            bits.append(f"{words} {pct} percent")
+
+    return ". ".join(bits)
+
+
 def _dock_phrase_impl(dock: dict) -> str:
     """The cane tap: the whole docking picture in one utterance.
 
@@ -1258,6 +1666,258 @@ def _dock_phrase_impl(dock: dict) -> str:
     return ". ".join(bits)
 
 
+def cannon_shot_listener(stop_event):
+    """Listens for shot outcomes from cannonShot.lua and speaks them.
+
+    One short line per shot, arriving when the car comes to rest — so there is no polling, no
+    state machine and no keybind. The mod owns the tracking because only it can see the firing
+    axis and the ramp's live pitch; this owns every word.
+
+    Takes no audio_controller: the outcome is speech and nothing else. There is no tone here on
+    purpose — the crash has just finished making a great deal of noise, and an earcon in front of
+    the sentence would be one more thing to hear rather than one less.
+    """
+    global last_cannon_shot, cannon_shot_session
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", CANNON_SHOT_LISTEN_PORT))
+        sock.settimeout(0.2)
+        logger.info(f"Cannon shot listener started on port {CANNON_SHOT_LISTEN_PORT}")
+        while not stop_event.is_set():
+            try:
+                data, _addr = sock.recvfrom(2048)
+                text = data.decode("utf-8", errors="ignore").strip()
+                if not text.startswith("SHOT:"):
+                    continue
+                parts = text[5:].split(",")
+                if len(parts) < 11:
+                    continue
+                shot = {
+                    "downrange": float(parts[0]),
+                    "lateral": float(parts[1]),
+                    "apex": float(parts[2]),
+                    "flight": float(parts[3]),
+                    "ramp_pitch": float(parts[4]),
+                    "strength": int(parts[5]),
+                    "settled": parts[6].strip() == "1",
+                    "index": int(parts[7]),
+                    "near_dist": float(parts[8]),
+                    "near_name": parts[9].strip(),
+                    "vehicle": parts[10].strip(),
+                    "stamp": time.monotonic(),
+                }
+                # The comparison clause is against the shot before this one, which the mod
+                # tracks because it is the half that knows the session's shot count. Read it
+                # here rather than trusting our own list: a beamtel restart mid-session leaves
+                # Python with an empty history and the mod with the real one.
+                if len(parts) >= 12:
+                    prev = float(parts[11])
+                    if prev > -1e8:
+                        shot["prev_downrange"] = prev
+                elif cannon_shot_session:
+                    shot["prev_downrange"] = cannon_shot_session[-1]["downrange"]
+
+                with state_lock:
+                    cannon_shot_session.append(shot)
+                    last_cannon_shot = shot
+
+                logger.info(
+                    "Cannon shot %d: %.1f m downrange, %.1f m lateral, apex %.1f m, "
+                    "%.1f s, ramp pitch %.1f deg, strength %d%s",
+                    shot["index"], shot["downrange"], shot["lateral"], shot["apex"],
+                    shot["flight"], shot["ramp_pitch"], shot["strength"],
+                    "" if shot["settled"] else " (never settled)",
+                )
+                # Unsolicited, so it goes in the review buffer — unlike every keypress readout,
+                # this is exactly the kind of thing you might miss and want to hear again.
+                if announce_cannon_shot:
+                    say(_cannon_shot_phrase(shot))
+            except socket.timeout:
+                continue
+            except (ValueError, IndexError) as e:
+                logger.warning(f"Malformed cannon shot packet: {e}")
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Cannon shot listener socket error.")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+        logger.info("Cannon shot listener stopped.")
+
+
+def trailer_angle_listener(stop_event):
+    """Listens for trailer articulation angles from trailerAngle.lua.
+
+    Writes state only. The tone is driven from the telemetry loop's existing handoff to
+    audio (see the update_telemetry_state call), so this thread never touches the audio
+    controller — which is what keeps the age-out in one place: a value that stops arriving
+    has to expire wherever it is READ, not wherever it was written, because nothing runs
+    here to notice the silence.
+    """
+    global last_trailer_deg, last_trailer_id, last_trailer_name, last_trailer_stamp
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", TRAILER_ANGLE_LISTEN_PORT))
+        sock.settimeout(0.2)
+        logger.info(f"Trailer angle listener started on port {TRAILER_ANGLE_LISTEN_PORT}")
+        while not stop_event.is_set():
+            try:
+                data, _addr = sock.recvfrom(1024)
+                text = data.decode("utf-8", errors="ignore").strip()
+                if not text.startswith("TRAILER:"):
+                    continue
+                body = text[8:]
+
+                # CLEAR is uncoupling, a vehicle switch, or a frame the mod could not measure.
+                # Distinct from the age-out on purpose: this one is the mod telling us, so it
+                # takes effect immediately rather than a second later.
+                if body == "CLEAR":
+                    with state_lock:
+                        if last_trailer_id is not None:
+                            logger.info("Trailer uncoupled (%s).", last_trailer_name or "?")
+                        last_trailer_deg = 0.0
+                        last_trailer_id = None
+                        last_trailer_name = ""
+                        last_trailer_stamp = 0.0
+                    continue
+
+                parts = body.split(",")
+                if len(parts) < 2:
+                    continue
+                deg = float(parts[0])
+                tid = int(parts[1])
+                # Positional tail, guarded — the same optional-field contract the scanner
+                # packet's fourth field uses, because bng_mod/ is a live junction and the two
+                # halves genuinely do go out of step.
+                name = parts[2].strip() if len(parts) >= 3 else "trailer"
+
+                with state_lock:
+                    if tid != last_trailer_id:
+                        logger.info("Trailer coupled: %s (id %d).", name, tid)
+                    last_trailer_deg = deg
+                    last_trailer_id = tid
+                    last_trailer_name = name
+                    last_trailer_stamp = time.monotonic()
+            except socket.timeout:
+                continue
+            except (ValueError, IndexError) as e:
+                logger.warning(f"Malformed trailer angle packet: {e}")
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Trailer angle listener socket error.")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+        logger.info("Trailer angle listener stopped.")
+
+
+def _trailer_artic_norm():
+    """The trailer angle on the WL-40's normalised -1..1 scale, or 0.0 for silence.
+
+    Returns 0.0 — not a sentinel — when nothing is coupled or the feed has gone stale,
+    because 0.0 is what the tone already reads as "in line": the deadzone gate then
+    silences it through exactly the same path an ordinary car takes, envelope and all.
+    A sentinel would need its own branch in the callback to mean the same thing.
+
+    Deliberately takes NO lock. It is called from the telemetry loop's handoff to audio,
+    which sits outside that loop's `with state_lock:` and reads every other value the same
+    way; the globals here are a float, an int and a str, each written in one bound
+    assignment, so a torn read is not possible and the worst case is a value one packet
+    old — which the 20 Hz feed replaces before the tone's own smoothing could resolve it.
+    """
+    if last_trailer_id is None or last_trailer_stamp <= 0.0:
+        return 0.0
+    if (time.monotonic() - last_trailer_stamp) > TRAILER_STALE_SEC:
+        return 0.0
+    return max(-1.0, min(1.0, last_trailer_deg / TRAILER_FULL_DEG))
+
+
+def terrain_scan_listener(audio_controller, stop_event):
+    """Listens for terrain scan snapshots from terrainScanner.lua and renders them.
+
+    The synthesis runs HERE, on this thread, not in the audio callback — see render_scan.
+    A snapshot is one datagram of roughly six kilobytes, which is why the buffer is 65535
+    and not the 1024/2048 the other listeners use: a short read here would fail as a
+    truncated scan, i.e. as a landscape that stops halfway, rather than as an error.
+    """
+    global _last_scan_reply_ts
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", TERRAIN_SCAN_LISTEN_PORT))
+        sock.settimeout(0.2)
+        logger.info(f"Terrain scan listener started on port {TERRAIN_SCAN_LISTEN_PORT}")
+        while not stop_event.is_set():
+            try:
+                data, _addr = sock.recvfrom(65535)
+                text = data.decode("utf-8", errors="ignore").strip()
+                if not text:
+                    continue
+                lines = text.split("\n")
+                head = lines[0].split(",")
+                _last_scan_reply_ts = time.time()
+                if head[0] == "FAIL":
+                    say(
+                        f"Scan failed. {head[1] if len(head) > 1 else 'unknown'}",
+                        exclude_from_buffer=True,
+                    )
+                    continue
+                if head[0] != "SCAN" or len(head) < 6:
+                    continue
+                reach = float(head[4])
+                samples = []
+                objects = []
+                for ln in lines[1:]:
+                    if ln == "END":
+                        break
+                    parts = ln.split(",")
+                    if parts[0] == "S" and len(parts) >= 3:
+                        bearing = float(parts[1])
+                        cells = parts[2:]
+                        # Range is derived from the cell's INDEX against the reach the mod
+                        # reported, not sent per cell. Sending it would triple the packet to
+                        # restate something both ends can compute, and would let the two
+                        # disagree about the time axis.
+                        denom = max(1, len(cells) - 1)
+                        for i, cell in enumerate(cells):
+                            rng = (i / denom) * reach
+                            if cell == "~":
+                                # No surface. Not zero — zero is level ground.
+                                samples.append((bearing, rng, None, None))
+                            elif "_" in cell:
+                                dz, depth = cell.split("_", 1)
+                                samples.append((bearing, rng, float(dz), float(depth)))
+                            else:
+                                samples.append((bearing, rng, float(cell), None))
+                    elif parts[0] == "O" and len(parts) >= 4:
+                        objects.append(
+                            (float(parts[1]), float(parts[2]), float(parts[3]))
+                        )
+                audio_controller.render_and_play_scan(samples, objects, reach)
+            except socket.timeout:
+                continue
+            except (ValueError, IndexError) as e:
+                logger.warning(f"Malformed terrain scan packet: {e}")
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Terrain scan listener socket error.")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+        logger.info("Terrain scan listener stopped.")
+
+
 def implement_listener(audio_controller, stop_event):
     """Listens for UDP packets from implementProximity.lua and speaks approach/leave events.
 
@@ -1265,6 +1925,7 @@ def implement_listener(audio_controller, stop_event):
     tick to tick in a crowded yard, and narrating all of them would be unusable.
     """
     global _implement_word_current, last_dock, last_dock_fail, cannon_active, last_dock_name
+    global last_ramp_self
     global last_dock_mode, cannon_kind, last_cannon_aim
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -1360,6 +2021,12 @@ def implement_listener(audio_controller, stop_event):
                     audio_controller.clear_dock_target()
                     continue
 
+                if text.startswith("RAMPALIGN:"):
+                    phrase = _ramp_align_phrase(text[len("RAMPALIGN:") :])
+                    if phrase:
+                        say(phrase, exclude_from_buffer=True)
+                    continue
+
                 if text.startswith("CANNON:"):
                     # Which cannon is being driven. "1" is the pre-Old-Cannon spelling for
                     # the Large Cannon and remains accepted across a live mod/app version skew.
@@ -1378,6 +2045,16 @@ def implement_listener(audio_controller, stop_event):
                             last_cannon_aim = None
                     if kind != "OLD":
                         audio_controller.clear_cannon_aim()
+                    continue
+
+                if text.startswith("RAMPSELF:"):
+                    # Your own machine's deck. Sent on change only, so this is a latch and not
+                    # a stream: what lands here stays true until the mod says otherwise, which
+                    # is exactly what a key-press readout needs. NONE clears it, and that
+                    # matters — without it, climbing out of a hauler into a car would leave the
+                    # alignment key reading out a deck that is no longer under you.
+                    with state_lock:
+                        last_ramp_self = _parse_ramp_self(text[len("RAMPSELF:") :])
                     continue
 
                 if text.startswith("CANNONAIM:"):
@@ -1696,6 +2373,27 @@ def _send_implement_cmd(command):
         cmd_sock.close()
     except Exception as e:
         logger.error(f"Failed to send implement proximity command via UDP: {e}")
+
+
+def _watch_scan_reply(before, timeout_s=1.5):
+    """Speak only if the scan never comes back. `before` must be sampled by the CALLER
+    before the command goes out: sampling it in here races the reply, and a scan that
+    answered inside that window would be announced as a failure."""
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        if _last_scan_reply_ts != before:
+            return
+        time.sleep(0.1)
+    say("No scan. Terrain scanner not responding", exclude_from_buffer=True)
+
+
+def _send_scan_cmd(command):
+    try:
+        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        cmd_sock.sendto(command.encode("utf-8"), ("127.0.0.1", TERRAIN_SCAN_CMD_PORT))
+        cmd_sock.close()
+    except Exception as e:
+        logger.error(f"Failed to send terrain scan command via UDP: {e}")
 
 
 def _send_scanner_cmd(command):
@@ -2197,6 +2895,84 @@ def vehicle_bindings_listener(stop_event):
         logger.info("Vehicle bindings listener stopped.")
 
 
+def environment_listener(stop_event):
+    """Listens for environment rows from environmentAccessible.lua.
+
+    Silent like the bindings listener: rows are only ever spoken when the user
+    opens the browser (F9 then N) or edits a value from inside it.
+    """
+    global _env_rows, _env_level, _env_can_change, _env_building, _env_unavailable
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", ENV_LISTEN_PORT))
+        sock.settimeout(0.2)
+        logger.info(f"Environment listener started on port {ENV_LISTEN_PORT}")
+
+        while not stop_event.is_set():
+            try:
+                data, _addr = sock.recvfrom(2048)
+                text = data.decode("utf-8", errors="ignore").strip()
+                if not text:
+                    continue
+
+                if text.startswith("ENV_BEGIN:"):
+                    # ENV_BEGIN:<count>;level=<id>;canChange=<0|1>
+                    _env_building = []
+                    _env_unavailable = ""
+                    head = _parse_env_fields(text[len("ENV_BEGIN:") :])
+                    _env_level = head.get("level", "")
+                    _env_can_change = head.get("canChange", "1") == "1"
+                    continue
+
+                if text.startswith("ENV:"):
+                    if _env_building is None:
+                        continue
+                    row = _parse_env_fields(text[len("ENV:") :])
+                    if row.get("key"):
+                        _env_building.append(row)
+                    continue
+
+                if text == "ENV_END":
+                    # Swapped in whole, so a browser opened mid-push never sees a
+                    # torn list.
+                    if _env_building is not None:
+                        _env_rows = _env_building
+                        _env_building = None
+                        _env_notify_refresh()
+                    continue
+
+                if text.startswith("ENV_UNAVAILABLE:"):
+                    _env_rows = []
+                    _env_building = None
+                    _env_unavailable = text[len("ENV_UNAVAILABLE:") :].strip()
+                    continue
+
+                if text.startswith("ENV_ERROR:"):
+                    # A refusal is the one environment message that speaks on its
+                    # own: it is always the direct answer to a key the user just
+                    # pressed, and staying quiet would read as the key doing
+                    # nothing.
+                    reason = text[len("ENV_ERROR:") :].strip()
+                    logger.warning(f"Environment change refused: {reason}")
+                    say(reason or "Environment change refused",
+                        exclude_from_buffer=True)
+                    continue
+
+            except socket.timeout:
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Environment listener socket error.")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+        logger.info("Environment listener stopped.")
+
+
 def slot_listener(stop_event):
     """Listens for SLOTS: messages from vehicleSlots.lua and updates _vehicle_slots."""
     global _vehicle_slots, _selected_slots, _target_slot
@@ -2470,6 +3246,27 @@ last_implement_lift = 0.0  # m the machine has been jacked up off its wheels
 last_implement_activity = 0.0  # 0..1, drives the tone fade gate
 last_articulation_deg = 0.0  # degrees of frame articulation, positive = LEFT
 
+# Trailer articulation — the yaw between the driven vehicle and whatever is hooked to it,
+# written by trailer_angle_listener under state_lock. Same quantity as last_articulation_deg
+# with the hinge moved to the coupler, and it drives the same tone: see TRAILER_FULL_DEG.
+#
+# The angle is a live reading and NOT a latch, so it has to expire. The mod sends an explicit
+# TRAILER:CLEAR on uncoupling, which is the normal way this goes quiet — but a mod/Python
+# version skew, a game exit or a crashed extension all end the feed with the last angle still
+# standing, and a jackknife tone that stays on because nothing arrived to turn it off is the
+# worst failure this feature has. Hence the stamp and TRAILER_STALE_SEC.
+last_trailer_deg = 0.0  # degrees between vehicle and trailer, positive = LEFT
+last_trailer_id = None  # game object id of the trailer, or None when nothing is coupled
+last_trailer_name = ""
+last_trailer_stamp = 0.0  # time.monotonic() of the last packet; 0.0 = never
+# Full scale for the tone. Feeding the WL-40's normalised -1..1 scale means this is the angle
+# at which the pitch pins at its top note. 45 deg puts the existing 0.05 deadzone at about 2.3
+# deg of slack — the "in line, stay silent" band — and reaches full pitch around 38 deg. Past
+# that it clamps, which is the honest answer: you have already jackknifed. MUST match audio.py's
+# TRAILER_FULL_DEG; trailer_angle_sim.lua greps both.
+TRAILER_FULL_DEG = 45.0
+TRAILER_STALE_SEC = 1.0  # no packet for this long and the tone goes silent
+
 # Expanded Telemetry
 last_clutch_temp = 0.0
 last_g_lat = 0.0
@@ -2534,6 +3331,11 @@ last_gear_byte, last_gear_str = None, None
 pedal_tones_active = False
 scan_mode_active = False
 coupler_dist_mode = False
+# True between COUPLER_START and the run ending (coupled, target lost, vehicle switch).
+# The scanner toggle must not end a coupling you are halfway through -- see section 2d
+# of vehicleScanner.lua. Lua keeps sending COUPLER: packets with the scanner off, so
+# clearing the tone here would silence the instrument while its feed was still live.
+coupler_run_active = False
 obstacle_mode_active = False
 road_mode_active = False
 _command_context = False  # True only while processing an F9/F10 command keystroke
@@ -2639,9 +3441,154 @@ scanner_distance_callout_interval = 10
 # Loader implement proximity speech (applied via _apply_live_config). The tones themselves
 # are configured inside audio.py's apply_config; only the speech gate lives here.
 announce_implement_proximity = True
+announce_cannon_shot = True
 # "Bucket" / "Forks" / "Grapple" once the mod reports one, else "" for every other vehicle.
 # Read by toggle_scan_mode, which needs to say which end of the machine it is aiming from.
 _implement_word_current = ""
+
+# When the terrain scanner last answered. The scan speaks nothing on success — the reference
+# ping IS the acknowledgement — so this is the only way to tell "no reply" from "playing".
+_last_scan_reply_ts = 0.0
+
+# When telemetry last arrived on 4444. That feed comes from the vehicle VM's own protocol,
+# so it flows only while a level is loaded with a vehicle in it — which is exactly the
+# condition under which a terrain scan means anything, and exactly the condition under which
+# the UI has no context action to offer, since both screens that DO offer one (the freeroam
+# wizard and the configurator) are pre-level. It is driven by physics, so it also stops while
+# the game is paused; a scan is declined there, which is the conservative way round.
+_last_telemetry_ts = 0.0
+WORLD_ACTIVE_TELEMETRY_S = 2.0
+
+
+def _world_is_active():
+    """Is there a world to scan, as opposed to a menu to press a button in?"""
+    return (time.time() - _last_telemetry_ts) < WORLD_ACTIVE_TELEMETRY_S
+
+
+def _mcp_snapshot_state(sections=None):
+    """Flat snapshot of live state for the MCP server.
+
+    Everything is copied out under the lock and returned; no I/O, no say(), no nested
+    lock while held. state_lock is a plain non-reentrant Lock that the telemetry loop
+    already takes, so anything slower than a few reads here would stall the feed.
+    """
+    want = set(sections) if sections else None
+
+    def on(name):
+        return want is None or name in want
+
+    out = {}
+    with state_lock:
+        if on("telemetry"):
+            out["telemetry"] = {
+                "speed_ms": last_speed_ms,
+                "rpm": last_rpm,
+                "rpm_max": last_rpm_max,
+                "gear": last_gear_str,
+                "fuel": last_fuel,
+                "turbo": last_turbo,
+                "engine_temp": last_engtemp,
+                "oil_temp": last_oiltemp,
+                "oil_pressure": last_oil_pressure,
+                "throttle": last_throttle,
+                "brake": last_brake,
+                "clutch": last_clutch,
+                "steering": last_steering,
+                "actual_steering": last_actual_steering,
+                "heading": last_heading,
+                "ground_speed_ms": last_ground_speed_ms,
+            }
+        if on("position"):
+            out["position"] = {
+                "x": last_pos_x,
+                "y": last_pos_y,
+                "z": last_pos_z,
+                "yaw_rad": last_yaw_rad,
+                "roll_rad": last_roll_rad,
+                "pitch_rad": last_pitch_rad,
+            }
+        if on("implement"):
+            out["implement"] = {
+                "flags": last_implement_flags,
+                "edge_height_m": last_implement_edge_height,
+                "min_clearance_m": last_implement_min_clearance,
+                "tilt_deg": last_implement_tilt_deg,
+                "tilt_percent": last_implement_tilt_percent,
+                "lift_m": last_implement_lift,
+                "activity": last_implement_activity,
+                "articulation_deg": last_articulation_deg,
+            }
+        if on("trailer"):
+            # Both the raw angle and the normalised value that actually reaches the tone,
+            # because "the number is right but it sounds wrong" and "the number is wrong"
+            # are the two failure modes here and only the pair separates them.
+            out["trailer"] = {
+                "coupled": last_trailer_id is not None,
+                "id": last_trailer_id,
+                "name": last_trailer_name,
+                "angle_deg": last_trailer_deg,
+                "artic_norm": _trailer_artic_norm(),
+                "age_s": (
+                    (time.monotonic() - last_trailer_stamp)
+                    if last_trailer_stamp > 0.0
+                    else None
+                ),
+            }
+        if on("dock"):
+            out["dock"] = {
+                "mode_active": dock_mode_active,
+                "last_dock": last_dock,
+                "last_fail": last_dock_fail,
+                "mode": last_dock_mode,
+                "name": last_dock_name,
+            }
+        if on("cannon"):
+            out["cannon"] = {
+                "active": cannon_active,
+                "kind": cannon_kind,
+                "aim": last_cannon_aim,
+                "last_shot": last_cannon_shot,
+                "session_shots": len(cannon_shot_session or []),
+            }
+        if on("scanner"):
+            dist = last_scanner_distance
+            out["scanner"] = {
+                "target_name": last_scanner_target_name,
+                "distance_m": None if dist == float("inf") else dist,
+                "bearing_deg": last_scanner_bearing,
+                "approach_deg": last_scanner_approach_deg,
+                "reference_reversed": scanner_ref_reversed,
+            }
+        if on("modes"):
+            out["modes"] = {
+                "scan": scan_mode_active,
+                "coupler_distance": coupler_dist_mode,
+                "obstacle": obstacle_mode_active,
+                "road": road_mode_active,
+                "dock": dock_mode_active,
+            }
+        if on("liveness"):
+            # _last_telemetry_ts starts at 0, so an age measured against it before the
+            # first packet is the age of the epoch -- a plausible-looking number that
+            # means nothing. Report "never" as null instead.
+            ever = _last_telemetry_ts > 0
+            out["liveness"] = {
+                "world_active": ever
+                and (time.time() - _last_telemetry_ts) < WORLD_ACTIVE_TELEMETRY_S,
+                "seconds_since_telemetry": (
+                    round(time.time() - _last_telemetry_ts, 2) if ever else None
+                ),
+                "telemetry_ever_seen": ever,
+                "world_active_threshold_s": WORLD_ACTIVE_TELEMETRY_S,
+            }
+    if on("slots"):
+        with _slots_lock:
+            out["slots"] = {
+                "vehicles": {k: dict(v) for k, v in _vehicle_slots.items()},
+                "selected": sorted(_selected_slots),
+                "target": _target_slot,
+            }
+    return out
 
 # Docking instrument. dock_mode_active is the user-facing toggle; last_dock is the most
 # recent readout from the mod, or None when there is nothing in range. Written by
@@ -2656,6 +3603,10 @@ last_dock_fail = None
 # which uses it to answer the question you actually have at that point.
 cannon_active = False
 cannon_kind = "NONE"
+# The deck state of the ramp machine being driven, or None when it has no ramp. A fact about
+# your own vehicle rather than about anything you are lining up with, which is why it is latched
+# beside cannon_active and not inside the docking state above.
+last_ramp_self = None
 # Old Cannon live barrel/target solution. The range sentinel is negative when no scanner
 # target is selected, while elevation remains valid for the on-demand angle readout.
 last_cannon_aim = None
@@ -2670,6 +3621,14 @@ last_dock_mode = None
 # for the same reason: cleared on DOCKCLEAR it would re-announce every time the feed's edge
 # was crossed, which on a ramp approach is several times a minute.
 last_dock_name = None
+
+# Cannon shot outcomes. Written by cannon_shot_listener under state_lock; nothing else writes
+# them. Kept in memory only and never persisted: the useful comparison is against the shot you
+# fired a minute ago, at settings you still remember, and a file would outlive that context
+# without carrying it. The mod holds the authoritative session count, so a beamtel restart
+# mid-session leaves this list short but the readout still correct.
+last_cannon_shot = None
+cannon_shot_session = []
 
 # Monotonic timestamp of the last vehicle-switch announcement. The camera
 # compass listener checks this and skips its own callout briefly afterwards
@@ -2726,6 +3685,15 @@ clickspot_last_hover_id = -1
 # Vehicle-Specific Bindings State
 # Rebuilt silently on every vehicle load — nothing here is ever announced; the
 # list only becomes audible when the user opens the browser with F9 then B.
+# Environment browser state (environmentAccessible.lua, F9 then N). Rows are
+# dicts of the named fields the mod sends, kept raw so a field added on the Lua
+# side needs no parser change here.
+_env_rows = []
+_env_level = ""
+_env_can_change = True
+_env_building = None  # accumulator between ENV_BEGIN and ENV_END
+_env_unavailable = ""
+
 _vehicle_bindings_list = []  # list of (cache_index, line)
 _vehicle_bindings_vehicle = ""
 _vehicle_bindings_building = None  # accumulator between BEGIN and END
@@ -2737,6 +3705,7 @@ _vbrowser_index = 0
 _vbrowser_hooks = []
 _vbrowser_active = False
 _vbrowser_on_enter = None
+_vbrowser_on_adjust = None
 _vbrowser_entry_data = []
 
 audio_controller_ref = None
@@ -2984,6 +3953,7 @@ _F9_HELP = {
     ("m", False, False, False): "Damage report",
     ("s", True, False, False): "Toggle status mode",
     ("b", False, False, False): "Browse vehicle bindings",
+    ("n", False, False, False): "Browse environment settings",
     ("b", True, False, False): "Toggle buffer mode",
     ("c", True, False, False): "Toggle pedal tones",
     ("v", True, False, False): "Toggle vehicle scanner",
@@ -2992,7 +3962,10 @@ _F9_HELP = {
         False,
         True,
         False,
-    ): "Align to trailer coupler, start coupler tracking, and start attach monitor",
+    ): (
+        "Align to a ramp when the docking instrument is on, otherwise to a trailer "
+        "coupler, starting coupler tracking and the attach monitor"
+    ),
     ("o", True, False, False): "Toggle obstacle detection",
     ("r", True, False, False): "Toggle road detection",
     ("tab", False, False, False): "Next scanner target",
@@ -3013,7 +3986,7 @@ _F9_HELP = {
     ("h", False, False, False): "Speak heading",
     ("p", False, False, False): "Speak air pressure",
     ("u", False, False, False): "Switch between imperial and metric",
-    ("space", False, False, False): "Activate context action",
+    ("space", False, False, False): "Scan terrain, or activate the on-screen control in a menu",
     ("n", True, False, False): "Toggle accessible node grabber",
     ("c", True, True, False): "Toggle clickspot detection",
     ("c", True, True, True): "Browse clickspots",
@@ -3182,6 +4155,27 @@ STATUS_METRICS = [
             ),
         ),
         "isAvailable": lambda: bool(int(last_implement_flags) & IMPL_FLAG_ARTIC_VALID),
+    },
+    {
+        # The same quantity as Frame Articulation with the hinge at the coupler, and worth
+        # having as a number and not only as a tone: the tone says how far and which way, but
+        # confirming WHICH trailer the mod picked on a rig hooked at both ends is a question
+        # only a name answers. Availability is the live trailer id rather than the angle,
+        # since 0 degrees is a perfectly ordinary reading here — it means correctly in line.
+        "label": "Trailer Angle",
+        "getValue": lambda: (
+            f"{abs(last_trailer_deg):.0f}",
+            "degrees "
+            + (
+                "in line"
+                if abs(last_trailer_deg) < 1.0
+                else ("left" if last_trailer_deg > 0 else "right")
+            )
+            + (f", {last_trailer_name}" if last_trailer_name else ""),
+        ),
+        "isAvailable": lambda: last_trailer_id is not None
+        and last_trailer_stamp > 0.0
+        and (time.monotonic() - last_trailer_stamp) <= TRAILER_STALE_SEC,
     },
     # {'label': 'Tire Temps (FL, FR, RL, RR)', 'getValue': lambda: (f"{fmt_temp_c_or_f(last_tire_temp_fl)[0]}, {fmt_temp_c_or_f(last_tire_temp_fr)[0]}, {fmt_temp_c_or_f(last_tire_temp_rl)[0]}, {fmt_temp_c_or_f(last_tire_temp_rr)[0]}", "F" if UNITS_MODE == 'imperial' else "C"), 'isAvailable': lambda: protocol_mode == 'extended'},
     # {'label': 'Brake Temps (FL, FR, RL, RR)', 'getValue': lambda: (f"{fmt_temp_c_or_f(last_brake_temp_fl)[0]}, {fmt_temp_c_or_f(last_brake_temp_fr)[0]}, {fmt_temp_c_or_f(last_brake_temp_rl)[0]}, {fmt_temp_c_or_f(last_brake_temp_rr)[0]}", "F" if UNITS_MODE == 'imperial' else "C"), 'isAvailable': lambda: protocol_mode == 'extended'},
@@ -3368,6 +4362,29 @@ def _on_vbrowser_nav(event):
             say(_vbrowser_lines[_vbrowser_index], exclude_from_buffer=True)
 
 
+def _on_vbrowser_adjust(event):
+    """Left/right on a browser row that supports editing.
+
+    Only hooked when a browser passes on_adjust, so every other browser keeps
+    left/right for the game. Shift is the coarse step: a value with a range of a
+    hundred is otherwise a hundred presses away from its far end.
+    """
+    if not _vbrowser_lines or _vbrowser_on_adjust is None:
+        return
+    delta = 1 if event.name == "right" else -1
+    try:
+        if keyboard.is_pressed("shift"):
+            delta *= 10
+    except Exception:
+        pass
+    idx = _vbrowser_index
+    data = _vbrowser_entry_data[idx] if idx < len(_vbrowser_entry_data) else None
+    try:
+        _vbrowser_on_adjust(idx, _vbrowser_lines[idx], data, delta)
+    except Exception as e:
+        logger.error(f"Virtual browser adjust callback error: {e}")
+
+
 def _on_vbrowser_escape(event):
     close_virtual_browser(speak_exit=True)
 
@@ -3385,10 +4402,10 @@ def _on_vbrowser_enter(event):
 
 
 def open_virtual_browser(
-    lines, title=None, on_enter=None, entry_data=None, start_index=0
+    lines, title=None, on_enter=None, entry_data=None, start_index=0, on_adjust=None
 ):
     global _vbrowser_lines, _vbrowser_index, _vbrowser_active
-    global _vbrowser_on_enter, _vbrowser_entry_data
+    global _vbrowser_on_enter, _vbrowser_entry_data, _vbrowser_on_adjust
     if _vehicle_spawner is not None and _vehicle_spawner.is_modal_open():
         _vehicle_spawner.close_modal()
     close_virtual_browser(speak_exit=False)
@@ -3399,6 +4416,7 @@ def open_virtual_browser(
     _vbrowser_index = max(0, min(start_index, len(_vbrowser_lines) - 1))
     _vbrowser_active = True
     _vbrowser_on_enter = on_enter
+    _vbrowser_on_adjust = on_adjust
     _vbrowser_entry_data = list(entry_data) if entry_data else []
     if KEYBOARD_OK:
         try:
@@ -3415,6 +4433,14 @@ def open_virtual_browser(
                 _vbrowser_hooks.append(
                     _hook_suppressed("enter", _kb_enqueue(_on_vbrowser_enter))
                 )
+            # Left/right are only taken when a browser actually edits something.
+            # Suppressing them unconditionally would swallow steering for every
+            # read-only list in the mod.
+            if on_adjust is not None:
+                for key in ["left", "right"]:
+                    _vbrowser_hooks.append(
+                        _hook_suppressed(key, _kb_enqueue(_on_vbrowser_adjust))
+                    )
         except Exception as e:
             logger.error(f"Failed to hook virtual browser keys: {e}")
     if title:
@@ -3425,9 +4451,12 @@ def open_virtual_browser(
 
 def close_virtual_browser(speak_exit=True):
     global _vbrowser_lines, _vbrowser_index, _vbrowser_active
-    global _vbrowser_on_enter, _vbrowser_entry_data
+    global _vbrowser_on_enter, _vbrowser_entry_data, _vbrowser_on_adjust
+    global _env_browser_open
+    _env_browser_open = False
     _vbrowser_active = False
     _vbrowser_on_enter = None
+    _vbrowser_on_adjust = None
     _vbrowser_entry_data = []
     _unhook_suppressed(_vbrowser_hooks)
     _vbrowser_lines = []
@@ -3467,10 +4496,26 @@ VEHICLE_BINDINGS_LISTEN_PORT = (
     4467  # UDP port to receive vehicle binding lists from vehicleBindings.lua
 )
 VEHICLE_BINDINGS_CMD_PORT = 4468  # UDP port to send commands to vehicleBindings.lua
+ENV_LISTEN_PORT = 4474  # UDP port to receive environment rows from environmentAccessible.lua
+ENV_CMD_PORT = 4475  # UDP port to send commands to environmentAccessible.lua
 IMPLEMENT_LISTEN_PORT = (
     4469  # UDP port to receive implement proximity events from implementProximity.lua
 )
 IMPLEMENT_CMD_PORT = 4470  # UDP port to send ON/OFF/REBUILD to implementProximity.lua
+TERRAIN_SCAN_LISTEN_PORT = (
+    4471  # UDP port to receive terrain scan snapshots from terrainScanner.lua
+)
+TERRAIN_SCAN_CMD_PORT = 4472  # UDP port to send SCAN to terrainScanner.lua
+CANNON_SHOT_LISTEN_PORT = (
+    4473  # UDP port to receive cannon shot outcomes from cannonShot.lua
+)
+# cannonShot has no command port at all — the only user-facing setting is whether the outcome
+# is spoken, which is enforced here. (4474/4475 went to environmentAccessible above.)
+TRAILER_ANGLE_LISTEN_PORT = (
+    4476  # UDP port to receive trailer articulation angles from trailerAngle.lua
+)
+# No command port for the same reason: the mod reads "is a trailer attached" out of the game's
+# own registry, so there is nothing to tell it and nothing for the driver to switch on.
 CONSOLE_HISTORY_PATH = os.path.join(CONFIG_DIR, "console_history.json")
 CONSOLE_HISTORY_MAX = 50  # cap on persisted accessible-console command history
 
@@ -3498,6 +4543,17 @@ def _save_console_history(history):
             json.dump(history[-CONSOLE_HISTORY_MAX:], f)
     except Exception as e:
         logger.error(f"Failed to save console history: {e}")
+
+
+# Set by mcp_server when it starts; None otherwise, so the tap costs one identity
+# comparison per datagram when the MCP server is off.
+_mcp_console_tap = None
+
+
+def register_console_tap(fn):
+    """Install a callable that sees every console record and may consume it."""
+    global _mcp_console_tap
+    _mcp_console_tap = fn
 
 
 def send_console_command(msg):
@@ -3536,6 +4592,18 @@ def console_listener(stop_event):
             except OSError:
                 break
             text = data.decode("utf-8", errors="replace")
+            # The MCP server correlates its EXECs by ordering plus the EXECEND
+            # sentinel, so it must also SWALLOW the records it owns: on_console_message
+            # speaks any single-line result aloud, and an agent exec talking over the
+            # user mid-test is exactly what this prevents. LOG records are copied there
+            # but never consumed -- they belong to the GUI pane.
+            tap = _mcp_console_tap
+            if tap is not None:
+                try:
+                    if tap(text):
+                        continue
+                except Exception:
+                    pass  # a tap fault must never kill this listener
             frame = console_frame
             if frame is not None:
                 wx.CallAfter(frame.on_console_message, text)
@@ -3585,7 +4653,7 @@ def toggle_scan_mode(audio_controller):
         logger.error(f"Failed to send scanner command via UDP: {e}")
 
     audio_controller.set_scan_mode(scan_mode_active)
-    if not scan_mode_active:
+    if not scan_mode_active and not coupler_run_active:
         audio_controller.set_coupler_tracking(False)
 
     # On a loader the scanner aims from the implement, not from the cab (see
@@ -3888,6 +4956,218 @@ def open_vehicle_bindings_browser():
     )
 
 
+def _parse_env_fields(payload):
+    """Parse the mod's ``k=v;k=v`` row body into a dict.
+
+    Split on the FIRST '=' per field, and keep unknown keys: the Lua side
+    sanitizes ';' and '=' out of every value precisely so this stays a two-line
+    parser, and a field this build does not know about must be ignored rather
+    than shifting anything after it.
+    """
+    out = {}
+    for field in payload.split(";"):
+        if not field:
+            continue
+        key, sep, value = field.partition("=")
+        if sep:
+            out[key.strip()] = value.strip()
+        elif "count" not in out:
+            # The bare leading number on ENV_BEGIN.
+            out["count"] = field.strip()
+    return out
+
+
+def _send_env_cmd(command):
+    try:
+        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        cmd_sock.sendto(command.encode("utf-8"), ("127.0.0.1", ENV_CMD_PORT))
+        cmd_sock.close()
+    except Exception as e:
+        logger.error(f"Failed to send environment command via UDP: {e}")
+
+
+def _env_float(row, key):
+    try:
+        return float(row.get(key, ""))
+    except (TypeError, ValueError):
+        return None
+
+
+def _env_temp_from_display(display_value):
+    """Inverse of fmt_temp_c_or_f — the wire is always Celsius."""
+    if UNITS_MODE == "metric":
+        return float(display_value)
+    return (float(display_value) - 32.0) * 5.0 / 9.0
+
+
+def _env_row_line(row):
+    """One spoken line for an environment row."""
+    label = row.get("label", row.get("key", "Setting"))
+    kind = row.get("kind", "")
+    lo = _env_float(row, "curveLo")
+    hi = _env_float(row, "curveHi")
+
+    if kind == "numberC":
+        value = _env_float(row, "value")
+        if value is None:
+            return f"{label}, not available"
+        shown, unit = fmt_temp_c_or_f(value)
+        line = f"{label}, {shown} {unit}"
+        # A level whose curve is not flat has no single temperature: the figure
+        # above is only true for the current time of day, and editing it
+        # replaces the whole cycle with one number. Saying so is the difference
+        # between an edit and a silent loss of the level's own weather.
+        if lo is not None and hi is not None and round(hi - lo) >= 1:
+            lo_shown, _ = fmt_temp_c_or_f(lo)
+            hi_shown, _ = fmt_temp_c_or_f(hi)
+            line += f", varies {lo_shown} to {hi_shown} through the day"
+        if row.get("editable", "1") != "1":
+            line += ", locked"
+        return line
+
+    if kind == "action":
+        if lo is None:
+            return f"{label}, not available"
+        lo_shown, unit = fmt_temp_c_or_f(lo)
+        if hi is not None and round(hi - lo) >= 1:
+            hi_shown, _ = fmt_temp_c_or_f(hi)
+            return f"{label}, {lo_shown} to {hi_shown} {unit}"
+        return f"{label}, {lo_shown} {unit}"
+
+    return str(label)
+
+
+# Set while an edit is in flight, so the mod's own pushes (a level load, a
+# second beamtel request) cannot speak over whatever the user is doing.
+_env_awaiting_change = False
+_env_change_timer = None
+_env_browser_open = False
+
+
+def _env_change_timed_out():
+    global _env_awaiting_change
+    if not _env_awaiting_change:
+        return
+    _env_awaiting_change = False
+    # The alternative is a key that appears to do nothing, which is the failure
+    # this project has already lost an afternoon to on a dead command port.
+    say("No response from the game", exclude_from_buffer=True)
+
+
+def _env_notify_refresh():
+    """Called from the listener thread when a fresh row set lands."""
+    global _env_awaiting_change, _env_change_timer
+    if _env_browser_open and _vbrowser_active:
+        lines = [_env_row_line(r) for r in _env_rows]
+        # Replaced in place and only when the shape matches, so a push that
+        # arrives while the list is being navigated cannot move the cursor onto
+        # a different setting than the one the user last heard.
+        if len(lines) == len(_vbrowser_lines):
+            _vbrowser_lines[:] = lines
+    if _env_awaiting_change:
+        _env_awaiting_change = False
+        if _env_change_timer is not None:
+            try:
+                _env_change_timer.cancel()
+            except Exception:
+                pass
+            _env_change_timer = None
+        idx = _vbrowser_index
+        if 0 <= idx < len(_vbrowser_lines):
+            say(_vbrowser_lines[idx], exclude_from_buffer=True)
+
+
+def _env_arm_change():
+    global _env_awaiting_change, _env_change_timer
+    _env_awaiting_change = True
+    if _env_change_timer is not None:
+        try:
+            _env_change_timer.cancel()
+        except Exception:
+            pass
+    _env_change_timer = threading.Timer(1.0, _env_change_timed_out)
+    _env_change_timer.daemon = True
+    _env_change_timer.start()
+
+
+def _env_on_adjust(idx, line, data, delta):
+    """Left/right on an environment row."""
+    if data is None or data >= len(_env_rows):
+        return
+    row = _env_rows[data]
+    if row.get("kind") != "numberC":
+        return
+    if row.get("editable", "1") != "1":
+        say("Locked", exclude_from_buffer=True)
+        return
+    current = _env_float(row, "value")
+    if current is None:
+        return
+    # Stepped in the unit the user HEARS, not in Celsius: a one-degree press on
+    # an imperial readout that moved the value by 1.8 F would skip numbers.
+    shown, _unit = fmt_temp_c_or_f(current)
+    target_c = _env_temp_from_display(shown + delta)
+    lo = _env_float(row, "min")
+    hi = _env_float(row, "max")
+    if lo is not None:
+        target_c = max(lo, target_c)
+    if hi is not None:
+        target_c = min(hi, target_c)
+    _env_arm_change()
+    _send_env_cmd(f"SET:{row.get('key')}={target_c:.2f}")
+
+
+def _env_on_enter(idx, line, data):
+    """Enter on an environment row."""
+    if data is None or data >= len(_env_rows):
+        return
+    row = _env_rows[data]
+    kind = row.get("kind")
+    if kind == "action" and row.get("key") == "restore":
+        if row.get("editable", "1") != "1":
+            say("No level default to restore", exclude_from_buffer=True)
+            return
+        _env_arm_change()
+        _send_env_cmd("RESTORE")
+        return
+    if kind == "numberC":
+        say(
+            "Use left and right to adjust, hold shift for ten at a time",
+            exclude_from_buffer=True,
+        )
+
+
+def open_environment_browser():
+    """Open a virtual browser over the environment values the pause UI omits."""
+    global _env_browser_open
+    if not _env_rows:
+        # Nudge the mod in case the push was missed, then report rather than
+        # opening an empty list.
+        _send_env_cmd("REQUEST")
+        if _env_unavailable:
+            say(
+                f"Environment unavailable, {_env_unavailable}",
+                exclude_from_buffer=True,
+            )
+        else:
+            say("No environment settings available", exclude_from_buffer=True)
+        return
+    lines = [_env_row_line(r) for r in _env_rows]
+    entry_data = list(range(len(_env_rows)))
+    open_virtual_browser(
+        lines,
+        title=f"Environment, {len(lines)} setting{'s' if len(lines) != 1 else ''}",
+        on_enter=_env_on_enter,
+        on_adjust=_env_on_adjust,
+        entry_data=entry_data,
+    )
+    # Set AFTER the open, never before: open_virtual_browser closes whatever
+    # browser was already up, and close_virtual_browser clears this flag. Setting
+    # it first left it false, so a value edited from inside the browser updated
+    # the rows and never refreshed the line the user was sitting on.
+    _env_browser_open = _vbrowser_active
+
+
 def open_clickspot_browser():
     """Open a virtual browser listing all detected clickspots."""
     if not clickspot_mode_active:
@@ -3904,6 +5184,34 @@ def open_clickspot_browser():
         on_enter=_clickspot_browser_on_enter,
         entry_data=entry_data,
     )
+
+
+def _mcp_press_command(name, ctrl=False, shift=False, alt=False):
+    """Invoke an F9 command in-process on behalf of the MCP server.
+
+    _on_next_key_press duck-types its event -- it reads only .event_type and .name, with
+    the modifiers coming from _capture_mods -- so a command can be driven without OS key
+    injection and without BeamNG having focus. The modifier dict is saved and restored
+    because a real capture may be in progress, and _command_context is set so speech
+    behaves as it would for a genuine keypress.
+    """
+    global _command_context
+    if audio_controller_ref is None:
+        raise RuntimeError("audio controller is not up yet")
+    saved = dict(_capture_mods)
+    prev_ctx = _command_context
+    try:
+        _capture_mods["ctrl"] = bool(ctrl)
+        _capture_mods["shift"] = bool(shift)
+        _capture_mods["alt"] = bool(alt)
+        _command_context = True
+        evt = SimpleNamespace(event_type="down", name=str(name).lower())
+        _on_next_key_press(evt, audio_controller_ref)
+    finally:
+        _command_context = prev_ctx
+        _capture_mods.clear()
+        _capture_mods.update(saved)
+    return True
 
 
 def _on_next_key_press(event, audio_controller):
@@ -4249,6 +5557,9 @@ def _on_next_key_press(event, audio_controller):
             cannon_aim = dict(last_cannon_aim) if last_cannon_aim else None
             rpm_now = last_rpm
             gear_now = last_gear_str
+            deck = dict(last_ramp_self) if last_ramp_self else None
+            dock_snap = dict(last_dock) if last_dock else None
+            dock_why = last_dock_fail
         if active_cannon_kind == "OLD":
             if (
                 cannon_aim is None
@@ -4307,22 +5618,30 @@ def _on_next_key_press(event, audio_controller):
                 f"Inclination {incl * 100:.0f} percent, strength {strength}",
                 exclude_from_buffer=True,
             )
+        elif dock_mode_active and dock_snap is not None:
+            say(_dock_phrase(dock_snap), exclude_from_buffer=True)
+        elif deck is not None:
+            # You are sitting in a ramp machine and the instrument has nothing to line you up
+            # with, so the key answers the question that is left: what is your own deck doing.
+            #
+            # Ordered strictly BELOW a live docking reading, which is the conservative half of
+            # this. The cannon branch above wins outright on the argument that once you are in
+            # the cannon the alignment task is over; that argument does not carry here, because
+            # a hauler is a perfectly ordinary thing to drive up somebody else's ramp, and an
+            # alignment readout the driver deliberately switched on must not be displaced by a
+            # fact about their own bed. So this fills in the three cases that previously had
+            # nothing useful to say and changes no case that did.
+            say(_ramp_self_phrase(deck), exclude_from_buffer=True)
         elif not dock_mode_active:
             say("Docking instrument is off", exclude_from_buffer=True)
+        elif dock_why:
+            # The instrument shares its soundscape with the scanner, which also pans,
+            # changes pitch and pulses — so a dead instrument sounds exactly like a
+            # working one. This is the only way to tell them apart from the driver's
+            # seat, which is why the reason is carried all the way from the mod.
+            say(f"No reading. {dock_why}", exclude_from_buffer=True)
         else:
-            with state_lock:
-                snap = dict(last_dock) if last_dock else None
-                why = last_dock_fail
-            if snap is not None:
-                say(_dock_phrase(snap), exclude_from_buffer=True)
-            elif why:
-                # The instrument shares its soundscape with the scanner, which also pans,
-                # changes pitch and pulses — so a dead instrument sounds exactly like a
-                # working one. This is the only way to tell them apart from the driver's
-                # seat, which is why the reason is carried all the way from the mod.
-                say(f"No reading. {why}", exclude_from_buffer=True)
-            else:
-                say("Nothing in range", exclude_from_buffer=True)
+            say("Nothing in range", exclude_from_buffer=True)
     elif (
         name == "i"
         and _capture_mods["shift"]
@@ -4764,6 +6083,20 @@ def _on_next_key_press(event, audio_controller):
     ):
         open_vehicle_bindings_browser()
     elif (
+        name == "n"
+        and not _capture_mods["ctrl"]
+        and not _capture_mods["shift"]
+        and not _capture_mods["alt"]
+    ):
+        # The environment values the pause screen has no control for at all.
+        # Temperature is the only one today; a browser rather than a stepper key
+        # so the next one costs a row rather than a keybind.
+        #
+        # N rather than the obvious E: plain E is "Speak engine temperature" and
+        # its branch sits earlier in this chain, so an E binding here would have
+        # been unreachable -- dead code that reads as a working feature.
+        open_environment_browser()
+    elif (
         name == "c"
         and _capture_mods["ctrl"]
         and not (_capture_mods["shift"] or _capture_mods["alt"])
@@ -4775,7 +6108,20 @@ def _on_next_key_press(event, audio_controller):
             exclude_from_buffer=True,
         )
     elif name == "v" and _capture_mods["shift"] and not _capture_mods["ctrl"]:
-        if not scan_mode_active:
+        # One key, two alignments, disambiguated by the docking instrument. Coupling to a
+        # trailer and driving up its ramp are the same act from the seat -- get me squared up
+        # to that machine -- and they are indistinguishable from a keypress, so the
+        # disambiguator has to be something already switched on for one of them. The docking
+        # instrument is exactly that: it is what you run to drive onto something, and it is the
+        # half of the mod that knows where a ramp mouth is at all.
+        #
+        # Deliberately NOT falling through to the coupler align when no ramp is found. With the
+        # instrument on you asked for a ramp; quietly lining you up to reverse onto a tow hitch
+        # instead is a surprise, and a named reason is what tells you whether to keep looking.
+        if dock_mode_active:
+            say("Aligning to ramp", exclude_from_buffer=True)
+            _send_implement_cmd("RAMPALIGN")
+        elif not scan_mode_active:
             say("Vehicle scanner is not active", exclude_from_buffer=True)
         else:
             say("Aligning to trailer", exclude_from_buffer=True)
@@ -4816,7 +6162,25 @@ def _on_next_key_press(event, audio_controller):
     elif name == "space" and not (
         _capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]
     ):
-        broadcast({"type": "context_action", "action": "activate"})
+        # One key, two answers, picked by whether there is a world to be in. Driving, this is
+        # the terrain sonification scan; in a menu it activates the on-screen control, which
+        # is what this key has always done. That is a real disambiguation rather than a
+        # priority call: the only screens offering a context action are the freeroam wizard
+        # and the configurator, both of which run with no level loaded, so the two answers
+        # can never both apply.
+        #
+        # The scan says nothing on success on purpose — the reference ping at the head of the
+        # cloud IS the acknowledgement, and speech would talk over the first half second of
+        # the very scan it was announcing. Silence and a dead extension are otherwise
+        # identical, so a watcher speaks if the mod never answers.
+        if _world_is_active():
+            _scan_seen_before = _last_scan_reply_ts
+            _send_scan_cmd("SCAN")
+            threading.Thread(
+                target=_watch_scan_reply, args=(_scan_seen_before,), daemon=True
+            ).start()
+        else:
+            broadcast({"type": "context_action", "action": "activate"})
 
     _clear_next_key_hook(speak_exit=False)
 
@@ -5842,6 +7206,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
         last_fog
     global last_gear_byte, last_gear_str, last_bucket, last_speed_announce_ts
     global _telemetry_baseline_pending
+    global _last_telemetry_ts
     global drift_alert_active, last_drift_check_ts, drift_baseline_heading, drift_pan_direction  # NEW
     global drift_rate_val  # NEW
     global \
@@ -5917,6 +7282,8 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
 
             if not data:
                 continue
+
+            _last_telemetry_ts = now
 
             if len(data) >= 4 and data[:4] == MS_MAGIC:
                 if len(data) >= MS_SIZE:
@@ -6542,6 +7909,13 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     "last_steering": last_steering,
                     "last_actual_steering": last_actual_steering,
                     "last_steering_input": last_steering_input,
+                    # Same scale as last_actual_steering and driving the same tone — see
+                    # audio.py's source selection. Reverse comes from the gear rather than
+                    # from velocity for the reason _push_gear_direction gives: at a standstill
+                    # about to reverse, the instrument should already be at full volume, and
+                    # velocity reads zero there.
+                    "trailer_artic": _trailer_artic_norm(),
+                    "trailer_reverse": (last_gear_str or "").strip().upper().startswith("R"),
                     "implement_flags": last_implement_flags,
                     "implement_min_clearance": last_implement_min_clearance,
                     "implement_tilt_deg": last_implement_tilt_deg,
@@ -7111,7 +8485,7 @@ def _apply_live_config(audio_controller):
         compass_click_interval_deg
     global announce_turn_signals, announce_speed, speed_announce_interval, announce_gear
     global scanner_distance_callout_enabled, scanner_distance_callout_interval
-    global announce_implement_proximity
+    global announce_implement_proximity, announce_cannon_shot
     global ai_describer_provider, ai_describer_settings, ai_describer_disable_ui_toggle
     global ui_nav_hold_suppression
     try:
@@ -7133,6 +8507,7 @@ def _apply_live_config(audio_controller):
         scanner_distance_callout_enabled = cfg.get("scanner_distance_callout_enabled", False)
         scanner_distance_callout_interval = cfg.get("scanner_distance_callout_interval", 10)
         announce_implement_proximity = bool(cfg.get("implement_proximity_speech", True))
+        announce_cannon_shot = bool(cfg.get("cannon_shot_readout", True))
         ui_nav_hold_suppression = bool(cfg.get("ui_nav_hold_suppression", True))
         ai_describer_provider = cfg.get("ai_describer_provider", "gemini")
         ai_describer_settings = {
@@ -7172,7 +8547,7 @@ def _run_engine():
     global UNITS_MODE, oil_chime_enabled
     global announce_turn_signals, announce_speed, speed_announce_interval, announce_gear
     global scanner_distance_callout_enabled, scanner_distance_callout_interval
-    global announce_implement_proximity
+    global announce_implement_proximity, announce_cannon_shot
     global ui_nav_hold_suppression
     UNITS_MODE = cfg.get("units", "imperial")
     oil_chime_enabled = cfg.get("oil_chime_enabled", True)
@@ -7183,6 +8558,7 @@ def _run_engine():
     scanner_distance_callout_enabled = cfg.get("scanner_distance_callout_enabled", False)
     scanner_distance_callout_interval = cfg.get("scanner_distance_callout_interval", 10)
     announce_implement_proximity = bool(cfg.get("implement_proximity_speech", True))
+    announce_cannon_shot = bool(cfg.get("cannon_shot_readout", True))
     ui_nav_hold_suppression = bool(cfg.get("ui_nav_hold_suppression", True))
 
     if speech.init(cfg) is None:
@@ -7282,6 +8658,21 @@ def _run_engine():
     )
     implement_thread.start()
 
+    terrain_scan_thread = threading.Thread(
+        target=terrain_scan_listener, args=(audio_controller, STOP), daemon=True
+    )
+    terrain_scan_thread.start()
+
+    cannon_shot_thread = threading.Thread(
+        target=cannon_shot_listener, args=(STOP,), daemon=True
+    )
+    cannon_shot_thread.start()
+
+    trailer_angle_thread = threading.Thread(
+        target=trailer_angle_listener, args=(STOP,), daemon=True
+    )
+    trailer_angle_thread.start()
+
     camera_thread = threading.Thread(
         target=camera_listener, args=(audio_controller, STOP), daemon=True
     )
@@ -7305,6 +8696,14 @@ def _run_engine():
     # game had already spawned one and the load-time push was missed.
     _send_vehicle_bindings_cmd("REQUEST")
 
+    environment_thread = threading.Thread(
+        target=environment_listener, args=(STOP,), daemon=True
+    )
+    environment_thread.start()
+    # Ask for the current level's environment rows, for the same reason the
+    # bindings request exists: beamtel may have started after the level loaded.
+    _send_env_cmd("REQUEST")
+
     slot_thread = threading.Thread(target=slot_listener, args=(STOP,), daemon=True)
     slot_thread.start()
     # Request initial slot list from Lua once the thread is running.
@@ -7316,6 +8715,39 @@ def _run_engine():
     console_thread.start()
     # Request the initial context list from Lua once the listener is bound.
     threading.Timer(2.0, lambda: send_console_command("CTXLIST")).start()
+
+    # MCP automation server. Off by default; started here because by this point config,
+    # audio, every listener and the console client are all live. A failure to bind must
+    # only log -- beamtel still has a user to serve.
+    _mcp_stop = None
+    if cfg.get("mcp_server_enabled", False):
+        try:
+            import mcp_server
+
+            mcp_server.init(
+                mcp_server.Deps(
+                    say_fn=lambda text, interrupt=True: say(
+                        text, interrupt, exclude_from_buffer=True, source="mcp"
+                    ),
+                    get_speech_log_fn=get_speech_log,
+                    snapshot_state_fn=_mcp_snapshot_state,
+                    load_config_fn=load_config,
+                    send_console_command_fn=send_console_command,
+                    send_udp_fn=mcp_server.make_udp_sender(logger),
+                    press_command_fn=_mcp_press_command,
+                    f9_help=_F9_HELP,
+                    world_active_fn=_world_is_active,
+                    stop_event=STOP,
+                    logger=logger,
+                    version="1.0",
+                )
+            )
+            register_console_tap(mcp_server.console_tap)
+            _mcp_thread, _mcp_stop = mcp_server.start(
+                STOP, port=int(cfg.get("mcp_server_port", 4481))
+            )
+        except Exception as e:
+            logger.error(f"Failed to start MCP server: {e}")
 
     try:
         import vehicle_spawner as _vs_module
@@ -7348,6 +8780,11 @@ def _run_engine():
         audio_controller.stop()
         if _ws_stop:
             _ws_stop()
+        # Drop the tap before tearing the server down, so a record arriving mid-shutdown
+        # cannot reach a half-stopped collector.
+        register_console_tap(None)
+        if _mcp_stop:
+            _mcp_stop()
 
 
 # =========================

@@ -567,10 +567,14 @@ local function handleTeleportArrange(jsonStr)
     elseif not pd then
       failures[#failures+1] = tostring(id) .. ": no position"
     else
-      -- No 5th argument: that slot is visibilityPoint and must be a vec3, so the
+      -- No boolean 5th argument: that slot is visibilityPoint and must be a vec3, so the
       -- boolean that used to be here threw inside spawn.lua. pcall swallowed it,
       -- so every arrange silently failed to move anything.
-      local r, err = pcall(spawn.safeTeleport, veh, pd.pos, pd.rot)
+      --
+      -- 8th is resetVehicle, false for the same reason teleportVehicleTo below passes it:
+      -- the default of true respawns from initial node positions, repairing the vehicle and
+      -- stopping its engine. Arranging a row of cars must not undo the damage on them.
+      local r, err = pcall(spawn.safeTeleport, veh, pd.pos, pd.rot, nil, nil, nil, false, false)
       if r then successes = successes + 1
       else failures[#failures+1] = tostring(id) .. ": " .. tostring(err) end
     end
@@ -1156,15 +1160,57 @@ local function setupSockets()
 
   local ok, err = pcall(function()
     udpCmd = socket.udp()
-    udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
+    -- setsockname RETURNS nil plus a message; it does not THROW. A pcall around it reports
+    -- success on a socket bound to nothing, and the extension then goes deaf with nothing in
+    -- the log -- it still sends normally, because a UDP sender needs no bind.
+    local bound, berr = udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
+    if not bound then error(tostring(berr), 0) end
     udpCmd:settimeout(0)
   end)
   if ok and udpCmd then
     vsLog('info', "UDP command socket listening on port " .. CMD_LISTEN_PORT)
   else
     vsLog('error', "Failed to create UDP command socket: " .. tostring(err))
+    if udpCmd then pcall(function() udpCmd:close() end) end
     udpCmd = nil
   end
+end
+
+-- A failed bind is otherwise permanent for the session, so re-arm it. This is the recovery
+-- path, not a precaution, and it has been watched doing the job: the first reload of the
+-- patched files leaked eight ports, because the OUTGOING code had no unload hook yet. The
+-- retry could not take them while the old module tables were still referenced -- a socket held
+-- that way is not one the collector is about to free -- and ticked uselessly for two minutes.
+-- The Ctrl+L that followed did NOT re-load these extensions (no load line for any of them in
+-- the log at that timestamp, so setupSockets never ran again); all thirteen ports came back
+-- through THIS function instead, within one frame of each other, the moment those tables went
+-- away. Without it the mod would have stayed deaf until the game was restarted.
+local CMD_BIND_RETRY_S = 3.0
+local cmdBindRetry = 0
+
+local function retryCmdBind(dtReal)
+  if udpCmd then return end
+  cmdBindRetry = cmdBindRetry + (dtReal or 0)
+  if cmdBindRetry < CMD_BIND_RETRY_S then return end
+  cmdBindRetry = 0
+  local ok = pcall(function()
+    local sk = socket.udp()
+    local bound = sk:setsockname("127.0.0.1", CMD_LISTEN_PORT)
+    if not bound then sk:close(); error("still in use", 0) end
+    sk:settimeout(0)
+    udpCmd = sk
+  end)
+  if ok and udpCmd then
+    vsLog('info', "UDP command socket bound on port " .. CMD_LISTEN_PORT .. " after retry.")
+  end
+end
+
+-- setupSockets closes the sockets held by THIS module instance, and extensions.reload builds a
+-- fresh instance whose locals are nil -- so it closes nothing and the outgoing instance keeps
+-- the port, leaving the reloaded copy permanently deaf. Hence this hook.
+function M.onExtensionUnloaded()
+  if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
+  if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
 end
 
 function M.onExtensionLoaded()
@@ -1203,10 +1249,16 @@ function M.onWorldReadyState(state)
 end
 
 function M.onUpdate(dtReal, dtSim, dtRaw)
+  retryCmdBind(dtReal)
   -- Ahead of the socket guard: a vehicle already in the air still has to be watched down
   -- even if the command socket failed to bind.
   if launchTrack then
-    local ok, err = pcall(updateLaunchTrack, dtReal)
+    -- dtSim, never dtReal: the flight time, the settle window and the timeout are all facts
+    -- about the vehicle, so they are measured in the time the vehicle experiences. On dtReal a
+    -- pause or a slow-motion (the radial menu does the latter) runs the timeout down while the
+    -- vehicle hangs motionless, and the launch is reported as a miss it never had the chance to
+    -- avoid. cannonShot.lua's copy of this detector had exactly that fire in the field.
+    local ok, err = pcall(updateLaunchTrack, dtSim)
     if not ok then
       vsLog('warn', "launch tracking failed: " .. tostring(err))
       launchTrack = nil

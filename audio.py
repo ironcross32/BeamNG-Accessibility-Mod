@@ -261,6 +261,30 @@ HYDRO_CENTER_CLICK_LO_HZ = (
 )
 HYDRO_CENTER_CLICK_HI_HZ = 7000.0
 
+# -----------------------------------------------------------------------------------------
+# Trailer articulation — the SAME tone, fed from a different hinge.
+# -----------------------------------------------------------------------------------------
+# A tractor and its trailer are an articulated machine with the joint moved to the coupler,
+# so the WL-40's tone answers the question already and there is nothing here but a second
+# source for it. Reusing it rather than adding a second tone is the point: a driver backing a
+# trailer has no attention spare for a new sound to interpret, and the two can never play at
+# once (see the source selection in the callback), so there is no ambiguity to resolve.
+#
+# The angle arrives from beamtel already normalised onto this tone's -1..1 scale, which is why
+# no mapping constant appears in the synthesis path. TRAILER_FULL_DEG is that scale factor and
+# MUST match beamtel.py's; trailer_angle_sim.lua greps both files and asserts it.
+TRAILER_FULL_DEG = 45.0
+# How far the tone is ducked when NOT reversing. Forward, a trailer straightens itself out of
+# every corner, so an un-ducked tone would sound on ordinary driving and be trained away as
+# noise long before the one manoeuvre it exists for. Ducked rather than gated because a trailer
+# CAN be pushed out of line going forward — on a tight turn against a kerb, or unloaded on
+# camber — and going silent there would teach that silence means straight when it does not.
+TRAILER_FWD_DUCK_DB = -10.0
+# Seconds; the duck glides rather than steps. Selecting reverse must not click, and it lands
+# well inside the gearbox's own shift time so the tone is at full volume before the vehicle
+# actually moves.
+TRAILER_DUCK_TAU = 0.15
+
 # =========================================================================================
 # Loader implement (bucket / forks)
 # =========================================================================================
@@ -627,6 +651,303 @@ PLACEMENT_PING_RUNGS = [
 PLACEMENT_PING_AMP_DB = -12.0
 
 
+# =========================================================================================
+#  Terrain sonification scanner
+# =========================================================================================
+#
+# One-shot picture of the landscape, rather than a warning about it. The obstacle detector
+# says what you are about to hit and the docking instrument says what you are lining up
+# with; neither tells you that you are in a valley, on a ridge, or beside a lake. A press
+# fires one scan of the forward hemisphere and it plays as a granular cloud.
+#
+# Three mappings, and they are deliberately on three different axes so none of them has to
+# share a channel with another:
+#   PITCH is elevation. The ground under your own wheels is middle C, and everything else
+#     is read against it. That is only usable if the listener has a reference immediately
+#     beforehand, which is what the opening ping is for.
+#   TIME is distance. Every scan takes exactly SCAN_DURATION_S no matter how far it
+#     reached, so "half a second in" always means the same fraction of the way out. A fixed
+#     duration is what makes the mapping learnable; it is a tuning constant and must never
+#     become a runtime variable.
+#   PAN is bearing, and nothing else. Level carries no distance information at all -- that
+#     job belongs to time here, and doubling it up on level would only make the far half of
+#     every scan quiet for no added information.
+#
+# --- Tuning ---------------------------------------------------------------------------------
+# Pythagorean rather than equal temperament. A landscape is full of repeated intervals --
+# a hillside climbing at a steady grade lands on the same step again and again -- and in
+# 12-TET the fifths those produce are 2 cents narrow, which at this register beats at about
+# 2 Hz. Pure 3:2 and 4:3 do not beat at all, so a constant slope reads as a stable chord
+# instead of a wobble. The degrees are the classic chain-of-fifths chromatic on C.
+SCAN_MIDDLE_C_HZ = 261.626  # level ground, and the reference ping
+SCAN_PYTHAGOREAN_RATIOS = (
+    1.0,  # C
+    256.0 / 243.0,  # C#  (limma)
+    9.0 / 8.0,  # D
+    32.0 / 27.0,  # Eb
+    81.0 / 64.0,  # E   (ditone)
+    4.0 / 3.0,  # F   (pure fourth)
+    729.0 / 512.0,  # F#
+    3.0 / 2.0,  # G   (pure fifth)
+    128.0 / 81.0,  # Ab
+    27.0 / 16.0,  # A
+    16.0 / 9.0,  # Bb
+    243.0 / 128.0,  # B
+)
+# Fixed metres-per-octave rather than auto-scaling each scan to the range it happens to
+# find. Auto-scaling would always use the full pitch range, but then a pitch would mean
+# nothing on its own and flat ground would sound dramatic. Fixed, the same hill sounds the
+# same every time and the listener learns absolute heights.
+SCAN_M_PER_OCTAVE = 20.0  # metres of elevation per octave
+SCAN_OCTAVE_CLAMP = 2.0  # +/- octaves, i.e. +/-40 m, past which the pitch pins
+
+# --- Timing ---------------------------------------------------------------------------------
+SCAN_DURATION_S = 2.0  # the whole cloud, always, whatever the scan reached
+SCAN_MAX_RANGE_M = 200.0  # must match SCAN_MAX_RANGE_M in terrainScanner.lua
+SCAN_REF_PING_MS = 250.0  # the calibration ping at middle C
+SCAN_REF_PING_DB = -16.0
+SCAN_REF_LEAD_S = 0.35  # cloud starts here; must exceed the ping's own length
+SCAN_GRAIN_MS = 90.0  # one terrain/water sample
+SCAN_GRAIN_FADE_MS = 8.0  # raised-cosine in and out -- this is the anti-click
+SCAN_PING_MS = 55.0  # one vehicle/prop
+# Onset jitter, and it is not decoration. Without it every spoke of a given ring fires on
+# the same sample at the same pitch, so flat ground sums perfectly coherently and comes out
+# as twenty-five rhythmic pulses -- the rings themselves become audible as a beat, which is
+# the exact opposite of the melded surface this is supposed to be. Jittering decorrelates
+# them into a cloud. It MUST stay under half of one ring's spacing in time, or two rings can
+# swap and the time-is-distance mapping stops being true: at SCAN_DURATION_S of 2.0 over the
+# mod's 25 rings that spacing is 83 ms, so the usable ceiling is about 41 ms. Shortening the
+# scan tightens this -- terrain_scan_sim.py scenario 11 reads the mod's ring count and
+# asserts the margin rather than leaving it to be rediscovered.
+SCAN_TIME_JITTER_MS = 25.0
+SCAN_RNG_SEED = 0x5CA4  # seeded, so a scan of the same ground renders identically twice
+
+# --- Voices -----------------------------------------------------------------------------------
+# Terrain is near-sine: it is the bed the whole picture sits on and is up to sixteen voices
+# deep, so anything richer turns to mud. Water is the same pitch rule on a much brighter
+# timbre -- the depth is carried by the LAKE BED, so "deeper is lower" falls out of the one
+# elevation map with no second rule, and the water stays pitch-continuous with its shore.
+SCAN_TERRAIN_H2_DB = -14.0  # second harmonic, relative to the fundamental
+SCAN_TERRAIN_H3_DB = -20.0
+SCAN_WATER_HARMONICS = 8  # 1/k saw -- unmistakably brighter than the terrain grain
+SCAN_WATER_VIBRATO_HZ = 5.5  # a little movement, so water reads as a surface not a pad
+SCAN_WATER_VIBRATO_CENTS = 12.0
+SCAN_OBJECT_HARMONICS = (1, 3, 5, 7)  # odd only: hollow and bright, cuts through the bed
+SCAN_OBJECT_DECAY = 5.0  # 1/e decays across the ping
+SCAN_OBJECT_OCTAVE = 1.0  # transposed up, so pings sit above the bed rather than in it
+
+# The configured level sets the whole cloud; the other two voices are fixed OFFSETS from it
+# rather than levels of their own, so no mix exists in which the terrain bed is inaudible
+# under the pings or the pings vanish into the bed. Same argument the docking pair makes.
+SCAN_TERRAIN_DB = -20.0  # cloud peak; scan_tone_dbfs overrides this
+SCAN_WATER_DB_OFFSET = -3.0  # water is already brighter, so it needs less level to read
+SCAN_OBJECT_DB_OFFSET = 3.0  # pings are the sparse layer and have to stand out
+SCAN_CROSSFADE_MS = 15.0  # replacing an in-flight scan, so a double tap does not click
+
+
+def _equal_power_pan(p):
+    """Equal-power stereo gains for a pan position in [-1, 1]. Module level so the pure
+    render path and AudioController._pan_gains cannot drift apart -- the method delegates
+    here."""
+    p = -1.0 if p < -1.0 else 1.0 if p > 1.0 else p
+    ang = (p + 1.0) * (math.pi / 4.0)
+    return math.cos(ang), math.sin(ang)
+
+
+def scan_step_from_dz(dz_m):
+    """Metres of elevation relative to the player's own ground -> a scale degree index.
+
+    The quantization grid is 12 equal steps per octave and the SOUNDED pitch of each step
+    is Pythagorean; picking the nearest degree on a linear grid keeps the readout monotonic
+    in elevation, which is the property that matters. Clamped rather than wrapped: past two
+    octaves the pitch pins, because a wrapped octave would report a peak as a pit."""
+    oct_pos = float(dz_m) / SCAN_M_PER_OCTAVE
+    if oct_pos < -SCAN_OCTAVE_CLAMP:
+        oct_pos = -SCAN_OCTAVE_CLAMP
+    elif oct_pos > SCAN_OCTAVE_CLAMP:
+        oct_pos = SCAN_OCTAVE_CLAMP
+    return int(round(oct_pos * 12.0))
+
+
+def scan_pitch_hz(dz_m, octave_offset=0.0):
+    """Metres of elevation -> a Pythagorean-quantized frequency, middle C at level ground."""
+    step = scan_step_from_dz(dz_m)
+    octave, degree = divmod(step, 12)  # floor division, so degree is always 0..11
+    return (
+        SCAN_MIDDLE_C_HZ
+        * SCAN_PYTHAGOREAN_RATIOS[degree]
+        * (2.0 ** (octave + octave_offset))
+    )
+
+
+def _scan_envelope(n, sr):
+    """Flat-topped raised-cosine window. The fade is the whole reason there are no clicks,
+    so it is applied to every grain without exception, including ones that land at the very
+    start or the very end of the buffer."""
+    env = np.ones(n, dtype=np.float64)
+    fade = min(int(sr * SCAN_GRAIN_FADE_MS / 1000.0), n // 2)
+    if fade > 0:
+        ramp = 0.5 - 0.5 * np.cos(np.linspace(0.0, math.pi, fade))
+        env[:fade] *= ramp
+        env[-fade:] *= ramp[::-1]
+    return env
+
+
+def _scan_terrain_grain(freq_hz, sr):
+    n = max(1, int(sr * SCAN_GRAIN_MS / 1000.0))
+    t = np.arange(n) / float(sr)
+    w = np.sin(2.0 * math.pi * freq_hz * t)
+    w += (10.0 ** (SCAN_TERRAIN_H2_DB / 20.0)) * np.sin(4.0 * math.pi * freq_hz * t)
+    w += (10.0 ** (SCAN_TERRAIN_H3_DB / 20.0)) * np.sin(6.0 * math.pi * freq_hz * t)
+    w *= _scan_envelope(n, sr)
+    peak = float(np.max(np.abs(w)))
+    return (w / peak if peak > 0 else w).astype(np.float32)
+
+
+def _scan_water_grain(freq_hz, sr):
+    n = max(1, int(sr * SCAN_GRAIN_MS / 1000.0))
+    t = np.arange(n) / float(sr)
+    # Vibrato as a phase deviation, not a per-sample frequency multiply, so the partials
+    # stay locked to each other and the grain keeps one pitch rather than smearing.
+    dev = (SCAN_WATER_VIBRATO_CENTS / 1200.0) * np.sin(
+        2.0 * math.pi * SCAN_WATER_VIBRATO_HZ * t
+    )
+    phase = 2.0 * math.pi * freq_hz * t * (1.0 + dev)
+    w = np.zeros(n, dtype=np.float64)
+    nyq = 0.45 * sr
+    for k in range(1, SCAN_WATER_HARMONICS + 1):
+        if freq_hz * k >= nyq:
+            break
+        w += np.sin(phase * k) / float(k)
+    w *= _scan_envelope(n, sr)
+    peak = float(np.max(np.abs(w)))
+    return (w / peak if peak > 0 else w).astype(np.float32)
+
+
+def _scan_object_ping(freq_hz, sr):
+    n = max(1, int(sr * SCAN_PING_MS / 1000.0))
+    t = np.arange(n) / float(sr)
+    w = np.zeros(n, dtype=np.float64)
+    nyq = 0.45 * sr
+    for k in SCAN_OBJECT_HARMONICS:
+        if freq_hz * k >= nyq:
+            break
+        w += np.sin(2.0 * math.pi * freq_hz * k * t) / float(k)
+    w *= np.exp(-t * SCAN_OBJECT_DECAY / (SCAN_PING_MS / 1000.0))
+    fade = min(int(sr * SCAN_GRAIN_FADE_MS / 1000.0), n // 2)
+    if fade > 0:
+        w[:fade] *= 0.5 - 0.5 * np.cos(np.linspace(0.0, math.pi, fade))
+        w[-fade:] *= np.linspace(1.0, 0.0, fade)
+    peak = float(np.max(np.abs(w)))
+    return (w / peak if peak > 0 else w).astype(np.float32)
+
+
+def _scan_reference_ping(sr):
+    """Middle C, centre, at the head of every scan. Without it an absolute-pitch elevation
+    readout has nothing to be absolute against."""
+    n = max(1, int(sr * SCAN_REF_PING_MS / 1000.0))
+    t = np.arange(n) / float(sr)
+    w = np.sin(2.0 * math.pi * SCAN_MIDDLE_C_HZ * t)
+    w *= _scan_envelope(n, sr)
+    peak = float(np.max(np.abs(w)))
+    if peak > 0:
+        w /= peak
+    return (w * (10.0 ** (SCAN_REF_PING_DB / 20.0))).astype(np.float32)
+
+
+def render_scan(samples, objects, reach_m, sr=DEFAULT_SR, level_db=SCAN_TERRAIN_DB):
+    """Render one whole scan to a finished (N, 2) float32 buffer.
+
+    Pure, and called from the LISTENER thread rather than the audio callback. Six hundred
+    overlapping grains evaluated per 512-frame block in Python would blow the callback's
+    budget and risk underruns across every voice in the mod, not just this one -- and there
+    is nothing to gain by deferring, because the scan's length is fixed and its content is
+    fully determined the moment the packet lands. Being pure is also what lets
+    diagnostic/terrain_scan_sim.py assert on it with no stream and no clock.
+
+    samples: (bearing_deg, range_m, dz_m, depth_m) -- dz_m None means no surface there,
+             which renders as SILENCE. Zero would mean level ground and would report a
+             plateau where the map simply ends.
+    objects: (bearing_deg, range_m, dz_m)
+    """
+    if np is None:
+        return None
+    reach = max(1.0, float(reach_m))
+    total_n = (
+        int(sr * (SCAN_REF_LEAD_S + SCAN_DURATION_S))
+        + max(int(sr * SCAN_GRAIN_MS / 1000.0), int(sr * SCAN_PING_MS / 1000.0))
+        + int(sr * SCAN_TIME_JITTER_MS / 1000.0)
+        + 2
+    )
+    cloudL = np.zeros(total_n, dtype=np.float32)
+    cloudR = np.zeros(total_n, dtype=np.float32)
+
+    rng = np.random.default_rng(SCAN_RNG_SEED)
+    lead = int(sr * SCAN_REF_LEAD_S)
+    span = sr * SCAN_DURATION_S
+    jitter_n = max(1, int(sr * SCAN_TIME_JITTER_MS / 1000.0))
+    cache = {}
+
+    def place(wave, start, gain, pan):
+        if start < 0:
+            start = 0
+        end = start + len(wave)
+        if end > total_n:
+            wave = wave[: total_n - start]
+            end = total_n
+        if len(wave) <= 0:
+            return
+        lg, rg = _equal_power_pan(pan)
+        cloudL[start:end] += wave * (gain * lg)
+        cloudR[start:end] += wave * (gain * rg)
+
+    water_gain = 10.0 ** (SCAN_WATER_DB_OFFSET / 20.0)
+    object_gain = 10.0 ** (SCAN_OBJECT_DB_OFFSET / 20.0)
+
+    for bearing_deg, range_m, dz_m, depth_m in samples:
+        if dz_m is None:
+            continue  # no surface: silence, never a plateau at level
+        is_water = depth_m is not None and depth_m > 0.0
+        step = scan_step_from_dz(dz_m)
+        key = ("w" if is_water else "t", step)
+        wave = cache.get(key)
+        if wave is None:
+            hz = scan_pitch_hz(dz_m)
+            wave = _scan_water_grain(hz, sr) if is_water else _scan_terrain_grain(hz, sr)
+            cache[key] = wave
+        t0 = lead + int((min(float(range_m), reach) / reach) * span)
+        t0 += int(rng.integers(-jitter_n, jitter_n + 1))
+        place(wave, t0, water_gain if is_water else 1.0, -float(bearing_deg) / 90.0)
+
+    for bearing_deg, range_m, dz_m in objects:
+        step = scan_step_from_dz(dz_m)
+        key = ("o", step)
+        wave = cache.get(key)
+        if wave is None:
+            wave = _scan_object_ping(scan_pitch_hz(dz_m, SCAN_OBJECT_OCTAVE), sr)
+            cache[key] = wave
+        t0 = lead + int((min(float(range_m), reach) / reach) * span)
+        place(wave, t0, object_gain, -float(bearing_deg) / 90.0)
+
+    # Normalise the CLOUD, not the finished buffer. The reference ping is a calibration and
+    # has to sit at a fixed level whatever the terrain did; normalising the two together
+    # would make the ping's loudness a function of the landscape. Normalising the cloud at
+    # all is what makes headroom structural rather than a tuned hope -- six hundred grains
+    # summing sixteen deep have no useful analytic bound.
+    peak = float(max(np.max(np.abs(cloudL)), np.max(np.abs(cloudR))))
+    if peak > 1e-9:
+        scale = (10.0 ** (float(level_db) / 20.0)) / peak
+        cloudL *= scale
+        cloudR *= scale
+
+    ping = _scan_reference_ping(sr)
+    n = min(len(ping), total_n)
+    cloudL[:n] += ping[:n]
+    cloudR[:n] += ping[:n]
+
+    return np.stack([cloudL, cloudR], axis=1).astype(np.float32)
+
+
 class AudioController:
     def __init__(self, logger):
         self.logger = logger
@@ -875,6 +1196,11 @@ class AudioController:
         # Centre-crossing click: armed while off-centre, fires on entry to the deadzone.
         self._hydro_center_armed = False
         self._hydro_center_pos = -1.0  # playback cursor, -1 = idle
+        # Trailer articulation: a second source for the tone above, never a second tone.
+        self._trailer_artic = 0.0  # normalised -1..1, positive = LEFT, 0 = in line / none
+        self._trailer_reverse = False
+        self._trailer_duck_env = 0.0  # 0 = full volume, 1 = fully ducked; glided
+        self._hydro_was_from_trailer = False  # which hinge the centre click is tracking
 
         # Loader implement (bucket / forks) tone state
         self._impl_flags = 0
@@ -948,6 +1274,16 @@ class AudioController:
         self._slam_cue_kind = None  # slam gate earcon: which one is playing
         self._slam_cue_pos = -1.0  # ...and how far through it, -1 = idle
         self._entry_cue_pos = -1.0  # entry gate earcon playback position, -1 = idle
+
+        # Terrain sonification scanner. The whole scan is rendered on the listener thread
+        # and lands here finished; the callback only ever mixes a slice and advances.
+        self._scan_buf = None  # (N, 2) float32, or None when idle
+        self._scan_pos = 0
+        self._scan_old_buf = None  # the one being crossfaded out, if a scan replaced it
+        self._scan_old_pos = 0
+        self._scan_old_left = 0  # samples of crossfade remaining
+        self._scan_tones_enabled = True
+        self._scan_level_db = SCAN_TERRAIN_DB
 
         # Coordinate Guidance FM state
         self._coord_guidance_active = False
@@ -1165,6 +1501,45 @@ class AudioController:
         with self.lock:
             self._dock_approach_cue_pos = 0.0
 
+    def play_scan(self, buf):
+        """Hand over a finished terrain scan for playback.
+
+        The buffer arrives fully rendered (see render_scan) -- this only arms the cursor.
+        A scan that lands while one is still playing crossfades over it rather than cutting,
+        because a double tap of the key is an ordinary thing to do and a hard cut mid-cloud
+        is a click at full level."""
+        if buf is None:
+            return
+        with self.lock:
+            if not self._scan_tones_enabled:
+                return
+            if self._scan_buf is not None and self._scan_pos < len(self._scan_buf):
+                self._scan_old_buf = self._scan_buf
+                self._scan_old_pos = self._scan_pos
+                self._scan_old_left = int(self.samplerate * SCAN_CROSSFADE_MS / 1000.0)
+            self._scan_buf = buf
+            self._scan_pos = 0
+
+    def render_and_play_scan(self, samples, objects, reach_m):
+        """Render a scan and queue it. Deliberately does the synthesis on the CALLING
+        thread -- the UDP listener -- so the audio callback never sees the cost, and so the
+        caller needs to know nothing about the configured level or the device sample rate."""
+        if np is None or not getattr(self, "_is_enabled", False):
+            return
+        with self.lock:
+            if not self._scan_tones_enabled:
+                return
+            sr = self.samplerate
+            level = self._scan_level_db
+        self.play_scan(render_scan(samples, objects, reach_m, sr=sr, level_db=level))
+
+    def stop_scan(self):
+        with self.lock:
+            self._scan_buf = None
+            self._scan_pos = 0
+            self._scan_old_buf = None
+            self._scan_old_left = 0
+
     # Coupler tracking control methods
     def set_coupler_tracking(self, active):
         with self.lock:
@@ -1357,6 +1732,18 @@ class AudioController:
             0.0, max(-120.0, float(cfg.get("dock_tone_dbfs", DOCK_PULSE_DB)))
         )
 
+        # Terrain sonification scanner. Only the cloud is levelled -- water and the object
+        # pings ride fixed offsets from it, so no setting can make the terrain bed inaudible
+        # under the pings or bury the pings in the bed.
+        self._scan_tones_enabled = bool(cfg.get("scan_tones_enabled", True))
+        self._scan_level_db = min(
+            0.0, max(-120.0, float(cfg.get("scan_tone_dbfs", SCAN_TERRAIN_DB)))
+        )
+        if not self._scan_tones_enabled:
+            # The callback gate alone would silence an in-flight scan but leave its buffer
+            # held for the rest of the session. Drop it here instead.
+            self.stop_scan()
+
         # Vehicle scanner pitch + steering-locked steady tone
         self._scan_steer_tone_enabled = bool(
             cfg.get("scanner_steer_tone_enabled", True)
@@ -1509,6 +1896,13 @@ class AudioController:
             )
             self._hydro_steer_input = state.get(
                 "last_steering_input", self._hydro_steer_input
+            )
+            # Trailer articulation, already on the scale above. beamtel sends 0.0 both for
+            # "nothing coupled" and for "the feed went stale", so there is no sentinel to
+            # decode here: 0.0 falls inside the deadzone and the existing gate silences it.
+            self._trailer_artic = state.get("trailer_artic", self._trailer_artic)
+            self._trailer_reverse = bool(
+                state.get("trailer_reverse", self._trailer_reverse)
             )
 
             # Loader implement
@@ -1763,8 +2157,8 @@ class AudioController:
         return a if v < a else b if v > b else v
 
     def _pan_gains(self, p):
-        ang = (self._clamp(p, -1.0, 1.0) + 1.0) * (math.pi / 4.0)
-        return math.cos(ang), math.sin(ang)
+        # Delegates, so the callback's panning and render_scan's cannot drift apart.
+        return _equal_power_pan(p)
 
     def _norm_from_angle_deg(
         self, deg, start=ATT_START_DEG, stop=ATT_STOP_DEG, cap=90.0
@@ -2460,7 +2854,31 @@ class AudioController:
             guide_active = self._guidance_active
             guide_error = self._guidance_error_deg
             # Hydraulic steering / articulation angle (positive = left)
+            #
+            # One channel, two possible sources, never both at once. The frame bend wins
+            # whenever the vehicle actually has hydraulic steering: that hinge is closer to
+            # the driver, moves faster, and is the one that folds the machine — and a WL-40
+            # dragging a trailer has a far more urgent articulation than the trailer's. The
+            # test is `is it exactly zero`, which is not a tolerance dodge but the wire
+            # contract: 796F6C6F313035.lua sets actualSteering to a hard 0.0 on any vehicle
+            # whose cylinder scan and hydro scan both come up empty, precisely so that "no
+            # such thing" is distinguishable from "straight". Every ordinary car therefore
+            # falls through to the trailer source, and the WL-40 path is untouched.
+            #
+            # The loader is a different ANSWER, not a different code path — the same argument
+            # vehicleGeometry makes about contact sets.
             hydro_actual = self._hydro_actual_steer
+            hydro_from_trailer = hydro_actual == 0.0
+            if hydro_from_trailer:
+                hydro_actual = self._trailer_artic
+            # Duck only the trailer source, and only going forward. Glided, never stepped.
+            trailer_duck_target = (
+                1.0 if (hydro_from_trailer and not self._trailer_reverse) else 0.0
+            )
+            self._trailer_duck_env += (
+                trailer_duck_target - self._trailer_duck_env
+            ) * min(1.0, (frames / self.samplerate) / TRAILER_DUCK_TAU)
+            trailer_duck_env = self._trailer_duck_env
 
             # Loader implement snapshot
             impl_flags = self._impl_flags
@@ -4058,6 +4476,9 @@ class AudioController:
                         + (HYDRO_STEER_MAX_DB - HYDRO_STEER_MIN_DB) * norm
                         + IMPL_HYDRO_DUCK_DB * self._impl_gate_env
                         + DOCK_HYDRO_DUCK_DB * self._dock_gate_env
+                        # Zero unless the trailer is the source AND we are going
+                        # forward, so this term does not exist for the WL-40.
+                        + TRAILER_FWD_DUCK_DB * trailer_duck_env
                     )
                     / 20.0
                 )
@@ -4121,6 +4542,18 @@ class AudioController:
         # Centre-crossing click. The tone going silent is ambiguous (it also means the
         # feature is idle), so mark the actual moment of arriving at straight. Arming only
         # well outside the deadzone stops hunting around centre from machine-gunning it.
+        #
+        # A change of SOURCE disarms it instead of firing it. Uncoupling a trailer that was
+        # sitting at an angle drops the value straight to 0.0, which is a crossing into the
+        # deadzone by every test above — so the click would fire and say "straight" about a
+        # trailer that is no longer there, at the one moment the driver has just watched it
+        # come off. Climbing into a loader from a car does the same in reverse. The click
+        # means "this hinge arrived at centre", so it may only fire when the hinge it is
+        # tracking is the one it was tracking last block.
+        if hydro_from_trailer != self._hydro_was_from_trailer:
+            self._hydro_center_armed = False
+            self._hydro_was_from_trailer = hydro_from_trailer
+
         if abs_hydro > HYDRO_STEER_DEADZONE * HYDRO_CENTER_REARM:
             self._hydro_center_armed = True
         elif self._hydro_center_armed and abs_hydro <= HYDRO_STEER_DEADZONE:
@@ -4878,6 +5311,45 @@ class AudioController:
                 bufR[:ol] += self._coord_hrtf_overlap_R[:ol].astype(np.float32)
             self._coord_hrtf_overlap_L = None
             self._coord_hrtf_overlap_R = None
+
+        # Terrain sonification scan playback. Nothing is synthesised here -- the whole
+        # three seconds arrived finished from the listener thread (render_scan), because a
+        # six-hundred-grain cloud evaluated per block would blow this callback's budget and
+        # take every other voice down with it. Read the buffer BEFORE the cursor and clamp:
+        # play_scan can swap them from another thread between the two reads, and a new
+        # buffer indexed by an old position is the one way this can throw.
+        if self._scan_tones_enabled:
+            sb = self._scan_buf
+            if sb is not None:
+                pos = max(0, min(self._scan_pos, len(sb)))
+                n = min(frames, len(sb) - pos)
+                if n > 0:
+                    bufL[:n] += sb[pos : pos + n, 0]
+                    bufR[:n] += sb[pos : pos + n, 1]
+                    self._scan_pos = pos + frames
+                else:
+                    self._scan_buf = None
+                    self._scan_pos = 0
+            ob = self._scan_old_buf
+            if ob is not None and self._scan_old_left > 0:
+                opos = max(0, min(self._scan_old_pos, len(ob)))
+                n = min(frames, len(ob) - opos, self._scan_old_left)
+                if n > 0:
+                    total = max(1, int(self.samplerate * SCAN_CROSSFADE_MS / 1000.0))
+                    done = total - self._scan_old_left
+                    g = np.linspace(
+                        1.0 - done / total,
+                        1.0 - (done + n) / total,
+                        n,
+                        dtype=np.float32,
+                    )
+                    bufL[:n] += ob[opos : opos + n, 0] * g
+                    bufR[:n] += ob[opos : opos + n, 1] * g
+                    self._scan_old_pos = opos + n
+                    self._scan_old_left -= n
+                if n <= 0 or self._scan_old_left <= 0:
+                    self._scan_old_buf = None
+                    self._scan_old_left = 0
 
         out = np.stack([bufL, bufR], axis=1).astype(np.float32)
         np.clip(out, -0.999, 0.999, out=out)
