@@ -66,6 +66,33 @@ STOP = threading.Event()
 LAUNCH_GATE = threading.Event()
 LAUNCH_ALLOWED = True
 
+# Holding either Shift key as BEAM starts skips the automatic game launch for
+# that run only -- "not this time", which the persistent launch_beamng setting
+# cannot express. SAMPLED IN main(), TESTED AT THE GATE: the launch block runs
+# after LAUNCH_GATE.wait(), which can block for minutes behind the updater's
+# modal dialog, so asking there would be asking whether Shift is held now,
+# long after the user let go -- and would quietly turn Shift-during-an-update
+# into a launch veto. Nothing is written to the config.
+LAUNCH_SUPPRESSED_BY_SHIFT = False
+
+VK_LSHIFT = 0xA0
+VK_RSHIFT = 0xA1
+
+
+def _shift_held_at_startup():
+    """True if either physical Shift key is down right now.
+
+    GetAsyncKeyState reports physical key state regardless of focus or of
+    whether a message queue exists yet, which is why nodegrab_listener already
+    prefers it over the keyboard hooks. A failed query degrades to False, i.e.
+    to today's behaviour.
+    """
+    try:
+        get_state = ctypes.windll.user32.GetAsyncKeyState
+        return any((get_state(vk) & 0x8000) != 0 for vk in (VK_LSHIFT, VK_RSHIFT))
+    except Exception:
+        return False
+
 
 class LaunchGate:
     """The updater's view of the deferred launch: allow it, or veto it."""
@@ -8837,6 +8864,8 @@ def _run_engine():
         logger.warning("Updater did not answer within 180s; launching as configured.")
     if not LAUNCH_ALLOWED:
         logger.info("Game launch skipped: an update is being applied.")
+    elif LAUNCH_SUPPRESSED_BY_SHIFT:
+        logger.info("Game launch skipped: Shift held at startup.")
     elif cfg.get("launch_beamng", False):
         try:
             import subprocess
@@ -9056,6 +9085,13 @@ def _run_update_flow(frame):
 
 
 def main():
+    # First statement on purpose: the earliest moment this process can observe
+    # the key the user is holding while it starts.
+    global LAUNCH_SUPPRESSED_BY_SHIFT
+    LAUNCH_SUPPRESSED_BY_SHIFT = _shift_held_at_startup()
+    if LAUNCH_SUPPRESSED_BY_SHIFT:
+        logger.info("Shift held at startup: automatic game launch disabled for this session.")
+
     app = wx.App(False)
     frame = BeamTelFrame()
     frame.Show()
