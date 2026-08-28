@@ -7,7 +7,10 @@ import json
 import os
 import shutil
 import tempfile
+
 import wx
+
+import secretstore
 from configurator import (
     load_config,
     _write_config,
@@ -107,7 +110,13 @@ def _write_layout_with_backup(layout_path, layout):
 
 
 def install_mod_interactive(parent):
-    """Run the mod installation flow, showing wx dialogs as needed. Call from any wx context."""
+    """Run the mod installation flow, showing wx dialogs as needed. Call from any wx context.
+
+    Returns True only when it reaches the "Installation Complete" box. The
+    button caller ignores that, but the updater's phase-two prompt needs to know
+    which of the early returns it took -- every one of them has already told the
+    user what went wrong, so the value is for the log, not for a second dialog.
+    """
     # Step 1 (registry check removed): installation is confirmed by the mods
     # directory existing in step 3.
 
@@ -121,7 +130,7 @@ def install_mod_interactive(parent):
             wx.OK | wx.ICON_ERROR,
             parent,
         )
-        return
+        return False
 
     # Step 3: Confirm the game's mods directory exists.
     local_appdata = os.getenv("LOCALAPPDATA", os.path.expanduser("~"))
@@ -134,7 +143,7 @@ def install_mod_interactive(parent):
             wx.OK | wx.ICON_ERROR,
             parent,
         )
-        return
+        return False
 
     # Step 4: Decide whether to copy.
     dst_zip = os.path.join(mods_dir, _MOD_ZIP)
@@ -179,7 +188,7 @@ def install_mod_interactive(parent):
                 wx.OK | wx.ICON_ERROR,
                 parent,
             )
-            return
+            return False
 
         # Step 5: Verify the result.
         if not os.path.isfile(dst_zip):
@@ -190,7 +199,7 @@ def install_mod_interactive(parent):
                 wx.OK | wx.ICON_WARNING,
                 parent,
             )
-            return
+            return False
         mod_result = "copied the mod file"
 
     # Step 6: Offer to remove the obsolete HUD app from the freeroam layout.
@@ -255,6 +264,7 @@ def install_mod_interactive(parent):
         wx.OK | wx.ICON_INFORMATION,
         parent,
     )
+    return True
 
 
 class LabelAccessible(wx.Accessible):
@@ -528,6 +538,15 @@ class ConfigPanel(wx.ScrolledWindow):
         self._renderer_row.Add(lbl_renderer, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
         self._renderer_row.Add(self.choice_renderer, 1, wx.EXPAND)
         gen.Add(self._renderer_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+
+        self.chk_update_check = wx.CheckBox(
+            sb_gen, label="Check for updates on startup"
+        )
+        self.chk_update_check.SetToolTip(
+            "Ask GitHub for the newest release when BeamTel starts, and offer to "
+            "install it. Nothing is downloaded without your answer."
+        )
+        gen.Add(self.chk_update_check, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
         vbox.Add(gen, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
@@ -1129,6 +1148,7 @@ class ConfigPanel(wx.ScrolledWindow):
         # Auto-save: bind all data controls
         for ctrl in (
             self.chk_launch_beamng,
+            self.chk_update_check,
             self.chk_compass_highlight,
             self.chk_hrtf_enabled,
             self.chk_pitch_roll_enabled,
@@ -1293,6 +1313,14 @@ class ConfigPanel(wx.ScrolledWindow):
                 for k in ai_describer.all_config_keys():
                     if k in disk:
                         cfg[k] = disk[k]
+                # Same argument, other owner: updater.py writes
+                # pending_update_version behind this panel's back, and
+                # controls_to_config() seeds from a snapshot taken when the panel
+                # was built. Without this, an auto-save that happens to land
+                # between the update being staged and the restart would wipe the
+                # one fact that has to survive it.
+                if "pending_update_version" in disk:
+                    cfg["pending_update_version"] = disk["pending_update_version"]
             except Exception:
                 pass
             _write_config(CONFIG_PATH, cfg)
@@ -1382,6 +1410,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_oil_chime_enabled.SetValue(cfg.get("oil_chime_enabled", True))
             self.chk_tc_clicks_enabled.SetValue(cfg.get("tc_clicks_enabled", True))
             self.chk_launch_beamng.SetValue(cfg.get("launch_beamng", False))
+            self.chk_update_check.SetValue(cfg.get("update_check_enabled", True))
             renderer = str(cfg.get("beamng_renderer", "d3d")).lower()
             self.choice_renderer.SetSelection(1 if renderer == "vulkan" else 0)
             self.chk_follow_device.SetValue(
@@ -1454,6 +1483,7 @@ class ConfigPanel(wx.ScrolledWindow):
         cfg["oil_chime_enabled"] = self.chk_oil_chime_enabled.GetValue()
         cfg["tc_clicks_enabled"] = self.chk_tc_clicks_enabled.GetValue()
         cfg["launch_beamng"] = self.chk_launch_beamng.GetValue()
+        cfg["update_check_enabled"] = self.chk_update_check.GetValue()
         cfg["beamng_renderer"] = "vulkan" if self.choice_renderer.GetSelection() == 1 else "d3d"
         cfg["follow_default_audio_device"] = self.chk_follow_device.GetValue()
         cfg["audio_poll_interval_sec"] = self.spin_poll.GetValue()
@@ -2051,7 +2081,10 @@ class AIDescriberPanel(wx.ScrolledWindow):
         self.btn_api_key.SetFocus()
         if ok:
             key_cfg, _model_cfg = self._ai.config_keys_for(self._provider)
-            self.cur_cfg[key_cfg] = key
+            # The validated key goes to disk sealed, never in the clear. `key`
+            # itself stays plaintext only for the validation call above, which
+            # has already returned.
+            self.cur_cfg[key_cfg] = secretstore.protect(key)
             self._save()
             self._refresh_key_button()
             wx.MessageBox(

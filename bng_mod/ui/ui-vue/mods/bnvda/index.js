@@ -36,7 +36,12 @@ export async function onLoad() {
     console.info('[bnvda] UI bootstrap complete; installing runtime.')
     const vue = window.bngVue || {}
     const stores = vue.stores || {}
-    const controls = vue.Controls || vue.controls || stores.Controls || stores.controls
+    // controlsStore FIRST: window.bngVue.controls is a hand-written facade
+    // (main.js exposeControlsStore) that forwards a chosen subset of methods and
+    // carries none of the store's reactive properties -- lastDevices among them,
+    // which is how the runtime knows which pad the player is actually holding.
+    // controlsStore is the pinia store itself and is a superset of the facade.
+    const controls = vue.controlsStore || vue.Controls || vue.controls || stores.Controls || stores.controls
     uninstallRuntime = installBNVDA(window.globalAngularRootScope, {
       controls,
       icons: vue.icons,

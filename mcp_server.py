@@ -24,12 +24,15 @@ dropped for it), aiohttp is already here and already runs a server on a daemon t
 import asyncio
 import collections
 import json
+import os
 import socket
 import threading
 import time
 import traceback
 
 from aiohttp import web
+
+import secretstore
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 4481  # clear of the 4444-4473 mod block, leaving it room to grow
@@ -88,6 +91,39 @@ DIAGNOSTICS = {
     # LOGON window by _t_diag rather than read from the return value.
     "terrain": "extensions.terrainScanner.diag()",
 }
+
+# --- camera conventions -------------------------------------------------------------
+# Two conventions collide here, and both are DERIVED from the game source rather than
+# measured, because each is the exact algebraic inverse of the other.
+#
+#   core_camera.setFreeCameraYawPitchRollDeg(yawDeg, pitchDownDeg, rollDeg) builds its
+#   forward as (sin(yaw)cos(p), cos(yaw)cos(p), -sin(p))  --  core/camera.lua:1105.
+#   So its yaw is atan2(f.x, f.y) and its pitch is positive-DOWN.
+#
+#   cameraInfo.lua:253 reports yaw as atan2(-f.x, -f.y) normalised to 0..360 (the
+#   MotionSim heading convention the whole mod uses) and pitch positive-UP (:258).
+#
+# atan2(-x, -y) == atan2(x, y) +/- 180, so the two yaws differ by exactly 180 degrees
+# with the same sign, and the two pitches differ by a sign alone.
+#
+# This tool speaks the MOD's convention in both directions, so `get` can never disagree
+# with `get_state`, the live 4450 feed, or the Alt+H / Alt+A readouts -- and the readback
+# is derived from getForward() the same way cameraInfo.lua derives it, for that reason
+# rather than from core_camera.getYawPitchRoll(), which speaks the engine's.
+CAM_YAW_OFFSET_DEG = 180.0
+
+# Let the camera settle before reading the pose back, so a set is self-verifying.
+CAM_SETTLE_MS_DEFAULT = 150
+CAM_SETTLE_MS_MAX = 3000
+
+CAMERA_ACTIONS = ("get", "list_modes", "set_mode", "cycle", "reset", "place")
+
+# Where `screenshot` writes when the caller names no directory -- beside the AI
+# Describer's own log, which is the only other thing this mod writes per-run.
+SCREENSHOT_DIR_DEFAULT = os.path.join(
+    os.getenv("LOCALAPPDATA") or os.path.expanduser("~"), "beamtel", "screenshots"
+)
+SHOT_SETTLE_MS_MAX = 5000
 
 _LOG_RING_MAX = 2000
 
@@ -444,8 +480,36 @@ def _t_get_state(args):
     return _deps.snapshot_state_fn(sections)
 
 
+# Which settings are secrets is `secretstore`'s list, not a second copy of it:
+# the same names decide what gets sealed on disk and what gets masked here, and
+# two lists would drift the day a provider is added. `get_config` is served to an
+# agent over loopback HTTP and its output ends up in transcripts and logs, so a
+# key readable through it is a key that has left the user's machine -- masked
+# even though it is now stored sealed, because a DPAPI blob is still the
+# credential in transportable form.
+_REDACTED = "<redacted>"
+
+
+def _mask_secrets(cfg):
+    """Copy of `cfg` with secret-named values replaced.
+
+    An empty value is left empty rather than redacted: whether a key is SET is
+    exactly what an agent legitimately needs to know (it is why the describer
+    refuses to run), and it gives away nothing.
+    """
+    if not isinstance(cfg, dict):
+        return cfg
+    out = {}
+    for k, v in cfg.items():
+        if secretstore.is_secret_setting(k) and v not in (None, "", [], {}):
+            out[k] = _REDACTED
+        else:
+            out[k] = v
+    return out
+
+
 def _t_get_config(args):
-    return _deps.load_config_fn()
+    return _mask_secrets(_deps.load_config_fn())
 
 
 def _t_speech_log(args):
@@ -640,6 +704,367 @@ def _t_reset_test_state(args):
     return out
 
 
+# --- camera control -----------------------------------------------------------------
+#
+# Composed GE Lua run through exec_console rather than a new verb on cameraInfo.lua's
+# 4451, for three reasons. Readback is the point of the tool and exec_console is the only
+# channel that returns a value synchronously -- 4451 is fire-and-forget with no reply
+# path, and giving 4450 a reply format for agent-only queries would be new wire protocol
+# on a live junction. A new *listener* would additionally owe the setsockname-return /
+# onExtensionUnloaded / retryCmdBind triple that vehicle_geometry_sim.lua scenario 12
+# polices across every listening extension. And this is exactly what _t_diag already is:
+# a curated wrapper over Lua the agent could have typed, leaving lua_exec the universal
+# surface. Nothing in bng_mod/ changes.
+#
+# NOT ONE PERCENT SIGN appears in any chunk below -- these strings go through Python's
+# own % formatting elsewhere in this file, and the modulo operator is the one Lua
+# construct that would make a chunk unsafe to route that way. Hence n360().
+
+# Read the pose back the way cameraInfo.lua reads it, so the two can never disagree.
+# n360 is applied AFTER the rounding as well as before it: a yaw of 0 arrives from
+# atan2 as 359.9999997, which r3 rounds to a clean 360.0 -- a value that does not
+# exist in a 0..360 convention, and one an agent testing `yaw_deg == 0` would miss.
+_CAM_READ_LUA = (
+    "local p=core_camera.getPosition() local f=core_camera.getForward()"
+    " local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end"
+    " local function r3(v) return math.floor(v*1000+0.5)/1000 end"
+    " local y,pi=0,0 local l=math.sqrt(f.x*f.x+f.y*f.y+f.z*f.z)"
+    " if l>1e-9 then y=n360(math.deg(math.atan2(-f.x,-f.y))) pi=math.deg(math.asin(f.z/l)) end"
+    " local ro=0 local ok,t=pcall(core_camera.getYawPitchRoll)"
+    " if ok and type(t)=='table' and t.rollDeg then ro=t.rollDeg end"
+    " return jsonEncode({mode=(core_camera.getActiveCamName()) or 'unknown',"
+    "is_free=(commands.isFreeCamera() and true or false),"
+    "pos={r3(p.x),r3(p.y),r3(p.z)},yaw_deg=n360(r3(y)),pitch_deg=r3(pi),roll_deg=r3(ro),"
+    "player_veh_id=be:getPlayerVehicleID(0)})"
+)
+
+_CAM_LIST_LUA = (
+    "local g,v={},{} local ok,gc=pcall(core_camera.getGlobalCameras)"
+    " if ok and type(gc)=='table' then for k,_ in pairs(gc) do g[#g+1]=k end end"
+    " local vid=be:getPlayerVehicleID(0)"
+    " local ok2,vc=pcall(core_camera.getCameraDataById,vid)"
+    " if ok2 and type(vc)=='table' then for k,_ in pairs(vc) do v[#v+1]=k end end"
+    " table.sort(g) table.sort(v)"
+    " return jsonEncode({global_cameras=g,vehicle_cameras=v,player_veh_id=vid,"
+    "active=(core_camera.getActiveCamName()) or 'unknown'})"
+)
+
+# Entering the free camera goes through commands.setFreeCamera() rather than a bare
+# setByName(0,'free'): it seeds the free cam at the camera's current pos/rot
+# (commands.lua:38), so there is no visible jump before the placement lands.
+_CAM_ENSURE_FREE = "if not commands.isFreeCamera() then commands.setFreeCamera() end "
+
+_N360_LUA = "local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end "
+
+
+def _cam_num(args, key, default=None, required=False):
+    val = args.get(key, default)
+    if val is None:
+        if required:
+            raise ToolError("`%s` is required" % key)
+        return None
+    try:
+        val = float(val)
+    except (TypeError, ValueError):
+        raise ToolError("`%s` must be a number, got %r" % (key, args.get(key)))
+    if val != val or val in (float("inf"), float("-inf")):
+        raise ToolError("`%s` must be a finite number" % key)
+    return val
+
+
+def _cam_lua_num(val):
+    return repr(float(val))
+
+
+def _cam_veh_expr(args):
+    """Lua binding __v to the vehicle a relative/orbit placement is measured against."""
+    vid = args.get("veh_id")
+    if vid in (None, ""):
+        return "local __v=be:getPlayerVehicle(0)"
+    try:
+        vid = int(vid)
+    except (TypeError, ValueError):
+        raise ToolError("`veh_id` must be an integer vehicle id, got %r" % args.get("veh_id"))
+    return "local __v=be:getObjectByID(" + str(vid) + ")"
+
+
+def _cam_read(settle_ms=None):
+    """Run the readback chunk and return it as a dict."""
+    if settle_ms:
+        time.sleep(max(0.0, min(float(settle_ms), CAM_SETTLE_MS_MAX)) / 1000.0)
+    res = exec_console("ge", _CAM_READ_LUA)
+    if res.get("timed_out"):
+        raise _console_unreachable(EXEC_TIMEOUT_GE)
+    if not res.get("ok"):
+        raise ToolError("camera readback failed: " + (res.get("result") or "unknown error"))
+    try:
+        return json.loads(res.get("result") or "")
+    except ValueError:
+        raise ToolError("camera readback was not JSON: " + repr(res.get("result"))[:400])
+
+
+def _cam_run(chunk):
+    res = exec_console("ge", chunk)
+    if res.get("timed_out"):
+        raise _console_unreachable(EXEC_TIMEOUT_GE)
+    if not res.get("ok"):
+        raise ToolError("camera command failed: " + (res.get("result") or "unknown error"))
+    return res
+
+
+def _cam_place_chunk(args):
+    """Build the free-camera placement chunk for whichever addressing mode was given."""
+    has_abs = any(k in args for k in ("x", "y", "z"))
+    has_rel = any(k in args for k in ("rel_fwd_m", "rel_right_m", "rel_up_m"))
+    has_orbit = any(
+        k in args for k in ("orbit_azimuth_deg", "orbit_elevation_deg", "orbit_distance_m")
+    )
+    if sum((has_abs, has_rel, has_orbit)) > 1:
+        raise ToolError(
+            "give exactly one position form: absolute (x/y/z), relative "
+            "(rel_fwd_m/rel_right_m/rel_up_m) or orbit (orbit_*)"
+        )
+
+    tgt_default = ""
+    if has_abs:
+        x = _cam_num(args, "x", required=True)
+        y = _cam_num(args, "y", required=True)
+        z = _cam_num(args, "z", required=True)
+        pos_lua = (
+            "local __p=vec3(" + _cam_lua_num(x) + "," + _cam_lua_num(y) + ","
+            + _cam_lua_num(z) + ")"
+        )
+    elif has_rel:
+        f = _cam_num(args, "rel_fwd_m", 0.0)
+        r = _cam_num(args, "rel_right_m", 0.0)
+        u = _cam_num(args, "rel_up_m", 0.0)
+        # __r is the vehicle's RIGHT: fwd:cross(up), deliberately the mirror of the
+        # mod-wide up:cross(fwd) positive-is-LEFT rule. That rule governs bearings
+        # reported to a driver; this is a placement parameter literally named "right".
+        pos_lua = (
+            _cam_veh_expr(args)
+            + " if not __v then error('no such vehicle for a relative placement',0) end"
+            " local __vp=__v:getPosition() local __f=__v:getDirectionVector()"
+            " local __u=__v:getDirectionVectorUp() local __r=__f:cross(__u)"
+            " local __p=vec3(__vp.x,__vp.y,__vp.z)+__f*" + _cam_lua_num(f)
+            + "+__r*" + _cam_lua_num(r) + "+__u*" + _cam_lua_num(u)
+        )
+    elif has_orbit:
+        az = _cam_num(args, "orbit_azimuth_deg", 0.0)
+        el = _cam_num(args, "orbit_elevation_deg", 20.0)
+        dist = _cam_num(args, "orbit_distance_m", required=True)
+        if dist <= 0:
+            raise ToolError("`orbit_distance_m` must be greater than zero")
+        # Elevation is measured off the WORLD horizontal and the ring is built on the
+        # vehicle's FLATTENED heading, so "30 degrees up at 10 metres" means the same
+        # thing on a machine parked nose-down a bank as on one standing level.
+        pos_lua = (
+            _cam_veh_expr(args)
+            + " if not __v then error('no such vehicle to orbit',0) end"
+            " local __vp=__v:getPosition() local __vf=__v:getDirectionVector()"
+            " local __h=vec3(__vf.x,__vf.y,0)"
+            " if __h:length()<1e-6 then __h=vec3(0,1,0) end __h:normalize()"
+            " local __rt=vec3(__h.y,-__h.x,0)"
+            " local __az=math.rad(" + _cam_lua_num(az) + ") local __el=math.rad("
+            + _cam_lua_num(el) + ") local __d=" + _cam_lua_num(dist)
+            + " local __ch=math.cos(__el)*__d"
+            " local __p=vec3(__vp.x,__vp.y,__vp.z)+__h*(math.cos(__az)*__ch)"
+            "+__rt*(math.sin(__az)*__ch)+vec3(0,0,math.sin(__el)*__d)"
+        )
+        tgt_default = " local __t=vec3(__vp.x,__vp.y,__vp.z)"
+    else:
+        raise ToolError(
+            "`place` needs a position: absolute (x/y/z), relative "
+            "(rel_fwd_m/rel_right_m/rel_up_m) or orbit (orbit_distance_m + orbit_*)"
+        )
+
+    tgt_lua = tgt_default
+    look = args.get("look_at")
+    if look is not None:
+        if isinstance(look, (list, tuple)):
+            if len(look) != 3:
+                raise ToolError("`look_at` as a point must be [x, y, z]")
+            pt = [_cam_num({"v": v}, "v", required=True) for v in look]
+            tgt_lua = (
+                " local __t=vec3(" + _cam_lua_num(pt[0]) + "," + _cam_lua_num(pt[1])
+                + "," + _cam_lua_num(pt[2]) + ")"
+            )
+        else:
+            try:
+                lid = int(look)
+            except (TypeError, ValueError):
+                raise ToolError("`look_at` must be [x, y, z] or a vehicle id, got %r" % (look,))
+            tgt_lua = (
+                " local __lv=be:getObjectByID(" + str(lid) + ")"
+                " if not __lv then error('no such look_at vehicle',0) end"
+                " local __lp=__lv:getPosition() local __t=vec3(__lp.x,__lp.y,__lp.z)"
+            )
+
+    yaw = _cam_num(args, "yaw_deg", 0.0)
+    pitch = _cam_num(args, "pitch_deg", 0.0)
+    roll = _cam_num(args, "roll_deg", 0.0)
+
+    # A resolved look-at target overrides the explicit angles. Both yaw and pitch are
+    # derived here in the MOD's convention and converted once, at the call itself.
+    aim = (
+        " local __y,__pi=" + _cam_lua_num(yaw) + "," + _cam_lua_num(pitch)
+        + " if __t then local __d=__t-__p local __l=__d:length()"
+        " if __l>1e-6 then __y=n360(math.deg(math.atan2(-__d.x,-__d.y)))"
+        " __pi=math.deg(math.asin(__d.z/__l)) end end"
+    )
+
+    return (
+        _CAM_ENSURE_FREE
+        + _N360_LUA
+        + pos_lua
+        + tgt_lua
+        + aim
+        + " core_camera.setPosition(0,__p)"
+        " core_camera.setFreeCameraYawPitchRollDeg(n360(__y-"
+        + _cam_lua_num(CAM_YAW_OFFSET_DEG)
+        + "),-__pi," + _cam_lua_num(roll) + ") return 'placed'"
+    )
+
+
+def _t_camera_control(args):
+    # Argument validation comes BEFORE the world check: a typo'd action is a caller
+    # error and must name the valid ones whatever the game is doing. Told "the game may
+    # be closed" instead, the agent goes and debugs the game.
+    action = (args.get("action") or "get").strip()
+    if action not in CAMERA_ACTIONS:
+        raise ToolError("unknown action %r (%s)" % (action, " | ".join(CAMERA_ACTIONS)))
+    _require_world()
+
+    settle = args.get("settle_ms", CAM_SETTLE_MS_DEFAULT)
+
+    if action == "list_modes":
+        res = _cam_run(_CAM_LIST_LUA)
+        try:
+            out = json.loads(res.get("result") or "")
+        except ValueError:
+            raise ToolError("list_modes was not JSON: " + repr(res.get("result"))[:400])
+        out["action"] = "list_modes"
+        return out
+
+    if action == "get":
+        out = _cam_read()
+        out["action"] = "get"
+        return out
+
+    if action == "set_mode":
+        mode = (args.get("mode") or "").strip()
+        if not mode:
+            raise ToolError("`mode` is required for set_mode; call list_modes for the names")
+        # Validated rather than escaped: a camera name is an identifier, and refusing
+        # anything else keeps quotes out of the composed chunk entirely.
+        if not all(c.isalnum() or c in "._-" for c in mode):
+            raise ToolError(
+                "`mode` must be a camera name (letters, digits, . _ -), got %r" % mode
+            )
+        chunk = (
+            "local n='" + mode + "' if n=='free' then " + _CAM_ENSURE_FREE
+            + "else core_camera.setByName(0,n) end return 'mode set'"
+        )
+    elif action == "cycle":
+        offset = int(_cam_num(args, "offset", 1))
+        if offset == 0:
+            raise ToolError("`offset` must be non-zero (+1 next camera, -1 previous)")
+        chunk = "core_camera.setVehicleCameraByIndexOffset(0," + str(offset) + ") return 'cycled'"
+    elif action == "reset":
+        chunk = "core_camera.resetCamera(0) return 'reset'"
+    else:  # place
+        chunk = _cam_place_chunk(args)
+
+    if len(chunk) > MAX_DATAGRAM_CONTENT:
+        raise ToolError(
+            "composed camera chunk is %d bytes, over the %d-byte datagram limit"
+            % (len(chunk), MAX_DATAGRAM_CONTENT)
+        )
+    _cam_run(chunk)
+    out = _cam_read(settle)
+    out["action"] = action
+    # Every action answers with the readback, so a set is self-verifying in one round
+    # trip -- and `place` in particular can only work from the free camera, since
+    # setPosition and setFreeCameraYawPitchRollDeg both early-return otherwise
+    # (core/camera.lua:1088). `is_free` here is therefore proof that it landed rather
+    # than an inference from the absence of an error.
+    return out
+
+
+def _t_screenshot(args):
+    """Write a PNG of the game to disk. Deliberately does NOT send it anywhere."""
+    capture = getattr(_deps, "capture_png_fn", None)
+    if capture is None:
+        raise ToolError(
+            "this beamtel build injected no capture function -- screenshot is unavailable"
+        )
+
+    hide_ui = bool(args.get("hide_ui", True))
+    # Default TRUE, unlike the AI Describer, because the situations differ: that one
+    # fires from a keypress while the user is playing, so the game is already in front.
+    # An agent shoots while the user is looking at a terminal, and BeamNG is then
+    # usually MINIMIZED -- it parks off-screen and renames itself "- background", so a
+    # plain monitor grab returns the desktop. That is a silent, entirely plausible
+    # wrong answer, which is the failure this whole server exists to catch.
+    focus_game = bool(args.get("focus_game", True))
+    settle_ms = args.get("settle_ms")
+    settle_s = None
+    if settle_ms is not None:
+        settle_s = max(0.0, min(float(settle_ms), SHOT_SETTLE_MS_MAX)) / 1000.0
+
+    directory = args.get("dir") or SCREENSHOT_DIR_DEFAULT
+    directory = os.path.abspath(os.path.expanduser(str(directory)))
+
+    filename = args.get("filename")
+    if filename:
+        filename = str(filename)
+        if os.path.basename(filename) != filename or filename in (".", ".."):
+            raise ToolError("`filename` must be a bare file name, not a path: %r" % filename)
+        if not filename.lower().endswith(".png"):
+            filename += ".png"
+    else:
+        # Timestamped to the millisecond: a before/after pair is the main thing this
+        # tool gets used for, and two shots in the same second must not collide.
+        now = time.time()
+        filename = time.strftime("beam_%Y%m%d_%H%M%S", time.localtime(now)) + (
+            "_%03d.png" % int((now - int(now)) * 1000)
+        )
+
+    path = os.path.join(directory, filename)
+
+    try:
+        if settle_s is not None:
+            got = capture(hide_ui, settle_s, focus_game)
+        else:
+            got = capture(hide_ui, focus_game=focus_game)
+    except Exception as e:
+        raise ToolError("screen capture failed: %s: %s" % (type(e).__name__, e))
+    png, meta = got if isinstance(got, tuple) else (got, {})
+    if not png:
+        raise ToolError("screen capture returned no data")
+
+    try:
+        os.makedirs(directory, exist_ok=True)
+        with open(path, "wb") as fh:
+            fh.write(png)
+    except Exception as e:
+        raise ToolError("could not write %s: %s: %s" % (path, type(e).__name__, e))
+
+    out = {
+        "path": path,
+        "bytes": len(png),
+        "hide_ui": hide_ui,
+        "note": "written to disk only -- not sent to any model. Read the file to view it.",
+    }
+    # What was actually captured rides back with it. A grab of the desktop because the
+    # game would not come up looks exactly like a real screenshot to everything except
+    # this field.
+    out.update(meta or {})
+    if focus_game and not out.get("game_window_found"):
+        out["warning"] = "no BeamNG window found -- this is a grab of the primary monitor"
+    return out
+
+
 # ===================================================================================
 #  Tool registry
 # ===================================================================================
@@ -702,7 +1127,11 @@ TOOLS = [
     },
     {
         "name": "get_config",
-        "description": "The user's current beamtel configuration. Read-only by design -- the agent must not silently rewrite the user's settings.",
+        "description": (
+            "The user's current beamtel configuration. Read-only by design -- the agent "
+            "must not silently rewrite the user's settings. API keys and other secrets "
+            "read back as `<redacted>` when set and empty when unset."
+        ),
         "inputSchema": {"type": "object", "properties": {}},
         "handler": _t_get_config,
     },
@@ -841,6 +1270,72 @@ TOOLS = [
             },
         },
         "handler": _t_console_log,
+    },
+    {
+        "name": "camera_control",
+        "description": (
+            "Move the eye. Switches camera mode (including free camera) and places the "
+            "free camera anywhere, then returns the resulting camera state -- so a set "
+            "is self-verifying in one round trip and pairs directly with `screenshot`. "
+            "actions: get (default) | list_modes | set_mode | cycle | reset | place. "
+            "`place` takes exactly one position form -- absolute (x/y/z), relative to a "
+            "vehicle's own frame (rel_fwd_m/rel_right_m/rel_up_m), or orbit around one "
+            "(orbit_distance_m + orbit_azimuth_deg/orbit_elevation_deg) -- plus an "
+            "optional `look_at` that derives the orientation for you. Angles are in the "
+            "mod's own convention: yaw 0-360 matching the 4450 feed and the Alt+H "
+            "readout, pitch positive-UP. This never moves the vehicle."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "description": "get | list_modes | set_mode | cycle | reset | place",
+                    "default": "get",
+                },
+                "mode": {"type": "string", "description": "set_mode: a camera name from list_modes, e.g. 'free', 'orbit', 'onboard.driver'."},
+                "offset": {"type": "integer", "description": "cycle: +1 for the next vehicle camera, -1 for the previous.", "default": 1},
+                "veh_id": {"type": "integer", "description": "place: the vehicle a relative or orbit placement is measured against. Defaults to the player's."},
+                "x": {"type": "number", "description": "place, absolute: world X."},
+                "y": {"type": "number", "description": "place, absolute: world Y."},
+                "z": {"type": "number", "description": "place, absolute: world Z."},
+                "rel_fwd_m": {"type": "number", "description": "place, relative: metres along the vehicle's forward. Negative is behind it."},
+                "rel_right_m": {"type": "number", "description": "place, relative: metres to the vehicle's RIGHT. Note this is a placement offset, so it is the mirror of the mod's positive-is-LEFT bearing convention."},
+                "rel_up_m": {"type": "number", "description": "place, relative: metres along the vehicle's up."},
+                "orbit_distance_m": {"type": "number", "description": "place, orbit: radius from the vehicle. Implies looking at it."},
+                "orbit_azimuth_deg": {"type": "number", "description": "place, orbit: 0 puts the camera directly ahead of the vehicle, positive swings to its right.", "default": 0},
+                "orbit_elevation_deg": {"type": "number", "description": "place, orbit: degrees above the world horizontal.", "default": 20},
+                "look_at": {"description": "place: a [x, y, z] point or a vehicle id to aim at. Overrides yaw_deg/pitch_deg."},
+                "yaw_deg": {"type": "number", "description": "place: heading, 0-360, same convention as the 4450 camera feed.", "default": 0},
+                "pitch_deg": {"type": "number", "description": "place: positive is looking UP, matching cameraInfo.lua.", "default": 0},
+                "roll_deg": {"type": "number", "description": "place: camera roll.", "default": 0},
+                "settle_ms": {"type": "integer", "description": "Wait before reading the pose back.", "default": 150},
+            },
+        },
+        "handler": _t_camera_control,
+    },
+    {
+        "name": "screenshot",
+        "description": (
+            "Capture the game and WRITE THE PNG TO A FILE for you to read -- the same "
+            "capture path the AI Describer uses, with nothing sent to any model. Use it "
+            "when a picture settles a question the numbers cannot: whether a car really "
+            "is where a resolver says it is, what a mouth or an implement is actually "
+            "pointing at, or what the mod's own UI is showing. Pass `dir` to put the "
+            "file in your own working directory, then read that path. Pairs with "
+            "`camera_control`: place the eye, then shoot."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "dir": {"type": "string", "description": "Directory to write into. Defaults to %LOCALAPPDATA%/beamtel/screenshots."},
+                "filename": {"type": "string", "description": "Bare file name, no path. Defaults to a millisecond-stamped name so successive shots never collide."},
+                "hide_ui": {"type": "boolean", "description": "Hide the game HUD around the grab for a clean view of the world. Pass false to inspect the UI itself.", "default": True},
+                "focus_game": {"type": "boolean", "description": "Raise the BeamNG window before the grab and put the previous window back afterwards. Needed whenever the game is minimized, which it usually is when an agent is driving -- a minimized BeamNG renders nothing and a plain grab returns the desktop. The result reports what was actually captured.", "default": True},
+                "settle_ms": {"type": "integer", "description": "How long to let the game render a UI-free frame after hiding.", "default": 200},
+            },
+        },
+        "handler": _t_screenshot,
     },
     {
         "name": "reset_test_state",

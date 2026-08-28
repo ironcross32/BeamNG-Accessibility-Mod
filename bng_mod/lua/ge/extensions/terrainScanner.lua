@@ -11,8 +11,9 @@
 --
 --  Loaded by: scripts/bng_screenreader_mod/modScript.lua
 --
---  Not covered: mesh River volumes. They carry no queryable height field, so only WaterPlane
---               and WaterBlock water (oceans, lakes) registers. A river reads as dry ground.
+--  Water objects are resolved once per scan and tested spatially. River segments provide
+--  their bed elevation directly; flat water gets a second, budgeted ray when the first ray
+--  lands on its surface.
 --
 -- =================================================================================================
 
@@ -28,17 +29,19 @@ local CMD_LISTEN_PORT   = 4472   -- receive SCAN from Python
 local SCAN_MAX_RANGE_M  = 200.0
 local SCAN_BEARINGS     = 24     -- spokes across the forward 180 degrees, endpoints included
 local SCAN_RINGS        = 25     -- rings per spoke, ring 1 sitting ON the vehicle
--- The heightmap tier is free, but the raycast fallback is not, and on a map with no
--- TerrainBlock EVERY sample falls through to it. Budgeting the way obstacleDetector budgets
--- its ray fan turns that from a frame hitch into about six frames of extra latency before
--- the reference ping, which nobody can hear.
+-- Every sample is raycast first so a hidden TerrainBlock cannot mask visible static meshes.
+-- Water-bed probes share this same budget. At 100 rays per frame the ordinary 600-cell scan
+-- collects over roughly six frames without hitching the GE update.
 local SCAN_RAYS_PER_TICK = 100
 local SCAN_MIN_REACH_M  = 20.0   -- a floor, so a tiny map still produces a usable time axis
+local SCAN_RAY_TOP_Z    = 100000.0
+local WATER_PROBE_EPS_M = 0.05
 
 local udpSend = nil
 local udpCmd  = nil
 local scan    = nil   -- the in-progress snapshot, or nil when idle
 local nextId  = 1
+local lastScanDiag = nil
 
 local function tsLog(level, msg) log(level, 'TerrainScanner', msg) end
 
@@ -47,14 +50,12 @@ local function send(line)
 end
 
 -- -------------------------------------------------------------------------------------------
--- Ground height, in two tiers.
+-- Surface height, in two tiers.
 --
--- core_terrain.getTerrainHeight is a heightmap lookup, so six hundred of them fit in one
--- frame and the scan is a genuine instant snapshot. But it returns nil on every point of a
--- map with no TerrainBlock, and several stock maps have none -- smallgrid is a GroundPlane,
--- gridmap is static meshes. be:getSurfaceHeightBelow sees terrain, static meshes and ground
--- planes alike, at the cost of being a raycast; it also reports failure as -1e20 rather than
--- nil, which is why the guard below is a magnitude test and not a nil check.
+-- The ray is authoritative because it sees the visible collision surface: terrain, static
+-- meshes, bridges, and GroundPlanes. The TerrainBlock heightmap is only a fallback for a ray
+-- that finds nothing. be:getSurfaceHeightBelow reports failure as -1e20 rather than nil,
+-- hence the magnitude guard.
 -- -------------------------------------------------------------------------------------------
 local function heightmapAt(x, y, hintZ)
   if not (core_terrain and core_terrain.getTerrainHeight) then return nil end
@@ -63,36 +64,126 @@ local function heightmapAt(x, y, hintZ)
   return nil
 end
 
-local function rayAt(x, y, hintZ)
-  local function probe(z)
-    local ok, h = pcall(function() return be:getSurfaceHeightBelow(vec3(x, y, z)) end)
-    if ok and type(h) == "number" and h > -1e10 then return h end
-    return nil
-  end
-  return probe(hintZ + 2) or probe(hintZ + 300) or probe(1e5)
+local function rayAt(x, y, startZ)
+  local ok, h = pcall(function() return be:getSurfaceHeightBelow(vec3(x, y, startZ)) end)
+  if ok and type(h) == "number" and h > -1e10 then return h end
+  return nil
 end
 
 -- -------------------------------------------------------------------------------------------
--- Water surface. One global z per scan: a sample is water when the ground under it lies
--- below that plane, and the DEPTH is what Python turns into a pitch -- via the bed, not the
--- surface, so "deeper is lower" comes out of the same elevation map the dry ground uses.
+-- Water descriptors. Resolve scene objects once at scan start; per-cell work is then an XY
+-- bounds test, plus River.containsPoint for the small set of plausible river candidates.
 -- -------------------------------------------------------------------------------------------
-local function resolveWaterZ()
-  local best = nil
-  for _, class in ipairs({"WaterPlane", "WaterBlock"}) do
+local function worldBounds(obj)
+  local ok, box = pcall(function() return obj:getWorldBox() end)
+  if not (ok and box and box.minExtents and box.maxExtents) then return nil end
+  return {
+    minX = box.minExtents.x, maxX = box.maxExtents.x,
+    minY = box.minExtents.y, maxY = box.maxExtents.y,
+    minZ = box.minExtents.z, maxZ = box.maxExtents.z,
+  }
+end
+
+local function inXY(bounds, x, y)
+  return bounds == nil
+      or (x >= bounds.minX and x <= bounds.maxX
+          and y >= bounds.minY and y <= bounds.maxY)
+end
+
+local function readRiverNodes(obj)
+  local nodes = {}
+  local ok, count = pcall(function() return obj:getNodeCount() end)
+  if not (ok and type(count) == "number") then return nodes end
+  for i = 0, count - 1 do
+    local okNode, pos, depth = pcall(function()
+      return vec3(obj:getNodePosition(i)), obj:getNodeDepth(i)
+    end)
+    if okNode and pos and type(depth) == "number" then
+      nodes[#nodes + 1] = {pos = pos, depth = math.max(0, depth)}
+    end
+  end
+  return nodes
+end
+
+local function resolveWaterObjects()
+  local waters = {}
+  local counts = {River = 0, WaterBlock = 0, WaterPlane = 0}
+  for _, class in ipairs({"River", "WaterBlock", "WaterPlane"}) do
     local ok, names = pcall(function() return scenetree.findClassObjects(class) end)
     if ok and names then
       for _, n in pairs(names) do
-        local ok2, z = pcall(function()
-          local o = scenetree.findObject(n)
-          if o then return o:getPosition().z end
-          return nil
-        end)
-        if ok2 and type(z) == "number" and (best == nil or z > best) then best = z end
+        local obj = scenetree.findObject(n)
+        if obj then
+          local desc = {class = class, name = tostring(n), obj = obj}
+          desc.bounds = worldBounds(obj)
+          if class == "River" then
+            desc.nodes = readRiverNodes(obj)
+          else
+            local okPos, pos = pcall(function() return vec3(obj:getPosition()) end)
+            if okPos and pos then desc.z = pos.z end
+            -- WaterPlane is intentionally unbounded in XY. Its Z still belongs only to this
+            -- descriptor; it is never folded into a single global water elevation.
+            if class == "WaterPlane" then desc.bounds = nil end
+          end
+          if class == "River" or type(desc.z) == "number" then
+            waters[#waters + 1] = desc
+            counts[class] = counts[class] + 1
+          end
+        end
       end
     end
   end
-  return best
+  return waters, counts
+end
+
+local function riverBed(desc, p, segment)
+  local i = math.floor(segment) + 1 -- engine segment 0 is Lua node 1 -> node 2
+  local a, b = desc.nodes[i], desc.nodes[i + 1]
+  if not (a and b) then return nil, nil end
+  local vx, vy = b.pos.x - a.pos.x, b.pos.y - a.pos.y
+  local denom = vx * vx + vy * vy
+  local t = 0
+  if denom > 1e-9 then
+    t = ((p.x - a.pos.x) * vx + (p.y - a.pos.y) * vy) / denom
+    t = math.max(0, math.min(1, t))
+  end
+  local surfaceZ = a.pos.z + (b.pos.z - a.pos.z) * t
+  local depth = math.max(0, a.depth + (b.depth - a.depth) * t)
+  return surfaceZ - depth, depth
+end
+
+-- Returns bedZ, depth, descriptor, needsBedRay. A point immediately below the sampled
+-- visible surface is used for River containment, so a bridge above the volume remains dry.
+local function waterAt(waters, p, surfaceZ)
+  for _, w in ipairs(waters) do
+    if w.class == "River" and inXY(w.bounds, p.x, p.y) then
+      local ok, segment = pcall(function()
+        return w.obj:containsPoint(vec3(p.x, p.y, surfaceZ - WATER_PROBE_EPS_M))
+      end)
+      if ok and type(segment) == "number" and segment >= 0 then
+        local bedZ, depth = riverBed(w, p, segment)
+        if bedZ ~= nil then return bedZ, depth, w, false end
+      end
+    end
+  end
+
+  local best = nil
+  for _, w in ipairs(waters) do
+    if w.class ~= "River" and inXY(w.bounds, p.x, p.y)
+        and surfaceZ <= w.z + WATER_PROBE_EPS_M then
+      -- Prefer the closest water surface above the hit if descriptors overlap.
+      local gap = w.z - surfaceZ
+      if best == nil or gap < best.gap then best = {desc = w, gap = gap} end
+    end
+  end
+  if best then
+    local w = best.desc
+    if surfaceZ < w.z - WATER_PROBE_EPS_M then
+      return surfaceZ, math.max(0, w.z - surfaceZ), w, false
+    end
+    return surfaceZ, 0, w, true
+  end
+  return nil, nil, nil, false
 end
 
 -- The game exposes no render/draw-distance scalar to Lua at all -- only per-view farClip
@@ -184,22 +275,27 @@ local function beginScan()
   -- up X fwd, the mod-wide convention: positive bearing is the driver's LEFT.
   local left = vec3(0, 0, 1):cross(fwd):normalized()
 
-  local refZ = heightmapAt(origin.x, origin.y, origin.z)
-              or rayAt(origin.x, origin.y, origin.z)
-              or origin.z
-
+  local waters, waterCounts = resolveWaterObjects()
   scan = {
     id      = nextId,
     origin  = origin,
     fwd     = fwd,
     left    = left,
-    refZ    = refZ,
-    waterZ  = resolveWaterZ(),
+    refZ    = nil,         -- first budgeted ray establishes visible ground below the vehicle
+    waters  = waters,
+    waterCounts = waterCounts,
     reach   = resolveReach(),
     s       = 0,           -- spoke index being filled
     r       = 0,           -- ring index within it
     cur     = nil,         -- the row under construction
     rows    = {},
+    pendingBed = nil,
+    rayCount = 0,
+    surfaceMin = nil,
+    surfaceMax = nil,
+    waterCells = 0,
+    dryCells = 0,
+    missingCells = 0,
   }
   nextId = nextId + 1
 end
@@ -214,15 +310,46 @@ local function finishScan()
   for _, row in ipairs(objs) do parts[#parts + 1] = row end
   parts[#parts + 1] = "END"
   send(table.concat(parts, "\n"))
-  tsLog('D', string.format("scan %d sent: reach %.1f m, refZ %.2f, water %s, %d objects",
-    scan.id, scan.reach, scan.refZ, tostring(scan.waterZ), #objs))
+  lastScanDiag = {
+    id = scan.id, refZ = scan.refZ,
+    surfaceMin = scan.surfaceMin, surfaceMax = scan.surfaceMax,
+    waterCells = scan.waterCells, dryCells = scan.dryCells,
+    missingCells = scan.missingCells, rayCount = scan.rayCount,
+  }
+  tsLog('D', string.format(
+    "scan %d sent: reach %.1f m, refZ %.2f, surface %s..%s, water/dry/missing %d/%d/%d, rays %d, %d objects",
+    scan.id, scan.reach, scan.refZ, tostring(scan.surfaceMin), tostring(scan.surfaceMax),
+    scan.waterCells, scan.dryCells, scan.missingCells, scan.rayCount, #objs))
   scan = nil
+end
+
+local function appendCell(cell, kind)
+  scan.cur[#scan.cur + 1] = cell
+  scan.r = scan.r + 1
+  if kind == "water" then
+    scan.waterCells = scan.waterCells + 1
+  elseif kind == "dry" then
+    scan.dryCells = scan.dryCells + 1
+  else
+    scan.missingCells = scan.missingCells + 1
+  end
 end
 
 local function stepScan()
   local rays = 0
   local ringStep = scan.reach / math.max(1, SCAN_RINGS - 1)
   local bearStep = 180.0 / math.max(1, SCAN_BEARINGS - 1)
+
+  if scan.refZ == nil then
+    if rays >= SCAN_RAYS_PER_TICK then return end
+    rays = rays + 1
+    scan.rayCount = scan.rayCount + 1
+    -- Unlike the map samples, the reference ray begins just above the vehicle: it asks for
+    -- the visible supporting surface beneath the vehicle, not the roof of an overpass above.
+    scan.refZ = rayAt(scan.origin.x, scan.origin.y, scan.origin.z + 2)
+                or heightmapAt(scan.origin.x, scan.origin.y, scan.origin.z)
+                or scan.origin.z
+  end
 
   while scan.s < SCAN_BEARINGS do
     local bearing = -90.0 + scan.s * bearStep
@@ -235,25 +362,45 @@ local function stepScan()
 
     while scan.r < SCAN_RINGS do
       if rays >= SCAN_RAYS_PER_TICK then return end  -- resume next frame
-      local dist = scan.r * ringStep
-      local p = scan.origin + scan.dir * dist
-      local h = heightmapAt(p.x, p.y, scan.origin.z)
-      if h == nil then
+
+      if scan.pendingBed then
+        local pending = scan.pendingBed
         rays = rays + 1
-        h = rayAt(p.x, p.y, scan.origin.z)
-      end
-      local cell
-      if h == nil then
-        -- No surface here. This is NOT zero: zero is level ground, and reporting a plateau
-        -- where the map simply ends is a lie the listener has no way to catch.
-        cell = "~"
-      elseif scan.waterZ ~= nil and h < scan.waterZ then
-        cell = string.format("%.1f_%.1f", h - scan.refZ, scan.waterZ - h)
+        scan.rayCount = scan.rayCount + 1
+        local bedZ = rayAt(pending.p.x, pending.p.y,
+                           pending.water.z - WATER_PROBE_EPS_M)
+                     or heightmapAt(pending.p.x, pending.p.y,
+                                    pending.water.z - WATER_PROBE_EPS_M)
+        if bedZ == nil or bedZ > pending.water.z + WATER_PROBE_EPS_M then
+          bedZ = pending.surfaceZ
+        end
+        appendCell(string.format("%.1f_%.1f", bedZ - scan.refZ,
+          math.max(0, pending.water.z - bedZ)), "water")
+        scan.pendingBed = nil
       else
-        cell = string.format("%.1f", h - scan.refZ)
+        local dist = scan.r * ringStep
+        local p = scan.origin + scan.dir * dist
+        rays = rays + 1
+        scan.rayCount = scan.rayCount + 1
+        local h = rayAt(p.x, p.y, SCAN_RAY_TOP_Z)
+        if h == nil then h = heightmapAt(p.x, p.y, scan.origin.z) end
+        if h == nil then
+          -- No surface here. This is NOT zero: zero is level ground, and reporting a plateau
+          -- where the map simply ends is a lie the listener has no way to catch.
+          appendCell("~", "missing")
+        else
+          scan.surfaceMin = scan.surfaceMin == nil and h or math.min(scan.surfaceMin, h)
+          scan.surfaceMax = scan.surfaceMax == nil and h or math.max(scan.surfaceMax, h)
+          local bedZ, depth, water, needsBedRay = waterAt(scan.waters, p, h)
+          if water and needsBedRay then
+            scan.pendingBed = {p = p, surfaceZ = h, water = water}
+          elseif water then
+            appendCell(string.format("%.1f_%.1f", bedZ - scan.refZ, depth), "water")
+          else
+            appendCell(string.format("%.1f", h - scan.refZ), "dry")
+          end
+        end
       end
-      scan.cur[#scan.cur + 1] = cell
-      scan.r = scan.r + 1
     end
 
     scan.rows[#scan.rows + 1] = table.concat(scan.cur, ",")
@@ -381,19 +528,25 @@ end
 -- wrong number, which no amount of listening will identify. This prints what one scan
 -- actually decided.
 function M.diag()
-  local player = be:getPlayerVehicle(0)
-  local waterZ = resolveWaterZ()
+  local waters, counts = resolveWaterObjects()
   local reach = resolveReach()
-  local terr = (core_terrain and core_terrain.getTerrain and core_terrain.getTerrain()) and "yes" or "NO (ray fallback for every sample)"
-  local refZ = "n/a"
-  if player then
-    local o = vec3(player:getPosition())
-    refZ = tostring(heightmapAt(o.x, o.y, o.z) or rayAt(o.x, o.y, o.z) or o.z)
+  local names = {River = {}, WaterBlock = {}, WaterPlane = {}}
+  for _, w in ipairs(waters) do names[w.class][#names[w.class] + 1] = w.name end
+  local waterSummary = string.format("River %d [%s], WaterBlock %d [%s], WaterPlane %d [%s]",
+    counts.River, table.concat(names.River, ","),
+    counts.WaterBlock, table.concat(names.WaterBlock, ","),
+    counts.WaterPlane, table.concat(names.WaterPlane, ","))
+  local last = "none"
+  if lastScanDiag then
+    last = string.format(
+      "id %d | ref z %.2f | visible surface %s..%s | water/dry/missing %d/%d/%d | rays %d",
+      lastScanDiag.id, lastScanDiag.refZ, tostring(lastScanDiag.surfaceMin),
+      tostring(lastScanDiag.surfaceMax), lastScanDiag.waterCells, lastScanDiag.dryCells,
+      lastScanDiag.missingCells, lastScanDiag.rayCount)
   end
   tsLog('I', string.format(
-    "terrain block: %s | reach %.1f m | water z %s | ref z %s | grid %dx%d = %d samples",
-    terr, reach, tostring(waterZ), refZ, SCAN_BEARINGS, SCAN_RINGS,
-    SCAN_BEARINGS * SCAN_RINGS))
+    "water objects: %s | reach %.1f m | grid %dx%d = %d samples | last scan: %s",
+    waterSummary, reach, SCAN_BEARINGS, SCAN_RINGS, SCAN_BEARINGS * SCAN_RINGS, last))
 end
 
 return M

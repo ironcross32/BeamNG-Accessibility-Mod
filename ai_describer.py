@@ -145,8 +145,12 @@ def _gemini_validate_key(api_key, timeout=VALIDATE_TIMEOUT_SEC, **_opts):
         return False, f"Validation failed: {e}"
 
 
-def capture_primary_monitor():
-    """Grab the primary monitor and return PNG-encoded bytes.
+def capture_region(region=None):
+    """Grab a screen region and return PNG-encoded bytes.
+
+    `region` is an mss-style {left, top, width, height}; None means the primary
+    monitor, which is what the AI Describer has always used and still wants -- it fires
+    while the user is playing, so the game fills that display.
 
     Raises on failure (the caller is expected to handle it).
     """
@@ -156,9 +160,14 @@ def capture_primary_monitor():
     with mss.mss() as sct:
         # monitors[0] is the "all monitors" virtual screen; monitors[1] is the
         # primary physical display.
-        monitor = sct.monitors[1]
+        monitor = region or sct.monitors[1]
         shot = sct.grab(monitor)
         return mss.tools.to_png(shot.rgb, shot.size)
+
+
+def capture_primary_monitor():
+    """Grab the primary monitor and return PNG-encoded bytes."""
+    return capture_region(None)
 
 
 def _gemini_describe(png_bytes, model, api_key, timeout=REQUEST_TIMEOUT_SEC, **_opts):

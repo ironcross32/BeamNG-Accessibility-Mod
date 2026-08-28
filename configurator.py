@@ -19,6 +19,7 @@ import sys
 import time
 
 import speech
+import secretstore
 
 # --- Audio Test Dependencies ---
 AUDIO_TEST_OK = False
@@ -93,6 +94,12 @@ DEFAULT_CONFIG = {
     "audio_poll_interval_sec": 2.0,
     "launch_beamng": False,
     "beamng_renderer": "d3d",
+    # Auto-updater. Both keys must exist here as well as in beamtel.py, or the
+    # trap above applies -- and pending_update_version in particular is written by
+    # updater.py behind this panel's back, so being dropped on save would lose the
+    # one fact that survives the update restart.
+    "update_check_enabled": True,
+    "pending_update_version": "",
     "announce_turn_signals": True,
     "announce_speed": True,
     "speed_announce_interval": 25,
@@ -284,6 +291,11 @@ def load_config():
             raise ValueError("Config root is not an object")
 
         speech.migrate_config(user)
+        # Seal any plaintext secret the moment it is read, and write it back here
+        # rather than waiting for the next edit -- a config that is only ever
+        # opened and closed would otherwise stay in the clear forever.
+        if secretstore.migrate_config(user):
+            _write_config(CONFIG_PATH, user)
 
         merged = DEFAULT_CONFIG.copy()
         merged.update(user)
@@ -320,6 +332,8 @@ def load_config():
         _coerce("hrtf_front_emphasis_db", float, -6.0)
         _coerce("hrtf_distance_gain_db", float, 0.0)
         _coerce("launch_beamng", bool, False)
+        _coerce("update_check_enabled", bool, True)
+        _coerce("pending_update_version", str, "")
         _coerce("beamng_renderer", str, "d3d")
         _coerce("follow_default_audio_device", bool, True)
         _coerce("announce_turn_signals", bool, True)

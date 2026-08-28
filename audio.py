@@ -907,7 +907,10 @@ def render_scan(samples, objects, reach_m, sr=DEFAULT_SR, level_db=SCAN_TERRAIN_
     for bearing_deg, range_m, dz_m, depth_m in samples:
         if dz_m is None:
             continue  # no surface: silence, never a plateau at level
-        is_water = depth_m is not None and depth_m > 0.0
+        # The underscore field is the wire-level water tag. Depth can legitimately be
+        # zero where a water surface meets its bed, so its presence -- not its magnitude --
+        # selects the brighter water voice.
+        is_water = depth_m is not None
         step = scan_step_from_dz(dz_m)
         key = ("w" if is_water else "t", step)
         wave = cache.get(key)

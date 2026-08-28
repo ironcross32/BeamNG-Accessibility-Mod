@@ -56,6 +56,30 @@ CONFIG_PATH = os.path.join(CONFIG_DIR, "beamtel_config.json")
 
 STOP = threading.Event()
 
+# The game launch below is deferred until the updater has run and the user has
+# answered it -- starting BeamNG.drive underneath a download that is about to
+# restart us is precisely what the update flow must not do. A gate rather than a
+# reordering, so everything else in _run_engine (config, speech, audio, HRTF, the
+# UI bridge) still initialises while the dialog is up. LAUNCH_ALLOWED is read
+# once, immediately after the wait returns, so the decision must be final by the
+# time the gate opens.
+LAUNCH_GATE = threading.Event()
+LAUNCH_ALLOWED = True
+
+
+class LaunchGate:
+    """The updater's view of the deferred launch: allow it, or veto it."""
+
+    def allow(self):
+        global LAUNCH_ALLOWED
+        LAUNCH_ALLOWED = True
+        LAUNCH_GATE.set()
+
+    def deny(self):
+        global LAUNCH_ALLOWED
+        LAUNCH_ALLOWED = False
+        LAUNCH_GATE.set()
+
 # ---------- DOM Dump Logger ----------
 DOM_DUMP_PATH = os.path.join(CONFIG_DIR, "dom_dump.log")
 
@@ -125,6 +149,14 @@ DEFAULT_CONFIG = {
     "road_beep_volume_db": -14.0,
     "placement_ping_volume_db": -12.0,
     "launch_beamng": False,
+    # Startup update check. On by default: the exe and the Lua/JS mod go out of
+    # step silently, so the useful default is the one that keeps them together.
+    "update_check_enabled": True,
+    # Tag of an update that has been copied over the program directory but whose
+    # mod zip has not been offered to BeamNG yet. Written by updater.py only
+    # after the download has validated and staged; it survives the restart the
+    # self-replacement forces, and has no UI control of its own.
+    "pending_update_version": "",
     "announce_turn_signals": True,
     "announce_speed": True,
     "speed_announce_interval": 25,
@@ -169,6 +201,7 @@ DEFAULT_CONFIG = {
 #  Speech & Buffer
 # =========================
 import speech
+import secretstore
 
 SPEECH_BUFFER = deque(maxlen=100)
 
@@ -448,8 +481,17 @@ def load_config():
             return DEFAULT_CONFIG.copy()
         if not isinstance(user, dict):
             raise ValueError("Config root is not an object")
+        migrated = False
         if speech.migrate_config(user):
             logger.info("Migrated legacy SAPI speech keys to speech_* keys.")
+            migrated = True
+        # An API key written before at-rest protection existed is still sitting
+        # in plaintext; seal it on the first run that sees it rather than waiting
+        # for the user to re-enter a key they have no reason to touch again.
+        if secretstore.migrate_config(user):
+            logger.info("Encrypted plaintext config secrets with DPAPI.")
+            migrated = True
+        if migrated:
             _write_config(CONFIG_PATH, user)
         merged = DEFAULT_CONFIG.copy()
         merged.update(user)
@@ -6245,6 +6287,164 @@ def _send_ui_command(cmd):
 
 
 # =========================
+#  Screen capture (shared by the AI Describer and the MCP screenshot tool)
+# =========================
+
+# How long to let the game render a UI-free frame after HIDE before grabbing.
+UI_HIDE_SETTLE_S = 0.2
+
+# Held across the whole HIDE -> grab -> SHOW sequence. Two overlapping captures race:
+# the first one's SHOW lands mid-grab of the second, so the shot that asked for a clean
+# world gets the HUD back in it. Deliberately NOT `_describer_lock` below -- that one
+# exists to make a double-press of F10+Space buzz rather than queue a second AI request,
+# and an agent screenshot must neither be refused because a description is in flight nor
+# consume the user's busy flag.
+_capture_lock = threading.Lock()
+
+
+# How long to wait after raising the game window before grabbing. Longer than the UI
+# settle: a minimized BeamNG reports itself as "- background" in its own title bar and
+# throttles rendering, so it needs time to come back up and draw a real frame, not just
+# to repaint one.
+GAME_FOCUS_SETTLE_S = 0.6
+
+_GAME_WINDOW_HINT = "BeamNG.drive"
+
+
+def _find_game_window():
+    """The BeamNG.drive main window, or None.
+
+    Matched on the title rather than the process, because the mod's own wx frame is
+    called "BeamNG Accessibility" and would otherwise match a process-name search for
+    anything BeamNG-shaped.
+    """
+    try:
+        import ctypes
+        from ctypes import wintypes
+    except Exception:
+        return None
+    u = ctypes.windll.user32
+    found = []
+
+    def cb(hwnd, _lparam):
+        if not u.IsWindowVisible(hwnd):
+            return True
+        n = u.GetWindowTextLengthW(hwnd)
+        if not n:
+            return True
+        buf = ctypes.create_unicode_buffer(n + 1)
+        u.GetWindowTextW(hwnd, buf, n + 1)
+        if buf.value.startswith(_GAME_WINDOW_HINT):
+            found.append(hwnd)
+        return True
+
+    proc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)(cb)
+    try:
+        u.EnumWindows(proc, 0)
+    except Exception:
+        return None
+    return found[0] if found else None
+
+
+def _raise_game_window(hwnd):
+    """Restore and foreground the game window. Returns the previous foreground hwnd.
+
+    SetForegroundWindow is refused for a process that does not already own the
+    foreground -- and beamtel runs elevated while the game does not -- so the input
+    queues are attached first, which is the documented way to be allowed. Every step is
+    best-effort: a refusal must degrade to a worse screenshot, never to an exception.
+    """
+    import ctypes
+
+    u = ctypes.windll.user32
+    prev = u.GetForegroundWindow()
+    SW_RESTORE = 9
+    try:
+        if u.IsIconic(hwnd):
+            u.ShowWindow(hwnd, SW_RESTORE)
+        cur_thread = ctypes.windll.kernel32.GetCurrentThreadId()
+        tgt_thread = u.GetWindowThreadProcessId(hwnd, None)
+        attached = False
+        if tgt_thread and tgt_thread != cur_thread:
+            attached = bool(u.AttachThreadInput(cur_thread, tgt_thread, True))
+        try:
+            u.BringWindowToTop(hwnd)
+            u.SetForegroundWindow(hwnd)
+        finally:
+            if attached:
+                u.AttachThreadInput(cur_thread, tgt_thread, False)
+    except Exception as e:
+        logger.error(f"Could not raise the game window: {e}")
+    return prev
+
+
+def _window_region(hwnd):
+    """The window's screen rectangle as an mss region dict, or None if degenerate."""
+    import ctypes
+    from ctypes import wintypes
+
+    r = wintypes.RECT()
+    if not ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(r)):
+        return None
+    w, h = r.right - r.left, r.bottom - r.top
+    # A minimized window parks at -32000; anything tiny or off-screen is not a frame.
+    if w < 64 or h < 64 or r.left < -30000 or r.top < -30000:
+        return None
+    return {"left": r.left, "top": r.top, "width": w, "height": h}
+
+
+def capture_scene_png(hide_ui=True, settle_s=UI_HIDE_SETTLE_S, focus_game=False):
+    """Grab the game as PNG bytes. Returns (png_bytes, meta).
+
+    `focus_game` exists because the two callers are in genuinely different situations.
+    The AI Describer fires from a keypress while the user is playing, so the game is
+    already foreground and raising it would be a no-op with a real cost -- a window
+    z-order change under someone mid-corner. An agent's screenshot fires while the user
+    is looking at a terminal, and BeamNG is then typically MINIMIZED: it parks its window
+    off-screen at -32000 and renames itself "- background", so a primary-monitor grab
+    returns the desktop. That failure is silent and entirely plausible-looking, which is
+    the one kind this project cares most about -- hence `meta`, which reports what was
+    actually captured so a wrong picture can be diagnosed instead of believed.
+
+    The UI is always restored, and the previously focused window is always put back.
+    """
+    import ai_describer
+
+    meta = {"focused_game": False, "game_window_found": False, "region": None}
+
+    with _capture_lock:
+        hwnd = _find_game_window() if focus_game else None
+        meta["game_window_found"] = hwnd is not None
+        prev = None
+        try:
+            if hwnd is not None:
+                prev = _raise_game_window(hwnd)
+                time.sleep(GAME_FOCUS_SETTLE_S)
+                region = _window_region(hwnd)
+                meta["region"] = region
+                meta["focused_game"] = region is not None
+                if region is None:
+                    meta["warning"] = (
+                        "the game window would not come up (still minimized or "
+                        "off-screen); this is a grab of the primary monitor instead"
+                    )
+            if hide_ui:
+                _send_ui_command("HIDE")
+                time.sleep(max(0.0, settle_s))
+            png = ai_describer.capture_region(meta["region"])
+            return png, meta
+        finally:
+            if hide_ui:
+                _send_ui_command("SHOW")
+            if prev:
+                try:
+                    ctypes_user32 = __import__("ctypes").windll.user32
+                    ctypes_user32.SetForegroundWindow(prev)
+                except Exception:
+                    pass
+
+
+# =========================
 #  AI Describer (F10 + Space)
 # =========================
 _describer_lock = threading.Lock()
@@ -6263,7 +6463,22 @@ def _ai_describe_worker(audio_controller):
         settings = ai_describer_settings
         provider = ai_describer_provider or ai_describer.DEFAULT_PROVIDER
         key_cfg, model_cfg = ai_describer.config_keys_for(provider)
-        api_key = settings.get(key_cfg, "")
+        # Stored DPAPI-sealed; unseal at the point of use so the plaintext lives
+        # only in this worker's frame and never in `ai_describer_settings`.
+        stored_key = settings.get(key_cfg, "")
+        api_key = secretstore.unprotect(stored_key)
+        if api_key is None:
+            # Sealed, but not by this Windows account -- a copied config or a
+            # restored profile. Distinct from "no key set": the fix is to enter
+            # it again, and saying "not set" would send the user looking for a
+            # key that is plainly there in the file.
+            msg = (
+                "The stored API key could not be decrypted on this Windows account. "
+                "Set it again in the AI Describer tab."
+            )
+            ai_describer.log_error(msg)
+            say(msg)
+            return
         model = settings.get(model_cfg) or ai_describer.default_model_for(provider)
         extra_args = ai_describer.extra_args_for(provider, settings)
         toggle_ui = not ai_describer_disable_ui_toggle
@@ -6280,15 +6495,9 @@ def _ai_describe_worker(audio_controller):
         png = None
         capture_err = None
         try:
-            if toggle_ui:
-                _send_ui_command("HIDE")
-                time.sleep(0.2)  # let the game render a UI-free frame
-            png = ai_describer.capture_primary_monitor()
+            png, _cap_meta = capture_scene_png(hide_ui=toggle_ui)
         except Exception as e:
             capture_err = f"Screenshot failed: {e}"
-        finally:
-            if toggle_ui:
-                _send_ui_command("SHOW")
 
         if png is None:
             ai_describer.log_error(capture_err or "Screenshot failed.")
@@ -8063,6 +8272,11 @@ class BeamTelFrame(wx.Frame):
             "Install the BeamNG.drive mod and activate its screen-reader UI app."
         )
         bottom_btn_sizer.Add(btn_install_mod, 0, wx.RIGHT, 5)
+        btn_check_updates = wx.Button(main_panel, label="Check for Updates")
+        btn_check_updates.SetToolTip(
+            "Ask GitHub whether a newer version of BEAM has been released."
+        )
+        bottom_btn_sizer.Add(btn_check_updates, 0, wx.RIGHT, 5)
         bottom_btn_sizer.AddStretchSpacer()
         btn_exit = wx.Button(main_panel, label="Exit")
         bottom_btn_sizer.Add(btn_exit)
@@ -8114,10 +8328,33 @@ class BeamTelFrame(wx.Frame):
         btn_speech_log.Bind(wx.EVT_BUTTON, self._on_open_speech_log)
         btn_dom_log.Bind(wx.EVT_BUTTON, self._on_open_dom_log)
         btn_install_mod.Bind(wx.EVT_BUTTON, lambda evt: install_mod_interactive(self))
+        btn_check_updates.Bind(wx.EVT_BUTTON, self._on_check_updates)
         btn_exit.Bind(wx.EVT_BUTTON, lambda evt: self.Close())
         self.Bind(wx.EVT_CLOSE, self._on_close)
 
         self.Centre()
+
+    def _on_check_updates(self, evt):
+        """Manual update check.
+
+        Runs the same flow as startup, with a gate that decides nothing: by the
+        time this button can be pressed the deferred launch has long since been
+        released, and a manual check must never fire a second one. `manual`
+        additionally makes it ignore the config gate and report the
+        already-up-to-date case, which the silent startup check does not.
+        """
+        try:
+            import updater
+
+            updater.run_startup_flow(self, updater.NullGate(), manual=True)
+        except Exception as e:
+            logger.error(f"Manual update check failed: {e}")
+            wx.MessageBox(
+                f"The update check could not run.\n\n{e}",
+                "Update Check Failed",
+                wx.OK | wx.ICON_ERROR,
+                self,
+            )
 
     # ---- Log-file openers ----
 
@@ -8592,7 +8829,15 @@ def _run_engine():
     register_loading_state_callback(_on_loading_state_changed)
     register_settings_request_callback(_broadcast_ui_settings)
 
-    if cfg.get("launch_beamng", False):
+    # Wait for the updater's answer before touching the game. The timeout is the
+    # failure path, not the normal one: a flow that never answers -- a dialog the
+    # user walked away from, a crash before the gate is set -- degrades to today's
+    # behaviour rather than to a game that never starts.
+    if not LAUNCH_GATE.wait(timeout=180):
+        logger.warning("Updater did not answer within 180s; launching as configured.")
+    if not LAUNCH_ALLOWED:
+        logger.info("Game launch skipped: an update is being applied.")
+    elif cfg.get("launch_beamng", False):
         try:
             import subprocess
 
@@ -8737,6 +8982,7 @@ def _run_engine():
                     press_command_fn=_mcp_press_command,
                     f9_help=_F9_HELP,
                     world_active_fn=_world_is_active,
+                    capture_png_fn=capture_scene_png,
                     stop_event=STOP,
                     logger=logger,
                     version="1.0",
@@ -8792,6 +9038,23 @@ def _run_engine():
 # =========================
 
 
+def _run_update_flow(frame):
+    """Startup update check, then release the deferred game launch.
+
+    Imported here rather than at module scope so that a broken or missing
+    updater module costs the update check and nothing else -- the gate is opened
+    in the failure path too, or beamtel would sit out the full 180 s timeout
+    before starting the game.
+    """
+    try:
+        import updater
+
+        updater.run_startup_flow(frame, LaunchGate())
+    except Exception as e:
+        logger.error(f"Update check failed to run: {e}")
+        LaunchGate().allow()
+
+
 def main():
     app = wx.App(False)
     frame = BeamTelFrame()
@@ -8800,6 +9063,12 @@ def main():
     engine = threading.Thread(target=_run_engine, name="beamtel-engine", daemon=True)
     engine.start()
     frame._engine_thread = engine
+
+    # Scheduled rather than called: the flow is modal and the event loop is not
+    # running yet, so calling it here would put a dialog up in front of a window
+    # that cannot pump. The engine thread is already going and is blocked on
+    # LAUNCH_GATE, which this releases exactly once.
+    wx.CallAfter(_run_update_flow, frame)
 
     app.MainLoop()
 

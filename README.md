@@ -16,6 +16,26 @@ Use of AI coding agents and tooling have been heavily used in this project.
 3. Navigate to the "Install Mod" button and activate it which will copy the zipped BeamNG mod to the appropriate place
 4. Launch the game and play
 
+### Updates
+
+beamtel checks GitHub for a newer release each time it starts, and does nothing
+without your answer. This can be switched off with "Check for updates on
+startup" in the Configuration tab, and there is a "Check for Updates" button on
+the Main tab next to "Install Mod" for checking on demand.
+
+When you accept an update, beamtel downloads the release, closes, replaces
+itself, and starts up again on the new version. It will **not** launch
+BeamNG.drive during that, even if "Launch BeamNG.drive on startup" is on --
+the game is only started once the update is finished. When beamtel comes back it
+asks whether to install the updated mod into BeamNG, which is the same thing the
+"Install Mod" button does; answer that and startup carries on as normal.
+
+Nothing here needs a GitHub account, and beamtel sends nothing to GitHub beyond
+the request for the newest release. If an update ever fails to apply, the
+manual route still works: download `BeamNG_accessibility_mod.zip` from
+https://github.com/ironcross32/BeamNG-Accessibility-Mod/releases/latest, unzip
+it over your existing folder, and press "Install Mod".
+
 ### What about BeamNG.drive updates?
 
 Some game updates have little to no bearing on the way this mod functions, while others do. The 0.39 update (end of July / beginning of August 2026) meant a lot of the UI code had to be reworked. As such, when a game update drops, you may lose functionality for a while until I update this mod to match.

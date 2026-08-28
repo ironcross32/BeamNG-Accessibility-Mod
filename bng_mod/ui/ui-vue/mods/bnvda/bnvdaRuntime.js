@@ -350,12 +350,29 @@ export function installBNVDA($rootScope, dependencies) {
 
           // The body of the original speak timer, shared by the plain debounce path
           // and the burst settle path.
+          //
+          // A tab announcement opens a short window in which the NEXT navigation
+          // utterance queues behind it instead of cutting it off (see the tab
+          // tracking block). It is armed here rather than at the call site because
+          // the tab name goes out through the same DEBOUNCE_MS timer as everything
+          // else -- arming it any earlier and the tab name queues behind itself.
           function emitSpeak(txt, src) {
+            var interrupt = true;
+            if (_vueTabQueueText && txt === _vueTabQueueText) {
+              _vueTabQueueText = '';
+              _vueTabQueueUntil = nowTS() + VUE_TAB_QUEUE_MS;
+            } else if (nowTS() < _vueTabQueueUntil && navBurstIsNavSource(src)) {
+              // One utterance only: the landing item. Anything after it is a new
+              // movement and interrupts normally, or a held sweep would stack up
+              // behind a tab name nobody is waiting on any more.
+              interrupt = false;
+              _vueTabQueueUntil = 0;
+            }
             lastSpoken = txt;
             lastSource = src;
             lastSpeakTs = nowTS();
-            send({ type: "speak", text: txt });
-            if (isDebug()) log("info", "speak(" + src + "): " + txt);
+            send({ type: "speak", text: txt, interrupt: interrupt });
+            if (isDebug()) log("info", "speak(" + src + (interrupt ? "" : ",queued") + "): " + txt);
           }
 
           function navBurstFlush() {
@@ -1118,10 +1135,25 @@ export function installBNVDA($rootScope, dependencies) {
             mouseXAxis: 'Mouse X', mouseYAxis: 'Mouse Y', mouseWheel: 'Mouse wheel'
           };
 
+          // The icon NAME is the only thing that says which device family a glyph
+          // belongs to. BngIcon renders a bare glyph character with no class,
+          // attribute or data hook naming the icon, so once it is in the DOM this
+          // reverse map is the only route back -- and controls.js names every
+          // control icon by family prefix (xboxA, psCross, mouseLMB).
+          function iconDeviceFamily(iconName) {
+            if (iconName.indexOf('xbox') === 0) return 'xbox';
+            if (iconName.indexOf('ps') === 0) return 'ps';
+            if (iconName.indexOf('mouse') === 0) return 'pc_mouse';
+            return '';
+          }
+
           // Built lazily on first use: glyph character -> friendly name
           var _glyphToName = null;
+          // ...and glyph character -> device family, built in the same pass.
+          var _glyphToFamily = null;
           function buildGlyphMap() {
             _glyphToName = {};
+            _glyphToFamily = {};
             try {
               var icons = iconCatalog || (window.bngVue && window.bngVue.icons);
               if (!icons) return;
@@ -1131,6 +1163,8 @@ export function installBNVDA($rootScope, dependencies) {
                 var friendly = ICON_FRIENDLY_NAMES[iconName];
                 if (friendly && icons[iconName] && icons[iconName].glyph) {
                   _glyphToName[icons[iconName].glyph] = friendly;
+                  var family = iconDeviceFamily(iconName);
+                  if (family) _glyphToFamily[icons[iconName].glyph] = family;
                 }
               }
               log('info', '[BINDING] Built glyph reverse map with ' + Object.keys(_glyphToName).length + ' entries');
@@ -1253,6 +1287,98 @@ export function installBNVDA($rootScope, dependencies) {
             return translatedActionName(actionName);
           }
 
+          // ---------- ACTIVE INPUT DEVICE ----------
+          // BngBinding renders one .binding-container per variant, and with two
+          // pads plugged in -- an Xbox pad and a DualSense, say -- that is the
+          // same action twice, once per glyph set. A sighted player skims the
+          // pair; a listener hears every hint and every prompt read out twice,
+          // and half of each pair names buttons that are not on the pad in their
+          // hands. Controls.lastDevices is the game's own most-recently-used
+          // ordering (core_input_bindings.getRecentDevices), i.e. the very rule
+          // BngBinding follows for its own useLastDevice lookups, so following it
+          // here is what keeps the speech and the screen talking about one pad.
+          var DEV_FAMILY_PREFIXES = [
+            ['xinput', 'xbox'], ['ps5', 'ps'], ['ps4', 'ps'], ['sce', 'ps'],
+            ['mouse', 'pc_mouse'],
+            // Keyboards, wheels and generic joysticks have no glyph set of their
+            // own -- controls.js's CONTROL_ICONS has no family for them, so
+            // bngBinding falls back to a <kbd> carrying the control name. Their
+            // containers therefore hold no glyph at all, which is the empty
+            // family, and it must stay reachable rather than being treated as
+            // "unknown device".
+            ['keyboard', ''], ['wheel', ''], ['joystick', ''], ['gamepad', '']
+          ];
+
+          function deviceGlyphFamily(devName) {
+            var name = String(devName || '').toLowerCase();
+            for (var i = 0; i < DEV_FAMILY_PREFIXES.length; i++) {
+              if (name.indexOf(DEV_FAMILY_PREFIXES[i][0]) === 0) return DEV_FAMILY_PREFIXES[i][1];
+            }
+            return '';
+          }
+
+          // Families in most-recently-used order, deduped. The glyphless family
+          // is appended when it is not already there, so a binding that exists
+          // only on the keyboard is still announced when a pad is the active
+          // device -- the alternative is silence about a control that is on
+          // screen.
+          function activeDeviceFamilies() {
+            var order = [];
+            try {
+              // The pinia store is the one that carries lastDevices; fall back
+              // to it directly in case an older bootstrap handed us main.js's
+              // method-only facade instead.
+              var store = (Controls && Controls.lastDevices) ? Controls
+                : (window.bngVue && window.bngVue.controlsStore) || null;
+              var devices = store && store.lastDevices;
+              if (devices && devices.length) {
+                for (var i = 0; i < devices.length; i++) {
+                  var family = deviceGlyphFamily(devices[i]);
+                  if (order.indexOf(family) === -1) order.push(family);
+                }
+              }
+            } catch (e) {
+              log('info', '[BINDING] Controls.lastDevices unavailable: ' + e.message);
+            }
+            if (order.indexOf('') === -1) order.push('');
+            return order;
+          }
+
+          function containerGlyphFamily(container) {
+            if (!_glyphToFamily) buildGlyphMap();
+            if (!_glyphToFamily) return '';
+            var text = (container && container.textContent) || '';
+            for (var i = 0; i < text.length; i++) {
+              var ch = text[i];
+              if (ch.charCodeAt(0) < 128) continue;
+              if (ch.charCodeAt(0) >= 0xD800 && ch.charCodeAt(0) <= 0xDBFF && i + 1 < text.length) {
+                ch = text[i] + text[i + 1];
+                i++;
+              }
+              if (_glyphToFamily[ch]) return _glyphToFamily[ch];
+            }
+            return '';
+          }
+
+          // Keep only the variants belonging to the device in use. Variants that
+          // share a family are genuine alternatives for one device -- an axis and
+          // its inversion -- and all of those survive; it is only the per-device
+          // duplicates that are dropped. Falling back to the first container
+          // rather than to all of them matters: a family this map cannot name is
+          // still one device's worth of binding, and reading the set would be the
+          // same double announcement in a case nobody would think to look at.
+          function pickBindingVariants(containers) {
+            if (!containers || containers.length < 2) return containers || [];
+            var families = containers.map(containerGlyphFamily);
+            var order = activeDeviceFamilies();
+            for (var i = 0; i < order.length; i++) {
+              var family = order[i];
+              var picked = containers.filter(function (_container, index) { return families[index] === family; });
+              if (picked.length) return picked;
+            }
+            return [containers[0]];
+          }
+
           // Resolve a single binding part: a <kbd> (keyboard-style) or <div> (special glyph-only)
           function resolveSingleBindingPart(partEl) {
             if (!partEl) return '';
@@ -1312,7 +1438,7 @@ export function installBNVDA($rootScope, dependencies) {
                 ? [bindingEl]
                 : toArray(bindingEl.querySelectorAll(':scope > .binding-container'));
               if (containers.length) {
-                var variants = containers.map(bindingContainerFriendlyName).filter(Boolean);
+                var variants = pickBindingVariants(containers).map(bindingContainerFriendlyName).filter(Boolean);
                 if (variants.length) return variants.join(' or ');
               }
 
@@ -1370,8 +1496,16 @@ export function installBNVDA($rootScope, dependencies) {
             // say what the bare number means.
             var price = cleanText(state.price);
             if (price) parts.push('costs ' + price);
-            var hotkey = cleanText(state.hotkey);
-            if (hotkey) parts.push(hotkey + ' key');
+            // state.hotkey is deliberately NOT spoken. Radial.vue's getHotkey()
+            // builds it as an icon glyph plus the RAW control name, so cleanText
+            // strips the glyph and leaves things like "Btn_a" -- and it is
+            // appended to every wedge, so sweeping the menu reads a button name
+            // after every single item. Worse, getHotkey calls makeViewerObj with
+            // no device and no useLastDevice, so with two pads plugged in the
+            // button it names is whichever device happens to come first in the
+            // bindings list rather than the one in the player's hands. The item
+            // name is what the menu is navigated by; the shortcut is not worth
+            // the interruption, still less a wrong one.
             return parts.join(', ');
           }
 
@@ -1779,8 +1913,18 @@ export function installBNVDA($rootScope, dependencies) {
                 var actionEl = hint.querySelector('.hint-text');
                 if (!actionEl || !visibleVueElement(actionEl)) continue;
                 var action = cleanText(actionEl.innerText || actionEl.textContent || '');
-                var containers = toArray(hint.querySelectorAll('.binding-container')).filter(visibleVueElement);
-                var bindings = containers.map(getBindingFriendlyName).filter(Boolean);
+                // Read one entry per BngBinding root, NEVER per .binding-container.
+                // Hint.vue wraps its whole row of bindings in a div that carries
+                // that same class (see its template), so a container scan matches
+                // the outer div AND each BngBinding's own container inside it --
+                // and getBindingFriendlyName reads the outer one whole. A hint
+                // with a single button therefore came out as "A button or A
+                // button". The wrapper class is BngBinding's own root and nothing
+                // else uses it, so it cannot nest. Legacy Angular hints have no
+                // wrapper, hence the fallback.
+                var roots = toArray(hint.querySelectorAll('.binding-wrapper')).filter(visibleVueElement);
+                if (!roots.length) roots = toArray(hint.querySelectorAll('.binding-container')).filter(visibleVueElement);
+                var bindings = pickBindingVariants(roots).map(getBindingFriendlyName).filter(Boolean);
                 if (!bindings.length || !action) continue;
                 pairs.push({ button: bindings.join(' or '), action: action });
               }
@@ -1941,6 +2085,172 @@ export function installBNVDA($rootScope, dependencies) {
             var side = closest(element, '.options-category-side');
             var echoedSide = closest(_vueOptionsCategoryEchoElement, '.options-category-side');
             return !!side && side === echoedSide;
+          }
+
+          // ========== TAB / SUB-TAB TRACKING ==========
+          // Changing a pause tab with the bumpers announced NOTHING. The poll's
+          // screenKey looked for '[role=tab][aria-selected=true]', '.bng-tab.active'
+          // and '.bng-tab.selected', and the game emits none of those: tabList.vue
+          // renders a plain <Button class="tab-item tab-active-tab"> with no ARIA at
+          // all. So the tab half of screenKey was dead, and a tab change was noticed
+          // only when it happened to move the route or swap the sub-screen class --
+          // at which point the branch RESETS the watcher (_vueWatchSignature = '',
+          // _vueWatchElement = null) and speaks nothing, on the assumption that the
+          // landing focus move will do the talking. It frequently does not: the
+          // engine leaves focus where it was until the first D-pad tap, so the
+          // driver arrives on a screen with no idea which one it is. Tracked here
+          // the way the options category already is, because a tab change is the
+          // same kind of event -- the whole context moved, not one item within it.
+          //
+          // Polled rather than hooked to the bumpers. tab_l/tab_r are only two of
+          // the ways a tab changes (a click, a route push and the shell's own
+          // selectedTab sync are the others), and the DOM is where all of them
+          // agree.
+          var _vueTabPath = '';
+          var _vueTabSeen = false;
+          var _vueTabTimer = null;
+          var _vueTabGeneration = 0;
+          // The tab name that is about to go out, and the window it opens once it
+          // has. Long enough to cover the settle plus a slow route push and the
+          // engine's own autofocus, which is when a landing focus move arrives;
+          // short enough that a genuine second move by the driver still interrupts.
+          var _vueTabQueueText = '';
+          var _vueTabQueueUntil = 0;
+          var VUE_TAB_QUEUE_MS = 900;
+          // Let the tab strip settle before reading it, so a route push that
+          // re-syncs selectedTab does not get announced twice.
+          var VUE_TAB_SETTLE_MS = 60;
+
+          // The active tab button carries no accessible name whatsoever when the
+          // strip is icon-only -- and the pause vehicle sub-tabs (Parts, Tuning,
+          // Paint, Other, Vehicle debug) are exactly that. bngTabs passes
+          // icon-only, so tabList.vue renders the BngIcon and skips the <span> that
+          // would have held the heading, leaving the name only in a tooltip that
+          // does not exist in the DOM until the mouse hovers it. tabs.vue does hold
+          // the authoritative list -- {index, heading, icon, tooltip, active} -- and
+          // hands it down with provide("tabs", ...), so that is what gets read.
+          // instance.provides is a plain runtime property that survives
+          // minification (Vue's own inject() walks it), and the game ships a build
+          // that defines __vueParentComponent unconditionally -- the same class of
+          // internal the tuning-slider fix already rests on (appContext.propsCache).
+          // The DOM tier below it still answers for every strip that renders text.
+          function vueProvided(el, key) {
+            var node = el, hops = 0;
+            while (node && hops++ < 8) {
+              var instance = node.__vueParentComponent;
+              while (instance) {
+                var provides = instance.provides;
+                if (provides && (key in provides)) return provides[key];
+                instance = instance.parent;
+              }
+              node = node.parentElement;
+            }
+            return null;
+          }
+
+          // A label that is still a bare translation key is otherwise spoken as
+          // one. Stock pause tabs arrive pre-translated (routeLifecycleCallbacks.lua
+          // builds every label through _tr) and the config sub-tabs use $t, but a
+          // mod-contributed tab is under nobody's control and tabList.vue renders
+          // its heading raw.
+          var TRANSLATION_KEY_RE = /^[a-zA-Z][\w-]*(?:\.[\w-]+)+$/;
+          function vueTranslatedLabel(text) {
+            if (!text || !TRANSLATION_KEY_RE.test(text)) return text;
+            try { return cleanText(findTranslateFunc()(text)) || text; } catch (e) { return text; }
+          }
+
+          function tabStripLabel(listEl) {
+            var tabs = vueProvided(listEl, 'tabs');
+            var list = tabs && (tabs.value || tabs);
+            if (Array.isArray(list)) {
+              for (var i = 0; i < list.length; i++) {
+                var tab = list[i];
+                if (!tab || !tab.active) continue;
+                var name = cleanText(tab.heading || tab.tooltip || '');
+                if (name) return vueTranslatedLabel(name);
+              }
+            }
+            var active = listEl.querySelector('.tab-item.tab-active-tab, .tab-active-tab, [aria-selected="true"]');
+            if (!active) return '';
+            var text = cleanText(active.innerText || active.textContent || '');
+            if (!text) text = cleanText((active.getAttribute && (active.getAttribute('aria-label') || active.title)) || '');
+            return vueTranslatedLabel(text);
+          }
+
+          // Where the driver is, outermost first. layoutMenu shows tabs and
+          // breadcrumbs as ALTERNATIVES (display.tabs is gated on there being no
+          // breadcrumbs), so drilling into a tab replaces the strip with a trail --
+          // which is why a breadcrumb-only screen has to contribute a name too, or
+          // going one level deeper would read as leaving the tabs behind entirely.
+          function vueTabPath(root) {
+            var out = [];
+            var lists = toArray(root.querySelectorAll('.tab-list'));
+            for (var i = 0; i < lists.length; i++) {
+              if (!visibleVueElement(lists[i])) continue;
+              var label = tabStripLabel(lists[i]);
+              if (label && out.indexOf(label) === -1) out.push(label);
+            }
+            var crumb = root.querySelector('.bng-path .bng-path-item.bng-path-last, .menu-breadcrumbs .bng-path-item.bng-path-last');
+            if (crumb && visibleVueElement(crumb)) {
+              var crumbText = vueTranslatedLabel(cleanText(crumb.innerText || crumb.textContent || ''));
+              if (crumbText && out.indexOf(crumbText) === -1) out.push(crumbText);
+            }
+            return out.join(', ');
+          }
+
+          // The element the focus path would speak about, resolved WITHOUT the
+          // parts-dropdown activation side effect so the tab announcer can ask the
+          // same question the poll asks and be sure of the same answer.
+          function focusedVueElement(root, bindingPopup, activatedDropdownFocused) {
+            return vueBindingEditorFocused(bindingPopup) || activatedDropdownFocused ||
+              focusedVuePartsDropdownOption(activeVuePartsDropdown()) ||
+              focusedVueMainMenuItem(root) || root.querySelector('.focus-visible') ||
+              (root.contains(document.activeElement) ? document.activeElement : null) ||
+              document.querySelector('.bng-dropdown-content .dropdown-option.focus-visible');
+          }
+
+          // The tab name is spoken ALONE and the landing item is left to the focus
+          // watcher, which then QUEUES behind it rather than interrupting.
+          //
+          // The first version appended the item here instead, to make one utterance
+          // of it. That was wrong twice over. It read focus a fixed delay after the
+          // tab flipped, and focus usually has not moved yet at that point -- on a
+          // sub-tab change, where the old panel's element survives the switch, what
+          // it appended was the item from the tab the driver had just LEFT. And
+          // where it appended nothing, the focus move that arrived a moment later
+          // cut the tab name off anyway, which is the whole complaint. Waiting long
+          // enough to be sure is not available either: focus often never lands at
+          // all until the first D-pad tap, so the wait would be charged to every
+          // tab change to fix some of them.
+          //
+          // Queuing settles all of it without predicting anything. The tab name is
+          // spoken as soon as it is known, the focus watcher announces whatever is
+          // genuinely focused whenever that happens, and the window in emitSpeak
+          // keeps the second from cutting the first. Two utterances back to back
+          // take about as long as the combined one did, and neither can be stale.
+          function announceVueTab(tabPath) {
+            var generation = ++_vueTabGeneration;
+            if (_vueTabTimer) clearTimeout(_vueTabTimer);
+            _vueTabTimer = trackedSetTimeout(function () {
+              _vueTabTimer = null;
+              if (generation !== _vueTabGeneration) return;
+              var root = vueScreenRoot();
+              if (!root || vueTabPath(root) !== tabPath) return;
+              _vueTabQueueText = tabPath;
+              scheduleSpeak(tabPath, P.CONTROLLER);
+            }, VUE_TAB_SETTLE_MS);
+          }
+
+          function resetVueTabTracking() {
+            _vueTabPath = '';
+            _vueTabSeen = false;
+            _vueTabGeneration++;
+            // Dropped rather than left armed: a tab name that never reached
+            // emitSpeak (deduped, or suppressed by a loading screen) would
+            // otherwise open the window around some unrelated later utterance.
+            _vueTabQueueText = '';
+            _vueTabQueueUntil = 0;
+            if (_vueTabTimer) { clearTimeout(_vueTabTimer); _vueTabTimer = null; }
           }
 
           function vueControlState(control, row) {
@@ -2664,6 +2974,7 @@ export function installBNVDA($rootScope, dependencies) {
                 _vueOptionsCategory = '';
                 _vueOptionsCategoryGeneration++;
                 if (_vueOptionsCategoryTimer) { clearTimeout(_vueOptionsCategoryTimer); _vueOptionsCategoryTimer = null; }
+                resetVueTabTracking();
                 scheduleVuePoll(nextDelay);
                 return;
               }
@@ -2687,25 +2998,52 @@ export function installBNVDA($rootScope, dependencies) {
               }
               if (!optionsCategory) _vueOptionsCategory = '';
               var dialog = root.querySelector('[role="dialog"], .bng-dialog, .modal');
-              var activeTab = root.querySelector('[role="tab"][aria-selected="true"], .bng-tab.active, .bng-tab.selected');
+              // Resolved through the tab strips themselves rather than through the
+              // ARIA the game does not emit. It doubles as the screenKey's tab
+              // component, which matters for the tabs that do NOT move the route:
+              // a mod-contributed pause tab only flips activeModTabId, so without
+              // this the watcher never even noticed the screen had changed.
+              // Frozen rather than blanked while the binding editor is up: that
+              // popup contains a tab strip of its own, and blanking would make
+              // closing it look like a move back onto the pause tab -- announcing
+              // "System" at the one moment the driver has just dismissed something.
+              var tabPath = bindingPopup ? _vueTabPath : vueTabPath(root);
+              // Only a CHANGE is an event. The first sight of a screen is not one:
+              // the focus watcher announces the landing item on entry already, and
+              // treating entry as a tab change would double every arrival -- worst
+              // on the options screen, where the category announcement has just
+              // spoken and this would speak over it a tick later.
+              var tabChanged = _vueTabSeen && tabPath !== _vueTabPath;
+              _vueTabPath = tabPath;
+              _vueTabSeen = true;
               var subScreen = root.querySelector('.adjustment-container, .parts-packs, .parts-browser, .pause-tab-combined-parts, .innerTuningCard, .paint-acc-wrapper, .saveload');
               var screenKey = (location.hash || '') + '|' + (location.pathname || '') + '|' +
-                cleanText(activeTab && activeTab.innerText) + '|' + (subScreen ? subScreen.className.toString() : '') + '|' +
+                tabPath + '|' + (subScreen ? subScreen.className.toString() : '') + '|' +
                 (dialog ? ((dialog.id || '') + ':' + (dialog.className || '').toString()) : 'screen');
               if (screenKey !== _vueWatchScreen) {
                 if (_vueWatchScreen !== null) clearPartsDropdownActivation(true);
-                // Never let an announcement pending from the old screen land here.
-                navBurstReset();
+                // Never let an announcement pending from the old screen land here --
+                // EXCEPT when the screen changed because a tab changed. Holding a
+                // bumper sweeps tabs the same way holding a direction sweeps a list,
+                // and most pause tabs push a route, so resetting the burst here
+                // would clear `active` and `ema` on every step and make each tab in
+                // the sweep take the leading-edge path, i.e. speak. That is the
+                // chatter the coalescing exists to prevent, arriving through the one
+                // door it does not watch.
+                if (!tabChanged) navBurstReset();
                 resetVueHintLifecycle();
                 _vueWatchScreen = screenKey; _vueWatchSignature = ''; _vueWatchElement = null; lastFocusedElement = null;
                 _lastTuningCategory = null; _lastTuningSubcategory = null;
                 if (_tuningHintTimer) { clearTimeout(_tuningHintTimer); _tuningHintTimer = null; }
               }
+              if (tabChanged && tabPath) {
+                announceVueTab(tabPath);
+                updateVuePauseHints(root, true);
+                scheduleVuePoll(nextDelay);
+                return;
+              }
               var activatedDropdownFocused = updatePartsDropdownActivation(root);
-              var dropdownFocused = focusedVuePartsDropdownOption(activeVuePartsDropdown());
-              var focused = vueBindingEditorFocused(bindingPopup) || activatedDropdownFocused || dropdownFocused || focusedVueMainMenuItem(root) || root.querySelector('.focus-visible') ||
-                (root.contains(document.activeElement) ? document.activeElement : null) ||
-                document.querySelector('.bng-dropdown-content .dropdown-option.focus-visible');
+              var focused = focusedVueElement(root, bindingPopup, activatedDropdownFocused);
               if (!focused) {
                 updateVuePauseHints(root, false);
                 scheduleVuePoll(nextDelay);
