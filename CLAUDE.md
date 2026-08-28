@@ -58,6 +58,7 @@ Grouped by function; each file below carries the full reasoning for its area.
 - @docs/lua-geometry.md — `vehicleGeometry.lua` (per-vehicle derived node geometry: extents, hull cids, contact bands, vertical occupancy histogram) and `rampGeometry.lua` (the drive-in mouth of a ramp-equipped machine). Both are libraries with no ports of their own.
 - @docs/lua-vehicle-scanner.md — `vehicleScanner.lua`: nearest vehicle detection, target cycling, coupler compatibility matching, alignment teleport. Ports 4445/4448.
 - @docs/lua-extensions.md — `beamtelAI.lua`, `obstacleDetector.lua`, `cameraInfo.lua`, `terrainScanner.lua`, `cannonShot.lua`, `trailerAngle.lua`, `nodeGrabberAccessible.lua`, `clickspotAccessible.lua`, `uiToggle.lua`, `consoleAccessible.lua`, `vehicleBindings.lua`, `environmentAccessible.lua`.
+- `vehicleInfo.lua` (see @docs/lua-extensions.md) — the stock vehicle selector's details-page specifications, answered on request. Ports 4477/4478.
 - @docs/lua-implement-proximity.md — `implementProximity.lua`: what the loader's bucket or forks are about to run into, plus the docking readout, the slam gate, ramp mode, the ramp align teleport and the `RAMPSELF:` line. Ports 4469/4470.
 - @docs/lua-ui-runtime.md — `bnvdaAutoSpawner.lua` and `ui/ui-vue/mods/bnvda/bnvdaRuntime.js`, the whole UI accessibility layer.
 
@@ -100,6 +101,8 @@ Grouped by function; each file below carries the full reasoning for its area.
 | 4474 | Game→Python | Environment rows (environmentAccessible.lua) |
 | 4475 | Python→Game | Environment commands (REQUEST/SET/RESTORE) |
 | 4476 | Game→Python | Trailer articulation angle (trailerAngle.lua) |
+| 4477 | Game→Python | Vehicle information rows (vehicleInfo.lua) |
+| 4478 | Python→Game | Vehicle information commands (INFO_SELECTOR/INFO:) |
 | 4481 | Agent→Python | MCP automation server (HTTP, loopback, off by default) |
 | 4579 | Game→Python | UI toast messages |
 | 8765 | WebSocket | NVDA/UI bridge |

@@ -41,6 +41,10 @@ extensions.load("consoleAccessible")
 -- The environment values the stock pause UI does not expose at all (temperature). Passive:
 -- its onUpdate drains a socket and does nothing else until Python asks.
 extensions.load("environmentAccessible")
+-- The stock vehicle selector's details-page specifications, answered on request (F9 then
+-- SPACE there, `i` in the mod's own spawner). Passive: its onUpdate drains a socket and
+-- re-checks one table field, and it never speaks on its own.
+extensions.load("vehicleInfo")
 -- Loaded late on purpose: an uncaught throw in an extension's onUpdate stops every
 -- extension AFTER it in this list, and this one raycasts against arbitrary scene objects.
 extensions.load("implementProximity")

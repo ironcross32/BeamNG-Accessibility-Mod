@@ -276,6 +276,14 @@ _manage_selected: set[int] = set()             # vehicle ids selected
 _drill_vehicle: dict[str, Any] | None = None
 
 # To-be-spawned queue
+# Vehicle information screen. _info_return_screen is what makes escape seamless: every
+# cursor in this module is a global and nothing resets them, so returning to the screen the
+# user pressed `i` on lands them exactly where they were, on the same item.
+_request_info_fn = None
+_info_lines: list[str] = []
+_idx_info = 0
+_info_return_screen = "main"
+
 # Each item: { "model": str, "config": str, "displayName": str,
 #              "offFwdFt": int, "offRightFt": int, "offUpFt": int,
 #              "rotPitchDeg": int, "rotRollDeg": int, "rotYawDeg": int,
@@ -1145,6 +1153,15 @@ def _speak_current():
         _speak_position(_idx_replace_slot, len(slot_nums), label)
         return
 
+    if _screen == "info":
+        global _idx_info
+        if not _info_lines:
+            _say_with_prefix("No vehicle information.")
+            return
+        _idx_info = max(0, min(_idx_info, len(_info_lines) - 1))
+        _speak_position(_idx_info, len(_info_lines), _info_lines[_idx_info])
+        return
+
     if _screen == "arrange":
         _speak_arrange_item(_idx_arrange)
         return
@@ -1170,6 +1187,11 @@ def _on_up(event):
     global _idx_arrange
     if _screen == "place3d":
         _place_key_down("up")
+        return
+    if _screen == "info":
+        global _idx_info
+        _idx_info = max(0, _idx_info - 1)
+        _speak_current()
         return
     if _screen == "arrange":
         _idx_arrange = max(0, _idx_arrange - 1)
@@ -1206,6 +1228,11 @@ def _on_down(event):
     global _idx_arrange
     if _screen == "place3d":
         _place_key_down("down")
+        return
+    if _screen == "info":
+        global _idx_info
+        _idx_info = min(max(0, len(_info_lines) - 1), _idx_info + 1)
+        _speak_current()
         return
     if _screen == "arrange":
         _idx_arrange = min(4, _idx_arrange + 1)
@@ -1491,6 +1518,11 @@ def _on_escape(event):
     global _filter_draft, _drill_vehicle, _pending_replace_item, _replace_editing_idx
     if _screen == "spacing_edit":
         _enter_screen("arrange")
+        return
+    if _screen == "info":
+        # Straight back to the screen and cursor the user pressed `i` on. Every index in this
+        # module is a global and nothing here resets them, so this is the whole restore.
+        _enter_screen(_info_return_screen)
         return
     if _screen == "arrange":
         _enter_screen(_arrange_return_screen)
@@ -2356,6 +2388,62 @@ def _request_active_vehicles():
 # =============================================================================
 
 # (key_name, handler) pairs, all suppress=True
+def _on_info(event):
+    """Speak the full specification sheet for the vehicle under the cursor.
+
+    Resolved per screen rather than from one "current vehicle", because the three list
+    screens each mean something different by it: the catalog list means a model (so the
+    default configuration answers for it), the configs list means that exact configuration,
+    and the queue means the pair already chosen for a pending spawn.
+
+    This runs on the worker thread, never on the keyboard hook, so the bounded wait inside
+    the request cannot trip the Windows low-level-hook timeout.
+    """
+    global _info_lines, _idx_info, _info_return_screen
+
+    if _request_info_fn is None:
+        _say_safe("Vehicle information is unavailable.")
+        return
+
+    model = None
+    config = ""
+    if _screen == "main":
+        items = _filtered_catalog()
+        if items and 0 <= _idx_main < len(items):
+            model = items[_idx_main].get("model")
+    elif _screen == "configs":
+        if _drill_vehicle:
+            model = _drill_vehicle.get("model")
+            cfgs = _drill_vehicle.get("configs", [])
+            if cfgs and 0 <= _idx_configs < len(cfgs):
+                config = cfgs[_idx_configs].get("key") or ""
+    elif _screen == "to_spawn":
+        with _state_lock:
+            queue = list(_to_spawn)
+        if queue and 0 <= _idx_to_spawn < len(queue):
+            model = queue[_idx_to_spawn].get("model")
+            config = queue[_idx_to_spawn].get("config") or ""
+
+    if not model:
+        _say_safe("No vehicle information here.")
+        return
+
+    lines, failure = _request_info_fn(model, config)
+    if not lines:
+        # Every cause is named on the Lua side; a timeout arrives with an empty sentence and
+        # is the one case that says nothing about the vehicle at all.
+        if failure and failure[1]:
+            _say_safe(failure[1])
+        else:
+            _say_safe("No vehicle information available.")
+        return
+
+    _info_lines = lines
+    _idx_info = 0
+    _info_return_screen = _screen
+    _enter_screen("info", header="Vehicle information")
+
+
 _MODAL_KEYS = [
     ("up",        _on_up),
     ("down",      _on_down),
@@ -2382,6 +2470,7 @@ _MODAL_KEYS = [
     ("d",         _on_d),
     ("q",         _on_q),
     ("e",         _on_e),
+    ("i",         _on_info),
 ]
 
 
@@ -2548,14 +2637,18 @@ def _toggle_modal_async():
 # =============================================================================
 
 def init(say_fn, is_focused_fn, logger, get_slots_fn=None, close_others_fn=None,
-         ping_fn=None):
+         ping_fn=None, request_info_fn=None):
     global _say, _is_focused, _log, _get_slots_fn, _close_others, _ping
+    global _request_info_fn
     _say = say_fn
     _is_focused = is_focused_fn
     _log = logger
     _get_slots_fn = get_slots_fn
     _close_others = close_others_fn
     _ping = ping_fn
+    # Injected rather than opening a socket of its own, the way _get_slots_fn already is:
+    # beamtel owns the 4477/4478 pair and there must be exactly one binder of 4477.
+    _request_info_fn = request_info_fn
 
 
 def close_modal():

@@ -3042,6 +3042,95 @@ def environment_listener(stop_event):
         logger.info("Environment listener stopped.")
 
 
+def vehicle_info_listener(stop_event):
+    """Listens for vehicle specification rows from vehicleInfo.lua.
+
+    Silent by construction: rows are only ever spoken because the user asked for
+    them (F9 then SPACE on the stock selector, `i` in the spawner). The old
+    version of this feature read automatically, which is exactly why it was
+    unusable.
+
+    The reply is chunked, so a whole answer is accumulated and only published on
+    INFO_END -- a browser opened against a half-arrived list would read a
+    truncated spec sheet as though it were the whole thing. INFOFAIL publishes a
+    reason instead, and both paths set the event so a waiting caller is never
+    left sitting out its full timeout.
+    """
+    global _vinfo_rows, _vinfo_building, _vinfo_error, _vinfo_absent
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", VEHICLE_INFO_LISTEN_PORT))
+        sock.settimeout(0.2)
+        logger.info(f"Vehicle info listener started on port {VEHICLE_INFO_LISTEN_PORT}")
+
+        while not stop_event.is_set():
+            try:
+                data, _addr = sock.recvfrom(8192)
+                text = data.decode("utf-8", errors="ignore").strip()
+                if not text:
+                    continue
+
+                # Any packet at all proves the mod half is alive and speaking this
+                # protocol, which is the only evidence needed to drop the latch.
+                _vinfo_absent = False
+
+                if text.startswith("INFO_BEGIN:"):
+                    _vinfo_building = []
+                    _vinfo_error = ""
+                    _vinfo_event.clear()
+                    continue
+
+                if text.startswith("INFO_ROW:"):
+                    if _vinfo_building is None:
+                        continue
+                    try:
+                        _vinfo_building.append(json.loads(text[len("INFO_ROW:"):]))
+                    except Exception:
+                        logger.warning("Malformed INFO_ROW dropped.")
+                    continue
+
+                if text == "INFO_END":
+                    if _vinfo_building is not None:
+                        _vinfo_rows = _vinfo_building
+                        _vinfo_building = None
+                        _vinfo_error = ""
+                    _vinfo_event.set()
+                    continue
+
+                if text.startswith("INFOFAIL:"):
+                    # "<code>;<sentence>". The code exists because one of these
+                    # causes -- notselector -- is the answer on every screen in
+                    # the game, including the one where F9 SPACE means "scan the
+                    # terrain"; it has to fall through silently while the others
+                    # are spoken. Prose cannot carry that distinction.
+                    _vinfo_rows = []
+                    _vinfo_building = None
+                    body = text[len("INFOFAIL:"):].strip()
+                    code, sep, sentence = body.partition(";")
+                    if not sep:
+                        # An older mod half sent the sentence alone. Treat it as a
+                        # real refusal rather than guessing it was notselector,
+                        # which would silently swallow every failure.
+                        code, sentence = "unknown", body
+                    _vinfo_error = (code.strip(), sentence.strip())
+                    _vinfo_event.set()
+                    continue
+
+            except socket.timeout:
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Vehicle info listener socket error.")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+        logger.info("Vehicle info listener stopped.")
+
+
 def slot_listener(stop_event):
     """Listens for SLOTS: messages from vehicleSlots.lua and updates _vehicle_slots."""
     global _vehicle_slots, _selected_slots, _target_slot
@@ -3763,6 +3852,20 @@ _env_can_change = True
 _env_building = None  # accumulator between ENV_BEGIN and ENV_END
 _env_unavailable = ""
 
+# Vehicle Information State (vehicleInfo.lua, ports 4477/4478)
+# _vinfo_building is the accumulator between INFO_BEGIN and INFO_END; the finished
+# list is swapped into _vinfo_rows whole so a reader never sees a torn spec sheet.
+_vinfo_rows = []
+_vinfo_building = None
+_vinfo_error = None  # None, or a (code, sentence) pair from INFOFAIL
+_vinfo_event = threading.Event()
+# Set once the mod half has failed to answer, and cleared by the first packet that ever
+# arrives. F9 SPACE is the terrain scan and is pressed while DRIVING, so paying the full
+# timeout on every press to re-discover a mod that is not there is a regression on a key that
+# has always worked -- and bng_mod/ is a live junction, so a half that does not know this
+# command is the ordinary consequence of updating one side. See request_vehicle_info.
+_vinfo_absent = False
+
 _vehicle_bindings_list = []  # list of (cache_index, line)
 _vehicle_bindings_vehicle = ""
 _vehicle_bindings_building = None  # accumulator between BEGIN and END
@@ -4055,7 +4158,7 @@ _F9_HELP = {
     ("h", False, False, False): "Speak heading",
     ("p", False, False, False): "Speak air pressure",
     ("u", False, False, False): "Switch between imperial and metric",
-    ("space", False, False, False): "Scan terrain, or activate the on-screen control in a menu",
+    ("space", False, False, False): "Read vehicle information on the vehicle selector, scan terrain when driving, or activate the on-screen control in a menu",
     ("n", True, False, False): "Toggle accessible node grabber",
     ("c", True, True, False): "Toggle clickspot detection",
     ("c", True, True, True): "Browse clickspots",
@@ -4567,6 +4670,8 @@ VEHICLE_BINDINGS_LISTEN_PORT = (
 VEHICLE_BINDINGS_CMD_PORT = 4468  # UDP port to send commands to vehicleBindings.lua
 ENV_LISTEN_PORT = 4474  # UDP port to receive environment rows from environmentAccessible.lua
 ENV_CMD_PORT = 4475  # UDP port to send commands to environmentAccessible.lua
+VEHICLE_INFO_LISTEN_PORT = 4477  # UDP port to receive vehicle info rows from vehicleInfo.lua
+VEHICLE_INFO_CMD_PORT = 4478  # UDP port to send INFO_SELECTOR/INFO: to vehicleInfo.lua
 IMPLEMENT_LISTEN_PORT = (
     4469  # UDP port to receive implement proximity events from implementProximity.lua
 )
@@ -5044,6 +5149,76 @@ def _parse_env_fields(payload):
             # The bare leading number on ENV_BEGIN.
             out["count"] = field.strip()
     return out
+
+
+def _send_vehicle_info_cmd(command):
+    try:
+        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        cmd_sock.sendto(command.encode("utf-8"), ("127.0.0.1", VEHICLE_INFO_CMD_PORT))
+        cmd_sock.close()
+    except Exception as e:
+        logger.error(f"Failed to send vehicle info command via UDP: {e}")
+
+
+def _vinfo_render(rows):
+    """Turn the mod's {kind,label,value} rows into lines for the virtual browser.
+
+    A group row is a heading and is spoken as a bare name with no value, so a
+    listener arrowing down hears the structure of the page rather than a flat run
+    of thirty numbers. A spec with no label (the icon strip, the source tag)
+    carries its whole sentence in the value already, so prefixing an empty label
+    would leave a stray comma.
+    """
+    lines = []
+    for r in rows:
+        kind = r.get("kind", "spec")
+        label = (r.get("label") or "").strip()
+        value = (r.get("value") or "").strip()
+        if kind == "group":
+            lines.append(label)
+        elif label and value:
+            lines.append(f"{label}: {value}")
+        elif value:
+            lines.append(value)
+    return lines
+
+
+def request_vehicle_info(model=None, config=None, timeout=0.6):
+    """Ask vehicleInfo.lua for a spec sheet and wait briefly for the reply.
+
+    Returns (lines, failure), where failure is None on success and otherwise a
+    (code, sentence) pair. `model` None asks about whatever the stock selector's
+    details page is showing; otherwise it asks for that explicit pair, with an
+    empty config meaning the model's default.
+
+    The bounded wait is safe wherever this is called from today -- the F9
+    dispatcher runs on the `kb-dispatch` worker thread and the spawner on its own
+    worker, never on a keyboard hook, so it cannot trip the ~300 ms Windows
+    low-level-hook timeout that would leak suppressed keys to the game.
+    """
+    global _vinfo_rows, _vinfo_error, _vinfo_absent
+    _vinfo_event.clear()
+    _vinfo_rows = []
+    _vinfo_error = None
+    if model:
+        _send_vehicle_info_cmd(f"INFO:{model},{config or ''}")
+    else:
+        _send_vehicle_info_cmd("INFO_SELECTOR")
+
+    # A mod half that has already failed to answer is asked again -- a reply is how the latch
+    # clears -- but not WAITED for. Blocking is what would be felt: this runs inline on the
+    # F9 SPACE path, where the other two answers are a terrain scan and a menu press, so a
+    # user whose bng_mod predates this feature would otherwise pay the full timeout in dead
+    # air before every single scan.
+    if not _vinfo_event.wait(0.0 if _vinfo_absent else timeout):
+        # Silence is its own diagnosis and must not be reported as "no vehicle":
+        # the mod half is missing, out of date, or its command socket never bound.
+        _vinfo_absent = True
+        return [], ("timeout", "")
+
+    if _vinfo_error:
+        return [], _vinfo_error
+    return _vinfo_render(_vinfo_rows), None
 
 
 def _send_env_cmd(command):
@@ -6231,18 +6406,38 @@ def _on_next_key_press(event, audio_controller):
     elif name == "space" and not (
         _capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]
     ):
-        # One key, two answers, picked by whether there is a world to be in. Driving, this is
-        # the terrain sonification scan; in a menu it activates the on-screen control, which
-        # is what this key has always done. That is a real disambiguation rather than a
-        # priority call: the only screens offering a context action are the freeroam wizard
-        # and the configurator, both of which run with no level loaded, so the two answers
-        # can never both apply.
+        # One key, three answers. On the stock vehicle selector it reads the details page's
+        # specifications; driving, it is the terrain sonification scan; in a menu it activates
+        # the on-screen control, which is what this key has always done.
+        #
+        # The selector is asked FIRST, and that ordering is the one real priority call here.
+        # The other two disambiguate cleanly on _world_is_active(), because the only screens
+        # offering a context action run with no level loaded. The selector does not: it is
+        # reachable from the pause menu with a level loaded, so it can look applicable at the
+        # same time as the scan. It wins because it is a positive fact about a screen that is
+        # open, where _world_is_active() is a recency heuristic that also goes false while
+        # paused. A refusal or a silent mod falls straight through to the old behaviour, so
+        # nothing that works today can regress.
         #
         # The scan says nothing on success on purpose — the reference ping at the head of the
         # cloud IS the acknowledgement, and speech would talk over the first half second of
         # the very scan it was announcing. Silence and a dead extension are otherwise
         # identical, so a watcher speaks if the mod never answers.
-        if _world_is_active():
+        info_lines, info_fail = request_vehicle_info()
+        info_code = info_fail[0] if info_fail else None
+        if info_lines:
+            open_virtual_browser(
+                info_lines,
+                title=f"Vehicle information, {len(info_lines)} items",
+            )
+        elif info_code not in (None, "notselector", "timeout"):
+            # Spoken only when the mod was ON the selector and still could not answer — the
+            # user asked a question about a vehicle and deserves the reason. "notselector" is
+            # the answer on every other screen in the game and must fall through silently, and
+            # a timeout says nothing about the vehicle at all, only that the mod half is
+            # missing or deaf.
+            say(info_fail[1] or "No vehicle information", exclude_from_buffer=True)
+        elif _world_is_active():
             _scan_seen_before = _last_scan_reply_ts
             _send_scan_cmd("SCAN")
             threading.Thread(
@@ -9109,6 +9304,13 @@ def _run_engine():
         target=environment_listener, args=(STOP,), daemon=True
     )
     environment_thread.start()
+
+    # No startup request to match: this one only ever answers a key press, so
+    # there is nothing to pre-fetch and nothing to go stale.
+    vehicle_info_thread = threading.Thread(
+        target=vehicle_info_listener, args=(STOP,), daemon=True
+    )
+    vehicle_info_thread.start()
     # Ask for the current level's environment rows, for the same reason the
     # bindings request exists: beamtel may have started after the level loaded.
     _send_env_cmd("REQUEST")
@@ -9178,6 +9380,9 @@ def _run_engine():
             # permanently-dead arrow keys described in _hook_suppressed.
             close_others_fn=lambda: release_arrow_owners("vehicle spawner opened"),
             ping_fn=audio_controller.trigger_placement_ping,
+            # beamtel owns the 4477/4478 socket pair; the spawner asks through it rather
+            # than binding a second listener on 4477.
+            request_info_fn=request_vehicle_info,
         )
         _vehicle_spawner.start(STOP)
     except Exception as e:
