@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import tempfile
+import zipfile
 
 import wx
 
@@ -28,6 +29,9 @@ from configurator import (
 _AUTO_SAVE_DELAY_MS = 2000
 
 _MOD_ZIP = "bng_screenreader_mod.zip"
+# Written into the mod zip by build.py's package_mod(). See MOD_VERSION_MEMBER
+# there for why a file mtime cannot answer this question.
+_MOD_VERSION_MEMBER = "bnvda_mod_version.json"
 _BNVDA_APP_NAME = "bnvdaHook"
 
 
@@ -109,6 +113,47 @@ def _write_layout_with_backup(layout_path, layout):
                 pass
 
 
+
+def _mod_zip_version(path):
+    """(parsed, raw) for a mod zip's stamped version, or None when unstamped.
+
+    Unstamped is a real answer, not an error: it means a zip built before
+    build.py started stamping, which is by definition older than any stamped
+    one. A zip we cannot open at all is also None -- the caller then falls back
+    to a byte comparison, and if that fails too it asks.
+    """
+    try:
+        with zipfile.ZipFile(path) as zf:
+            raw = json.loads(zf.read(_MOD_VERSION_MEMBER).decode("utf-8"))
+    except Exception:
+        return None
+    version = raw.get("version") if isinstance(raw, dict) else None
+    if not isinstance(version, str):
+        return None
+    from updater import parse_version
+
+    parsed = parse_version(version)
+    if parsed is None:
+        return None
+    return parsed, version
+
+
+def _same_bytes(a, b):
+    """True when two files are byte-identical. Unreadable counts as 'not sure'."""
+    try:
+        if os.path.getsize(a) != os.path.getsize(b):
+            return False
+        with open(a, "rb") as fa, open(b, "rb") as fb:
+            while True:
+                ca, cb = fa.read(65536), fb.read(65536)
+                if ca != cb:
+                    return False
+                if not ca:
+                    return True
+    except OSError:
+        return False
+
+
 def install_mod_interactive(parent):
     """Run the mod installation flow, showing wx dialogs as needed. Call from any wx context.
 
@@ -146,32 +191,49 @@ def install_mod_interactive(parent):
         return False
 
     # Step 4: Decide whether to copy.
+    #
+    # By the STAMPED version, never by file mtime. The two zips routinely live
+    # on different machines and are moved by tools that each treat mtime
+    # differently (shutil.copy2 preserves it, zipfile.extractall invents it,
+    # robocopy forwards it), so an mtime ordering is a comparison of clocks --
+    # which is what made a freshly downloaded release announce itself as older
+    # than the copy it had just replaced.
     dst_zip = os.path.join(mods_dir, _MOD_ZIP)
     do_copy = False
     mod_result = "kept the existing installed file"
     if not os.path.isfile(dst_zip):
         do_copy = True
+    elif _same_bytes(src_zip, dst_zip):
+        mod_result = "the installed file is already identical"
     else:
-        src_mtime = os.path.getmtime(src_zip)
-        dst_mtime = os.path.getmtime(dst_zip)
-        if src_mtime < dst_mtime:
+        src_ver = _mod_zip_version(src_zip)
+        dst_ver = _mod_zip_version(dst_zip)
+        if src_ver and (dst_ver is None or src_ver[0] >= dst_ver[0]):
+            # Newer, or the same version rebuilt, or replacing a zip from before
+            # stamping existed. All three are the ordinary update.
+            do_copy = True
+        elif src_ver and dst_ver:
             ans = wx.MessageBox(
-                "The mod file in the program directory is older than the one already installed.\n"
-                "Do you want to copy it anyway, overwriting the newer version?",
-                "Older File Detected",
+                "The mod in the program directory is version %s, but version %s "
+                "is already installed.\n"
+                "Do you want to install the older one anyway?"
+                % (src_ver[1], dst_ver[1]),
+                "Older Version Detected",
                 wx.YES_NO | wx.NO_DEFAULT | wx.ICON_WARNING,
                 parent,
             )
             if ans == wx.YES:
                 do_copy = True
-        elif src_mtime > dst_mtime:
-            do_copy = True
         else:
+            # Neither zip carries a version, so there is nothing to order them
+            # by. Say exactly that rather than inventing a direction.
             ans = wx.MessageBox(
-                "The mod file already installed appears to be the same version as the one in the program directory.\n"
-                "Do you want to copy it over anyway?",
-                "Same Version Detected",
-                wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION,
+                "The mod in the program directory differs from the one already "
+                "installed, but neither carries a version stamp, so which is "
+                "newer cannot be determined.\n\n"
+                "Install the one from the program directory?",
+                "Cannot Determine Version",
+                wx.YES_NO | wx.YES_DEFAULT | wx.ICON_QUESTION,
                 parent,
             )
             if ans == wx.YES:

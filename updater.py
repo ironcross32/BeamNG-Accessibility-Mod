@@ -62,7 +62,6 @@ APP_VERSION = "0.1.2"
 
 REPO = "ironcross32/BeamNG-Accessibility-Mod"
 LATEST_URL = "https://api.github.com/repos/%s/releases/latest" % REPO
-RELEASES_PAGE = "https://github.com/%s/releases/latest" % REPO
 
 # Must equal build.py's BUNDLE_NAME. The two files are the same contract seen
 # from either end and there is no import that could tie them together.
@@ -84,7 +83,6 @@ USER_AGENT = "BEAM-accessibility-mod-updater/%s" % APP_VERSION
 
 CHECK_TIMEOUT_S = 8
 DOWNLOAD_TIMEOUT_S = 30
-NOTES_MAX_CHARS = 600
 
 PENDING_KEY = "pending_update_version"
 ENABLED_KEY = "update_check_enabled"
@@ -170,9 +168,8 @@ def is_newer(remote_tag, local=APP_VERSION):
 
 
 class Release(object):
-    def __init__(self, tag, notes, url, size):
+    def __init__(self, tag, url, size):
         self.tag = tag
-        self.notes = notes or ""
         self.url = url
         self.size = size or 0
 
@@ -227,7 +224,7 @@ def check_latest(timeout=CHECK_TIMEOUT_S):
         )
         return None
 
-    return Release(tag, data.get("body"), asset_url, asset_size)
+    return Release(tag, asset_url, asset_size)
 
 
 # =========================
@@ -338,35 +335,63 @@ set "PID=@PID@"
 set "PROG=@PROG@"
 set "STAGED=@STAGED@"
 set "LOGFILE=@LOG@"
+set "SYS=%SystemRoot%\\System32"
 
-echo [%DATE% %TIME%] waiting for beamtel PID %PID% to exit> "%LOGFILE%"
+echo [%DATE% %TIME%] waiting for beamtel (started from PID %PID%) to exit> "%LOGFILE%"
 set /a TRIES=0
 :wait
-tasklist /FI "PID eq %PID%" /NH 2>nul | find "%PID%" >nul
+"%SYS%\\tasklist.exe" /FI "IMAGENAME eq beamtel.exe" /NH 2>nul | "%SYS%\\find.exe" /I "beamtel.exe" >nul
 if errorlevel 1 goto gone
 set /a TRIES+=1
-if %TRIES% GEQ 120 goto gone
-ping -n 2 127.0.0.1 >nul
+if %TRIES% GEQ 120 goto timeout
+"%SYS%\\ping.exe" -n 2 127.0.0.1 >nul
 goto wait
+
+:timeout
+echo [%DATE% %TIME%] WARNING: beamtel.exe still running after %TRIES% tries; copying anyway>> "%LOGFILE%"
 
 :gone
 rem Give Windows a moment to release the executable image itself.
-ping -n 3 127.0.0.1 >nul
+"%SYS%\\ping.exe" -n 3 127.0.0.1 >nul
+echo [%DATE% %TIME%] no beamtel.exe left after %TRIES% tries>> "%LOGFILE%"
 
 rem The Nuitka onefile cache holds the OLD exe's unpacked payload under a fixed
 rem name beside the exe (--onefile-tempdir-spec={PROGRAM_DIR}/.appdata with
 rem --onefile-cache-mode=cached). It is only safe to remove once the process is
-rem gone, which is precisely here.
+rem gone, which is precisely here. A HALF-removed cache is worse than a stale
+rem one -- the new bootstrap can sit on it -- so the outcome is recorded.
 if exist "%PROG%\\.appdata" rd /s /q "%PROG%\\.appdata"
+if exist "%PROG%\\.appdata" echo [%DATE% %TIME%] WARNING: .appdata survived the delete>> "%LOGFILE%"
 
 echo [%DATE% %TIME%] copying "%STAGED%" -^> "%PROG%">> "%LOGFILE%"
-robocopy "%STAGED%" "%PROG%" /E /IS /IT /R:2 /W:1 >> "%LOGFILE%" 2>&1
-if errorlevel 8 echo [%DATE% %TIME%] robocopy reported failure %ERRORLEVEL%>> "%LOGFILE%"
+"%SYS%\\robocopy.exe" "%STAGED%" "%PROG%" /E /IS /IT /R:5 /W:2 >> "%LOGFILE%" 2>&1
+set RC=%ERRORLEVEL%
+echo [%DATE% %TIME%] robocopy exit %RC% >> "%LOGFILE%"
+if %RC% GEQ 8 echo [%DATE% %TIME%] copy FAILED; not restarting>> "%LOGFILE%"
+if %RC% GEQ 8 goto done
 
-echo [%DATE% %TIME%] restarting beamtel>> "%LOGFILE%"
-start "" "%PROG%\\beamtel.exe"
+if not exist "%PROG%\\beamtel.exe" echo [%DATE% %TIME%] ERROR: "%PROG%\\beamtel.exe" missing after copy>> "%LOGFILE%"
+if not exist "%PROG%\\beamtel.exe" goto done
 
+rem /D sets the new process's working directory: the helper's own is the update
+rem folder, and handing that to the program we are restarting is not what it
+rem would have had if the user had launched it themselves.
+echo [%DATE% %TIME%] starting "%PROG%\\beamtel.exe">> "%LOGFILE%"
+start "BEAM" /D "%PROG%" "%PROG%\\beamtel.exe"
+echo [%DATE% %TIME%] start returned %ERRORLEVEL% >> "%LOGFILE%"
+
+rem "start" is asynchronous and reports almost nothing, so the launch is
+rem VERIFIED rather than assumed. Without this the log's last line is written
+rem before the attempt and a silent failure to restart leaves no evidence at
+rem all -- which is exactly how this went unexplained once already.
+"%SYS%\\ping.exe" -n 6 127.0.0.1 >nul
+"%SYS%\\tasklist.exe" /FI "IMAGENAME eq beamtel.exe" /NH 2>nul | "%SYS%\\find.exe" /I "beamtel.exe" >nul
+if errorlevel 1 echo [%DATE% %TIME%] ERROR: beamtel.exe did not appear after start>> "%LOGFILE%"
+if not errorlevel 1 echo [%DATE% %TIME%] beamtel.exe is running>> "%LOGFILE%"
+
+:done
 rd /s /q "%STAGED%"
+echo [%DATE% %TIME%] helper finished>> "%LOGFILE%"
 (goto) 2>nul & del "%~f0"
 """
 
@@ -398,17 +423,24 @@ def apply_and_restart(staged_dir=STAGED_DIR):
     except OSError as e:
         return "Could not write the update helper: %s" % e
 
+    # DETACHED_PROCESS is what keeps the helper alive past our own exit, and it
+    # makes CREATE_NO_WINDOW a no-op (the two are documented as mutually
+    # exclusive), so the window has to be suppressed the other way -- by giving
+    # cmd valid standard handles. beamtel is built --windows-console-mode=disable
+    # and therefore HAS no console and no usable std handles; a detached cmd that
+    # inherits those finds neither a console nor anywhere to write and allocates
+    # a console of its own, which is the stray window left behind by an update.
     DETACHED_PROCESS = 0x00000008
     CREATE_NEW_PROCESS_GROUP = 0x00000200
-    CREATE_NO_WINDOW = 0x08000000
     try:
         subprocess.Popen(
             ["cmd", "/c", helper],
             cwd=UPDATE_DIR,
             close_fds=True,
-            creationflags=(
-                DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
-            ),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP),
         )
     except Exception as e:
         return "Could not start the update helper: %s" % e
@@ -550,10 +582,7 @@ def _phase_two(frame, pending):
 
     answer = wx.MessageBox(
         "BEAM has been updated to version %s.\n\n"
-        "The BeamNG.drive mod that came with this update still needs to be "
-        "installed into the game. This is the same thing the Install Mod "
-        "button does.\n\n"
-        "Install it now?" % pending,
+        "Install the updated BeamNG.drive mod now?" % pending,
         "Install the updated mod",
         wx.YES_NO | wx.YES_DEFAULT | wx.ICON_QUESTION,
         frame,
@@ -588,10 +617,7 @@ def _check_and_offer(frame, cfg, manual, allow, deny):
         logger.info("Update check found nothing to install")
         if manual:
             wx.MessageBox(
-                "Could not check for updates right now.\n\n"
-                "GitHub could not be reached, or the latest release carries no "
-                "%s asset. You can always download the newest build from:\n%s"
-                % (ASSET_NAME, RELEASES_PAGE),
+                "Could not check for updates right now.",
                 "Update Check Failed",
                 wx.OK | wx.ICON_WARNING,
                 frame,
@@ -612,16 +638,14 @@ def _check_and_offer(frame, cfg, manual, allow, deny):
             )
         return
 
-    notes = release.notes.strip()
-    if len(notes) > NOTES_MAX_CHARS:
-        notes = notes[:NOTES_MAX_CHARS].rstrip() + "..."
+    # The offer is the question and nothing else. The release notes are commit
+    # messages rather than a maintained changelog, so they explain little at
+    # some length; the restart and the mod prompt that follows it both announce
+    # themselves when they happen, and a link is painful to get out of a message
+    # box with a screen reader. Being accessible is not the same as being chatty.
     answer = wx.MessageBox(
-        "A new version of BEAM is available.\n\n"
         "You have version %s. Version %s is available.\n\n"
-        "%s\n\n"
-        "Download and install it now? BeamNG.drive will not be started; BEAM "
-        "will restart and then offer to install the updated mod."
-        % (APP_VERSION, release.version, notes or "(no release notes)"),
+        "Install it now?" % (APP_VERSION, release.version),
         "Update Available",
         wx.YES_NO | wx.YES_DEFAULT | wx.ICON_QUESTION,
         frame,
@@ -682,9 +706,7 @@ def _check_and_offer(frame, cfg, manual, allow, deny):
 
     logger.info("Update %s staged; restarting to apply it" % release.tag)
     wx.MessageBox(
-        "The update has been downloaded.\n\n"
-        "BEAM will now close and restart on the new version. When it comes "
-        "back it will offer to install the updated BeamNG.drive mod.",
+        "BEAM will now close and restart on the new version.",
         "Restarting to Update",
         wx.OK | wx.ICON_INFORMATION,
         frame,
@@ -697,8 +719,7 @@ def _fail(frame, message, allow):
     logger.error("Update failed: %s" % message)
     wx.MessageBox(
         "The update could not be installed.\n\n%s\n\n"
-        "BEAM will carry on running the version you already have. You can "
-        "download the newest build by hand from:\n%s" % (message, RELEASES_PAGE),
+        "BEAM will carry on running the version you already have." % message,
         "Update Failed",
         wx.OK | wx.ICON_ERROR,
         frame,

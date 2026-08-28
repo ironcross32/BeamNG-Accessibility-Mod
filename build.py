@@ -14,7 +14,10 @@ Portability notes:
 """
 
 import argparse
+import datetime
+import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -34,6 +37,17 @@ MOD_JUNCTION = PROJECT_DIR / "bng_mod"
 # checkout the tracked ``bng_mod/`` directory is the real thing and the derived
 # name would silently become "bng_mod".
 MOD_ZIP_NAME = "bng_screenreader_mod.zip"
+
+# Stamped into the mod zip by package_mod() and read back by
+# config_ui.install_mod_interactive(). Without it the only thing distinguishing
+# two mod zips is their FILE MTIME, which is not a version: shutil.copy2 (the
+# installer) preserves it verbatim, so it travels between machines and means
+# whatever some other computer's clock said; zipfile.extractall (the updater's
+# stage step) does not restore it at all and invents "now"; and robocopy carries
+# whatever it is handed. Comparing those decides which build is newer by
+# comparing clocks, which is how a freshly downloaded release came to be
+# reported as older than the copy it was replacing.
+MOD_VERSION_MEMBER = "bnvda_mod_version.json"
 
 # Release bundle name. Fixed, with no date in it, so that
 # <repo>/releases/latest/download/BeamNG_accessibility_mod.zip is a permanent
@@ -332,6 +346,21 @@ def build_exe() -> bool:
     return True
 
 
+def app_version() -> str:
+    """The one hand-maintained version constant, read out of updater.py.
+
+    By regex rather than by import: updater pulls in wx and the whole config
+    stack, which a build script has no business loading. release.yml already
+    reads it exactly this way and asserts it matches the pushed tag, so there is
+    only ever one number to keep honest.
+    """
+    text = (PROJECT_DIR / "updater.py").read_text(encoding="utf-8")
+    match = re.search(r'^APP_VERSION\s*=\s*"([^"]+)"', text, re.M)
+    if not match:
+        raise RuntimeError("APP_VERSION not found in updater.py")
+    return match.group(1)
+
+
 def package_mod() -> bool:
     print("=== Packaging mod ===")
 
@@ -345,14 +374,30 @@ def package_mod() -> bool:
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+    version = app_version()
+    stamp = json.dumps(
+        {
+            "version": version,
+            "built_utc": datetime.datetime.now(datetime.timezone.utc)
+            .replace(microsecond=0)
+            .isoformat(),
+        },
+        indent=2,
+    )
+
     file_count = 0
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for file in sorted(mod_real.rglob("*")):
             if file.is_file():
                 arcname = file.relative_to(mod_real)
+                if arcname.as_posix() == MOD_VERSION_MEMBER:
+                    continue  # a stale stamp left in the junction by an old build
                 zf.write(file, arcname)
                 file_count += 1
                 print(f"  + {arcname}")
+        zf.writestr(MOD_VERSION_MEMBER, stamp)
+        file_count += 1
+        print(f"  + {MOD_VERSION_MEMBER} ({version})")
 
     print(f"\nPackaged {file_count} files -> {zip_path}")
     return True

@@ -8243,7 +8243,22 @@ class BeamTelFrame(wx.Frame):
     """Unified BEAM application window with Main and Configuration tabs."""
 
     def __init__(self):
-        super().__init__(None, title="BeamNG Accessibility", size=(700, 700))
+        # The version goes in the title bar because it is the one place a
+        # screen reader reads without being asked, which is what makes it
+        # useful for telling at a glance whether an update actually landed --
+        # the question the updater's restart makes hard to answer otherwise.
+        # Imported here rather than at module scope to match every other use of
+        # updater in this file, and falling back to an unversioned title: a
+        # window that will not open is a far worse failure than one that cannot
+        # name itself.
+        try:
+            from updater import APP_VERSION
+
+            title = "BeamNG Accessibility %s" % APP_VERSION
+        except Exception as e:
+            logger.error(f"Could not read APP_VERSION for the title bar: {e}")
+            title = "BeamNG Accessibility"
+        super().__init__(None, title=title, size=(700, 700))
         self.SetMinSize((600, 500))
         self._engine_thread = None
         self._shutting_down = False
