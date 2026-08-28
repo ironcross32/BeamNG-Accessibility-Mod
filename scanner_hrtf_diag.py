@@ -68,6 +68,14 @@ def _ild_db(rms_l, rms_r):
     return 20.0 * float(np.log10((rms_l + eps) / (rms_r + eps)))
 
 
+# Default output path, hoisted to module scope so the "View Logs" menu in
+# beamtel.py can offer this file without duplicating the filename literal.
+DEFAULT_PATH = os.path.join(
+    os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "beamtel",
+    "scanner_hrtf_diag.csv",
+)
+
+
 class ScannerHRTFDiagnostic:
     """Lightweight, audio-thread-safe recorder for scanner/HRTF correlation."""
 
@@ -79,12 +87,7 @@ class ScannerHRTFDiagnostic:
         self._writer = None
         self._last_t = None
 
-        if path is None:
-            base = os.path.join(
-                os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "beamtel"
-            )
-            path = os.path.join(base, "scanner_hrtf_diag.csv")
-        self.path = path
+        self.path = path or DEFAULT_PATH
 
         if not self.enabled or np is None:
             if self.enabled and np is None:

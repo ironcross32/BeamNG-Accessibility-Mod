@@ -8290,16 +8290,16 @@ class BeamTelFrame(wx.Frame):
         self.log_text.SetName("Application Log")
         main_sizer.Add(self.log_text, 1, wx.EXPAND | wx.ALL, 5)
 
-        # Log-file buttons
+        # Log-file button.  One button and a pop-up menu rather than a button
+        # per log: the list has outgrown a row -- six files, three of which
+        # exist only in some sessions -- and every extra button here is another
+        # stop a keyboard user tabs through on the way to the console below.
         log_btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        btn_app_log = wx.Button(main_panel, label="Open Application Log")
-        btn_app_log.SetToolTip(f"Open {LOG_FILENAME}")
-        btn_speech_log = wx.Button(main_panel, label="Open Speech Log")
-        btn_speech_log.SetToolTip(f"Open {SPEECH_LOG_PATH}")
-        btn_dom_log = wx.Button(main_panel, label="Open DOM Dump")
-        btn_dom_log.SetToolTip(f"Open {DOM_DUMP_PATH}")
-        for b in (btn_app_log, btn_speech_log, btn_dom_log):
-            log_btn_sizer.Add(b, 0, wx.RIGHT, 5)
+        self.btn_view_logs = wx.Button(main_panel, label="View Logs...")
+        self.btn_view_logs.SetToolTip(
+            "Open one of the log files BEAM writes, or the folder holding them."
+        )
+        log_btn_sizer.Add(self.btn_view_logs, 0, wx.RIGHT, 5)
         main_sizer.Add(log_btn_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 5)
 
         # Accessible developer console (created here so its controls fall between the
@@ -8366,9 +8366,7 @@ class BeamTelFrame(wx.Frame):
         self._wx_log_handler = wx_handler
 
         # Events
-        btn_app_log.Bind(wx.EVT_BUTTON, self._on_open_app_log)
-        btn_speech_log.Bind(wx.EVT_BUTTON, self._on_open_speech_log)
-        btn_dom_log.Bind(wx.EVT_BUTTON, self._on_open_dom_log)
+        self.btn_view_logs.Bind(wx.EVT_BUTTON, self._on_view_logs)
         btn_install_mod.Bind(wx.EVT_BUTTON, lambda evt: install_mod_interactive(self))
         btn_check_updates.Bind(wx.EVT_BUTTON, self._on_check_updates)
         btn_exit.Bind(wx.EVT_BUTTON, lambda evt: self.Close())
@@ -8409,14 +8407,136 @@ class BeamTelFrame(wx.Frame):
                 f"File not found:\n{path}", "Not Found", wx.OK | wx.ICON_WARNING
             )
 
-    def _on_open_app_log(self, evt):
-        self._open_file_if_exists(LOG_FILENAME)
+    @staticmethod
+    def _log_menu_entries():
+        """(label, target) for every log BEAM writes, in menu order.
 
-    def _on_open_speech_log(self, evt):
-        self._open_file_if_exists(SPEECH_LOG_PATH)
+        ``target`` is a path, or a list of (label, path) pairs to be rendered
+        as a submenu.
 
-    def _on_open_dom_log(self, evt):
-        self._open_file_if_exists(DOM_DUMP_PATH)
+        Built at call time rather than at import, and each reason would
+        otherwise cost an entry: two of the paths belong to modules this file
+        imports lazily everywhere else (``ai_describer``, ``updater``), the
+        rotated backups of the application log exist only once it has turned
+        over, and the scanner diagnostic is written only when
+        BEAM_SCANNER_DIAG is set.
+
+        A file that does not exist is still listed.  "There is no AI
+        description log yet" and "I cannot find the AI description log" are
+        different answers and only the first one is true; hiding the row leaves
+        the reader to work out which, from an absence.  The rotated backups are
+        the one exception -- an absent ``.3`` is not a fact about anything.
+        """
+        # bnh_logger's RotatingFileHandler keeps three backups, which had no
+        # route out of the UI at all -- and they are exactly what is wanted
+        # after a crash, since the live file has usually rolled well past it.
+        # They go in a submenu rather than in the top level because they are
+        # one log in four pieces, not four logs: flat, they were most of the
+        # menu, and every one of them read as a peer of the Speech Log.  The
+        # submenu costs a Right Arrow to enter and gives the top level back to
+        # the six distinct logs.
+        rolled = [
+            ("Previous %d" % n, "%s.%d" % (LOG_FILENAME, n))
+            for n in (1, 2, 3)
+            if os.path.isfile("%s.%d" % (LOG_FILENAME, n))
+        ]
+        if rolled:
+            # "Current" only earns a name once there is something to
+            # distinguish it from; with no backups the submenu would be one
+            # item deep, i.e. a Right Arrow charged for nothing.
+            entries = [("Application Log", [("Current", LOG_FILENAME)] + rolled)]
+        else:
+            entries = [("Application Log", LOG_FILENAME)]
+        entries.append(("Speech Log", SPEECH_LOG_PATH))
+        try:
+            import ai_describer
+
+            entries.append(("AI Description Log", ai_describer.LOG_PATH))
+        except Exception as e:
+            logger.error(f"Could not resolve the AI description log path: {e}")
+        entries.append(("DOM Dump", DOM_DUMP_PATH))
+        try:
+            from scanner_hrtf_diag import DEFAULT_PATH as scanner_diag_path
+
+            entries.append(("Scanner and HRTF Diagnostic", scanner_diag_path))
+        except Exception as e:
+            logger.error(f"Could not resolve the scanner diagnostic path: {e}")
+        try:
+            import updater
+
+            entries.append(
+                (
+                    "Update Helper Log",
+                    os.path.join(updater.UPDATE_DIR, updater.HELPER_LOG),
+                )
+            )
+        except Exception as e:
+            logger.error(f"Could not resolve the update helper log path: {e}")
+        return entries
+
+    def _on_view_logs(self, evt):
+        """Pop up the log menu under the View Logs button.
+
+        A menu rather than a dialog because these are one-shot actions with no
+        state to confirm, and Windows announces a menu without any of the
+        framing a modal costs.  A file that has not been written yet stays in
+        the menu, disabled, and says so in its own label: a disabled item is
+        still arrowed onto and read out, so the answer arrives without the user
+        having to activate anything and then dismiss a warning box.
+
+        Submenus are plain ``AppendSubMenu`` children, so Right Arrow opens one
+        and Left Arrow closes it -- the native Windows menu behaviour a screen
+        reader already announces.  Nothing here handles a key.
+        """
+        menu = wx.Menu()
+
+        def add_file_item(into, label, path):
+            """Append one log to `into`, disabled and marked if it is absent."""
+            exists = os.path.isfile(path)
+            item = into.Append(
+                wx.ID_ANY, label if exists else "%s (not created yet)" % label
+            )
+            item.SetHelp(path)
+            if not exists:
+                item.Enable(False)
+                return
+            # Bound on the TOP-LEVEL menu even for a submenu item: wxMSW routes
+            # a popup selection through the menu that was popped up, never
+            # through the submenu the item happens to live in, so a handler
+            # bound on the child would simply never run.
+            menu.Bind(
+                wx.EVT_MENU, lambda e, p=path: self._open_file_if_exists(p), item
+            )
+
+        for label, target in self._log_menu_entries():
+            if isinstance(target, list):
+                sub = wx.Menu()
+                for sub_label, sub_path in target:
+                    add_file_item(sub, sub_label, sub_path)
+                menu.AppendSubMenu(sub, label)
+            else:
+                add_file_item(menu, label, target)
+
+        menu.AppendSeparator()
+        folder_item = menu.Append(wx.ID_ANY, "Open Log Folder")
+        folder_item.SetHelp(CONFIG_DIR)
+        menu.Bind(wx.EVT_MENU, self._on_open_log_folder, folder_item)
+        # Anchored to the button rather than to the mouse, so it opens where
+        # the keyboard focus already is when the button is pressed with Space.
+        self.btn_view_logs.PopupMenu(menu, (0, self.btn_view_logs.GetSize().height))
+        menu.Destroy()
+
+    def _on_open_log_folder(self, evt):
+        try:
+            os.startfile(CONFIG_DIR)
+        except Exception as e:
+            logger.error(f"Could not open the log folder: {e}")
+            wx.MessageBox(
+                f"The log folder could not be opened.\n\n{e}",
+                "Open Failed",
+                wx.OK | wx.ICON_ERROR,
+                self,
+            )
 
     # ---- Notebook keyboard navigation ----
 
