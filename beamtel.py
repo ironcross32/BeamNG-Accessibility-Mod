@@ -27,6 +27,7 @@ import wx
 
 from bnh_logger import get_logger, LOG_FILENAME
 from audio import AudioController, DOCK_RAMP_MAX_RANGE_M
+from road_guidance import RoadGuidanceFeed, junction_phrase, parse_r2_packet
 
 logger = get_logger()
 
@@ -169,11 +170,18 @@ DEFAULT_CONFIG = {
     "follow_default_audio_device": True,
     "preferred_device_name": "",
     "audio_poll_interval_sec": 2.0,
-    "obstacle_detection_enabled": False,
-    "obstacle_buzz_volume_db": -12.0,
-    "obstacle_max_range_m": 20,
-    "obstacle_warning_range_m": 15,
+    # Obstacle mode remains an explicit Ctrl+O action; these are presentation/timing
+    # preferences only. Legacy enabled/range keys are tolerated when read from disk but are
+    # intentionally no longer advertised as active configuration.
+    "obstacle_buzz_volume_db": -18.0,
+    "obstacle_warning_sensitivity": "normal",
     "road_beep_volume_db": -14.0,
+    "road_correction_volume_db": -24.0,
+    "road_follow_guidance_enabled": True,
+    "road_junction_speech_enabled": True,
+    "road_junction_earcon_enabled": True,
+    "road_include_private": False,
+    "road_junction_volume_db": -14.0,
     "placement_ping_volume_db": -12.0,
     "launch_beamng": False,
     # Startup update check. On by default: the exe and the Lua/JS mod go out of
@@ -526,6 +534,28 @@ def load_config():
             "metric"
             if str(merged.get("units", "imperial")).lower().startswith("m")
             else "imperial"
+        )
+        for key, fallback in (
+            ("road_follow_guidance_enabled", True),
+            ("road_junction_speech_enabled", True),
+            ("road_junction_earcon_enabled", True),
+            ("road_include_private", False),
+        ):
+            value = merged.get(key, fallback)
+            merged[key] = value if isinstance(value, bool) else fallback
+        for key, fallback in (
+            ("road_beep_volume_db", -14.0),
+            ("road_correction_volume_db", -24.0),
+            ("road_junction_volume_db", -14.0),
+            ("obstacle_buzz_volume_db", -18.0),
+        ):
+            try:
+                merged[key] = max(-120.0, min(0.0, float(merged.get(key, fallback))))
+            except (TypeError, ValueError):
+                merged[key] = fallback
+        sensitivity = str(merged.get("obstacle_warning_sensitivity", "normal")).lower()
+        merged["obstacle_warning_sensitivity"] = (
+            sensitivity if sensitivity in ("early", "normal", "late") else "normal"
         )
         return merged
     except Exception:
@@ -952,6 +982,62 @@ def scanner_callout_thread_fn(stop_event):
         say(f"{prefix}{dist_str}, {direction}", interrupt=False, exclude_from_buffer=True)
 
 
+def parse_obstacle_packet(text):
+    """Parse static-obstacle CSV while preserving both protocol generations.
+
+    Returns ``("clear", None)``, ``("static", hazard)``, or
+    ``("terrain", (type, bearing, urgency, distance))``. Invalid data raises ValueError.
+    """
+    text = str(text or "").strip()
+    if text == "0":
+        return "clear", None
+    parts = text.split(",")
+    pkt_type = int(parts[0])
+    if pkt_type in (2, 3):
+        if len(parts) != 4:
+            raise ValueError("terrain packet must have four fields")
+        return "terrain", (pkt_type, float(parts[1]), int(parts[2]), float(parts[3]))
+    if pkt_type != 1 or len(parts) < 5:
+        raise ValueError("unknown or incomplete obstacle packet")
+
+    count = int(parts[1])
+    # New wire shape: one legacy triple followed by state, closing, TTC and stopping margin.
+    if count == 1 and len(parts) >= 9:
+        state = int(parts[5])
+        if state not in (1, 2, 3):
+            raise ValueError("invalid obstacle state")
+        return "static", {
+            "bearing": float(parts[2]),
+            "urgency": int(parts[3]),
+            "gap": float(parts[4]),
+            "state": state,
+            "closing": float(parts[6]),
+            "ttc": float(parts[7]),
+            "stopping_margin": float(parts[8]),
+            "legacy": False,
+        }
+
+    candidates = []
+    for i in range(max(0, count)):
+        base = 2 + i * 3
+        if base + 2 >= len(parts):
+            break
+        candidates.append((float(parts[base]), int(parts[base + 1]), float(parts[base + 2])))
+    if not candidates:
+        raise ValueError("legacy static packet contains no complete triples")
+    bearing, urgency, distance = max(candidates, key=lambda item: item[1])
+    return "static", {
+        "bearing": bearing,
+        "urgency": urgency,
+        "gap": distance,
+        "state": 2 if urgency >= 170 else 1,
+        "closing": 0.0,
+        "ttc": -1.0,
+        "stopping_margin": float("inf"),
+        "legacy": True,
+    }
+
+
 def obstacle_listener(audio_controller, stop_event):
     """Listens for UDP packets from obstacleDetector.lua and passes data to the audio controller."""
     # Text CSV format: "type,bearing,urgency,distance" or "0" for all clear
@@ -965,6 +1051,7 @@ def obstacle_listener(audio_controller, stop_event):
         )
 
         first_packet = True
+        static_protocol_logged = False
         terrain_announced = {2: False, 3: False}
 
         while not stop_event.is_set():
@@ -980,38 +1067,29 @@ def obstacle_listener(audio_controller, stop_event):
                 if not text:
                     continue
 
-                if text == "0":
-                    audio_controller.update_static_obstacles([])
+                kind, payload = parse_obstacle_packet(text)
+                if kind == "clear":
+                    audio_controller.update_selected_hazard(None)
                     terrain_announced[2] = False
                     terrain_announced[3] = False
                     continue
-
-                parts = text.split(",")
-                if not parts:
-                    continue
-
-                pkt_type = int(parts[0])
-
-                if pkt_type == 1:
-                    # Static-obstacle packet: "1,n,b1,u1,d1,b2,u2,d2,...,bn,un,dn"
-                    if len(parts) < 2:
-                        continue
-                    n = int(parts[1])
-                    obstacles = []
-                    for i in range(n):
-                        base = 2 + i * 3
-                        if base + 2 >= len(parts):
-                            break
-                        bearing = float(parts[base])
-                        urgency = int(parts[base + 1])
-                        distance = float(parts[base + 2])
-                        obstacles.append((bearing, urgency, distance))
-                    audio_controller.update_static_obstacles(obstacles)
-
-                elif pkt_type in (2, 3) and len(parts) == 4:
-                    bearing = float(parts[1])
-                    urgency = int(parts[2])
-                    distance = float(parts[3])
+                if kind == "static":
+                    if not static_protocol_logged:
+                        static_protocol_logged = True
+                        if payload.get("legacy"):
+                            logger.warning(
+                                "Obstacle detector is sending the legacy multi-obstacle "
+                                "protocol; new audio is active, but predictive TTC/surface-gap "
+                                "detection is not. Restart BeamNG or reload obstacleDetector."
+                            )
+                        else:
+                            logger.info(
+                                "Predictive obstacle protocol active "
+                                "(surface gap, explicit state, closing speed and TTC)."
+                            )
+                    audio_controller.update_selected_hazard(payload)
+                elif kind == "terrain":
+                    pkt_type, bearing, urgency, distance = payload
                     audio_controller.update_obstacle(
                         pkt_type, bearing, urgency, distance
                     )
@@ -1026,6 +1104,8 @@ def obstacle_listener(audio_controller, stop_event):
 
             except socket.timeout:
                 continue
+            except (ValueError, TypeError) as exc:
+                logger.warning(f"Malformed obstacle packet: {exc}")
             except OSError:
                 if stop_event.is_set():
                     break
@@ -1039,7 +1119,7 @@ def obstacle_listener(audio_controller, stop_event):
 
 
 def road_listener(audio_controller, stop_event):
-    """Listens for UDP packets from roadDetector.lua. Drives the off-road guidance beep."""
+    """Consume R2 road awareness packets with transparent legacy fallback."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         sock.bind(("127.0.0.1", ROAD_LISTEN_PORT))
@@ -1048,10 +1128,11 @@ def road_listener(audio_controller, stop_event):
 
         first_packet = True
         last_state = None  # "DORMANT" / "ON_ROAD" / "OFF_ROAD"
+        last_r2_state = None
 
         while not stop_event.is_set():
             try:
-                data, addr = sock.recvfrom(1024)
+                data, addr = sock.recvfrom(4096)
                 if first_packet:
                     logger.info(
                         f"First UDP packet received from road detector (source: {addr})"
@@ -1062,35 +1143,127 @@ def road_listener(audio_controller, stop_event):
                 if not text:
                     continue
 
+                if text.startswith("R2|"):
+                    try:
+                        packet = parse_r2_packet(text)
+                    except ValueError as exc:
+                        logger.warning(f"Ignored malformed road R2 packet: {exc}")
+                        continue
+
+                    events = ROAD_GUIDANCE_FEED.accept_r2(packet)
+                    audio_controller.update_road_guidance(
+                        packet["state"],
+                        packet.get("offRoad"),
+                        packet.get("correction"),
+                        road_follow_guidance_enabled,
+                    )
+
+                    if (
+                        road_mode_active
+                        and packet["state"] == "dormant"
+                        and last_r2_state != "dormant"
+                    ):
+                        say(
+                            "No roads detected on this map",
+                            exclude_from_buffer=True,
+                            source="road_guidance",
+                        )
+                    last_r2_state = packet["state"]
+
+                    if (
+                        road_mode_active
+                        and events["orientation"]
+                        and packet["roadDirections"]
+                    ):
+                        directions = sorted(
+                            packet["roadDirections"], key=lambda value: abs(value)
+                        )
+                        if packet["oneWay"]:
+                            audio_controller.trigger_road_orientation_chime(directions[0])
+                            say(
+                                "One-way road",
+                                interrupt=False,
+                                exclude_from_buffer=True,
+                                source="road_guidance",
+                            )
+                        else:
+                            second = directions[1] if len(directions) > 1 else None
+                            audio_controller.trigger_road_orientation_chime(
+                                directions[0], second
+                            )
+
+                    junction = events["junction"]
+                    if road_mode_active and junction:
+                        if (
+                            junction["phase"] == "approach"
+                            and road_junction_speech_enabled
+                        ):
+                            say(
+                                junction_phrase(junction, UNITS_MODE),
+                                interrupt=False,
+                                source="road_guidance",
+                            )
+                        elif (
+                            junction["phase"] == "near"
+                            and road_junction_earcon_enabled
+                        ):
+                            audio_controller.trigger_road_junction_earcon()
+                        elif (
+                            junction["phase"] == "entered"
+                            and road_junction_earcon_enabled
+                        ):
+                            audio_controller.trigger_road_junction_entry_earcon()
+                    continue
+
                 if text == "DORMANT":
-                    audio_controller.update_road_state(on_road=True, bearing=0.0, distance=0.0)
-                    if last_state != "DORMANT":
+                    use_legacy = ROAD_GUIDANCE_FEED.accept_legacy("DORMANT")
+                    if use_legacy:
+                        audio_controller.update_road_state(
+                            on_road=True, bearing=0.0, distance=0.0
+                        )
+                    if use_legacy and last_state != "DORMANT":
                         say("No roads detected on this map", exclude_from_buffer=True)
                         last_state = "DORMANT"
                 elif text.startswith("ON_ROAD"):
                     parts = text.split(",")
-                    audio_controller.update_road_state(on_road=True, bearing=0.0, distance=0.0)
+                    directions = []
                     if len(parts) >= 3:
                         try:
                             b_first = float(parts[1])
                             b_second = float(parts[2])
-                            audio_controller.trigger_road_orientation_chime(b_first, b_second)
+                            directions = [b_first, b_second]
                         except ValueError:
                             pass
-                    last_state = "ON_ROAD"
+                    use_legacy = ROAD_GUIDANCE_FEED.accept_legacy(
+                        "ON_ROAD", directions=directions
+                    )
+                    if use_legacy:
+                        audio_controller.update_road_state(
+                            on_road=True, bearing=0.0, distance=0.0
+                        )
+                        if directions:
+                            audio_controller.trigger_road_orientation_chime(*directions)
+                        last_state = "ON_ROAD"
                 elif text.startswith("OFF_ROAD"):
                     parts = text.split(",")
                     if len(parts) >= 3:
                         try:
                             bearing = float(parts[1])
                             distance = float(parts[2])
-                            audio_controller.update_road_state(
-                                on_road=False, bearing=bearing, distance=distance
+                            use_legacy = ROAD_GUIDANCE_FEED.accept_legacy(
+                                "OFF_ROAD", bearing=bearing, distance=distance
                             )
-                            last_state = "OFF_ROAD"
+                            if use_legacy:
+                                audio_controller.update_road_state(
+                                    on_road=False, bearing=bearing, distance=distance
+                                )
+                                last_state = "OFF_ROAD"
                         except ValueError:
                             pass
             except socket.timeout:
+                if ROAD_GUIDANCE_FEED.check_timeout():
+                    audio_controller.clear_road_audio()
+                    logger.warning("Road R2 feed timed out; road audio stopped.")
                 continue
             except OSError:
                 if stop_event.is_set():
@@ -2495,6 +2668,7 @@ def _push_gear_direction(gear):
     reverse = str(gear or "").strip().upper().startswith("R")
     scanner_ref_reversed = reverse
     _send_scanner_cmd("GEAR:R" if reverse else "GEAR:F")
+    _push_obstacle_state(force=True, gear=gear)
 
 
 def camera_listener(audio_controller, stop_event):
@@ -3495,7 +3669,18 @@ coupler_dist_mode = False
 # clearing the tone here would silence the instrument while its feed was still live.
 coupler_run_active = False
 obstacle_mode_active = False
+obstacle_warning_sensitivity = "normal"
+_obstacle_state_last = None
+_obstacle_state_last_sent = 0.0
+OBSTACLE_STATE_HEARTBEAT_S = 0.5
+OBSTACLE_STEERING_DELTA = 0.03
+OBSTACLE_PEDAL_DELTA = 0.05
 road_mode_active = False
+road_follow_guidance_enabled = True
+road_junction_speech_enabled = True
+road_junction_earcon_enabled = True
+road_include_private = False
+ROAD_GUIDANCE_FEED = RoadGuidanceFeed()
 _command_context = False  # True only while processing an F9/F10 command keystroke
 
 # NEW: Heading Guidance State
@@ -4140,6 +4325,7 @@ _F9_HELP = {
     ),
     ("o", True, False, False): "Toggle obstacle detection",
     ("r", True, False, False): "Toggle road detection",
+    ("r", True, True, False): "Read road guidance status",
     ("tab", False, False, False): "Next scanner target",
     ("tab", False, True, False): "Previous scanner target",
     ("tab", True, False, False): "Closest scanner target",
@@ -4850,18 +5036,69 @@ def toggle_scan_mode(audio_controller):
     )
 
 
+def _send_obstacle_command(command):
+    try:
+        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        cmd_sock.sendto(str(command).encode("utf-8"), ("127.0.0.1", OBSTACLE_CMD_PORT))
+        cmd_sock.close()
+        return True
+    except Exception as exc:
+        logger.error(f"Failed to send obstacle detector command via UDP: {exc}")
+        return False
+
+
+def _push_obstacle_state(force=False, gear=None):
+    """Push driver intent on material changes and as a half-second heartbeat."""
+    global _obstacle_state_last, _obstacle_state_last_sent
+    if not obstacle_mode_active:
+        return False
+    now = time.monotonic()
+    gear_value = gear
+    if gear_value is None:
+        gear_value = last_gear_str if protocol_mode == "extended" else (
+            "R" if last_gear_byte == REVERSE else "F"
+        )
+    direction = "R" if str(gear_value or "").strip().upper().startswith("R") else "F"
+    state = (
+        direction,
+        max(-1.0, min(1.0, float(last_steering_input))),
+        max(0.0, min(1.0, float(last_throttle))),
+        max(0.0, min(1.0, float(last_brake))),
+    )
+    changed = _obstacle_state_last is None or state[0] != _obstacle_state_last[0]
+    if _obstacle_state_last is not None:
+        changed = changed or abs(state[1] - _obstacle_state_last[1]) >= OBSTACLE_STEERING_DELTA
+        changed = changed or abs(state[2] - _obstacle_state_last[2]) >= OBSTACLE_PEDAL_DELTA
+        changed = changed or abs(state[3] - _obstacle_state_last[3]) >= OBSTACLE_PEDAL_DELTA
+    if not (force or changed or now - _obstacle_state_last_sent >= OBSTACLE_STATE_HEARTBEAT_S):
+        return False
+    command = "STATE,{},{:.3f},{:.3f},{:.3f}".format(*state)
+    if _send_obstacle_command(command):
+        _obstacle_state_last = state
+        _obstacle_state_last_sent = now
+        return True
+    return False
+
+
+def _send_obstacle_configuration():
+    sensitivity = str(obstacle_warning_sensitivity or "normal").lower()
+    if sensitivity not in ("early", "normal", "late"):
+        sensitivity = "normal"
+    return _send_obstacle_command(f"SENSITIVITY,{sensitivity}")
+
+
 def toggle_obstacle_mode(audio_controller):
-    global obstacle_mode_active
+    global obstacle_mode_active, _obstacle_state_last, _obstacle_state_last_sent
     obstacle_mode_active = not obstacle_mode_active
 
     command = "ON" if obstacle_mode_active else "OFF"
-
-    try:
-        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        cmd_sock.sendto(command.encode("utf-8"), ("127.0.0.1", OBSTACLE_CMD_PORT))
-        cmd_sock.close()
-    except Exception as e:
-        logger.error(f"Failed to send obstacle detector command via UDP: {e}")
+    _send_obstacle_command(command)
+    if obstacle_mode_active:
+        _send_obstacle_configuration()
+        _push_obstacle_state(force=True)
+    else:
+        _obstacle_state_last = None
+        _obstacle_state_last_sent = 0.0
 
     audio_controller.set_obstacle_mode(obstacle_mode_active)
 
@@ -4871,18 +5108,38 @@ def toggle_obstacle_mode(audio_controller):
     )
 
 
+def _send_road_command(command):
+    try:
+        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        cmd_sock.sendto(command.encode("utf-8"), ("127.0.0.1", ROAD_CMD_PORT))
+        cmd_sock.close()
+        return True
+    except Exception as exc:
+        logger.error(f"Failed to send road detector command via UDP: {exc}")
+        return False
+
+
+def _send_road_configuration():
+    _send_road_command(f"PRIVATE,{1 if road_include_private else 0}")
+
+
+def speak_road_status():
+    say(
+        ROAD_GUIDANCE_FEED.status_phrase(road_mode_active, UNITS_MODE),
+        exclude_from_buffer=True,
+        source="road_guidance",
+    )
+
+
 def toggle_road_mode(audio_controller):
     global road_mode_active
     road_mode_active = not road_mode_active
 
     command = "ON" if road_mode_active else "OFF"
-    try:
-        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        cmd_sock.sendto(command.encode("utf-8"), ("127.0.0.1", ROAD_CMD_PORT))
-        cmd_sock.close()
-    except Exception as e:
-        logger.error(f"Failed to send road detector command via UDP: {e}")
+    _send_road_command(command)
+    _send_road_configuration()
 
+    ROAD_GUIDANCE_FEED.reset()
     audio_controller.set_road_mode(road_mode_active)
 
     say(
@@ -5677,6 +5934,13 @@ def _on_next_key_press(event, audio_controller):
             if protocol_mode == "extended"
             else "Unavailable"
         )
+    elif (
+        name == "r"
+        and _capture_mods["ctrl"]
+        and _capture_mods["shift"]
+        and not _capture_mods["alt"]
+    ):
+        speak_road_status()
     elif name == "r" and _capture_mods["ctrl"] and not (_capture_mods["shift"] or _capture_mods["alt"]):
         toggle_road_mode(audio_controller)
     elif name == "r" and not (_capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]):
@@ -8145,6 +8409,8 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         last_speed_announce_ts = now
                     last_bucket = current_bucket
 
+            _push_obstacle_state()
+
             # --- Ground truth selection, shared by low speed and slip detection ---
             # MotionSim gives real chassis velocity; the telemetry speed field is
             # drivetrain-derived and collapses to zero under a locked-wheel brake. Fall
@@ -9080,6 +9346,9 @@ def _apply_live_config(audio_controller):
     global announce_turn_signals, announce_speed, speed_announce_interval, announce_gear
     global scanner_distance_callout_enabled, scanner_distance_callout_interval
     global announce_implement_proximity, announce_cannon_shot
+    global road_follow_guidance_enabled, road_junction_speech_enabled
+    global road_junction_earcon_enabled, road_include_private
+    global obstacle_warning_sensitivity
     global ai_describer_provider, ai_describer_settings, ai_describer_disable_ui_toggle
     global ui_nav_hold_suppression
     try:
@@ -9102,6 +9371,17 @@ def _apply_live_config(audio_controller):
         scanner_distance_callout_interval = cfg.get("scanner_distance_callout_interval", 10)
         announce_implement_proximity = bool(cfg.get("implement_proximity_speech", True))
         announce_cannon_shot = bool(cfg.get("cannon_shot_readout", True))
+        road_follow_guidance_enabled = bool(
+            cfg.get("road_follow_guidance_enabled", True)
+        )
+        road_junction_speech_enabled = bool(
+            cfg.get("road_junction_speech_enabled", True)
+        )
+        road_junction_earcon_enabled = bool(
+            cfg.get("road_junction_earcon_enabled", True)
+        )
+        road_include_private = bool(cfg.get("road_include_private", False))
+        obstacle_warning_sensitivity = cfg.get("obstacle_warning_sensitivity", "normal")
         ui_nav_hold_suppression = bool(cfg.get("ui_nav_hold_suppression", True))
         ai_describer_provider = cfg.get("ai_describer_provider", "gemini")
         ai_describer_settings = {
@@ -9112,6 +9392,9 @@ def _apply_live_config(audio_controller):
         ai_describer_disable_ui_toggle = cfg.get("ai_describer_disable_ui_toggle", False)
     if audio_controller is not None:
         audio_controller.apply_config(cfg)
+    _send_road_configuration()
+    if obstacle_mode_active:
+        _send_obstacle_configuration()
     # Outside state_lock: rebuilding the backend can take long enough that the
     # telemetry loop and audio callback would notice the stall.
     speech.configure(cfg)
@@ -9142,6 +9425,9 @@ def _run_engine():
     global announce_turn_signals, announce_speed, speed_announce_interval, announce_gear
     global scanner_distance_callout_enabled, scanner_distance_callout_interval
     global announce_implement_proximity, announce_cannon_shot
+    global road_follow_guidance_enabled, road_junction_speech_enabled
+    global road_junction_earcon_enabled, road_include_private
+    global obstacle_warning_sensitivity
     global ui_nav_hold_suppression
     UNITS_MODE = cfg.get("units", "imperial")
     oil_chime_enabled = cfg.get("oil_chime_enabled", True)
@@ -9153,6 +9439,11 @@ def _run_engine():
     scanner_distance_callout_interval = cfg.get("scanner_distance_callout_interval", 10)
     announce_implement_proximity = bool(cfg.get("implement_proximity_speech", True))
     announce_cannon_shot = bool(cfg.get("cannon_shot_readout", True))
+    road_follow_guidance_enabled = bool(cfg.get("road_follow_guidance_enabled", True))
+    road_junction_speech_enabled = bool(cfg.get("road_junction_speech_enabled", True))
+    road_junction_earcon_enabled = bool(cfg.get("road_junction_earcon_enabled", True))
+    road_include_private = bool(cfg.get("road_include_private", False))
+    obstacle_warning_sensitivity = cfg.get("obstacle_warning_sensitivity", "normal")
     ui_nav_hold_suppression = bool(cfg.get("ui_nav_hold_suppression", True))
 
     if speech.init(cfg) is None:

@@ -154,17 +154,50 @@ COUPLER_BEEP_DUR_MS = 40  # Beep duration when in range
 COUPLER_BEEP_MAX_RATE = 20.0  # Max beeps/sec at very close range
 COUPLER_BEEP_MIN_RATE = 4.0  # Min beeps/sec at edge of range
 
-# NEW: Obstacle Detection Constants
-OBSTACLE_BUZZ_FREQ_HZ = 440.0  # Base frequency of the square wave buzzer
-OBSTACLE_BUZZ_DUR_MS = 80  # Duration of each buzz pulse
-OBSTACLE_MAX_RATE_HZ = 15.0  # Buzzes/sec at very close range
-OBSTACLE_MIN_RATE_HZ = 1.0  # Buzzes/sec at max detection range
-OBSTACLE_HALF_DIST_M = 8.0  # Distance for half-rate (exponential curve)
-OBSTACLE_AMP_DB = -12.0  # Volume level
-OBSTACLE_CONTINUOUS_DIST = 1.0  # Below this distance, play continuous tone
-NUM_OBSTACLE_QUADRANTS = (
-    12  # Max simultaneous clustered obstacles (matches NUM_RAYS in lua)
-)
+# Predictive obstacle cue. This spectrum is deliberately unrelated to every road-guidance
+# generator: a 413.7 Hz fundamental plus only even harmonics gives the warning a stable pitch
+# and a recognisable, hollow edge without reusing the old square-wave buzzer.
+OBSTACLE_CUE_FREQ_HZ = 413.7
+OBSTACLE_CUE_HARMONICS = ((1, 1.0), (2, 0.5), (4, 0.25), (6, 1.0 / 6.0),
+                          (8, 0.125), (10, 0.1))
+OBSTACLE_CUE_DUR_MS = 80
+OBSTACLE_CUE_ATTACK_MS = 8
+OBSTACLE_CUE_BODY_MS = 42
+OBSTACLE_CUE_RELEASE_MS = 30
+OBSTACLE_DEFAULT_DB = -18.0
+OBSTACLE_ADVISORY_OFFSET_DB = -6.0
+OBSTACLE_STEADY_OFFSET_DB = -9.0
+OBSTACLE_DOUBLET_GAP_MS = 100
+OBSTACLE_BEARING_CROSSFADE_S = 0.050
+OBSTACLE_STEADY_ATTACK_S = 0.050
+OBSTACLE_STEADY_RELEASE_S = 0.150
+OBSTACLE_REARM_S = 1.0
+OBSTACLE_ADVISORY_RATE = (0.7, 1.5)
+OBSTACLE_URGENT_RATE = (1.5, 4.0)
+OBSTACLE_URGENT_DUCK_DB = -6.0
+OBSTACLE_EMERGENCY_DUCK_DB = -12.0
+
+
+def obstacle_cue_rate_hz(state, urgency):
+    """Map one selected hazard to its state-bounded pulse cadence."""
+    state = int(state or 0)
+    urgency = min(255.0, max(0.0, float(urgency or 0.0)))
+    if state <= 1:
+        amount = min(1.0, urgency / 169.0)
+        lo, hi = OBSTACLE_ADVISORY_RATE
+    else:
+        amount = min(1.0, max(0.0, (urgency - 170.0) / 85.0))
+        lo, hi = OBSTACLE_URGENT_RATE
+    return lo + (hi - lo) * amount
+
+
+def obstacle_duck_gain(state):
+    """Gain applied only to non-safety continuous guidance voices."""
+    if int(state or 0) >= 3:
+        return 10.0 ** (OBSTACLE_EMERGENCY_DUCK_DB / 20.0)
+    if int(state or 0) >= 2:
+        return 10.0 ** (OBSTACLE_URGENT_DUCK_DB / 20.0)
+    return 1.0
 
 # Terrain Warning Constants
 TERRAIN_SWEEP_DUR_MS = 200  # Duration of terrain warning sweep
@@ -600,6 +633,19 @@ ROAD_BEEP_MIN_RATE_HZ = 0.7  # pulses/sec when far from road
 ROAD_BEEP_MAX_RATE_HZ = 4.0  # pulses/sec when right next to road
 ROAD_BEEP_HALF_DIST_M = 20.0  # exponential half-distance for rate scaling
 
+# Road correction is deliberately a different auditory object from the off-road
+# beacon: a continuous, phase-modulated triangle that vanishes when the vehicle is
+# aligned. Severity pushes the modulator:carrier ratio away from the clean 5:1
+# relationship and raises the index, making the tone progressively rougher.
+ROAD_CORRECTION_CARRIER_HZ = 440.0
+ROAD_CORRECTION_RATIO_MIN = 5.0
+ROAD_CORRECTION_RATIO_MAX = 5.35
+ROAD_CORRECTION_INDEX_MIN = 1.2
+ROAD_CORRECTION_INDEX_MAX = 1.4
+ROAD_CORRECTION_MAX_AZIMUTH_DEG = 35.0
+ROAD_CORRECTION_ATTACK_S = 0.035
+ROAD_CORRECTION_RELEASE_S = 0.060
+
 # Road Orientation Chime (one-shot two-tone cue when transitioning onto a road).
 # First tone is panned to the smaller-|bearing| travel direction (more "ahead-ish") at the
 # higher pitch; second tone is panned to the opposite direction at the lower pitch.
@@ -622,6 +668,36 @@ ROAD_CHIME_MOD_INDEX_FLOOR = 1.1
 ROAD_CHIME_MOD_DECAY = (
     90.0  # 1/e decay constant — ~11 ms time constant, ~50 ms to settle
 )
+
+# A centred double pip confirms the near-junction decision zone. Speech carries
+# the topology; this cue intentionally carries proximity only.
+ROAD_JUNCTION_FREQ_HZ = 1046.50
+ROAD_JUNCTION_PIP_MS = 55
+ROAD_JUNCTION_GAP_MS = 55
+ROAD_JUNCTION_AMP_DB = -14.0
+ROAD_JUNCTION_ENTRY_START_HZ = 659.25
+ROAD_JUNCTION_ENTRY_END_HZ = 440.0
+ROAD_JUNCTION_ENTRY_MS = 180
+
+
+def road_beacon_rate_hz(distance=0.0):
+    """Pure off-road pulse-rate map shared by callback and diagnostics."""
+    rate_norm = math.exp(-max(0.0, float(distance)) / ROAD_BEEP_HALF_DIST_M)
+    return ROAD_BEEP_MIN_RATE_HZ + (
+        ROAD_BEEP_MAX_RATE_HZ - ROAD_BEEP_MIN_RATE_HZ
+    ) * rate_norm
+
+
+def road_correction_timbre(severity):
+    """Return the continuous correction tone's modulator ratio and FM index."""
+    amount = min(1.0, max(0.0, float(severity)))
+    ratio = ROAD_CORRECTION_RATIO_MIN + (
+        ROAD_CORRECTION_RATIO_MAX - ROAD_CORRECTION_RATIO_MIN
+    ) * amount
+    index = ROAD_CORRECTION_INDEX_MIN + (
+        ROAD_CORRECTION_INDEX_MAX - ROAD_CORRECTION_INDEX_MIN
+    ) * amount
+    return ratio, index
 
 # Coordinate Guidance FM tone
 COORD_GUIDE_FC_ONCOURSE_HZ = 440.0  # Carrier Hz when on course (amp is ~0 anyway)
@@ -983,6 +1059,8 @@ class AudioController:
         self.ROAD_CHIME_BACK_WAVEFORM = (
             None  # C5 orientation chime tone (backward-ish direction)
         )
+        self.ROAD_JUNCTION_WAVEFORM = None
+        self.ROAD_JUNCTION_ENTRY_WAVEFORM = None
         self.CAM_CLICK_WAVEFORM = None
         self.CAM_HIGHLIGHT_CLICK_WAVEFORM = None
         self.HYDRO_CENTER_CLICK_WAVEFORM = None  # Articulation centre-crossing tick
@@ -1037,7 +1115,7 @@ class AudioController:
         self._ls_click_amp_db = LS_AMP_DB
         self._ls_stop_amp_db = LS_STOP_AMP_DB
         self._slip_amp_db = SLIP_AMP_DB
-        self._obstacle_amp = 10.0 ** (OBSTACLE_AMP_DB / 20.0)
+        self._obstacle_amp = 10.0 ** (OBSTACLE_DEFAULT_DB / 20.0)
 
         # Playback State
         self._click_playback_pos = -1.0
@@ -1144,19 +1222,20 @@ class AudioController:
         self._coupler_overlap_L = None
         self._coupler_overlap_R = None
 
-        # NEW: Obstacle Detection State
+        # Predictive obstacle warning: exactly one selected static hazard and one cadence
+        # clock. Terrain retains its independent one-shot state below.
         self._obstacle_mode_active = False
-        # Per-quadrant state: [front-right, rear-right, rear-left, front-left]
-        self._obstacle_bearings = [0.0] * NUM_OBSTACLE_QUADRANTS
-        self._obstacle_distances = [float("inf")] * NUM_OBSTACLE_QUADRANTS
-        self._obstacle_types = [
-            0
-        ] * NUM_OBSTACLE_QUADRANTS  # 0=none, 1=static, 2=dropoff, 3=hill
-        self._obstacle_buzz_timers = [0.0] * NUM_OBSTACLE_QUADRANTS
-        self._obstacle_playback_pos = [-1.0] * NUM_OBSTACLE_QUADRANTS
-        # Per-quadrant pre-rendered pulse buffers (HRTF-convolved or stereo-panned)
-        self._obstacle_pulse_L = [None] * NUM_OBSTACLE_QUADRANTS
-        self._obstacle_pulse_R = [None] * NUM_OBSTACLE_QUADRANTS
+        self._obstacle_hazard = None
+        self._obstacle_cadence_clock = 0.0
+        self._obstacle_pulse_queue = []
+        self._obstacle_doublet_requested = False
+        self._obstacle_emergency_latched = False
+        self._obstacle_below_urgent_since = None
+        self._obstacle_render_bearing = 0.0
+        self._obstacle_steady_phase = 0.0
+        self._obstacle_steady_env = 0.0
+        self._obstacle_steady_overlap_L = None
+        self._obstacle_steady_overlap_R = None
         self._terrain_playback_pos = -1.0
         self._terrain_type = 0  # 0=none, 2=dropoff, 3=hill
 
@@ -1167,16 +1246,32 @@ class AudioController:
         )
         self._road_bearing = 0.0
         self._road_distance = 0.0
+        self._road_beacon_available = True
+        self._road_correction_active = False
+        self._road_correction_bearing = 0.0
+        self._road_correction_severity = 0.0
+        self._road_follow_enabled = True
         self._road_beep_timer = 0.0
         self._road_playback_pos = -1.0
         self._road_pulse_L = None
         self._road_pulse_R = None
         self._road_amp = 10.0 ** (-14.0 / 20.0)
+        self._road_correction_amp = 10.0 ** (-24.0 / 20.0)
+        self._road_correction_carrier_phase = 0.0
+        self._road_correction_mod_phase = 0.0
+        self._road_correction_ratio = ROAD_CORRECTION_RATIO_MIN
+        self._road_correction_index = ROAD_CORRECTION_INDEX_MIN
+        self._road_correction_env = 0.0
+        self._road_correction_render_bearing = 0.0
+        self._road_correction_overlap_L = None
+        self._road_correction_overlap_R = None
         # Orientation chime: list of pending pulses {"delay": int_samples, "L": np.ndarray, "R": np.ndarray, "pos": int}
         self._road_chime_queue = []
         # Earliest monotonic time at which a new chime is allowed to start. Used to pace
         # repeated chime triggers from the lua side so successive pairs don't pile up.
         self._road_chime_next_allowed_time = 0.0
+        self._road_junction_queue = []
+        self._road_junction_amp = 10.0 ** (ROAD_JUNCTION_AMP_DB / 20.0)
 
         # NEW: Heading Guidance State
         self._guidance_active = False
@@ -1566,10 +1661,7 @@ class AudioController:
         with self.lock:
             self._obstacle_mode_active = bool(is_active)
             if not self._obstacle_mode_active:
-                for i in range(NUM_OBSTACLE_QUADRANTS):
-                    self._obstacle_distances[i] = float("inf")
-                    self._obstacle_types[i] = 0
-                    self._obstacle_playback_pos[i] = -1.0
+                self._clear_static_hazard_locked(rearm=True)
                 self._terrain_playback_pos = -1.0
                 self._terrain_type = 0
 
@@ -1582,34 +1674,97 @@ class AudioController:
                 self._terrain_playback_pos = 0.0  # trigger playback
 
     def update_static_obstacles(self, obstacles):
-        """Replace all static-obstacle slots with the given list.
-        obstacles is an iterable of (bearing, urgency, distance) triples — one per
-        clustered obstacle from the lua sweep. Slots beyond len(obstacles) become inactive.
-        Slot identity is preserved by index so a stable cluster keeps the same playback
-        state across sweeps (no retrigger glitch)."""
+        """Select one entry from an old multi-obstacle packet.
+
+        Legacy packets contain centre distances and no state. They may produce advisory or
+        urgent audio, but are never promoted to emergency from that ambiguous distance.
+        """
+        candidates = list(obstacles)
+        if not candidates:
+            self.update_selected_hazard(None)
+            return
+        bearing, urgency, distance = max(candidates, key=lambda item: float(item[1]))
+        self.update_selected_hazard({
+            "bearing": bearing,
+            "urgency": urgency,
+            "gap": distance,
+            "state": 2 if int(urgency) >= 170 else 1,
+            "closing": 0.0,
+            "ttc": -1.0,
+            "stopping_margin": float("inf"),
+            "legacy": True,
+        })
+
+    def _clear_static_hazard_locked(self, rearm=False):
+        self._obstacle_hazard = None
+        self._obstacle_cadence_clock = 0.0
+        self._obstacle_pulse_queue = []
+        self._obstacle_doublet_requested = False
+        self._obstacle_below_urgent_since = None
+        if rearm:
+            self._obstacle_emergency_latched = False
+
+    def update_selected_hazard(self, hazard):
+        """Install the one hazard selected by Lua, or clear it with ``None``."""
         with self.lock:
-            obs_list = list(obstacles)[:NUM_OBSTACLE_QUADRANTS]
-            for i in range(NUM_OBSTACLE_QUADRANTS):
-                if i < len(obs_list):
-                    bearing, _urgency, distance = obs_list[i]
-                    self._obstacle_bearings[i] = float(bearing)
-                    self._obstacle_distances[i] = float(distance)
-                    self._obstacle_types[i] = 1
-                else:
-                    self._obstacle_distances[i] = float("inf")
-                    self._obstacle_types[i] = 0
+            if not hazard:
+                self._clear_static_hazard_locked(rearm=True)
+                return
+            state = max(1, min(3, int(hazard.get("state", 1))))
+            now = time.monotonic()
+            if state >= 3:
+                self._obstacle_below_urgent_since = None
+                if not self._obstacle_emergency_latched:
+                    self._obstacle_emergency_latched = True
+                    self._obstacle_doublet_requested = True
+                    self._obstacle_pulse_queue = []
+            elif state < 2:
+                if self._obstacle_below_urgent_since is None:
+                    self._obstacle_below_urgent_since = now
+                elif now - self._obstacle_below_urgent_since >= OBSTACLE_REARM_S:
+                    self._obstacle_emergency_latched = False
+            else:
+                self._obstacle_below_urgent_since = None
+            self._obstacle_hazard = {
+                "bearing": float(hazard.get("bearing", 0.0)),
+                "urgency": max(0, min(255, int(hazard.get("urgency", 0)))),
+                "gap": max(0.0, float(hazard.get("gap", float("inf")))),
+                "state": state,
+                "closing": max(0.0, float(hazard.get("closing", 0.0))),
+                "ttc": float(hazard.get("ttc", -1.0)),
+                "stopping_margin": float(hazard.get("stopping_margin", 0.0)),
+                "legacy": bool(hazard.get("legacy", False)),
+            }
 
     def set_road_mode(self, is_active):
         with self.lock:
             self._road_mode_active = bool(is_active)
             if not self._road_mode_active:
                 self._road_on_road = True
+                self._road_correction_active = False
+                self._road_beacon_available = False
                 self._road_beep_timer = 0.0
                 self._road_playback_pos = -1.0
                 self._road_pulse_L = None
                 self._road_pulse_R = None
+                self._stop_road_correction_voice()
                 self._road_chime_queue = []
+                self._road_junction_queue = []
                 self._road_chime_next_allowed_time = 0.0
+
+    def clear_road_audio(self):
+        """Silence every road cue without changing the user's mode toggle."""
+        with self.lock:
+            self._road_on_road = True
+            self._road_correction_active = False
+            self._road_beacon_available = False
+            self._road_beep_timer = 0.0
+            self._road_playback_pos = -1.0
+            self._road_pulse_L = None
+            self._road_pulse_R = None
+            self._stop_road_correction_voice()
+            self._road_chime_queue = []
+            self._road_junction_queue = []
 
     def _render_directional_pulse(self, base_pulse, bearing_deg):
         """HRTF-convolve (or stereo-pan as fallback) a mono pulse at the given bearing."""
@@ -1626,7 +1781,96 @@ class AudioController:
             np.float32
         )
 
-    def trigger_road_orientation_chime(self, bearing_first, bearing_second):
+    def _stop_road_correction_voice(self):
+        """Hard-stop correction, including any HRTF convolution tail."""
+        self._road_correction_env = 0.0
+        self._road_correction_overlap_L = None
+        self._road_correction_overlap_R = None
+
+    def _render_road_correction_block(self, frames, active, bearing_deg, severity):
+        """Render one continuous correction block, or its short alignment release."""
+        if frames <= 0:
+            return None
+
+        if active:
+            self._road_correction_render_bearing = self._clamp(
+                float(bearing_deg),
+                -ROAD_CORRECTION_MAX_AZIMUTH_DEG,
+                ROAD_CORRECTION_MAX_AZIMUTH_DEG,
+            )
+
+        target_env = 1.0 if active else 0.0
+        tau = ROAD_CORRECTION_ATTACK_S if active else ROAD_CORRECTION_RELEASE_S
+        sample_numbers = np.arange(1, frames + 1, dtype=np.float64)
+        envelope = target_env + (self._road_correction_env - target_env) * np.exp(
+            -sample_numbers / max(1.0, self.samplerate * tau)
+        )
+        self._road_correction_env = float(envelope[-1])
+
+        if not active and self._road_correction_env < 1e-4:
+            self._stop_road_correction_voice()
+            return None
+
+        target_ratio, target_index = road_correction_timbre(severity)
+        ratio = np.linspace(
+            self._road_correction_ratio, target_ratio, frames, dtype=np.float64
+        )
+        mod_index = np.linspace(
+            self._road_correction_index, target_index, frames, dtype=np.float64
+        )
+        carrier_inc = ROAD_CORRECTION_CARRIER_HZ / self.samplerate
+        carrier_phase = self._road_correction_carrier_phase + carrier_inc * np.arange(
+            frames, dtype=np.float64
+        )
+        mod_increments = carrier_inc * ratio
+        mod_phase = self._road_correction_mod_phase + np.concatenate(
+            (np.zeros(1, dtype=np.float64), np.cumsum(mod_increments[:-1]))
+        )
+        fm_phase = 2.0 * np.pi * carrier_phase + mod_index * np.sin(
+            2.0 * np.pi * mod_phase
+        )
+        triangle = (2.0 / np.pi) * np.arcsin(np.sin(fm_phase))
+        mono = (triangle * envelope * self._road_correction_amp).astype(np.float32)
+
+        self._road_correction_carrier_phase = float(
+            (self._road_correction_carrier_phase + carrier_inc * frames) % 1.0
+        )
+        self._road_correction_mod_phase = float(
+            (self._road_correction_mod_phase + np.sum(mod_increments)) % 1.0
+        )
+        self._road_correction_ratio = target_ratio
+        self._road_correction_index = target_index
+
+        bearing = self._road_correction_render_bearing
+        use_hrtf = self._hrtf is not None and self._hrtf_user_enabled
+        if use_hrtf:
+            ir_l, ir_r = self._hrtf.get_hrir(bearing % 360.0)
+            if ir_l is not None:
+                conv_l = np.convolve(mono, ir_l, mode="full")
+                conv_r = np.convolve(mono, ir_r, mode="full")
+                if self._road_correction_overlap_L is not None:
+                    overlap_l = min(
+                        len(self._road_correction_overlap_L), len(conv_l)
+                    )
+                    overlap_r = min(
+                        len(self._road_correction_overlap_R), len(conv_r)
+                    )
+                    conv_l[:overlap_l] += self._road_correction_overlap_L[:overlap_l]
+                    conv_r[:overlap_r] += self._road_correction_overlap_R[:overlap_r]
+                self._road_correction_overlap_L = conv_l[frames:].copy()
+                self._road_correction_overlap_R = conv_r[frames:].copy()
+                return (
+                    conv_l[:frames].astype(np.float32),
+                    conv_r[:frames].astype(np.float32),
+                )
+
+        self._road_correction_overlap_L = None
+        self._road_correction_overlap_R = None
+        pan_pos = -bearing / ROAD_CORRECTION_MAX_AZIMUTH_DEG
+        gain_l, gain_r = self._pan_gains(pan_pos)
+        return (mono * gain_l).astype(np.float32), (mono * gain_r).astype(np.float32)
+
+    def trigger_road_orientation_chime(self, bearing_first, bearing_second=None):
         """Schedule (or re-schedule) the two-tone orientation chime: G5 panned to bearing_first,
         then C5 panned to bearing_second after a brief gap. bearing_first is expected to be the
         smaller-|bearing| direction (closer to forward).
@@ -1634,11 +1878,11 @@ class AudioController:
         Rate-limited: lua sends this every tick while the chime should be playing, but we only
         actually schedule a new chime once the previous one (plus a brief inter-repeat gap) has
         finished, so successive pairs don't smear into each other."""
-        if not self._is_enabled:
+        if not self._is_enabled or not self._road_mode_active:
             return
         first = self.ROAD_CHIME_FWD_WAVEFORM
         second = self.ROAD_CHIME_BACK_WAVEFORM
-        if first is None or second is None:
+        if first is None or (bearing_second is not None and second is None):
             return
 
         now = time.monotonic()
@@ -1646,9 +1890,11 @@ class AudioController:
             return  # previous chime still in flight; ignore retrigger
 
         first_L, first_R = self._render_directional_pulse(first, float(bearing_first))
-        second_L, second_R = self._render_directional_pulse(
-            second, float(bearing_second)
-        )
+        second_rendered = None
+        if bearing_second is not None:
+            second_rendered = self._render_directional_pulse(
+                second, float(bearing_second)
+            )
 
         # Second pulse starts after the first tone's body + gap (raw timing, not HRTF tail).
         raw_dur_samples = int(self.samplerate * ROAD_CHIME_DUR_MS / 1000.0)
@@ -1656,35 +1902,100 @@ class AudioController:
         second_delay = raw_dur_samples + gap_samples
 
         # Reserve a window for the full chime + inter-repeat gap before another can start.
-        total_ms = (
-            (2 * ROAD_CHIME_DUR_MS) + ROAD_CHIME_GAP_MS + ROAD_CHIME_REPEAT_GAP_MS
-        )
+        total_ms = ROAD_CHIME_DUR_MS + ROAD_CHIME_REPEAT_GAP_MS
+        if second_rendered is not None:
+            total_ms += ROAD_CHIME_DUR_MS + ROAD_CHIME_GAP_MS
         self._road_chime_next_allowed_time = now + (total_ms / 1000.0)
 
         with self.lock:
             self._road_chime_queue = [
                 {"delay": 0, "L": first_L, "R": first_R, "pos": 0},
-                {"delay": second_delay, "L": second_L, "R": second_R, "pos": 0},
+            ]
+            if second_rendered is not None:
+                second_L, second_R = second_rendered
+                self._road_chime_queue.append(
+                    {"delay": second_delay, "L": second_L, "R": second_R, "pos": 0}
+                )
+
+    def trigger_road_junction_earcon(self):
+        """Schedule one centred double pip for the near-junction phase."""
+        waveform = self.ROAD_JUNCTION_WAVEFORM
+        if not self._is_enabled or not self._road_mode_active or waveform is None:
+            return
+        delay = len(waveform) + int(
+            self.samplerate * ROAD_JUNCTION_GAP_MS / 1000.0
+        )
+        with self.lock:
+            self._road_junction_queue = [
+                {"delay": 0, "L": waveform, "R": waveform, "pos": 0},
+                {"delay": delay, "L": waveform, "R": waveform, "pos": 0},
+            ]
+
+    def trigger_road_junction_entry_earcon(self):
+        """Schedule one distinct descending tone on entering the junction area."""
+        waveform = self.ROAD_JUNCTION_ENTRY_WAVEFORM
+        if not self._is_enabled or not self._road_mode_active or waveform is None:
+            return
+        with self.lock:
+            self._road_junction_queue = [
+                {"delay": 0, "L": waveform, "R": waveform, "pos": 0}
             ]
 
     def update_road_state(self, on_road, bearing, distance):
+        """Apply a packet from a legacy road detector."""
+        self.update_road_guidance(
+            "onRoad" if on_road else "offRoad",
+            None if on_road else {"bearing": bearing, "distance": distance},
+            None,
+            True,
+        )
+
+    def update_road_guidance(self, state, off_road, correction, follow_enabled=True):
+        """Apply one validated R2 state to the road audio renderer."""
         with self.lock:
             was_off = not self._road_on_road
-            self._road_on_road = bool(on_road)
-            self._road_bearing = float(bearing)
-            self._road_distance = float(distance)
+            self._road_on_road = state != "offRoad"
+            self._road_beacon_available = state != "offRoad" or off_road is not None
+            if off_road:
+                self._road_bearing = float(off_road.get("bearing", 0.0))
+                self._road_distance = float(off_road.get("distance", 0.0))
+            self._road_follow_enabled = bool(follow_enabled)
+            self._road_correction_active = bool(
+                state == "onRoad"
+                and self._road_follow_enabled
+                and correction
+                and correction.get("active")
+            )
+            self._road_correction_bearing = float(
+                correction.get("bearing", 0.0) if correction else 0.0
+            )
+            self._road_correction_severity = min(
+                1.0,
+                max(
+                    0.0,
+                    float(correction.get("severity", 0.0) if correction else 0.0),
+                ),
+            )
+            if state != "onRoad":
+                # Off-road acquisition owns the pulsed beacon, while dormant has
+                # no road voice. Never let correction or its HRTF tail bleed into
+                # either state.
+                self._road_correction_active = False
+                self._stop_road_correction_voice()
             if self._road_on_road and was_off:
                 # Just rejoined the road — kill any pending pulse
+                self._road_playback_pos = -1.0
+                self._road_pulse_L = None
+                self._road_pulse_R = None
+            if self._road_on_road:
+                self._road_beep_timer = 0.0
                 self._road_playback_pos = -1.0
                 self._road_pulse_L = None
                 self._road_pulse_R = None
 
     def clear_obstacles(self):
         """Clear all obstacle data (no obstacles detected)."""
-        with self.lock:
-            for i in range(NUM_OBSTACLE_QUADRANTS):
-                self._obstacle_distances[i] = float("inf")
-                self._obstacle_types[i] = 0
+        self.update_selected_hazard(None)
 
     def apply_config(self, cfg):
         if not self._is_enabled:
@@ -1791,7 +2102,7 @@ class AudioController:
         self.PLACEMENT_PING_WAVEFORMS = self._generate_placement_pings()
 
         # Obstacle detection volume
-        obs_db = float(cfg.get("obstacle_buzz_volume_db", -12.0))
+        obs_db = float(cfg.get("obstacle_buzz_volume_db", OBSTACLE_DEFAULT_DB))
         self._obstacle_amp = float(10.0 ** (obs_db / 20.0))
         self.OBSTACLE_BUZZ_WAVEFORM = self._generate_obstacle_buzz()
         self.DROPOFF_SWEEP_WAVEFORM = self._generate_dropoff_sweep()
@@ -1800,6 +2111,8 @@ class AudioController:
         # Road detection beep volume
         road_db = float(cfg.get("road_beep_volume_db", ROAD_BEEP_AMP_DB))
         self._road_amp = float(10.0 ** (road_db / 20.0))
+        correction_db = float(cfg.get("road_correction_volume_db", -24.0))
+        self._road_correction_amp = float(10.0 ** (correction_db / 20.0))
         self.ROAD_BEEP_WAVEFORM = self._generate_road_beep()
         self.ROAD_CHIME_FWD_WAVEFORM = self._generate_road_chime_tone(
             ROAD_CHIME_FWD_FREQ_HZ
@@ -1807,6 +2120,12 @@ class AudioController:
         self.ROAD_CHIME_BACK_WAVEFORM = self._generate_road_chime_tone(
             ROAD_CHIME_BACK_FREQ_HZ
         )
+        junction_db = float(
+            cfg.get("road_junction_volume_db", ROAD_JUNCTION_AMP_DB)
+        )
+        self._road_junction_amp = float(10.0 ** (junction_db / 20.0))
+        self.ROAD_JUNCTION_WAVEFORM = self._generate_road_junction_pip()
+        self.ROAD_JUNCTION_ENTRY_WAVEFORM = self._generate_road_junction_entry()
 
         # Regenerate volume-dependent waveforms
         self.CLICK_WAVEFORM = self._generate_click()
@@ -2210,6 +2529,8 @@ class AudioController:
         self.ROAD_CHIME_BACK_WAVEFORM = self._generate_road_chime_tone(
             ROAD_CHIME_BACK_FREQ_HZ
         )
+        self.ROAD_JUNCTION_WAVEFORM = self._generate_road_junction_pip()
+        self.ROAD_JUNCTION_ENTRY_WAVEFORM = self._generate_road_junction_entry()
         self.GUIDANCE_WAVEFORM = self._generate_guidance_tone()  # NEW
         self.LS_CLICK_WAVEFORM = self._generate_lowspeed_click()
         self.LS_STOP_WAVEFORM = self._generate_lowspeed_stop_tone()
@@ -2575,20 +2896,32 @@ class AudioController:
         wave /= np.max(np.abs(wave))
         return (wave * envelope * 0.25).astype(np.float32)
 
-    # Obstacle detection: harsh square wave buzzer
+    # Obstacle-only harmonic pulse. The summed spectrum is normalised before the user level
+    # is applied, and both raised-cosine edges land exactly on zero.
     def _generate_obstacle_buzz(self):
-        dur_samples = int(self.samplerate * OBSTACLE_BUZZ_DUR_MS / 1000.0)
-        t = np.linspace(0, OBSTACLE_BUZZ_DUR_MS / 1000.0, dur_samples, endpoint=False)
-        amplitude = self._obstacle_amp
-        # Square wave via sign(sin)
-        wave = np.sign(np.sin(2.0 * np.pi * OBSTACLE_BUZZ_FREQ_HZ * t))
-        # Sharp attack, short decay envelope
-        envelope = np.ones(dur_samples, dtype=np.float32)
-        fade_start = int(dur_samples * 0.7)
-        fade_len = dur_samples - fade_start
-        if fade_len > 0:
-            envelope[fade_start:] = np.linspace(1, 0, fade_len)
-        return (wave * envelope * amplitude).astype(np.float32)
+        dur_samples = int(self.samplerate * OBSTACLE_CUE_DUR_MS / 1000.0)
+        t = np.arange(dur_samples, dtype=np.float64) / self.samplerate
+        phase = 2.0 * np.pi * OBSTACLE_CUE_FREQ_HZ * t
+        wave = np.zeros(dur_samples, dtype=np.float64)
+        for harmonic, amplitude in OBSTACLE_CUE_HARMONICS:
+            wave += amplitude * np.sin(harmonic * phase)
+        peak = float(np.max(np.abs(wave)))
+        self._obstacle_harmonic_peak = peak if peak > 0.0 else 1.0
+        if peak > 0.0:
+            wave /= peak
+
+        attack = int(self.samplerate * OBSTACLE_CUE_ATTACK_MS / 1000.0)
+        body = int(self.samplerate * OBSTACLE_CUE_BODY_MS / 1000.0)
+        release = max(1, dur_samples - attack - body)
+        envelope = np.ones(dur_samples, dtype=np.float64)
+        if attack > 0:
+            envelope[:attack] = 0.5 - 0.5 * np.cos(
+                np.linspace(0.0, np.pi, attack, endpoint=True)
+            )
+        envelope[attack + body :] = 0.5 + 0.5 * np.cos(
+            np.linspace(0.0, np.pi, release, endpoint=True)
+        )
+        return (wave * envelope * self._obstacle_amp).astype(np.float32)
 
     # Terrain drop-off warning: descending pitch sweep
     def _generate_dropoff_sweep(self):
@@ -2659,6 +2992,35 @@ class AudioController:
             envelope[-fade_samples:] *= np.linspace(1.0, 0.0, fade_samples)
         amp = float(10.0 ** (ROAD_CHIME_AMP_DB / 20.0))
         return (wave * envelope * amp).astype(np.float32)
+
+    def _generate_road_junction_pip(self):
+        samples = int(self.samplerate * ROAD_JUNCTION_PIP_MS / 1000.0)
+        if samples <= 0:
+            return None
+        t = np.arange(samples, dtype=np.float64) / self.samplerate
+        wave = np.sin(2.0 * np.pi * ROAD_JUNCTION_FREQ_HZ * t)
+        attack = np.minimum(1.0, t / 0.006)
+        release = np.minimum(1.0, (samples - np.arange(samples)) / max(1.0, self.samplerate * 0.010))
+        return (wave * attack * release * self._road_junction_amp).astype(np.float32)
+
+    def _generate_road_junction_entry(self):
+        """Single low descending tone marking the physical junction boundary."""
+        samples = int(self.samplerate * ROAD_JUNCTION_ENTRY_MS / 1000.0)
+        if samples <= 0:
+            return None
+        t = np.arange(samples, dtype=np.float64) / self.samplerate
+        progress = np.arange(samples, dtype=np.float64) / max(1, samples - 1)
+        frequency = ROAD_JUNCTION_ENTRY_START_HZ * (
+            ROAD_JUNCTION_ENTRY_END_HZ / ROAD_JUNCTION_ENTRY_START_HZ
+        ) ** progress
+        phase = 2.0 * np.pi * np.cumsum(frequency) / self.samplerate
+        wave = np.sin(phase) + 0.18 * np.sin(2.0 * phase)
+        attack = np.minimum(1.0, t / 0.008)
+        release = np.minimum(
+            1.0,
+            (samples - np.arange(samples)) / max(1.0, self.samplerate * 0.045),
+        )
+        return (wave * attack * release * self._road_junction_amp).astype(np.float32)
 
     def _generate_guidance_tone(self):
         # A simple, clean sine wave. Amplitude modulation happens in the callback.
@@ -2844,15 +3206,22 @@ class AudioController:
             coupler_in_range = self._coupler_in_range
             # Obstacle detection snapshot
             obs_active = self._obstacle_mode_active
-            obs_bearings = list(self._obstacle_bearings)
-            obs_distances = list(self._obstacle_distances)
-            obs_types = list(self._obstacle_types)
+            obstacle_hazard = (
+                dict(self._obstacle_hazard) if self._obstacle_hazard else None
+            )
             terrain_type = self._terrain_type
             # Road detection snapshot
             road_active = self._road_mode_active
             road_on_road = self._road_on_road
             road_bearing = self._road_bearing
             road_distance = self._road_distance
+            road_beacon_available = self._road_beacon_available
+            road_correction_active = self._road_correction_active
+            road_correction_bearing = self._road_correction_bearing
+            road_correction_severity = self._road_correction_severity
+            obstacle_duck = obstacle_duck_gain(
+                obstacle_hazard.get("state", 0) if obstacle_hazard else 0
+            )
             # NEW: Guidance state
             guide_active = self._guidance_active
             guide_error = self._guidance_error_deg
@@ -3560,6 +3929,8 @@ class AudioController:
         else:
             self._sm_scan_bearing = None
 
+        scanner_mix_l = bufL.copy()
+        scanner_mix_r = bufR.copy()
         # NEW: Vehicle Scanner audio logic (suppressed when coupler tracking is active, and
         # likewise while the docking instrument is open — that instrument reports the same
         # target with more precision on the same two axes, so leaving the scanner running
@@ -3788,6 +4159,10 @@ class AudioController:
             self._scan_tone_overlap_R = None
             self._scan_tone_level = 0.0
 
+        if obstacle_duck < 1.0:
+            bufL = scanner_mix_l + (bufL - scanner_mix_l) * obstacle_duck
+            bufR = scanner_mix_r + (bufR - scanner_mix_r) * obstacle_duck
+
         # Old Cannon elevation cue. It is deliberately centred: left/right already belongs
         # to the scanner HRTF image, while low/high pitch says raise/lower. The cue is withheld
         # until the processed launcher data provides a valid pre-shot speed; line-of-sight is
@@ -3976,89 +4351,131 @@ class AudioController:
             self._coupler_overlap_L = None
             self._coupler_overlap_R = None
 
-        # NEW: Obstacle Detection audio logic
+        # One trajectory-selected obstacle source. Packet updates do not reset the cadence;
+        # they only move the target and update its state.
         if obs_active and self.OBSTACLE_BUZZ_WAVEFORM is not None:
-            base_buzz = self.OBSTACLE_BUZZ_WAVEFORM
             dt_obs = frames / self.samplerate
-            use_hrtf = self._hrtf is not None and self._hrtf_user_enabled
+            hazard = obstacle_hazard
+            obstacle_pulses_were_active = bool(
+                self._obstacle_doublet_requested or self._obstacle_pulse_queue
+            )
+            if hazard:
+                target_bearing = float(hazard["bearing"])
+                beta = 1.0 - math.exp(-dt_obs / OBSTACLE_BEARING_CROSSFADE_S)
+                self._obstacle_render_bearing += beta * (
+                    target_bearing - self._obstacle_render_bearing
+                )
 
-            for q in range(NUM_OBSTACLE_QUADRANTS):
-                if obs_types[q] == 0 or obs_distances[q] == float("inf"):
-                    self._obstacle_playback_pos[q] = -1.0
-                    self._obstacle_pulse_L[q] = None
-                    self._obstacle_pulse_R[q] = None
-                    continue
+                if self._obstacle_doublet_requested:
+                    pulse_l, pulse_r = self._render_directional_pulse(
+                        self.OBSTACLE_BUZZ_WAVEFORM, self._obstacle_render_bearing
+                    )
+                    second_delay = len(self.OBSTACLE_BUZZ_WAVEFORM) + int(
+                        self.samplerate * OBSTACLE_DOUBLET_GAP_MS / 1000.0
+                    )
+                    self._obstacle_pulse_queue = [
+                        {"delay": 0, "L": pulse_l, "R": pulse_r, "pos": 0},
+                        {"delay": second_delay, "L": pulse_l.copy(),
+                         "R": pulse_r.copy(), "pos": 0},
+                    ]
+                    self._obstacle_doublet_requested = False
+                    self._obstacle_cadence_clock = 0.0
+                elif int(hazard["state"]) < 3:
+                    self._obstacle_cadence_clock += dt_obs
+                    rate_hz = obstacle_cue_rate_hz(
+                        hazard["state"], hazard["urgency"]
+                    )
+                    if (not self._obstacle_pulse_queue
+                            and self._obstacle_cadence_clock >= 1.0 / rate_hz):
+                        self._obstacle_cadence_clock %= 1.0 / rate_hz
+                        level = (
+                            10.0 ** (OBSTACLE_ADVISORY_OFFSET_DB / 20.0)
+                            if int(hazard["state"]) == 1 else 1.0
+                        )
+                        pulse_l, pulse_r = self._render_directional_pulse(
+                            self.OBSTACLE_BUZZ_WAVEFORM * level,
+                            self._obstacle_render_bearing,
+                        )
+                        self._obstacle_pulse_queue = [
+                            {"delay": 0, "L": pulse_l, "R": pulse_r, "pos": 0}
+                        ]
 
-                dist = obs_distances[q]
-                bearing = obs_bearings[q]
+            if self._obstacle_pulse_queue:
+                new_queue = []
+                for entry in self._obstacle_pulse_queue:
+                    delay, pos = entry["delay"], entry["pos"]
+                    if delay >= frames:
+                        entry["delay"] = delay - frames
+                        new_queue.append(entry)
+                        continue
+                    offset = max(0, delay)
+                    entry["delay"] = 0
+                    n = min(frames - offset, len(entry["L"]) - pos)
+                    if n > 0:
+                        bufL[offset : offset + n] += entry["L"][pos : pos + n]
+                        bufR[offset : offset + n] += entry["R"][pos : pos + n]
+                    if pos + n < len(entry["L"]):
+                        entry["pos"] = pos + n
+                        new_queue.append(entry)
+                self._obstacle_pulse_queue = new_queue
 
-                trigger = False
-                if dist <= OBSTACLE_CONTINUOUS_DIST:
-                    # Imminent: retrigger as soon as the previous pulse finishes
-                    if self._obstacle_playback_pos[q] < 0:
-                        trigger = True
+            # Emergency becomes the same spectrum held steadily only after its entry
+            # doublet has completed. It releases even if the clear arrives mid-block.
+            steady_target = bool(
+                hazard and int(hazard["state"]) >= 3
+                and float(hazard["closing"]) > 0.0
+                and not self._obstacle_pulse_queue
+                and not self._obstacle_doublet_requested
+                and not obstacle_pulses_were_active
+            )
+            tau = (OBSTACLE_STEADY_ATTACK_S if steady_target
+                   else OBSTACLE_STEADY_RELEASE_S)
+            target_env = 1.0 if steady_target else 0.0
+            sample_numbers = np.arange(1, frames + 1, dtype=np.float64)
+            steady_env = target_env + (self._obstacle_steady_env - target_env) * np.exp(
+                -sample_numbers / max(1.0, self.samplerate * tau)
+            )
+            self._obstacle_steady_env = float(steady_env[-1])
+            if self._obstacle_steady_env > 1e-5 or steady_target:
+                phase = self._obstacle_steady_phase + np.arange(frames) * (
+                    OBSTACLE_CUE_FREQ_HZ / self.samplerate
+                )
+                mono = np.zeros(frames, dtype=np.float64)
+                for harmonic, amplitude in OBSTACLE_CUE_HARMONICS:
+                    mono += amplitude * np.sin(2.0 * np.pi * harmonic * phase)
+                mono /= max(1e-9, getattr(self, "_obstacle_harmonic_peak", 1.0))
+                mono = (mono * steady_env * self._obstacle_amp
+                        * 10.0 ** (OBSTACLE_STEADY_OFFSET_DB / 20.0)).astype(np.float32)
+                self._obstacle_steady_phase = float(
+                    (phase[-1] + OBSTACLE_CUE_FREQ_HZ / self.samplerate) % 1.0
+                )
+                use_hrtf = self._hrtf is not None and self._hrtf_user_enabled
+                if use_hrtf:
+                    ir_l, ir_r = self._hrtf.get_hrir(
+                        self._obstacle_render_bearing % 360.0
+                    )
                 else:
-                    # Rate-based buzzing
-                    rate_norm = math.exp(-dist / OBSTACLE_HALF_DIST_M)
-                    rate_hz = (
-                        OBSTACLE_MIN_RATE_HZ
-                        + (OBSTACLE_MAX_RATE_HZ - OBSTACLE_MIN_RATE_HZ) * rate_norm
-                    )
-                    interval_sec = 1.0 / rate_hz
+                    ir_l = ir_r = None
+                if ir_l is not None:
+                    conv_l = np.convolve(mono, ir_l, mode="full")
+                    conv_r = np.convolve(mono, ir_r, mode="full")
+                    if self._obstacle_steady_overlap_L is not None:
+                        ol = min(len(self._obstacle_steady_overlap_L), len(conv_l))
+                        conv_l[:ol] += self._obstacle_steady_overlap_L[:ol]
+                        conv_r[:ol] += self._obstacle_steady_overlap_R[:ol]
+                    bufL += conv_l[:frames].astype(np.float32)
+                    bufR += conv_r[:frames].astype(np.float32)
+                    self._obstacle_steady_overlap_L = conv_l[frames:].copy()
+                    self._obstacle_steady_overlap_R = conv_r[frames:].copy()
+                else:
+                    self._obstacle_steady_overlap_L = None
+                    self._obstacle_steady_overlap_R = None
+                    pan_pos = self._clamp(-self._obstacle_render_bearing / 90.0)
+                    gain_l, gain_r = self._pan_gains(pan_pos)
+                    bufL += mono * gain_l
+                    bufR += mono * gain_r
 
-                    self._obstacle_buzz_timers[q] += dt_obs
-                    if self._obstacle_buzz_timers[q] >= interval_sec:
-                        self._obstacle_buzz_timers[q] = 0.0
-                        trigger = True
-
-                if trigger:
-                    # Distance-based volume rolloff: full near, exponential decay with range
-                    dist_gain = math.exp(
-                        -max(0.0, dist - OBSTACLE_CONTINUOUS_DIST)
-                        / OBSTACLE_HALF_DIST_M
-                    )
-                    dist_gain = max(0.05, dist_gain)
-                    scaled = (base_buzz * dist_gain).astype(np.float32)
-
-                    rendered = False
-                    if use_hrtf:
-                        hrtf_az = bearing % 360.0
-                        ir_l, ir_r = self._hrtf.get_hrir(hrtf_az)
-                        if ir_l is not None:
-                            self._obstacle_pulse_L[q] = np.convolve(
-                                scaled, ir_l, mode="full"
-                            ).astype(np.float32)
-                            self._obstacle_pulse_R[q] = np.convolve(
-                                scaled, ir_r, mode="full"
-                            ).astype(np.float32)
-                            rendered = True
-                    if not rendered:
-                        pan_pos = -bearing / 90.0
-                        Lg, Rg = self._pan_gains(pan_pos)
-                        self._obstacle_pulse_L[q] = (scaled * Lg).astype(np.float32)
-                        self._obstacle_pulse_R[q] = (scaled * Rg).astype(np.float32)
-                    self._obstacle_playback_pos[q] = 0.0
-
-                # Mix any currently-playing pulse
-                if (
-                    self._obstacle_playback_pos[q] >= 0
-                    and self._obstacle_pulse_L[q] is not None
-                ):
-                    pulse_L = self._obstacle_pulse_L[q]
-                    pulse_R = self._obstacle_pulse_R[q]
-                    pulse_len = len(pulse_L)
-                    start_i = int(self._obstacle_playback_pos[q])
-                    num_to_mix = min(frames, pulse_len - start_i)
-                    if num_to_mix > 0:
-                        bufL[:num_to_mix] += pulse_L[start_i : start_i + num_to_mix]
-                        bufR[:num_to_mix] += pulse_R[start_i : start_i + num_to_mix]
-                    next_pos = start_i + frames
-                    if next_pos >= pulse_len:
-                        self._obstacle_playback_pos[q] = -1.0
-                    else:
-                        self._obstacle_playback_pos[q] = float(next_pos)
-
-            # Terrain warning sweep playback
+            # Terrain warning sweep playback (intentionally never ducked).
             if self._terrain_playback_pos >= 0:
                 sweep_wf = (
                     self.DROPOFF_SWEEP_WAVEFORM
@@ -4079,18 +4496,16 @@ class AudioController:
                         float(next_pos) if next_pos < sweep_len else -1.0
                     )
 
-        # Road Detection: off-road guidance beep
-        if road_active and not road_on_road and self.ROAD_BEEP_WAVEFORM is not None:
+        road_mix_l = bufL.copy()
+        road_mix_r = bufR.copy()
+        # The pulsed road beacon is exclusively for acquiring the road from off-road.
+        road_beacon_active = road_active and not road_on_road and road_beacon_available
+        if road_beacon_active and self.ROAD_BEEP_WAVEFORM is not None:
             base_pulse = self.ROAD_BEEP_WAVEFORM
             dt_rd = frames / self.samplerate
             use_hrtf = self._hrtf is not None and self._hrtf_user_enabled
-
-            # Rate scales exponentially with proximity to road; floor at MIN, ceil at MAX
-            rate_norm = math.exp(-max(0.0, road_distance) / ROAD_BEEP_HALF_DIST_M)
-            rate_hz = (
-                ROAD_BEEP_MIN_RATE_HZ
-                + (ROAD_BEEP_MAX_RATE_HZ - ROAD_BEEP_MIN_RATE_HZ) * rate_norm
-            )
+            road_render_bearing = road_bearing
+            rate_hz = road_beacon_rate_hz(distance=road_distance)
             interval_sec = 1.0 / max(0.01, rate_hz)
 
             self._road_beep_timer += dt_rd
@@ -4101,7 +4516,7 @@ class AudioController:
 
             if trigger:
                 if use_hrtf:
-                    hrtf_az = road_bearing % 360.0
+                    hrtf_az = road_render_bearing % 360.0
                     ir_l, ir_r = self._hrtf.get_hrir(hrtf_az)
                     if ir_l is not None:
                         self._road_pulse_L = np.convolve(
@@ -4111,12 +4526,12 @@ class AudioController:
                             base_pulse, ir_r, mode="full"
                         ).astype(np.float32)
                     else:
-                        pan_pos = -road_bearing / 90.0
+                        pan_pos = -road_render_bearing / 90.0
                         Lg, Rg = self._pan_gains(pan_pos)
                         self._road_pulse_L = (base_pulse * Lg).astype(np.float32)
                         self._road_pulse_R = (base_pulse * Rg).astype(np.float32)
                 else:
-                    pan_pos = -road_bearing / 90.0
+                    pan_pos = -road_render_bearing / 90.0
                     Lg, Rg = self._pan_gains(pan_pos)
                     self._road_pulse_L = (base_pulse * Lg).astype(np.float32)
                     self._road_pulse_R = (base_pulse * Rg).astype(np.float32)
@@ -4136,6 +4551,28 @@ class AudioController:
                     self._road_playback_pos = -1.0
                 else:
                     self._road_playback_pos = float(next_pos)
+
+        if not road_beacon_active and self._road_playback_pos >= 0:
+            self._road_playback_pos = -1.0
+            self._road_pulse_L = None
+            self._road_pulse_R = None
+
+        # On-road drift is a continuous phase-modulated triangle. Its HRTF azimuth
+        # is deliberately limited to the frontal 70-degree arc: the cue says which
+        # way to correct, without sounding like a target somewhere beside the car.
+        if road_active and road_on_road:
+            correction_block = self._render_road_correction_block(
+                frames,
+                road_correction_active,
+                road_correction_bearing,
+                road_correction_severity,
+            )
+            if correction_block is not None:
+                correction_l, correction_r = correction_block
+                bufL += correction_l
+                bufR += correction_r
+        else:
+            self._stop_road_correction_voice()
 
         # Road Orientation Chime: drain the pending two-tone queue
         if road_active and self._road_chime_queue:
@@ -4168,6 +4605,38 @@ class AudioController:
                         entry["pos"] = new_pos
                         new_queue.append(entry)
                 self._road_chime_queue = new_queue
+
+        # Near-junction double pip. It has a separate queue so it cannot erase an
+        # orientation cue if entering a road directly beside a junction.
+        if road_active and self._road_junction_queue:
+            with self.lock:
+                queue = self._road_junction_queue
+                new_queue = []
+                for entry in queue:
+                    delay = entry["delay"]
+                    L = entry["L"]
+                    R = entry["R"]
+                    pos = entry["pos"]
+                    offset = 0
+                    if delay >= frames:
+                        entry["delay"] = delay - frames
+                        new_queue.append(entry)
+                        continue
+                    if delay > 0:
+                        offset = delay
+                        entry["delay"] = 0
+                    n = min(frames - offset, len(L) - pos)
+                    if n > 0:
+                        bufL[offset : offset + n] += L[pos : pos + n]
+                        bufR[offset : offset + n] += R[pos : pos + n]
+                    if pos + n < len(L):
+                        entry["pos"] = pos + n
+                        new_queue.append(entry)
+                self._road_junction_queue = new_queue
+
+        if obstacle_duck < 1.0:
+            bufL = road_mix_l + (bufL - road_mix_l) * obstacle_duck
+            bufR = road_mix_r + (bufR - road_mix_r) * obstacle_duck
 
         # NEW: Low Speed Detection Logic
         dt_ls = frames / self.samplerate
@@ -4325,6 +4794,8 @@ class AudioController:
             bufL += seg
             bufR += seg
 
+        heading_mix_l = bufL.copy()
+        heading_mix_r = bufR.copy()
         # NEW: Heading Guidance Logic
         if guide_active:
             # Smooth the error to avoid zippers
@@ -4390,6 +4861,10 @@ class AudioController:
                 pass
         else:
             self._sm_guidance_error = 0.0  # Reset when off
+
+        if obstacle_duck < 1.0:
+            bufL = heading_mix_l + (bufL - heading_mix_l) * obstacle_duck
+            bufR = heading_mix_r + (bufR - heading_mix_r) * obstacle_duck
 
         # Hydraulic steering / articulation misalignment tone.
         # Active whenever the wheels or frame are off-centre, regardless of driver input —
@@ -4813,6 +5288,8 @@ class AudioController:
             self._impl_tilt_dip_left = 0.0
 
         # =================================================================================
+        dock_mix_l = bufL.copy()
+        dock_mix_r = bufR.copy()
         #  Docking instrument
         # =================================================================================
         # Two voices, three dimensions. The panned pulse carries lateral offset on the
@@ -5165,6 +5642,10 @@ class AudioController:
             nxt = start + frames
             self._dock_lock_pos = float(nxt) if nxt < len(wf) else -1.0
 
+        if obstacle_duck < 1.0:
+            bufL = dock_mix_l + (bufL - dock_mix_l) * obstacle_duck
+            bufR = dock_mix_r + (bufR - dock_mix_r) * obstacle_duck
+
         # Slam gate earcon. Outside the gate check on purpose, so a cue that started as the
         # instrument was switched off still finishes rather than being cut mid-note.
         if self._slam_cue_pos >= 0:
@@ -5216,6 +5697,8 @@ class AudioController:
                     float(nxt) if nxt < len(wf_a) else -1.0
                 )
 
+        coordinate_mix_l = bufL.copy()
+        coordinate_mix_r = bufR.copy()
         # Coordinate Guidance FM tone
         if coord_guide_active:
             dt_cg = frames / self.samplerate
@@ -5314,6 +5797,10 @@ class AudioController:
                 bufR[:ol] += self._coord_hrtf_overlap_R[:ol].astype(np.float32)
             self._coord_hrtf_overlap_L = None
             self._coord_hrtf_overlap_R = None
+
+        if obstacle_duck < 1.0:
+            bufL = coordinate_mix_l + (bufL - coordinate_mix_l) * obstacle_duck
+            bufR = coordinate_mix_r + (bufR - coordinate_mix_r) * obstacle_duck
 
         # Terrain sonification scan playback. Nothing is synthesised here -- the whole
         # three seconds arrived finished from the listener thread (render_scan), because a

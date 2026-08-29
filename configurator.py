@@ -81,6 +81,15 @@ DEFAULT_CONFIG = {
     "lowspeed_stop_tone_level_dbfs": -16.0,
     "slip_tone_level_dbfs": -18.0,
     "placement_ping_volume_db": -12.0,
+    "obstacle_buzz_volume_db": -18.0,
+    "obstacle_warning_sensitivity": "normal",
+    "road_follow_guidance_enabled": True,
+    "road_junction_speech_enabled": True,
+    "road_junction_earcon_enabled": True,
+    "road_include_private": False,
+    "road_beep_volume_db": -14.0,
+    "road_correction_volume_db": -24.0,
+    "road_junction_volume_db": -14.0,
     "telemetry_protocol": "extended",
     "compass_click_interval": 15,
     "compass_highlight_enabled": True,
@@ -324,6 +333,15 @@ def load_config():
         _coerce("lowspeed_stop_tone_level_dbfs", float, -16.0)
         _coerce("slip_tone_level_dbfs", float, -18.0)
         _coerce("placement_ping_volume_db", float, -12.0)
+        _coerce("obstacle_buzz_volume_db", float, -18.0)
+        _coerce("obstacle_warning_sensitivity", str, "normal")
+        _coerce("road_follow_guidance_enabled", bool, True)
+        _coerce("road_junction_speech_enabled", bool, True)
+        _coerce("road_junction_earcon_enabled", bool, True)
+        _coerce("road_include_private", bool, False)
+        _coerce("road_beep_volume_db", float, -14.0)
+        _coerce("road_correction_volume_db", float, -24.0)
+        _coerce("road_junction_volume_db", float, -14.0)
 
         _coerce("compass_click_interval", int, 15)
         _coerce("compass_highlight_enabled", bool, False)
@@ -407,11 +425,18 @@ def load_config():
         semis = round(merged["scanner_pitch_offset_oct"] * 12.0)
         semis = max(6, min(24, semis))
         merged["scanner_pitch_offset_oct"] = semis / 12.0
+        merged["obstacle_warning_sensitivity"] = str(
+            merged.get("obstacle_warning_sensitivity", "normal")
+        ).lower()
+        if merged["obstacle_warning_sensitivity"] not in ("early", "normal", "late"):
+            merged["obstacle_warning_sensitivity"] = "normal"
 
         for key in ["shift_tone_level_dbfs", "check_engine_buzzer_level_dbfs", "oil_chime_level_dbfs",
                     "pitch_roll_max_dbfs", "pitch_roll_min_dbfs", "compass_click_level_dbfs",
                     "lowspeed_click_level_dbfs", "lowspeed_stop_tone_level_dbfs",
                     "slip_tone_level_dbfs", "placement_ping_volume_db",
+                    "obstacle_buzz_volume_db",
+                    "road_beep_volume_db", "road_correction_volume_db", "road_junction_volume_db",
                     "hrtf_front_emphasis_db",
                     "implement_ground_tone_dbfs", "implement_tilt_tone_dbfs",
                     "dock_tone_dbfs", "scan_tone_dbfs"]:

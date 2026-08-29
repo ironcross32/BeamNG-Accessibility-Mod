@@ -26,8 +26,13 @@ wheels/
 # HRTF
 *.sofa
 
-# Diagnostic tools
-diagnostic/
+# Diagnostic tools (keep deterministic road and obstacle regression scripts)
+diagnostic/*
+!diagnostic/road_guidance_sim.py
+!diagnostic/road_audio_sim.py
+!diagnostic/road_detector_sim.lua
+!diagnostic/obstacle_audio_sim.py
+!diagnostic/obstacle_detector_sim.lua
 
 # misc
 *.zip

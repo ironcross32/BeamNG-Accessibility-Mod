@@ -27,7 +27,15 @@ extensions.load("trailerAngle")
 extensions.load("beamtelAI")
 extensions.load("vehicleSlots")
 extensions.load("cameraInfo")
-extensions.load("obstacleDetector")
+-- Manual extensions survive the engine's Ctrl+L unload pass. A plain load therefore keeps
+-- the old module table and old source even though this modScript is executed again. Reload
+-- this detector explicitly so Python's backwards-compatible audio cannot make an old Lua
+-- packet sound like the new implementation. onExtensionUnloaded closes its command socket.
+if extensions.isExtensionLoaded("obstacleDetector") then
+  extensions.reload("obstacleDetector")
+else
+  extensions.load("obstacleDetector")
+end
 -- Passive until a SCAN command arrives; its heightmap tier costs nothing per frame and
 -- its raycast fallback is budgeted, so it does not need implementProximity's late slot.
 extensions.load("terrainScanner")

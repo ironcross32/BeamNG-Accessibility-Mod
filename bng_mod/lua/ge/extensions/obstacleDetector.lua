@@ -1,385 +1,430 @@
--- =================================================================================================
---
---  Obstacle Detector for BeamNG.drive Accessibility Mod (GE Extension)
---
---  Description: Casts rays in a fan pattern around the player vehicle to detect nearby static
---               obstacles (walls, barriers, trees, buildings, terrain). Also samples terrain
---               height ahead to detect drop-offs and steep hills. Sends obstacle data to the
---               Python backend via UDP.
---
---  Loaded by: scripts/bng_screenreader_mod/modScript.lua
---
---  Version:     1.0
---  Target Game: BeamNG.drive 0.37+
---
--- =================================================================================================
-
+-- Predictive static-obstacle and terrain warning detector for BeamNG.drive.
+-- Static obstacles are selected in the GE VM and sent as one trajectory-relevant hazard.
 local M = {}
 
--- Configuration
-local PYTHON_HOST        = "127.0.0.1"
-local PYTHON_PORT_DATA   = 4452   -- send obstacle data to Python on this port
-local CMD_LISTEN_PORT    = 4453   -- receive ON/OFF commands from Python on this port
-local SCAN_INTERVAL      = 0.1   -- seconds between scan ticks (10 Hz)
+local PYTHON_HOST = "127.0.0.1"
+local PYTHON_PORT_DATA = 4452
+local CMD_LISTEN_PORT = 4453
+local SCAN_INTERVAL = 0.1
+local NUM_FAN_RAYS = 13
+local NUM_CORRIDOR_RAYS = 7
+local NUM_RAYS = NUM_FAN_RAYS + NUM_CORRIDOR_RAYS
+local RAYS_PER_TICK = 7 -- 7 + 7 + 6 rays: one sweep in about 0.3 seconds
+local LOW_RAY_OFFSET = -0.2
+local HIGH_RAY_OFFSET = 0.2
+-- A fixed angle is not safe at predictive ranges: 2 degrees climbs 1.96 m over a 56 m
+-- low-speed lookahead and several metres at highway reach, so the probes fly over normal
+-- obstacles until impact is close. Keep only a tiny fixed TOTAL rise across the whole ray.
+local RAY_TOTAL_RISE_M = 0.15
+local PATH_MARGIN_M = 0.75
+local DRIVING_SPEED_MPS = 3.0
+local STATE_EXPIRY_S = 1.0
+local TARGET_MATCH_DEG = 14.0
+local TARGET_SWITCH_RATIO = 1.15
+local TARGET_MISSED_SWEEPS = 2
+local MAX_RANGE_CAP = 600.0
 
--- Ray Configuration
-local NUM_RAYS           = 12    -- directions around the vehicle (every 30 degrees)
-local RAYS_PER_TICK      = 4     -- how many rays to cast per scan tick (performance budget)
--- Two ray heights bracket the "drive-over vs real obstacle" boundary. Vehicle origin sits
--- ~0.5m above ground; the guardrail rail-top in BeamNG is ~0.7m above ground. So:
---   LOW (~0.3m above ground): above typical curb/island height (~0.15m), so curbs miss.
---   HIGH (~0.7m above ground): at guardrail rail height — guardrails register, but knee-high
---                              decorative props the car can plow through often don't.
-local LOW_RAY_OFFSET     = -0.2  -- low probe offset above vehicle origin
-local HIGH_RAY_OFFSET    = 0.2   -- high probe offset above vehicle origin
-local CLEARANCE_TOLERANCE = 1.5  -- if high ray hits within this far of low hit, treat as same obstacle
-local CLOSE_OBSTACLE_DIST = 4.0  -- low-only hits closer than this still warn (safety override)
-local RAY_UPWARD_ANGLE   = 2.0   -- degrees to angle rays upward (avoid hitting flat ground)
+local BASE_TERRAIN_DISTANCES = {5, 10, 15, 20}
+local DROPOFF_THRESHOLD = 3.0
+local HILL_THRESHOLD = 3.0
+local PKT_DROPOFF, PKT_HILL = 2, 3
 
--- Speed-Sensitive Range Configuration
-local BASE_MAX_RANGE     = 30.0  -- ray cast range at 0 speed (meters)
-local BASE_WARNING_RANGE = 20.0  -- warning range at 0 speed (meters)
-local RANGE_PER_MPS      = 2.0   -- extra meters of range per m/s of speed (~2s lookahead)
-local MAX_RANGE_CAP      = 100.0 -- absolute maximum range cap (meters)
-local WARNING_RANGE_CAP  = 80.0  -- absolute maximum warning range cap
+local SENSITIVITY = {
+  early  = {driveAdvisory = 6.5, driveUrgent = 2.5, parkAdvisory = 4.0, parkUrgent = 2.0},
+  normal = {driveAdvisory = 5.0, driveUrgent = 2.0, parkAdvisory = 3.0, parkUrgent = 1.5},
+  late   = {driveAdvisory = 3.5, driveUrgent = 1.5, parkAdvisory = 2.0, parkUrgent = 1.0},
+}
 
--- Terrain Sampling Configuration
-local BASE_TERRAIN_DISTANCES = { 5, 10, 15, 20 }  -- base sample distances (meters ahead)
-local DROPOFF_THRESHOLD  = 3.0   -- meters of drop to trigger warning
-local HILL_THRESHOLD     = 3.0   -- meters of rise to trigger warning
+local udpSend, udpCmd, udpDiag = nil, nil, nil
+local isActive, scanTimer, currentRayIndex = false, 0, 0
+local sensitivityName = "normal"
+local pushedState = {direction = "F", steering = 0, throttle = 0, brake = 0, age = math.huge}
+local sweepHits, sweepContext = {}, nil
+local currentHazard, missedSweeps = nil, 0
+local lastDropoffSent, lastHillSent = false, false
+local terrainWarned = false
 
--- Packet Types
-local PKT_CLEAR          = 0
-local PKT_STATIC         = 1
-local PKT_DROPOFF        = 2
-local PKT_HILL           = 3
-
--- Internal State
-local udpSend            = nil
-local udpCmd             = nil
-local isActive           = false
-local scanTimer          = 0
-local currentRayIndex    = 0   -- which ray direction to start from this tick
-local currentMaxRange    = BASE_MAX_RANGE
-local currentWarnRange   = BASE_WARNING_RANGE
-
--- Per-ray hit storage for the current sweep. Each entry: { hit, distance, bearing }.
--- After a full sweep, contiguous rays with similar distances are clustered into one
--- "obstacle" so a long wall/guardrail produces a single beep at its closest point
--- rather than 3-4 stacked beeps along its length.
-local sweepHits = {}
-for i = 1, NUM_RAYS do
-  sweepHits[i] = { hit = false, distance = math.huge, bearing = 0 }
+local function detLog(level, msg) log(level, "ObstacleDetector", msg) end
+local function clamp(v, lo, hi)
+  if v < lo then return lo end
+  if v > hi then return hi end
+  return v
 end
-
--- Cluster threshold: contiguous rays whose hit distances differ by less than this
--- are treated as the same obstacle. Tuned for typical walls/guardrails seen at
--- 30deg spacing — a flat wall in front produces ~2-3 ray hits at distances d, d/cos(30),
--- d/cos(60), with the first two within ~0.7d of each other.
-local CLUSTER_DIST_THRESHOLD = 4.0
-
--- Terrain warning state (to avoid spamming)
-local lastDropoffSent    = false
-local lastHillSent       = false
-
--- Precomputed ray directions as angle offsets (degrees from forward, 0 = forward, clockwise)
-local rayAngles = {}
-for i = 0, NUM_RAYS - 1 do
-  rayAngles[i + 1] = (i * 360.0 / NUM_RAYS)  -- 0, 30, 60, 90, ... 330
-end
-
--- Logging helper
-local function detLog(level, msg)
-  log(level, 'ObstacleDetector', msg)
-end
-
--- =================================================================================================
---  Utility: Rotate a vector around an up axis by angle (degrees)
--- =================================================================================================
 
 local function rotateVectorAroundAxis(vec, axis, angleDeg)
   local angleRad = math.rad(angleDeg)
-  local cosA = math.cos(angleRad)
-  local sinA = math.sin(angleRad)
-  -- Rodrigues' rotation formula
-  local dot = axis:dot(vec)
-  local cross = axis:cross(vec)
-  return vec * cosA + cross * sinA + axis * (dot * (1 - cosA))
+  local cosA, sinA = math.cos(angleRad), math.sin(angleRad)
+  return vec * cosA + axis:cross(vec) * sinA + axis * (axis:dot(vec) * (1 - cosA))
 end
 
--- =================================================================================================
---  Cluster contiguous-angle ray hits with similar distances. Wall along several rays
---  becomes one obstacle, placed at the closest hit (minimum distance) in the cluster.
---  Returns a list of { distance, bearing } for each cluster, in arbitrary order.
--- =================================================================================================
+local function rayAnglesFor(speedMps, steering)
+  local parking = speedMps < DRIVING_SPEED_MPS
+  local step = parking and 13.0 or 7.0
+  local halfSpan = parking and 78.0 or 42.0
+  local maxShift = parking and 45.0 or 20.0
+  local centre = clamp(steering or 0, -1, 1) * maxShift
+  local angles = {}
+  for i = 0, NUM_FAN_RAYS - 1 do angles[i + 1] = centre - halfSpan + i * step end
+  return angles, centre, parking
+end
 
-local function clusterSweepHits()
-  local clusters = {}
-  local visited = {}
+local function stoppingDistance(closing)
+  return closing * closing / (2.0 * 9.0) + 0.3
+end
 
-  -- Walk circularly so a cluster spanning the 0-degree wraparound is captured.
-  local startIdx = 1
-  -- Find a non-hit gap to start from (so we don't begin in the middle of a cluster
-  -- that wraps around). If every ray hit, just start at 1.
-  for i = 1, NUM_RAYS do
-    if not sweepHits[i].hit then startIdx = i; break end
+local function maximumRayRange(speed, parking, sensitivity)
+  local thresholds = SENSITIVITY[sensitivity] or SENSITIVITY.normal
+  if parking then
+    return math.min(MAX_RANGE_CAP, math.max(8.0, thresholds.parkAdvisory + 2.0))
   end
+  -- A complete sweep takes about 0.3 s. Reserve 0.6 s so the far edge still provides the
+  -- configured TTC after sweep completion and packet/audio latency. The braking term keeps
+  -- the emergency boundary inside the cast even at speeds where v^2 dominates TTC reach.
+  local sweepAndReaction = 0.6
+  local advisoryReach = speed * (thresholds.driveAdvisory + sweepAndReaction)
+  local brakingReach = stoppingDistance(speed) + speed * sweepAndReaction + 5.0
+  return math.min(MAX_RANGE_CAP, math.max(10.0, advisoryReach, brakingReach))
+end
 
-  local i = 0
-  while i < NUM_RAYS do
-    local idx = ((startIdx - 1 + i) % NUM_RAYS) + 1
-    if sweepHits[idx].hit and not visited[idx] then
-      local minDist = sweepHits[idx].distance
-      local minBearing = sweepHits[idx].bearing
-      local prevDist = sweepHits[idx].distance
-      visited[idx] = true
-      -- Walk forward as long as the next ray hit and within threshold of the previous
-      local j = i + 1
-      while j < NUM_RAYS do
-        local jdx = ((startIdx - 1 + j) % NUM_RAYS) + 1
-        if not sweepHits[jdx].hit then break end
-        if math.abs(sweepHits[jdx].distance - prevDist) >= CLUSTER_DIST_THRESHOLD then break end
-        if sweepHits[jdx].distance < minDist then
-          minDist = sweepHits[jdx].distance
-          minBearing = sweepHits[jdx].bearing
-        end
-        prevDist = sweepHits[jdx].distance
-        visited[jdx] = true
-        j = j + 1
+local function rayUpwardAngle(maxRange)
+  return math.deg(math.atan(RAY_TOTAL_RISE_M / math.max(1.0, maxRange)))
+end
+
+local function confirmedPairGap(hitLow, hitHigh, maxRange)
+  -- Parallel probes can meet the same sloped or irregular surface many metres apart.
+  -- Both vehicle-height probes must hit; the nearer intersection is the conservative
+  -- surface clearance relevant to the vehicle envelope.
+  if hitLow <= 0 or hitLow >= maxRange or hitHigh <= 0 or hitHigh >= maxRange then
+    return nil
+  end
+  return math.min(hitLow, hitHigh)
+end
+
+local function classifyHazard(gap, closing, parking, sensitivity)
+  if closing <= 0.05 then return nil end
+  local thresholds = SENSITIVITY[sensitivity] or SENSITIVITY.normal
+  local stop = stoppingDistance(closing)
+  local ttc = gap / closing
+  local state
+  if gap <= stop then
+    state = 3
+  elseif parking then
+    if gap <= thresholds.parkUrgent then state = 2
+    elseif gap <= thresholds.parkAdvisory then state = 1 end
+  else
+    if ttc <= thresholds.driveUrgent then state = 2
+    elseif ttc <= thresholds.driveAdvisory then state = 1 end
+  end
+  if not state then return nil end
+
+  local urgency
+  if state == 3 then
+    urgency = 255
+  elseif state == 2 then
+    local outer = parking and thresholds.parkUrgent or thresholds.driveUrgent
+    local metric = parking and gap or ttc
+    local ratio = clamp(1.0 - metric / math.max(0.01, outer), 0, 1)
+    urgency = math.floor(170 + 84 * ratio + 0.5)
+  else
+    local outer = parking and thresholds.parkAdvisory or thresholds.driveAdvisory
+    local inner = parking and thresholds.parkUrgent or thresholds.driveUrgent
+    local metric = parking and gap or ttc
+    local ratio = clamp((outer - metric) / math.max(0.01, outer - inner), 0, 1)
+    urgency = math.floor(1 + 168 * ratio + 0.5)
+  end
+  return state, urgency, ttc, stop, gap - stop
+end
+
+local function candidateBetter(a, b)
+  if not a then return false end
+  if not b then return true end
+  if a.state ~= b.state then return a.state > b.state end
+  local am = a.priorityMetric or ((a.ttc and a.ttc >= 0) and a.ttc or a.gap)
+  local bm = b.priorityMetric or ((b.ttc and b.ttc >= 0) and b.ttc or b.gap)
+  if math.abs(am - bm) > 1e-5 then return am < bm end
+  return a.centreOffset < b.centreOffset
+end
+
+local function urgencyMeasure(c)
+  local metric = c.priorityMetric or ((c.ttc and c.ttc >= 0) and c.ttc or c.gap)
+  return 1.0 / math.max(0.01, metric)
+end
+
+local function clusterCandidates()
+  local clusters, active = {}, nil
+  for i = 1, NUM_RAYS do
+    local hit = sweepHits[i]
+    if hit then
+      if not active or i ~= active.lastIndex + 1 or math.abs(hit.gap - active.lastGap) >= 4.0 then
+        active = {best = hit, lastIndex = i, lastGap = hit.gap}
+        clusters[#clusters + 1] = active
+      else
+        if candidateBetter(hit, active.best) then active.best = hit end
+        active.lastIndex, active.lastGap = i, hit.gap
       end
-      table.insert(clusters, { distance = minDist, bearing = minBearing })
-      i = j
     else
-      i = i + 1
+      active = nil
     end
   end
-  return clusters
+  local out = {}
+  for _, cluster in ipairs(clusters) do out[#out + 1] = cluster.best end
+  return out
 end
 
--- =================================================================================================
---  Core Scan Logic
--- =================================================================================================
+local function selectHazard(candidates)
+  local best = nil
+  for _, candidate in ipairs(candidates) do
+    if candidateBetter(candidate, best) then best = candidate end
+  end
+  if not currentHazard then
+    currentHazard, missedSweeps = best, 0
+    return currentHazard
+  end
+
+  local match = nil
+  for _, candidate in ipairs(candidates) do
+    if math.abs(candidate.bearing - currentHazard.bearing) <= TARGET_MATCH_DEG
+        and (not match or math.abs(candidate.bearing - currentHazard.bearing)
+          < math.abs(match.bearing - currentHazard.bearing)) then
+      match = candidate
+    end
+  end
+  if match then
+    missedSweeps = 0
+    if best and best ~= match and (best.state > match.state
+        or (best.state == match.state
+          and urgencyMeasure(best) >= urgencyMeasure(match) * TARGET_SWITCH_RATIO)) then
+      currentHazard = best
+    else
+      currentHazard = match
+    end
+    return currentHazard
+  end
+
+  if best and best.state > currentHazard.state then
+    currentHazard, missedSweeps = best, 0
+    return currentHazard
+  end
+  missedSweeps = missedSweeps + 1
+  if missedSweeps >= TARGET_MISSED_SWEEPS then
+    currentHazard, missedSweeps = best, 0
+  end
+  return currentHazard
+end
+
+local function formatSelectedHazard(hazard)
+  if not hazard then return "0" end
+  return string.format("1,1,%.2f,%d,%.2f,%d,%.2f,%.2f,%.2f",
+    hazard.bearing, hazard.urgency, hazard.gap, hazard.state,
+    hazard.closing, hazard.ttc or -1, hazard.stoppingMargin)
+end
+
+local function sendSelectedHazard(hazard)
+  if not udpSend then return end
+  udpSend:send(formatSelectedHazard(hazard))
+end
+
+local function resolvedIntent(player, fwd, velocity)
+  local speed = velocity:length()
+  if pushedState.age <= STATE_EXPIRY_S then
+    return pushedState.direction == "R" and -1 or 1, pushedState.steering, speed,
+      (pushedState.throttle > pushedState.brake + 0.02) or speed > 0.15
+  end
+  local longitudinal = velocity:dot(fwd)
+  return longitudinal < -0.1 and -1 or 1, 0, speed, speed > 0.15
+end
+
+local function perimeterDistance(ext, directionSign, angleDeg)
+  if not ext then return 0 end
+  local a = math.rad(angleDeg)
+  local along, lateral = math.cos(a), math.sin(a)
+  local localForward = directionSign * along
+  local fExtent = localForward >= 0 and math.max(0, ext.maxF) or math.max(0, -ext.minF)
+  local rExtent = math.max(math.abs(ext.minR), math.abs(ext.maxR))
+  local fDist = math.abs(along) > 1e-4 and fExtent / math.abs(along) or math.huge
+  local rDist = math.abs(lateral) > 1e-4 and rExtent / math.abs(lateral) or math.huge
+  return math.min(fDist, rDist)
+end
+
+local function corridorOffsets(halfWidth)
+  local offsets = {}
+  local corridorHalf = halfWidth + PATH_MARGIN_M
+  for i = 0, NUM_CORRIDOR_RAYS - 1 do
+    offsets[#offsets + 1] = -corridorHalf
+      + 2 * corridorHalf * i / (NUM_CORRIDOR_RAYS - 1)
+  end
+  return offsets
+end
+
+local function beginSweep(player, playerFwd, playerUp, velocity)
+  local directionSign, steering, speed, hasIntent = resolvedIntent(player, playerFwd, velocity)
+  local angles, centre, parking = rayAnglesFor(speed, steering)
+  local geom = extensions.vehicleGeometry
+  local entry = nil
+  if geom then geom.request(player:getID()); entry = geom.get(player:getID()) end
+  local travel = directionSign < 0 and -playerFwd or playerFwd
+  local pathCentre = rotateVectorAroundAxis(travel, playerUp, centre):normalized()
+  local halfWidth = entry and math.max(math.abs(entry.ext.minR), math.abs(entry.ext.maxR)) or 1.0
+  local raySpecs = {}
+  for _, bearing in ipairs(angles) do
+    raySpecs[#raySpecs + 1] = {bearing = bearing, lateralOrigin = 0, kind = "fan"}
+  end
+  for _, lateralOrigin in ipairs(corridorOffsets(halfWidth)) do
+    raySpecs[#raySpecs + 1] = {
+      bearing = centre,
+      lateralOrigin = lateralOrigin,
+      kind = "corridor",
+    }
+  end
+  sweepContext = {
+    directionSign = directionSign, angles = angles, rays = raySpecs,
+    centre = centre, parking = parking,
+    speed = speed, hasIntent = hasIntent, ext = entry and entry.ext or nil,
+    travel = travel, pathCentre = pathCentre,
+    pathLeft = playerUp:cross(pathCentre):normalized(),
+    halfWidth = halfWidth,
+    maxRange = maximumRayRange(speed, parking, sensitivityName),
+    lowHits = 0, confirmedHits = 0, pathHits = 0, classifiedHits = 0,
+  }
+  for i = 1, NUM_RAYS do sweepHits[i] = nil end
+end
 
 local function performScan()
   if not udpSend then return end
-
   local player = be:getPlayerVehicle(0)
   if not player then return end
+  local playerPos = player:getPosition()
+  local playerFwd = player:getDirectionVector():normalized()
+  local playerUp = player:getDirectionVectorUp():normalized()
+  local velocity = player:getVelocity()
+  if currentRayIndex == 0 then beginSweep(player, playerFwd, playerUp, velocity) end
+  local ctx = sweepContext
+  if not ctx then return end
 
-  local playerPos   = player:getPosition()
-  local playerFwd   = player:getDirectionVector()
-  local playerUp    = player:getDirectionVectorUp()
-  local playerLeft = playerUp:cross(playerFwd) -- up x fwd = left (mathlib cross is right-handed)
-
-  -- Compute vehicle speed (m/s) from velocity vector
-  local vel = player:getVelocity()
-  local speedMps = vel:length()
-
-  -- Scale ranges based on speed
-  currentMaxRange  = math.min(BASE_MAX_RANGE  + speedMps * RANGE_PER_MPS, MAX_RANGE_CAP)
-  currentWarnRange = math.min(BASE_WARNING_RANGE + speedMps * RANGE_PER_MPS, WARNING_RANGE_CAP)
-
-  -- Two ray origins for clearance probe. Low ray catches anything in the way; high ray
-  -- confirms the obstacle is tall enough to actually matter (vs a curb the car drives over).
-  local rayOriginLow  = playerPos + playerUp * LOW_RAY_OFFSET
-  local rayOriginHigh = playerPos + playerUp * HIGH_RAY_OFFSET
-
-  -- Reset sweep hits when we wrap around to ray 0
-  if currentRayIndex == 0 then
-    for i = 1, NUM_RAYS do
-      sweepHits[i].hit = false
-      sweepHits[i].distance = math.huge
-    end
-  end
-
-  -- Cast RAYS_PER_TICK rays starting from currentRayIndex
-  for r = 1, RAYS_PER_TICK do
-    local idx = (currentRayIndex % NUM_RAYS) + 1
-    currentRayIndex = (currentRayIndex + 1) % NUM_RAYS
-
-    local angleDeg = rayAngles[idx]
-
-    -- Rotate forward vector around up axis by angleDeg
-    local rayDir = rotateVectorAroundAxis(playerFwd, playerUp, angleDeg)
-
-    -- Tilt ray slightly upward to avoid hitting flat ground
-    rayDir = rotateVectorAroundAxis(rayDir, playerLeft, -RAY_UPWARD_ANGLE) -- negative about left = upward
-    rayDir = rayDir:normalized()
-
-    -- Cast low ray first — cheap rejection if nothing is there at all.
-    local hitLow = castRayStatic(rayOriginLow, rayDir, currentMaxRange)
-
-    if hitLow > 0 and hitLow < currentWarnRange then
-      -- Confirm with high ray. Real obstacle only if high ray also hits at a similar
-      -- distance, OR the obstacle is dangerously close (low-only at <CLOSE_OBSTACLE_DIST
-      -- biases toward false positives over false negatives at imminent-collision range).
-      local hitHigh = castRayStatic(rayOriginHigh, rayDir, currentMaxRange)
-      local highConfirms = (hitHigh > 0 and hitHigh < (hitLow + CLEARANCE_TOLERANCE))
-      local closeOverride = (hitLow < CLOSE_OBSTACLE_DIST)
-      if highConfirms or closeOverride then
-        -- Convert ray angle to signed bearing (-180 to +180, positive = LEFT).
-        local bearing = angleDeg
-        if bearing > 180 then bearing = bearing - 360 end
-
-        sweepHits[idx].hit      = true
-        sweepHits[idx].distance = hitLow
-        sweepHits[idx].bearing  = bearing
+  for _ = 1, RAYS_PER_TICK do
+    if currentRayIndex >= NUM_RAYS then break end
+    local idx = currentRayIndex + 1
+    currentRayIndex = currentRayIndex + 1
+    local raySpec = ctx.rays[idx]
+    local bearing = raySpec.bearing
+    local rayHorizontal = rotateVectorAroundAxis(ctx.travel, playerUp, bearing):normalized()
+    local rayLeft = playerUp:cross(rayHorizontal):normalized()
+    local rayDir = rotateVectorAroundAxis(
+      rayHorizontal, rayLeft, -rayUpwardAngle(ctx.maxRange)):normalized()
+    local perimeter = perimeterDistance(ctx.ext, ctx.directionSign, bearing)
+    local surfaceOrigin = playerPos + rayHorizontal * perimeter
+      + ctx.pathLeft * raySpec.lateralOrigin
+    local lowOrigin = surfaceOrigin + playerUp * LOW_RAY_OFFSET
+    local highOrigin = surfaceOrigin + playerUp * HIGH_RAY_OFFSET
+    local hitLow = castRayStatic(lowOrigin, rayDir, ctx.maxRange)
+    if hitLow > 0 and hitLow < ctx.maxRange then
+      ctx.lowHits = ctx.lowHits + 1
+      local hitHigh = castRayStatic(highOrigin, rayDir, ctx.maxRange)
+      local confirmedGap = confirmedPairGap(hitLow, hitHigh, ctx.maxRange)
+      if confirmedGap then
+        ctx.confirmedHits = ctx.confirmedHits + 1
+        local hitOrigin = hitLow <= hitHigh and lowOrigin or highOrigin
+        local hitPoint = hitOrigin + rayDir * confirmedGap
+        local lateral = math.abs(ctx.pathLeft:dot(hitPoint - playerPos))
+        local closing = velocity:dot((hitPoint - playerPos):normalized())
+        if ctx.hasIntent and lateral <= ctx.halfWidth + PATH_MARGIN_M then
+          ctx.pathHits = ctx.pathHits + 1
+          local state, urgency, ttc, _, margin = classifyHazard(
+            confirmedGap, closing, ctx.parking, sensitivityName)
+          if state then
+            ctx.classifiedHits = ctx.classifiedHits + 1
+            sweepHits[idx] = {bearing = bearing, gap = confirmedGap, state = state,
+              urgency = urgency, closing = closing, ttc = ttc,
+              stoppingMargin = margin,
+              centreOffset = math.abs(bearing - ctx.centre)
+                + math.abs(raySpec.lateralOrigin) * 0.01,
+              source = raySpec.kind,
+              priorityMetric = ctx.parking and hitLow or ttc}
+          end
+        end
       end
     end
   end
 
-  -- After a full sweep, cluster contiguous hits and send everything in one packet.
-  -- Format:
-  --   "0"                                            -- no static obstacles
-  --   "1,n,b1,u1,d1,b2,u2,d2,...,bn,un,dn"           -- n clustered static obstacles
-  if currentRayIndex == 0 then
-    local clusters = clusterSweepHits()
-    if #clusters == 0 then
-      udpSend:send("0")
-    else
-      local parts = { "1", tostring(#clusters) }
-      for _, c in ipairs(clusters) do
-        local urgency = math.floor(math.max(0, math.min(255,
-          (1 - c.distance / currentWarnRange) * 255)))
-        table.insert(parts, string.format("%.2f", c.bearing))
-        table.insert(parts, tostring(urgency))
-        table.insert(parts, string.format("%.2f", c.distance))
-      end
-      udpSend:send(table.concat(parts, ","))
+  if currentRayIndex >= NUM_RAYS then
+    currentRayIndex = 0
+    local selected = selectHazard(clusterCandidates())
+    if selected then
+      detLog("D", string.format(
+        "hazard state=%d gap=%.2fm closing=%.2fm/s ttc=%.2fs margin=%.2fm bearing=%.1f range=%.1fm",
+        selected.state, selected.gap, selected.closing, selected.ttc or -1,
+        selected.stoppingMargin, selected.bearing, ctx.maxRange))
     end
+    if udpDiag then
+      udpDiag:send(string.format("D,%.2f,%.2f,%d,%d,%d,%d,%s",
+        ctx.speed, ctx.maxRange, ctx.lowHits, ctx.confirmedHits, ctx.pathHits,
+        ctx.classifiedHits, formatSelectedHazard(selected)))
+    end
+    sendSelectedHazard(selected)
   end
 end
-
--- =================================================================================================
---  Terrain Height Sampling (drop-offs and hills)
--- =================================================================================================
-
--- Latch so the "this map has no terrain" note reaches the log once, not at scan rate forever.
-local terrainWarned = false
 
 local function sampleTerrain()
   if not udpSend then return end
-
   local player = be:getPlayerVehicle(0)
   if not player then return end
-
-  local playerPos = player:getPosition()
-  local playerFwd = player:getDirectionVector()
-
-  -- Compute speed for terrain lookahead scaling
-  local vel = player:getVelocity()
-  local speedMps = vel:length()
-  -- Scale terrain sample distances: at higher speed, sample farther ahead
-  local speedScale = math.max(1.0, speedMps / 10.0)  -- 1x at <=10m/s, 2x at 20m/s, etc.
-
-  -- Get terrain height at vehicle position.
-  -- Terrain queries need a TerrainBlock in the scene. Maps built on a flat ground plane
-  -- (smallgrid and friends) have none, and core_terrain.getTerrainHeight returns nil there.
-  -- The arithmetic below would then throw, and the GE onUpdate hook chain is dispatched
-  -- WITHOUT pcall (lua/common/extensions.lua, hookProfiled), so one throw here silently
-  -- stops every extension loaded after this one in modScript.lua.
+  local playerPos, playerFwd = player:getPosition(), player:getDirectionVector()
+  local speedScale = math.max(1.0, player:getVelocity():length() / 10.0)
   if not core_terrain or not core_terrain.getTerrainHeight then return end
   local baseHeight = core_terrain.getTerrainHeight(playerPos)
   if not baseHeight then
-    if not terrainWarned then
-      terrainWarned = true
-      detLog('info', "No terrain on this map - skipping drop-off/hill sampling. Ray obstacles still active.")
-    end
+    if not terrainWarned then terrainWarned = true; detLog("I", "No terrain; obstacle rays remain active.") end
     return
   end
   terrainWarned = false
-
-  local worstDrop = 0
-  local worstRise = 0
-  local worstDropDist = 0
-  local worstRiseDist = 0
-
+  local worstDrop, worstRise, worstDropDist, worstRiseDist = 0, 0, 0, 0
   for _, baseDist in ipairs(BASE_TERRAIN_DISTANCES) do
     local sampleDist = baseDist * speedScale
-    local samplePos = playerPos + playerFwd * sampleDist
-    local sampleHeight = core_terrain.getTerrainHeight(samplePos)
-    -- A sample point past the edge of the terrain block reads nil; skip it, don't throw.
+    local sampleHeight = core_terrain.getTerrainHeight(playerPos + playerFwd * sampleDist)
     if sampleHeight then
       local diff = sampleHeight - baseHeight
-
       if diff < -DROPOFF_THRESHOLD and diff < worstDrop then
-        worstDrop = diff
-        worstDropDist = sampleDist
+        worstDrop, worstDropDist = diff, sampleDist
       elseif diff > HILL_THRESHOLD and diff > worstRise then
-        worstRise = diff
-        worstRiseDist = sampleDist
+        worstRise, worstRiseDist = diff, sampleDist
       end
     end
   end
-
   if worstDrop < -DROPOFF_THRESHOLD then
     if not lastDropoffSent then
-      local urgency = math.floor(math.min(255, math.abs(worstDrop) / 10.0 * 255))
+      local urgency = math.floor(math.min(255, math.abs(worstDrop) / 10 * 255))
       udpSend:send(string.format("%d,%.2f,%d,%.2f", PKT_DROPOFF, 0, urgency, worstDropDist))
       lastDropoffSent = true
     end
-  else
-    lastDropoffSent = false
-  end
-
+  else lastDropoffSent = false end
   if worstRise > HILL_THRESHOLD then
     if not lastHillSent then
-      local urgency = math.floor(math.min(255, worstRise / 10.0 * 255))
+      local urgency = math.floor(math.min(255, worstRise / 10 * 255))
       udpSend:send(string.format("%d,%.2f,%d,%.2f", PKT_HILL, 0, urgency, worstRiseDist))
       lastHillSent = true
     end
-  else
-    lastHillSent = false
-  end
+  else lastHillSent = false end
 end
-
--- =================================================================================================
---  GE Extension Hooks
--- =================================================================================================
 
 local function setupSockets()
   if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
-  if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
-
+  if udpCmd then pcall(function() udpCmd:close() end); udpCmd = nil end
   udpSend = socket.udp()
-  if udpSend then
-    udpSend:setpeername(PYTHON_HOST, PYTHON_PORT_DATA)
-    udpSend:settimeout(0)
-    detLog('info', "UDP send socket created, targeting " .. PYTHON_HOST .. ":" .. PYTHON_PORT_DATA)
-  else
-    detLog('error', "Failed to create UDP send socket.")
-  end
-
+  if udpSend then udpSend:setpeername(PYTHON_HOST, PYTHON_PORT_DATA); udpSend:settimeout(0) end
   local ok, err = pcall(function()
     udpCmd = socket.udp()
-    -- setsockname RETURNS nil plus a message; it does not THROW. A pcall around it reports
-    -- success on a socket bound to nothing, and the extension then goes deaf with nothing in
-    -- the log -- it still sends normally, because a UDP sender needs no bind.
-    local bound, berr = udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
-    if not bound then error(tostring(berr), 0) end
+    local bound, bindErr = udpCmd:setsockname("127.0.0.1", CMD_LISTEN_PORT)
+    if not bound then error(tostring(bindErr), 0) end
     udpCmd:settimeout(0)
   end)
-  if ok and udpCmd then
-    detLog('info', "UDP command socket listening on port " .. CMD_LISTEN_PORT)
-  else
-    detLog('error', "Failed to create UDP command socket: " .. tostring(err))
+  if not ok then
+    detLog("E", "Failed to bind obstacle commands: " .. tostring(err))
     if udpCmd then pcall(function() udpCmd:close() end) end
     udpCmd = nil
   end
 end
 
--- A failed bind is otherwise permanent for the session, so re-arm it. This is the recovery
--- path, not a precaution, and it has been watched doing the job: the first reload of the
--- patched files leaked eight ports, because the OUTGOING code had no unload hook yet. The
--- retry could not take them while the old module tables were still referenced -- a socket held
--- that way is not one the collector is about to free -- and ticked uselessly for two minutes.
--- The Ctrl+L that followed did NOT re-load these extensions (no load line for any of them in
--- the log at that timestamp, so setupSockets never ran again); all thirteen ports came back
--- through THIS function instead, within one frame of each other, the moment those tables went
--- away. Without it the mod would have stayed deaf until the game was restarted.
-local CMD_BIND_RETRY_S = 3.0
-local cmdBindRetry = 0
-
+local CMD_BIND_RETRY_S, cmdBindRetry = 3.0, 0
 local function retryCmdBind(dtReal)
   if udpCmd then return end
   cmdBindRetry = cmdBindRetry + (dtReal or 0)
@@ -389,77 +434,108 @@ local function retryCmdBind(dtReal)
     local sk = socket.udp()
     local bound = sk:setsockname("127.0.0.1", CMD_LISTEN_PORT)
     if not bound then sk:close(); error("still in use", 0) end
-    sk:settimeout(0)
-    udpCmd = sk
+    sk:settimeout(0); udpCmd = sk
   end)
-  if ok and udpCmd then
-    detLog('info', "UDP command socket bound on port " .. CMD_LISTEN_PORT .. " after retry.")
+  if ok and udpCmd then detLog("I", "Obstacle command socket rebound.") end
+end
+
+local function handleCommand(data)
+  local command = tostring(data or ""):match("^%s*(.-)%s*$")
+  local upper = command:upper()
+  if upper == "ON" then
+    isActive, currentRayIndex, currentHazard, missedSweeps = true, 0, nil, 0
+  elseif upper == "OFF" then
+    isActive, currentHazard, missedSweeps = false, nil, 0
+    if udpSend then udpSend:send("0") end
+  else
+    local diagPort = command:match("^[Dd][Ii][Aa][Gg],(%d+)$")
+    if diagPort then
+      if udpDiag then pcall(function() udpDiag:close() end) end
+      udpDiag = socket.udp()
+      udpDiag:setpeername(PYTHON_HOST, tonumber(diagPort))
+      udpDiag:settimeout(0)
+      return
+    elseif upper == "DIAG,OFF" then
+      if udpDiag then pcall(function() udpDiag:close() end); udpDiag = nil end
+      return
+    end
+    local direction, steering, throttle, brake = command:match(
+      "^[Ss][Tt][Aa][Tt][Ee],([FfRr]),([^,]+),([^,]+),([^,]+)$")
+    if direction then
+      -- STATE is emitted only while Python's Ctrl+O mode is active. Treat it as the
+      -- activation lease too, so a Ctrl+L extension reload resumes without requiring the
+      -- user to toggle the mode off and on again.
+      isActive = true
+      pushedState.direction = direction:upper()
+      pushedState.steering = clamp(tonumber(steering) or 0, -1, 1)
+      pushedState.throttle = clamp(tonumber(throttle) or 0, 0, 1)
+      pushedState.brake = clamp(tonumber(brake) or 0, 0, 1)
+      pushedState.age = 0
+      return
+    end
+    local sensitivity = command:match("^[Ss][Ee][Nn][Ss][Ii][Tt][Ii][Vv][Ii][Tt][Yy],([%a]+)$")
+    if sensitivity and SENSITIVITY[sensitivity:lower()] then sensitivityName = sensitivity:lower() end
   end
 end
 
--- setupSockets closes the sockets held by THIS module instance, and extensions.reload builds a
--- fresh instance whose locals are nil -- so it closes nothing and the outgoing instance keeps
--- the port, leaving the reloaded copy permanently deaf. Hence this hook.
 function M.onExtensionUnloaded()
   if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
-  if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
+  if udpCmd then pcall(function() udpCmd:close() end); udpCmd = nil end
+  if udpDiag then pcall(function() udpDiag:close() end); udpDiag = nil end
 end
-
 function M.onExtensionLoaded()
   setExtensionUnloadMode(M, "manual")
-  detLog('info', "Obstacle detector extension loaded.")
-  -- Bind sockets here so Ctrl+L Lua reload re-opens them.
+  detLog("I", "Predictive obstacle detector v2 loaded (surface gap, TTC, speed-scaled reach).")
   setupSockets()
 end
-
 function M.onWorldReadyState(state)
   if state == 2 then
-    detLog('info', "World ready. Initializing obstacle detector.")
-
-    -- Reset state for new map
-    isActive        = false
-    scanTimer       = 0
-    currentRayIndex = 0
-    currentMaxRange = BASE_MAX_RANGE
-    currentWarnRange = BASE_WARNING_RANGE
-    lastDropoffSent = false
-    lastHillSent    = false
-    for i = 1, NUM_RAYS do
-      sweepHits[i].hit = false
-      sweepHits[i].distance = math.huge
-    end
-
+    isActive, scanTimer, currentRayIndex = false, 0, 0
+    currentHazard, missedSweeps, pushedState.age = nil, 0, math.huge
+    lastDropoffSent, lastHillSent = false, false
     setupSockets()
   end
 end
-
 function M.onUpdate(dtReal, dtSim, dtRaw)
   retryCmdBind(dtReal)
-  -- Poll for commands
+  pushedState.age = pushedState.age + (dtReal or 0)
   if udpCmd then
-    local data = udpCmd:receive()
-    if data then
-      local cmd = data:match("^%s*(.-)%s*$"):upper()
-      if cmd == "ON" and not isActive then
-        isActive = true
-        currentRayIndex = 0
-        detLog('info', "Obstacle detection activated.")
-      elseif cmd == "OFF" and isActive then
-        isActive = false
-        detLog('info', "Obstacle detection deactivated.")
-      end
-    end
+    while true do local data = udpCmd:receive(); if not data then break end; handleCommand(data) end
   end
-
   if not isActive then return end
-
-  -- Rate-limit scans
   scanTimer = scanTimer + dtReal
   if scanTimer >= SCAN_INTERVAL then
-    scanTimer = 0
-    performScan()
-    sampleTerrain()
+    scanTimer = scanTimer - SCAN_INTERVAL
+    performScan(); sampleTerrain()
   end
 end
+
+function M.debugRayAngles(speed, steering) return rayAnglesFor(speed, steering) end
+function M.debugClassify(gap, closing, parking, sensitivity)
+  return classifyHazard(gap, closing, parking, sensitivity or "normal")
+end
+function M.debugStoppingDistance(closing) return stoppingDistance(closing) end
+function M.debugMaximumRayRange(speed, parking, sensitivity)
+  return maximumRayRange(speed, parking, sensitivity or "normal")
+end
+function M.debugRayUpwardAngle(maxRange) return rayUpwardAngle(maxRange) end
+function M.debugConfirmedPairGap(hitLow, hitHigh, maxRange)
+  return confirmedPairGap(hitLow, hitHigh, maxRange)
+end
+function M.debugRayCounts() return NUM_FAN_RAYS, NUM_CORRIDOR_RAYS, NUM_RAYS end
+function M.debugCorridorOffsets(halfWidth) return corridorOffsets(halfWidth) end
+function M.debugPerimeterDistance(ext, direction, bearing)
+  return perimeterDistance(ext, direction, bearing)
+end
+function M.debugPathRelevant(lateral, halfWidth)
+  return math.abs(lateral) <= halfWidth + PATH_MARGIN_M
+end
+function M.debugFormatPacket(hazard) return formatSelectedHazard(hazard) end
+function M.debugHandleCommand(command) handleCommand(command); return pushedState, sensitivityName end
+function M.debugIsActive() return isActive end
+function M.debugStateExpired() return pushedState.age > STATE_EXPIRY_S end
+function M.debugAdvanceStateAge(dt) pushedState.age = pushedState.age + dt end
+function M.debugResetSelection() currentHazard, missedSweeps = nil, 0 end
+function M.debugSelect(candidates) return selectHazard(candidates) end
 
 return M

@@ -119,6 +119,8 @@ In reverse, the scanner measures from the back of your vehicle and reports the b
 - Ctrl+Shift+L: Toggle low speed detection
 - Ctrl+K: Toggle wheel slip detection (lockup / wheelspin)
 - Ctrl+O: Toggle obstacle detection
+- Ctrl+R: Toggle road guidance
+- Ctrl+Shift+R: Speak current road status, legal directions, correction state, and the next known intersection
 - Ctrl+G: Toggle coordinate guidance
 - Ctrl+Shift+C: Clickspot detection
 - Ctrl+N: Accessible node grabber
@@ -241,6 +243,19 @@ Arrangement types are: line (all vehicles in a row), side by side (abreast), two
 **Buffer mode** commandeers the bracket keys for itself. These step through the 100 most recent messages. Left bracket navigates backwards through the buffer (older messages), and right bracket moves forward (newer messages).
 
 **Clickspot detection** looks for interactables on the interior or exterior of a vehicle — buttons, switches, levers, latches, etc. Press F9 then Ctrl+Shift+C to enable it; this will announce how many clickspots were found. Clickspots are then discoverable with the mouse: a beep sounds when the pointer enters one, and a reverse beep when it leaves. Click the mouse to perform the associated action. A menu-driven approach can also be activated with F9 then Ctrl+Shift+Alt+C, opening a virtual browser where you can move through all clickspots with the arrow keys and press Enter to activate one.
+
+**Obstacle detection** is off at startup and toggled with Ctrl+O. It follows the selected
+forward or reverse path, starts measurements at the vehicle surface, and sounds only the most
+actionable static hazard. Pulse rate distinguishes advisory and urgent approaches; an emergency
+doublet followed by a quieter steady tone marks the stopping-distance boundary. The Configuration
+window provides Obstacle cue volume and Early, Normal, or Late warning sensitivity. Moving traffic
+is not yet included. Protocol and cue details are in [docs/obstacle-warning.md](docs/obstacle-warning.md).
+
+**Road guidance** is road awareness rather than destination routing. Turn it on with F9 then Ctrl+R. Off road, a spatial beacon points toward an intercept farther along the nearest vertically compatible road, giving you a shallower approach than its perpendicular nearest point; one-way travel is respected. After you join a road, one directional chime identifies its legal travel direction or both directions; one-way roads are announced. While driving in line with the road it stays silent. If your heading or lateral position needs correction, a continuous triangle tone appears toward the direction you should steer and becomes rougher as the error grows. Its direction is limited to 35 degrees either side of straight ahead, and it stops as you regain alignment or leave the road.
+
+About seven seconds before a meaningful intersection or dead end, speech describes its shape and available exits. A centred double pip confirms the near-junction zone, then a distinct descending tone marks entry into the physical intersection area. At an ambiguous branch, correction guidance pauses instead of silently choosing an exit. Private and gated roads are excluded by default. The Road guidance group in Configuration controls correction, intersection speech, the junction tones, private-road inclusion, and separate off-road beacon, lane-correction, and intersection volume levels. F9 then Ctrl+Shift+R gives the current road state on demand even when automatic intersection speech is disabled.
+
+The enhanced behavior requires the R2 feed from the matching mod. A newer executable still accepts the older road packets and says that only legacy guidance is available; a newer mod continues sending those packets for older executables. If R2 stops for more than one second, road audio is silenced rather than continuing from stale data.
 
 **Loader implement awareness** covers the bucket and forks on machines like the WL-40 wheel loader. Nothing needs turning on and there is no keybind: it appears by itself on a machine that has an implement, and is completely inert on every ordinary vehicle.
 

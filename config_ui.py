@@ -674,6 +674,87 @@ class ConfigPanel(wx.ScrolledWindow):
 
         vbox.Add(auto_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
+        # --- Road Guidance Group ---
+        sb_road, road_sizer = _group(self, "Road guidance")
+        self.chk_road_follow = wx.CheckBox(
+            sb_road, label="Drift correction tone"
+        )
+        self.chk_road_follow.SetToolTip(
+            "Play a continuous directional tone only when steering correction is needed while on a road."
+        )
+        road_sizer.Add(self.chk_road_follow, 0, wx.ALL, 6)
+
+        self.chk_road_junction_speech = wx.CheckBox(
+            sb_road, label="Speak approaching intersections"
+        )
+        self.chk_road_junction_speech.SetToolTip(
+            "Announce intersection shape and available exits about seven seconds ahead."
+        )
+        road_sizer.Add(self.chk_road_junction_speech, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+
+        self.chk_road_junction_earcon = wx.CheckBox(
+            sb_road, label="Intersection proximity and entry tones"
+        )
+        self.chk_road_junction_earcon.SetToolTip(
+            "Play a double pip near a junction and a different tone on entering it."
+        )
+        road_sizer.Add(self.chk_road_junction_earcon, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+
+        self.chk_road_private = wx.CheckBox(
+            sb_road, label="Include private and gated roads"
+        )
+        self.chk_road_private.SetToolTip(
+            "Allow private driveways and gated roads in following and intersection guidance."
+        )
+        road_sizer.Add(self.chk_road_private, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+
+        road_grid = wx.FlexGridSizer(0, 2, 6, 8)
+        road_grid.AddGrowableCol(1, 1)
+        lbl_road_beep = wx.StaticText(sb_road, label="Off-road Beacon Volume (dBFS):")
+        self.spin_road_beep = wx.SpinCtrlDouble(
+            sb_road, min=-120.0, max=0.0, inc=1.0
+        )
+        self.spin_road_beep.SetDigits(1)
+        self.spin_road_beep.SetName("Off-road Beacon Volume")
+        self.spin_road_beep.SetToolTip(
+            "Volume for the beacon that guides you back to a road."
+        )
+        _label_spin(self.spin_road_beep, "Off-road Beacon Volume")
+        road_grid.Add(lbl_road_beep, 0, wx.ALIGN_CENTER_VERTICAL)
+        road_grid.Add(self.spin_road_beep, 0, wx.EXPAND)
+
+        lbl_road_correction = wx.StaticText(
+            sb_road, label="Lane Correction Volume (dBFS):"
+        )
+        self.spin_road_correction = wx.SpinCtrlDouble(
+            sb_road, min=-120.0, max=0.0, inc=1.0
+        )
+        self.spin_road_correction.SetDigits(1)
+        self.spin_road_correction.SetName("Lane Correction Volume")
+        self.spin_road_correction.SetToolTip(
+            "Volume for the continuous tone that warns of lane drift."
+        )
+        _label_spin(self.spin_road_correction, "Lane Correction Volume")
+        road_grid.Add(lbl_road_correction, 0, wx.ALIGN_CENTER_VERTICAL)
+        road_grid.Add(self.spin_road_correction, 0, wx.EXPAND)
+
+        lbl_road_junction = wx.StaticText(
+            sb_road, label="Intersection Tone Volume (dBFS):"
+        )
+        self.spin_road_junction = wx.SpinCtrlDouble(
+            sb_road, min=-120.0, max=0.0, inc=1.0
+        )
+        self.spin_road_junction.SetDigits(1)
+        self.spin_road_junction.SetName("Intersection Tone Volume")
+        self.spin_road_junction.SetToolTip(
+            "Volume for the near-intersection double pip and intersection-entry tone."
+        )
+        _label_spin(self.spin_road_junction, "Intersection Tone Volume")
+        road_grid.Add(lbl_road_junction, 0, wx.ALIGN_CENTER_VERTICAL)
+        road_grid.Add(self.spin_road_junction, 0, wx.EXPAND)
+        road_sizer.Add(road_grid, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 6)
+        vbox.Add(road_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
+
         # --- Compass Clicks Group ---
         sb_compass, compass_sizer = _group(self, "Compass Clicks")
         compass_grid = wx.FlexGridSizer(0, 2, 6, 8)
@@ -985,6 +1066,32 @@ class ConfigPanel(wx.ScrolledWindow):
         warnings_grid.Add(lbl_chime, 0, wx.ALIGN_CENTER_VERTICAL)
         warnings_grid.Add(self.spin_chime_level, 0, wx.EXPAND)
 
+        lbl_obstacle = wx.StaticText(sb_warnings, label="Obstacle Cue Volume (dBFS):")
+        self.spin_obstacle_level = wx.SpinCtrlDouble(
+            sb_warnings, min=-120.0, max=0.0, inc=1.0
+        )
+        self.spin_obstacle_level.SetDigits(1)
+        self.spin_obstacle_level.SetToolTip(
+            "Level of predictive static-obstacle cues; advisory cues play 6 dB lower."
+        )
+        self.spin_obstacle_level.SetName("Obstacle Cue Volume")
+        _label_spin(self.spin_obstacle_level, "Obstacle Cue Volume")
+        warnings_grid.Add(lbl_obstacle, 0, wx.ALIGN_CENTER_VERTICAL)
+        warnings_grid.Add(self.spin_obstacle_level, 0, wx.EXPAND)
+
+        lbl_obstacle_sensitivity = wx.StaticText(
+            sb_warnings, label="Obstacle Warning Sensitivity:"
+        )
+        self.choice_obstacle_sensitivity = wx.Choice(
+            sb_warnings, choices=["Early", "Normal", "Late"]
+        )
+        self.choice_obstacle_sensitivity.SetToolTip(
+            "Changes advisory and urgent timing; emergency stopping distance is unchanged."
+        )
+        self.choice_obstacle_sensitivity.SetName("Obstacle Warning Sensitivity")
+        warnings_grid.Add(lbl_obstacle_sensitivity, 0, wx.ALIGN_CENTER_VERTICAL)
+        warnings_grid.Add(self.choice_obstacle_sensitivity, 0, wx.EXPAND)
+
         warnings_sizer.Add(warnings_grid, 0, wx.EXPAND | wx.ALL, 6)
         vbox.Add(warnings_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
@@ -1228,6 +1335,10 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_dock_tones,
             self.chk_scan_tones,
             self.chk_cannon_shot,
+            self.chk_road_follow,
+            self.chk_road_junction_speech,
+            self.chk_road_junction_earcon,
+            self.chk_road_private,
             self.chk_mcp_server,
         ):
             ctrl.Bind(wx.EVT_CHECKBOX, self._schedule_save)
@@ -1236,6 +1347,7 @@ class ConfigPanel(wx.ScrolledWindow):
         self.choice_speed_interval.Bind(wx.EVT_CHOICE, self._schedule_save)
         self.choice_renderer.Bind(wx.EVT_CHOICE, self._schedule_save)
         self.choice_callout_interval.Bind(wx.EVT_CHOICE, self._schedule_save)
+        self.choice_obstacle_sensitivity.Bind(wx.EVT_CHOICE, self._schedule_save)
 
         for ctrl in (self.rb_units, self.rb_proto):
             ctrl.Bind(wx.EVT_RADIOBOX, self._schedule_save)
@@ -1256,6 +1368,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.spin_level,
             self.spin_buzzer_level,
             self.spin_chime_level,
+            self.spin_obstacle_level,
             self.spin_impl_ground,
             self.spin_impl_tilt,
             self.spin_dock,
@@ -1265,6 +1378,9 @@ class ConfigPanel(wx.ScrolledWindow):
             self.spin_lowspeed_stop_level,
             self.spin_slip_tone_level,
             self.spin_placement_ping_level,
+            self.spin_road_beep,
+            self.spin_road_correction,
+            self.spin_road_junction,
             self.spin_hrtf_front_emphasis,
             self.spin_hrtf_distance_gain,
             self.spin_pitch_roll_max,
@@ -1424,6 +1540,11 @@ class ConfigPanel(wx.ScrolledWindow):
                 cfg.get("check_engine_buzzer_level_dbfs", -12.0)
             )
             self.spin_chime_level.SetValue(cfg.get("oil_chime_level_dbfs", -12.0))
+            self.spin_obstacle_level.SetValue(cfg.get("obstacle_buzz_volume_db", -18.0))
+            sensitivity = str(cfg.get("obstacle_warning_sensitivity", "normal")).lower()
+            self.choice_obstacle_sensitivity.SetSelection(
+                {"early": 0, "normal": 1, "late": 2}.get(sensitivity, 1)
+            )
 
             self.chk_impl_tones.SetValue(cfg.get("implement_tones_enabled", True))
             self.chk_impl_proximity.SetValue(
@@ -1458,6 +1579,23 @@ class ConfigPanel(wx.ScrolledWindow):
             self.spin_slip_tone_level.SetValue(cfg.get("slip_tone_level_dbfs", -18.0))
             self.spin_placement_ping_level.SetValue(
                 cfg.get("placement_ping_volume_db", -12.0)
+            )
+            self.chk_road_follow.SetValue(
+                cfg.get("road_follow_guidance_enabled", True)
+            )
+            self.chk_road_junction_speech.SetValue(
+                cfg.get("road_junction_speech_enabled", True)
+            )
+            self.chk_road_junction_earcon.SetValue(
+                cfg.get("road_junction_earcon_enabled", True)
+            )
+            self.chk_road_private.SetValue(cfg.get("road_include_private", False))
+            self.spin_road_beep.SetValue(cfg.get("road_beep_volume_db", -14.0))
+            self.spin_road_correction.SetValue(
+                cfg.get("road_correction_volume_db", -24.0)
+            )
+            self.spin_road_junction.SetValue(
+                cfg.get("road_junction_volume_db", -14.0)
             )
             self.chk_hrtf_enabled.SetValue(cfg.get("hrtf_enabled", True))
             self.spin_hrtf_front_emphasis.SetValue(
@@ -1517,6 +1655,11 @@ class ConfigPanel(wx.ScrolledWindow):
         cfg["shift_tone_level_dbfs"] = self.spin_level.GetValue()
         cfg["check_engine_buzzer_level_dbfs"] = self.spin_buzzer_level.GetValue()
         cfg["oil_chime_level_dbfs"] = self.spin_chime_level.GetValue()
+        cfg["obstacle_buzz_volume_db"] = self.spin_obstacle_level.GetValue()
+        cfg["obstacle_warning_sensitivity"] = (
+            ("early", "normal", "late")[self.choice_obstacle_sensitivity.GetSelection()]
+            if self.choice_obstacle_sensitivity.GetSelection() >= 0 else "normal"
+        )
 
         cfg["implement_tones_enabled"] = self.chk_impl_tones.GetValue()
         cfg["implement_proximity_speech"] = self.chk_impl_proximity.GetValue()
@@ -1536,6 +1679,17 @@ class ConfigPanel(wx.ScrolledWindow):
         cfg["lowspeed_stop_tone_level_dbfs"] = self.spin_lowspeed_stop_level.GetValue()
         cfg["slip_tone_level_dbfs"] = self.spin_slip_tone_level.GetValue()
         cfg["placement_ping_volume_db"] = self.spin_placement_ping_level.GetValue()
+        cfg["road_follow_guidance_enabled"] = self.chk_road_follow.GetValue()
+        cfg["road_junction_speech_enabled"] = (
+            self.chk_road_junction_speech.GetValue()
+        )
+        cfg["road_junction_earcon_enabled"] = (
+            self.chk_road_junction_earcon.GetValue()
+        )
+        cfg["road_include_private"] = self.chk_road_private.GetValue()
+        cfg["road_beep_volume_db"] = self.spin_road_beep.GetValue()
+        cfg["road_correction_volume_db"] = self.spin_road_correction.GetValue()
+        cfg["road_junction_volume_db"] = self.spin_road_junction.GetValue()
         cfg["hrtf_enabled"] = self.chk_hrtf_enabled.GetValue()
         cfg["hrtf_front_emphasis_db"] = self.spin_hrtf_front_emphasis.GetValue()
         cfg["hrtf_distance_gain_db"] = self.spin_hrtf_distance_gain.GetValue()
