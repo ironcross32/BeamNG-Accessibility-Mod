@@ -336,24 +336,40 @@ set "PROG=@PROG@"
 set "STAGED=@STAGED@"
 set "LOGFILE=@LOG@"
 set "SYS=%SystemRoot%\\System32"
+set "EXE=%PROG%\\beamtel.exe"
 
-echo [%DATE% %TIME%] waiting for beamtel (started from PID %PID%) to exit> "%LOGFILE%"
+echo [%DATE% %TIME%] waiting for "%EXE%" to be released (we were PID %PID%)> "%LOGFILE%"
 set /a TRIES=0
 :wait
-"%SYS%\\tasklist.exe" /FI "IMAGENAME eq beamtel.exe" /NH 2>nul | "%SYS%\\find.exe" /I "beamtel.exe" >nul
-if errorlevel 1 goto gone
+rem The question is not "is a process called beamtel.exe running", it is "can
+rem I overwrite this file yet" -- so ASK THE FILE. Opening the exe for append
+rem fails with a sharing violation for as long as Windows holds the image open,
+rem and succeeds (writing nothing) the moment the last handle goes. It costs one
+rem file open, enumerates nothing, and cannot be confused by a second install
+rem running elsewhere. The tasklist/find pipeline it replaces could be WRONG IN
+rem BOTH DIRECTIONS: its stderr went to nul, so a failure of tasklist itself was
+rem indistinguishable from "no such process". Observed 2026-08-28: one call took
+rem 103 seconds and then answered "gone" while beamtel was still up, and the
+rem post-start check answered "did not appear" about a process that had started.
+rem Both are that same false negative, and the second one made the log lie about
+rem the outcome of the update.
+if not exist "%EXE%" goto gone
+2>nul ( >>"%EXE%" (call ) ) && goto gone
 set /a TRIES+=1
 if %TRIES% GEQ 120 goto timeout
 "%SYS%\\ping.exe" -n 2 127.0.0.1 >nul
 goto wait
 
 :timeout
-echo [%DATE% %TIME%] WARNING: beamtel.exe still running after %TRIES% tries; copying anyway>> "%LOGFILE%"
+echo [%DATE% %TIME%] WARNING: "%EXE%" still locked after %TRIES% tries; copying anyway>> "%LOGFILE%"
+goto ready
 
 :gone
 rem Give Windows a moment to release the executable image itself.
 "%SYS%\\ping.exe" -n 3 127.0.0.1 >nul
-echo [%DATE% %TIME%] no beamtel.exe left after %TRIES% tries>> "%LOGFILE%"
+echo [%DATE% %TIME%] "%EXE%" released after %TRIES% tries>> "%LOGFILE%"
+
+:ready
 
 rem The Nuitka onefile cache holds the OLD exe's unpacked payload under a fixed
 rem name beside the exe (--onefile-tempdir-spec={PROGRAM_DIR}/.appdata with
@@ -370,14 +386,14 @@ echo [%DATE% %TIME%] robocopy exit %RC% >> "%LOGFILE%"
 if %RC% GEQ 8 echo [%DATE% %TIME%] copy FAILED; not restarting>> "%LOGFILE%"
 if %RC% GEQ 8 goto done
 
-if not exist "%PROG%\\beamtel.exe" echo [%DATE% %TIME%] ERROR: "%PROG%\\beamtel.exe" missing after copy>> "%LOGFILE%"
-if not exist "%PROG%\\beamtel.exe" goto done
+if not exist "%EXE%" echo [%DATE% %TIME%] ERROR: "%EXE%" missing after copy>> "%LOGFILE%"
+if not exist "%EXE%" goto done
 
 rem /D sets the new process's working directory: the helper's own is the update
 rem folder, and handing that to the program we are restarting is not what it
 rem would have had if the user had launched it themselves.
-echo [%DATE% %TIME%] starting "%PROG%\\beamtel.exe">> "%LOGFILE%"
-start "BEAM" /D "%PROG%" "%PROG%\\beamtel.exe"
+echo [%DATE% %TIME%] starting "%EXE%">> "%LOGFILE%"
+start "BEAM" /D "%PROG%" "%EXE%"
 echo [%DATE% %TIME%] start returned %ERRORLEVEL% >> "%LOGFILE%"
 
 rem "start" is asynchronous and reports almost nothing, so the launch is
@@ -385,9 +401,9 @@ rem VERIFIED rather than assumed. Without this the log's last line is written
 rem before the attempt and a silent failure to restart leaves no evidence at
 rem all -- which is exactly how this went unexplained once already.
 "%SYS%\\ping.exe" -n 6 127.0.0.1 >nul
-"%SYS%\\tasklist.exe" /FI "IMAGENAME eq beamtel.exe" /NH 2>nul | "%SYS%\\find.exe" /I "beamtel.exe" >nul
-if errorlevel 1 echo [%DATE% %TIME%] ERROR: beamtel.exe did not appear after start>> "%LOGFILE%"
-if not errorlevel 1 echo [%DATE% %TIME%] beamtel.exe is running>> "%LOGFILE%"
+rem The same lock test read the other way round: a running beamtel holds its
+rem own image open, so an exe we can still write to is one nothing is running.
+2>nul ( >>"%EXE%" (call ) ) && (echo [%DATE% %TIME%] ERROR: "%EXE%" is still writable; it did not start>> "%LOGFILE%") || (echo [%DATE% %TIME%] beamtel.exe is running>> "%LOGFILE%")
 
 :done
 rd /s /q "%STAGED%"
