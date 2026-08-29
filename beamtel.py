@@ -9491,11 +9491,23 @@ def _run_engine():
         try:
             import subprocess
 
+            system_root = os.environ.get("SystemRoot") or r"C:\Windows"
+            tasklist_exe = os.path.join(system_root, "System32", "tasklist.exe")
             result = subprocess.run(
-                ["tasklist", "/FI", "IMAGENAME eq BeamNG.drive.x64.exe", "/NH"],
+                [
+                    tasklist_exe,
+                    "/FI",
+                    "IMAGENAME eq BeamNG.drive.x64.exe",
+                    "/NH",
+                ],
                 capture_output=True,
                 text=True,
                 timeout=5,
+                # beamtel is a GUI executable with no console to inherit. Without
+                # this flag, Windows is free to allocate a terminal just for this
+                # short process probe -- especially visible after an updater
+                # restart, when the main window has just disappeared.
+                creationflags=subprocess.CREATE_NO_WINDOW,
             )
             if "BeamNG.drive.x64.exe" in result.stdout:
                 logger.info("BeamNG.drive is already running, skipping launch.")

@@ -12,8 +12,9 @@
 #
 #   * The running exe cannot replace itself. Nuitka builds beamtel as a onefile
 #     binary and Windows holds it open for as long as the process lives, so the
-#     swap has to happen after we exit -- hence a detached .cmd helper that
-#     waits on our PID, copies the staged files over, and starts the new exe.
+#     swap has to happen after we exit -- hence a windowless .cmd helper that
+#     waits for the executable's file lock, copies the staged files over, and
+#     starts the new exe.
 #     That restart is why the mod install cannot happen in the same run: the
 #     zip we want to install is the one being copied in.
 #
@@ -361,8 +362,12 @@ if %TRIES% GEQ 120 goto timeout
 goto wait
 
 :timeout
-echo [%DATE% %TIME%] WARNING: "%EXE%" still locked after %TRIES% tries; copying anyway>> "%LOGFILE%"
-goto ready
+rem A locked executable cannot be replaced safely. In particular, do not remove
+rem the onefile cache or fall through to robocopy: either can damage the still
+rem running installation. Leave the staged update in place for diagnosis and
+rem stop this helper; a later update check can stage a fresh copy.
+echo [%DATE% %TIME%] ERROR: "%EXE%" still locked after %TRIES% tries; update abandoned>> "%LOGFILE%"
+goto finish
 
 :gone
 rem Give Windows a moment to release the executable image itself.
@@ -393,7 +398,7 @@ rem /D sets the new process's working directory: the helper's own is the update
 rem folder, and handing that to the program we are restarting is not what it
 rem would have had if the user had launched it themselves.
 echo [%DATE% %TIME%] starting "%EXE%">> "%LOGFILE%"
-start "BEAM" /D "%PROG%" "%EXE%"
+start "BEAM" /B /D "%PROG%" "%EXE%"
 echo [%DATE% %TIME%] start returned %ERRORLEVEL% >> "%LOGFILE%"
 
 rem "start" is asynchronous and reports almost nothing, so the launch is
@@ -407,12 +412,17 @@ rem own image open, so an exe we can still write to is one nothing is running.
 
 :done
 rd /s /q "%STAGED%"
+:finish
 echo [%DATE% %TIME%] helper finished>> "%LOGFILE%"
 (goto) 2>nul & del "%~f0"
 """
 
 
-def write_helper(staged_dir=STAGED_DIR, prog=None, update_dir=UPDATE_DIR):
+def write_helper(staged_dir=STAGED_DIR, prog=None, update_dir=None):
+    # Resolve this at call time. Besides being less surprising, it lets an
+    # isolated diagnostic redirect UPDATE_DIR without the function retaining
+    # the production AppData path captured when the module was imported.
+    update_dir = update_dir or UPDATE_DIR
     prog = prog or program_dir()
     os.makedirs(update_dir, exist_ok=True)
     path = os.path.join(update_dir, HELPER_NAME)
@@ -428,35 +438,39 @@ def write_helper(staged_dir=STAGED_DIR, prog=None, update_dir=UPDATE_DIR):
 
 
 def apply_and_restart(staged_dir=STAGED_DIR):
-    """Spawn the detached helper. The caller must then close the app promptly.
+    """Spawn the windowless helper. The caller must then close the app promptly.
 
-    Returns None on success or a message. Detached and window-less: a console
-    flashing up behind the closing frame reads as a crash, and a helper in our
-    own process group would die with us before it had done anything.
+    Returns None on success or a message. Windows does not tie an ordinary
+    child process's lifetime to its parent, so the helper does not need
+    DETACHED_PROCESS to survive our exit. CREATE_NEW_PROCESS_GROUP keeps it
+    outside any console-control event aimed at beamtel, while CREATE_NO_WINDOW
+    prevents cmd and the console programs it runs from allocating visible
+    terminal windows.
     """
     try:
         helper = write_helper(staged_dir)
     except OSError as e:
         return "Could not write the update helper: %s" % e
 
-    # DETACHED_PROCESS is what keeps the helper alive past our own exit, and it
-    # makes CREATE_NO_WINDOW a no-op (the two are documented as mutually
-    # exclusive), so the window has to be suppressed the other way -- by giving
-    # cmd valid standard handles. beamtel is built --windows-console-mode=disable
-    # and therefore HAS no console and no usable std handles; a detached cmd that
-    # inherits those finds neither a console nor anywhere to write and allocates
-    # a console of its own, which is the stray window left behind by an update.
-    DETACHED_PROCESS = 0x00000008
+    # Redirecting the standard handles is not enough to suppress a console.
+    # The v0.1.5 helper did that but also used DETACHED_PROCESS, which explicitly
+    # prevents console inheritance and makes CREATE_NO_WINDOW inapplicable. Its
+    # tasklist/find children consequently allocated the visible windows reported
+    # by users. Keep valid handles as a second line of defence, but make the
+    # process-creation flag express the actual requirement.
     CREATE_NEW_PROCESS_GROUP = 0x00000200
+    CREATE_NO_WINDOW = 0x08000000
+    system_root = os.environ.get("SystemRoot") or r"C:\Windows"
+    cmd_exe = os.path.join(system_root, "System32", "cmd.exe")
     try:
         subprocess.Popen(
-            ["cmd", "/c", helper],
+            [cmd_exe, "/d", "/c", helper],
             cwd=UPDATE_DIR,
             close_fds=True,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            creationflags=(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP),
+            creationflags=(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP),
         )
     except Exception as e:
         return "Could not start the update helper: %s" % e
@@ -577,8 +591,25 @@ def run_startup_flow(frame, gate, manual=False):
         cfg = load_config()
         pending = str(cfg.get(PENDING_KEY) or "").strip()
         if pending and not manual:
-            _phase_two(frame, pending)
-            return
+            # A helper failure happens after the old GUI has exited, so it
+            # cannot call _fail() or clear this flag in Python. The version in
+            # the executable that is running now is the durable success check:
+            # after a successful copy it equals the pending release; after a
+            # timeout/copy/restart failure the user can only relaunch the old
+            # version and the two differ. Clear the stale promise and let the
+            # ordinary check offer the update again instead of falsely saying
+            # that the old executable was updated.
+            if parse_version(pending) == parse_version(APP_VERSION):
+                _phase_two(frame, pending)
+                return
+            logger.error(
+                "Discarding pending update %s: running version is still %s"
+                % (pending, APP_VERSION)
+            )
+            try:
+                clear_pending_update()
+            except Exception as e:
+                logger.error("Could not clear the stale pending update flag: %s" % e)
         _check_and_offer(frame, cfg, manual, allow, deny)
     except Exception as e:
         logger.error("Updater flow failed: %s" % e)
