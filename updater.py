@@ -59,7 +59,7 @@ logger = get_logger()
 # tag with the "v" stripped -- without that check the one hand-maintained
 # constant in the update path drifts silently and every client concludes it is
 # already up to date.
-APP_VERSION = "0.1.7"
+APP_VERSION = "0.1.8"
 
 REPO = "ironcross32/BeamNG-Accessibility-Mod"
 LATEST_URL = "https://api.github.com/repos/%s/releases/latest" % REPO
