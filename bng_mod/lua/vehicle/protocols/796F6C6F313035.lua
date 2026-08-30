@@ -1179,6 +1179,16 @@ local function getStructDefinition()
     float          implementLift;         // m the machine has been jacked off its wheels
     float          implementActivity;     // 0..1, drives the Python tone fade gate
     float          articulationDeg;       // degrees of frame bend, + = LEFT
+
+    // --- Centred wheels and wheel layout (appended for packet compatibility) ---
+    float          tirepressure_F;
+    float          tirepressure_R;
+    float          tiretemp_F;
+    float          tiretemp_R;
+    float          braketemp_F;
+    float          braketemp_R;
+    unsigned       telemetryPresence;     // FL=1, FR=2, RL=4, RR=8, F=16, R=32,
+                                          // clutch temperature valid=64
   ]]
 end
 
@@ -1197,6 +1207,15 @@ local DL_OILWARN      = 2 ^ 8
 local DL_BATTERY      = 2 ^ 9
 local DL_ABS          = 2 ^ 10
 local DL_LOWBEAM      = 2 ^ 11
+
+local WHEEL_POSITION_FLAGS = {
+  FL = 1,
+  FR = 2,
+  RL = 4,
+  RR = 8,
+  F  = 16,
+  R  = 32,
+}
 
 local function fillStruct(o, dtSim)
   if not _couplerHooksWrapped then tryCouplerHookWrap() end
@@ -1323,7 +1342,21 @@ local function fillStruct(o, dtSim)
   o.airPressureMax = maxPa / 6894.76                    -- PSI (0 = unknown)
 
   -- Get data from direct, reliable sources
-  o.clutchTemperature = (powertrain.clutch and powertrain.clutch.temperature) or 0
+  -- Friction and centrifugal clutches keep their thermal state on the device itself as
+  -- clutchTemperature; there is no powertrain.clutch.temperature aggregate. Ignore
+  -- clutch-category devices such as hydraulic pumps which expose no thermal field. If a
+  -- vehicle has multiple thermal clutches, the hottest one is the actionable reading.
+  local clutchTemperature = nil
+  if powertrain and powertrain.getDevicesByCategory then
+    for _, device in ipairs(powertrain.getDevicesByCategory('clutch')) do
+      local value = device.clutchTemperature
+      if type(value) == 'number'
+          and (clutchTemperature == nil or value > clutchTemperature) then
+        clutchTemperature = value
+      end
+    end
+  end
+  o.clutchTemperature = clutchTemperature or 0
   o.g_lat = sensors.gy2 or 0 -- Lateral Gs
   o.g_lon = sensors.gx2 or 0 -- Longitudinal Gs
 
@@ -1331,6 +1364,7 @@ local function fillStruct(o, dtSim)
   local pressures = {}
   local tireTemps = {}
   local brakeTemps = {}
+  local telemetryPresence = clutchTemperature ~= nil and 64 or 0
   if wheels and wheels.wheels then
     for _, wd in pairs(wheels.wheels) do
       local pressurePa = 0
@@ -1339,7 +1373,11 @@ local function fillStruct(o, dtSim)
       end
       pressures[wd.name] = (pressurePa > 0 and pressurePa or 0) * 0.000145038 -- PSI
       tireTemps[wd.name] = (wd.thermals and wd.thermals.tireTemperature) or 0
-      brakeTemps[wd.name] = wd.brakeTemperature or 0
+      -- BeamNG exposes separate surface and core temperatures. Surface temperature is
+      -- the live, driver-relevant brake reading used by the stock racing display.
+      brakeTemps[wd.name] = wd.brakeSurfaceTemperature or 0
+      local positionFlag = WHEEL_POSITION_FLAGS[wd.name]
+      if positionFlag then telemetryPresence = bit.bor(telemetryPresence, positionFlag) end
     end
   end
   
@@ -1357,6 +1395,14 @@ local function fillStruct(o, dtSim)
   o.braketemp_FR = brakeTemps.FR or 0
   o.braketemp_RL = brakeTemps.RL or 0
   o.braketemp_RR = brakeTemps.RR or 0
+
+  o.tirepressure_F = pressures.F or 0
+  o.tirepressure_R = pressures.R or 0
+  o.tiretemp_F = tireTemps.F or 0
+  o.tiretemp_R = tireTemps.R or 0
+  o.braketemp_F = brakeTemps.F or 0
+  o.braketemp_R = brakeTemps.R or 0
+  o.telemetryPresence = telemetryPresence
 
   o.signal_left_input  = electrics.values.signal_left_input or 0
   o.signal_right_input = electrics.values.signal_right_input or 0

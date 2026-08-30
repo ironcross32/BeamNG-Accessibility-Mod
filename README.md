@@ -125,6 +125,12 @@ In reverse, the scanner measures from the back of your vehicle and reports the b
 - Ctrl+Shift+C: Clickspot detection
 - Ctrl+N: Accessible node grabber
 
+#### Controller status actions
+
+BeamNG's **Accessibility** controls category contains three normal actions: **Accessibility menu up**, **Accessibility menu down**, and **Accessibility menu repeat**. They are intentionally unbound so the mod does not take over any controller or keyboard input. In Options > Controls > Bindings, bind them to your preferred controller modifier plus D-pad up, D-pad down, and a repeat button. Using a modifier avoids firing the vehicle or menu actions already assigned to the same controls.
+
+These actions work without turning on Ctrl+S status mode and without elevated keyboard hooks. Up and down move through the same status list as the keyboard arrows; repeat reads a fresh value for the selected item without moving. Controller and keyboard navigation share one selection.
+
 #### Camera info (free camera):
 
 - Alt+F: Toggle camera info
@@ -238,7 +244,7 @@ Arrangement types are: line (all vehicles in a row), side by side (abreast), two
 
 **Pedal tone mode** allows you to hear tones that identify how much input the game is receiving from you. You'll hear four tones: one near the center for brake, one at the right for gas, one at the left for clutch, and a buzzy tone that hard pans left and right, increasing pitch which indicates steering input. If the vehicle is automatic or DCT, the clutch tone will never play, even if the input is actuated. The tones also require input of each type before they will begin.
 
-**Status mode** commandeers the arrow keys for itself. Up and down step through each telemetry item; left or right give an up-to-date readout of the currently selected item. This mode must be turned off in order to use a screen reader effectively. It must also not be used if you play with a keyboard, because you will not be able to accelerate, brake, or steer.
+**Status keyboard mode** commandeers the arrow keys for itself. Up and down step through each telemetry item; left or right give an up-to-date readout of the currently selected item. Related items can share a spoken category: entering tire pressures or brake temperatures from either direction announces the category with the first wheel, while later wheels omit it until you leave and re-enter. Each existing wheel gets its own item, including the centred front wheel on three-wheeled Pigeon and Wigeon variants; nonexistent corners are omitted. Clutch temperature and turbo pressure are likewise omitted when the vehicle does not expose those capabilities. Ctrl+S resets the shared selection when it turns this keyboard mode on. The unbound controller status actions use the same selection and metric list but work whether this mode is on or off. Keyboard mode must be turned off in order to use a screen reader effectively. It must also not be used if you play with a keyboard, because you will not be able to accelerate, brake, or steer.
 
 **Buffer mode** commandeers the bracket keys for itself. These step through the 100 most recent messages. Left bracket navigates backwards through the buffer (older messages), and right bracket moves forward (newer messages).
 
@@ -259,7 +265,7 @@ The enhanced behavior requires the R2 feed from the matching mod. A newer execut
 
 **Loader implement awareness** covers the bucket and forks on machines like the WL-40 wheel loader. Nothing needs turning on and there is no keybind: it appears by itself on a machine that has an implement, and is completely inert on every ordinary vehicle.
 
-Status mode gains three extra items on such a machine — implement height above the ground beneath it, implement tilt in degrees from level, and the frame articulation angle (the same bend that drives the articulation tone).
+The shared status list gains three extra items on such a machine — implement height above the ground beneath it, implement tilt in degrees from level, and the frame articulation angle (the same bend that drives the articulation tone).
 
 Two tones report the implement continuously. A rough FM tone reports the ground: it is clean and quiet a couple of metres up, and grows progressively grittier the closer the bucket or forks get to the ground. If you curl into the ground hard enough to lever the machine up off its front wheels, that tone cleans up again and rises in pitch with how much lift you are getting. A second tone reports tilt on a quarter-tone scale — 400 Hz is dead level, falling to 200 Hz at the full forward dump and rising to 800 Hz at the full curl back, in countable quarter-tone steps. Both tones fade away about a second after you stop moving the implement and snap straight back when you touch the controls again; the ground tone also comes back on its own if you are driving toward something rather than lowering onto it.
 
@@ -308,7 +314,7 @@ The mod asks for elevated privileges because the layered commands need to suppre
 
 ### Known Issues
 
-- Some metrics in status mode never update (clutch temp, tire temps, brake temps)
+- Tire temperatures are not currently available in the status list
 - Device following may or may not work for some users
 - Automatic trailer alignment does not work for fifth wheel-equipped vehicles and their associated trailers
 

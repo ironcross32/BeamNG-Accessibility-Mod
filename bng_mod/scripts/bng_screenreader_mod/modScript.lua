@@ -3,6 +3,9 @@
 -- It loads the vehicleScanner GE extension.
 
 extensions.load("vehicleNaming")
+-- Adds the Accessibility controls category before BeamNG validates this mod's regular
+-- actions. The extension is manual so the bindings and bridge survive ordinary Lua reloads.
+extensions.load("accessibilityInput")
 -- Loaded first: vehicleScanner and implementProximity both query it, and its own onUpdate
 -- only ever retries stalled resolves, so it cannot throw ahead of anything below.
 extensions.load("vehicleGeometry")

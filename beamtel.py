@@ -11,6 +11,7 @@ from nvda_ws_speaker import (
     register_dom_dump_callback,
     register_loading_state_callback,
     register_settings_request_callback,
+    register_accessibility_action_callback,
     broadcast,
     bnvda_debug_enabled,
 )
@@ -572,6 +573,7 @@ def load_config():
 # =========================
 OG_FORMAT = "<I4sHBBfffffffIIfff16s16si"
 OG_SIZE = struct.calcsize(OG_FORMAT)
+OG_TURBO = 1 << 13  # BeamNG/LFS OutGauge flag: this vehicle exposes turbo boost
 
 # Extended telemetry. bng_mod/ is a directory junction into the game install, so the Lua
 # half can move (git checkout, mod update) without beamtel restarting. A hard equality test
@@ -582,12 +584,30 @@ OG_SIZE = struct.calcsize(OG_FORMAT)
 EXT_FORMAT_V1 = "<H4sBx9fII28f"  # pre-implement (no bucket/fork block)
 EXT_SIZE_V1 = struct.calcsize(EXT_FORMAT_V1)
 
-EXT_FORMAT = "<H4sBx9fII36f"
+EXT_FORMAT_V2 = "<H4sBx9fII36f"  # implement block, four corner wheels only
+EXT_SIZE_V2 = struct.calcsize(EXT_FORMAT_V2)
+
+# v3 appends centred front/rear pressure, tire temperature and brake temperature,
+# followed by an explicit telemetry-presence bitmask. Appending keeps every v2 offset stable.
+EXT_FORMAT = "<H4sBx9fII42fI"
 EXT_SIZE = struct.calcsize(EXT_FORMAT)
 
 # Values a v1 packet implies for the eight implement floats. Mirrors the sentinels in
 # 796F6C6F313035.lua: flags 0 = nothing valid, -1 = no ground reading.
 EXT_V1_IMPLEMENT_DEFAULTS = (0.0, -1.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+
+WHEEL_POS_FL = 1 << 0
+WHEEL_POS_FR = 1 << 1
+WHEEL_POS_RL = 1 << 2
+WHEEL_POS_RR = 1 << 3
+WHEEL_POS_F = 1 << 4
+WHEEL_POS_R = 1 << 5
+TELEMETRY_HAS_CLUTCH = 1 << 6
+WHEEL_POS_CORNERS = WHEEL_POS_FL | WHEEL_POS_FR | WHEEL_POS_RL | WHEEL_POS_RR
+
+# A v2 mod cannot tell Python which wheel names were present. Preserve its historical
+# four-corner interpretation and leave the new centred-wheel values unavailable.
+EXT_V2_WHEEL_DEFAULTS = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0, WHEEL_POS_CORNERS)
 _ext_version_warned = False
 
 MS_MAGIC = b"BNG1"
@@ -3540,6 +3560,7 @@ last_speed_ms = 0.0
 last_rpm = 0.0
 last_fuel = 0.0
 last_turbo = 0.0
+last_protocol_flags = 0
 last_engtemp = 0.0
 last_oiltemp = 0.0
 last_throttle = 0.0
@@ -3621,6 +3642,10 @@ last_brake_temp_fl, last_brake_temp_fr, last_brake_temp_rl, last_brake_temp_rr =
     0.0,
     0.0,
 )
+last_tire_pressure_f, last_tire_pressure_r = 0.0, 0.0
+last_tire_temp_f, last_tire_temp_r = 0.0, 0.0
+last_brake_temp_f, last_brake_temp_r = 0.0, 0.0
+last_telemetry_presence = WHEEL_POS_CORNERS
 last_signal_left_input, last_signal_right_input, last_hazard_enabled = (
     False,
     False,
@@ -3629,8 +3654,8 @@ last_signal_left_input, last_signal_right_input, last_hazard_enabled = (
 last_lightbar = -1
 last_fog = -1
 
-# Status Mode
-status_mode_active = False
+# Status keyboard mode
+status_keyboard_mode_active = False
 current_status_metric_index = 0
 status_arrow_hooks = []
 
@@ -4090,7 +4115,7 @@ _capture_mods = {"ctrl": False, "shift": False, "alt": False}
 _input_help_mode = False
 
 # ---------------------------------------------------------------------------
-#  Hook dispatch worker
+#  Command dispatch worker
 #
 #  A `keyboard` hook installed with suppress=True runs inside the Win32
 #  WH_KEYBOARD_LL callback, not on a worker thread: _winkeyboard.py's
@@ -4110,8 +4135,8 @@ _input_help_mode = False
 #  suppression — then queue the actual work here. Nothing on the queue can stall
 #  the hook, because the hook never waits for it.
 # ---------------------------------------------------------------------------
-_kb_queue = queue.Queue()
-_kb_worker_thread = None
+_command_queue = queue.Queue()
+_command_worker_thread = None
 
 
 class _SynthKeyEvent:
@@ -4128,12 +4153,12 @@ class _SynthKeyEvent:
         self.event_type = event_type
 
 
-def _kb_dispatch(fn, *args):
-    """Queue fn(*args) to run on the keyboard worker. Safe inside a hook."""
+def _command_dispatch(fn, *args):
+    """Queue fn(*args) on the serial command worker. Safe inside a hook or callback."""
     try:
-        _kb_queue.put_nowait((fn, args))
+        _command_queue.put_nowait((fn, args))
     except Exception:
-        logger.exception("Failed to queue keyboard command")
+        logger.exception("Failed to queue command")
 
 
 def _kb_enqueue(handler):
@@ -4145,32 +4170,32 @@ def _kb_enqueue(handler):
     """
 
     def wrapper(event):
-        _kb_dispatch(handler, event)
+        _command_dispatch(handler, event)
 
     return wrapper
 
 
-def _kb_worker_loop():
+def _command_worker_loop():
     while True:
-        fn, args = _kb_queue.get()
+        fn, args = _command_queue.get()
         try:
             fn(*args)
         except Exception:
             # A handler that raised must not take the worker down with it, or
-            # every later keystroke would be silently dropped.
-            logger.exception("Keyboard command handler raised")
+            # every later command would be silently dropped.
+            logger.exception("Command handler raised")
         finally:
-            _kb_queue.task_done()
+            _command_queue.task_done()
 
 
-def _start_kb_worker():
-    global _kb_worker_thread
-    if _kb_worker_thread is not None:
+def _start_command_worker():
+    global _command_worker_thread
+    if _command_worker_thread is not None:
         return
-    _kb_worker_thread = threading.Thread(
-        target=_kb_worker_loop, name="kb-dispatch", daemon=True
+    _command_worker_thread = threading.Thread(
+        target=_command_worker_loop, name="command-dispatch", daemon=True
     )
-    _kb_worker_thread.start()
+    _command_worker_thread.start()
 
 
 # ---------------------------------------------------------------------------
@@ -4227,7 +4252,7 @@ def _kb_layer_press(event):
         return False
     if name == layer:  # the F9/F10 that opened the layer, repeating
         return False
-    _kb_dispatch(_kb_run_layer_command, layer, name, dict(_live_mods))
+    _command_dispatch(_kb_run_layer_command, layer, name, dict(_live_mods))
     return False
 
 
@@ -4419,7 +4444,17 @@ def _clear_next_key_hook(speak_exit: bool):
         say("Exit", exclude_from_buffer=True)
 
 
-# Data structure for Status Mode
+# Shared status catalog for keyboard and controller navigation
+def _wheel_status_metric(label, category, value_getter, position_flag):
+    return {
+        "label": label,
+        "category": category,
+        "getValue": value_getter,
+        "isAvailable": lambda: protocol_mode == "extended"
+        and bool(int(last_telemetry_presence) & position_flag),
+    }
+
+
 STATUS_METRICS = [
     {
         "label": "Heading",
@@ -4461,24 +4496,57 @@ STATUS_METRICS = [
         "getValue": lambda: fmt_temp_c_or_f(last_oiltemp),
         "isAvailable": lambda: True,
     },
-    # {'label': 'Clutch Temperature', 'getValue': lambda: fmt_temp_c_or_f(last_clutch_temp), 'isAvailable': lambda: protocol_mode == 'extended'},
+    {
+        "label": "Clutch Temperature",
+        "getValue": lambda: fmt_temp_c_or_f(last_clutch_temp),
+        "isAvailable": lambda: protocol_mode == "extended"
+        and bool(int(last_telemetry_presence) & TELEMETRY_HAS_CLUTCH),
+    },
     {
         "label": "Turbo Pressure",
         "getValue": lambda: fmt_turbo(last_turbo),
-        "isAvailable": lambda: True,
+        "isAvailable": lambda: bool(int(last_protocol_flags) & OG_TURBO),
     },
     # {'label': 'Oil Pressure', 'getValue': lambda: fmt_turbo(last_oil_pressure), 'isAvailable': lambda: protocol_mode == 'extended'},
     # {'label': 'Air System Pressure', 'getValue': lambda: fmt_pressure(last_air_pressure), 'isAvailable': lambda: protocol_mode == 'extended' and last_air_pressure_max > 0},
     # {'label': 'Lateral G-Force', 'getValue': lambda: (f"{last_g_lat:.2f}", "G"), 'isAvailable': lambda: protocol_mode == 'extended'},
     # {'label': 'Longitudinal G-Force', 'getValue': lambda: (f"{last_g_lon:.2f}", "G"), 'isAvailable': lambda: protocol_mode == 'extended'},
-    {
-        "label": "Tire Pressures (FL, FR, RL, RR)",
-        "getValue": lambda: (
-            f"{fmt_pressure(last_tire_pressure_fl)[0]}, {fmt_pressure(last_tire_pressure_fr)[0]}, {fmt_pressure(last_tire_pressure_rl)[0]}, {fmt_pressure(last_tire_pressure_rr)[0]}",
-            "psi" if UNITS_MODE == "imperial" else "bar",
-        ),
-        "isAvailable": lambda: protocol_mode == "extended",
-    },
+    _wheel_status_metric(
+        "front",
+        "Tire pressures",
+        lambda: fmt_pressure(last_tire_pressure_f),
+        WHEEL_POS_F,
+    ),
+    _wheel_status_metric(
+        "front left",
+        "Tire pressures",
+        lambda: fmt_pressure(last_tire_pressure_fl),
+        WHEEL_POS_FL,
+    ),
+    _wheel_status_metric(
+        "front right",
+        "Tire pressures",
+        lambda: fmt_pressure(last_tire_pressure_fr),
+        WHEEL_POS_FR,
+    ),
+    _wheel_status_metric(
+        "rear",
+        "Tire pressures",
+        lambda: fmt_pressure(last_tire_pressure_r),
+        WHEEL_POS_R,
+    ),
+    _wheel_status_metric(
+        "rear left",
+        "Tire pressures",
+        lambda: fmt_pressure(last_tire_pressure_rl),
+        WHEEL_POS_RL,
+    ),
+    _wheel_status_metric(
+        "rear right",
+        "Tire pressures",
+        lambda: fmt_pressure(last_tire_pressure_rr),
+        WHEEL_POS_RR,
+    ),
     # Loader implement (WL-40 bucket / forks). These three only appear when the mod actually
     # resolved an implement or hydraulic steering — implementFlags is 0 on every ordinary
     # vehicle, so a Pickup's status list is unchanged.
@@ -4536,7 +4604,42 @@ STATUS_METRICS = [
         and (time.monotonic() - last_trailer_stamp) <= TRAILER_STALE_SEC,
     },
     # {'label': 'Tire Temps (FL, FR, RL, RR)', 'getValue': lambda: (f"{fmt_temp_c_or_f(last_tire_temp_fl)[0]}, {fmt_temp_c_or_f(last_tire_temp_fr)[0]}, {fmt_temp_c_or_f(last_tire_temp_rl)[0]}, {fmt_temp_c_or_f(last_tire_temp_rr)[0]}", "F" if UNITS_MODE == 'imperial' else "C"), 'isAvailable': lambda: protocol_mode == 'extended'},
-    # {'label': 'Brake Temps (FL, FR, RL, RR)', 'getValue': lambda: (f"{fmt_temp_c_or_f(last_brake_temp_fl)[0]}, {fmt_temp_c_or_f(last_brake_temp_fr)[0]}, {fmt_temp_c_or_f(last_brake_temp_rl)[0]}, {fmt_temp_c_or_f(last_brake_temp_rr)[0]}", "F" if UNITS_MODE == 'imperial' else "C"), 'isAvailable': lambda: protocol_mode == 'extended'},
+    _wheel_status_metric(
+        "front",
+        "Brake temperatures",
+        lambda: fmt_temp_c_or_f(last_brake_temp_f),
+        WHEEL_POS_F,
+    ),
+    _wheel_status_metric(
+        "front left",
+        "Brake temperatures",
+        lambda: fmt_temp_c_or_f(last_brake_temp_fl),
+        WHEEL_POS_FL,
+    ),
+    _wheel_status_metric(
+        "front right",
+        "Brake temperatures",
+        lambda: fmt_temp_c_or_f(last_brake_temp_fr),
+        WHEEL_POS_FR,
+    ),
+    _wheel_status_metric(
+        "rear",
+        "Brake temperatures",
+        lambda: fmt_temp_c_or_f(last_brake_temp_r),
+        WHEEL_POS_R,
+    ),
+    _wheel_status_metric(
+        "rear left",
+        "Brake temperatures",
+        lambda: fmt_temp_c_or_f(last_brake_temp_rl),
+        WHEEL_POS_RL,
+    ),
+    _wheel_status_metric(
+        "rear right",
+        "Brake temperatures",
+        lambda: fmt_temp_c_or_f(last_brake_temp_rr),
+        WHEEL_POS_RR,
+    ),
 ]
 
 
@@ -4588,7 +4691,7 @@ def release_arrow_owners(reason=""):
     of another leaves two owners on the same key — see `_hook_suppressed`.
     """
     close_virtual_browser(speak_exit=False)
-    if status_mode_active:
+    if status_keyboard_mode_active:
         toggle_status_mode()
     elif status_arrow_hooks:
         # Hooks outliving the mode flag: release them anyway rather than leaving the arrows
@@ -4598,15 +4701,10 @@ def release_arrow_owners(reason=""):
             logger.warning(f"Released orphaned status-mode arrow hooks ({reason})")
 
 
-def on_status_arrow_press(event):
+def navigate_status(action):
     global current_status_metric_index
-    # Don't steal the arrows while a virtual browser (vehicle selector, clickspot list,
-    # bindings list) owns them. This used to read a `_vehicle_selector_open` name that was
-    # never defined anywhere, so every arrow press in status mode raised NameError before
-    # reaching a single metric — status mode looked dead.
-    if _vbrowser_active:
-        return
-    if not status_mode_active:
+    if action not in {"status_up", "status_down", "status_repeat"}:
+        logger.warning("Ignoring unknown status navigation action: %r", action)
         return
     with state_lock:
         available_metrics = [m for m in STATUS_METRICS if m["isAvailable"]()]
@@ -4614,28 +4712,59 @@ def on_status_arrow_press(event):
             say("No status metrics available", exclude_from_buffer=True)
             return
         current_status_metric_index %= len(available_metrics)
-        if event.name == "down":
+        previous_category = available_metrics[current_status_metric_index].get("category")
+        if action == "status_down":
             current_status_metric_index = (current_status_metric_index + 1) % len(
                 available_metrics
             )
-        elif event.name == "up":
+        elif action == "status_up":
             current_status_metric_index = (
                 current_status_metric_index - 1 + len(available_metrics)
             ) % len(available_metrics)
         metric = available_metrics[current_status_metric_index]
         value, unit = metric["getValue"]()
+        value_text = f"{value} {unit}".strip()
+        category = metric.get("category")
+        label = metric["label"]
+        if category and category != previous_category:
+            label = f"{category}: {label}"
         say(
-            f"{metric['label']}, {value} {unit}"
-            if event.name in ("up", "down")
-            else f"{value} {unit}",
+            f"{label}, {value_text}"
+            if action != "status_repeat"
+            else value_text,
             exclude_from_buffer=True,
         )
 
 
+def _on_accessibility_action(action):
+    # The TCP callback runs on aiohttp's event-loop thread. Status reads and
+    # speech stay serialized with keyboard commands on the command worker.
+    _command_dispatch(navigate_status, action)
+
+
+def on_status_arrow_press(event):
+    # Don't steal the arrows while a virtual browser (vehicle selector, clickspot list,
+    # bindings list) owns them. This used to read a `_vehicle_selector_open` name that was
+    # never defined anywhere, so every arrow press in status mode raised NameError before
+    # reaching a single metric — status mode looked dead.
+    if _vbrowser_active:
+        return
+    if not status_keyboard_mode_active:
+        return
+    action = {
+        "up": "status_up",
+        "down": "status_down",
+        "left": "status_repeat",
+        "right": "status_repeat",
+    }.get(event.name)
+    if action:
+        navigate_status(action)
+
+
 def toggle_status_mode():
-    global status_mode_active, current_status_metric_index, status_arrow_hooks
-    status_mode_active = not status_mode_active
-    if status_mode_active:
+    global status_keyboard_mode_active, current_status_metric_index, status_arrow_hooks
+    status_keyboard_mode_active = not status_keyboard_mode_active
+    if status_keyboard_mode_active:
         current_status_metric_index = 0
         say("Status mode on", exclude_from_buffer=True)
         try:
@@ -5449,7 +5578,7 @@ def request_vehicle_info(model=None, config=None, timeout=0.6):
     empty config meaning the model's default.
 
     The bounded wait is safe wherever this is called from today -- the F9
-    dispatcher runs on the `kb-dispatch` worker thread and the spawner on its own
+    dispatcher runs on the `command-dispatch` worker thread and the spawner on its own
     worker, never on a keyboard hook, so it cannot trip the ~300 ms Windows
     low-level-hook timeout that would leak suppressed keys to the game.
     """
@@ -7807,7 +7936,7 @@ def install_hotkeys(audio_controller):
         )
         return
 
-    _start_kb_worker()
+    _start_command_worker()
 
     # Force the speech library load now. on_f9/on_f10 speak the layer prompt
     # before installing the layer hook, and they run on keyboard's event-
@@ -7872,7 +8001,8 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
         last_oiltemp, \
         last_oil_pressure, \
         last_rpm_max, \
-        last_turbo_max
+        last_turbo_max, \
+        last_protocol_flags
     global \
         last_throttle, \
         last_brake, \
@@ -7893,6 +8023,9 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
         last_brake_temp_fr, \
         last_brake_temp_rl, \
         last_brake_temp_rr
+    global last_tire_pressure_f, last_tire_pressure_r
+    global last_tire_temp_f, last_tire_temp_r
+    global last_brake_temp_f, last_brake_temp_r, last_telemetry_presence
     global \
         last_signal_left_input, \
         last_signal_right_input, \
@@ -8147,12 +8280,24 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     unpacked = struct.unpack(EXT_FORMAT, data)
                 except Exception:
                     continue
+            elif protocol_mode == "extended" and len(data) == EXT_SIZE_V2:
+                try:
+                    unpacked = struct.unpack(EXT_FORMAT_V2, data) + EXT_V2_WHEEL_DEFAULTS
+                except Exception:
+                    continue
+                if not _ext_version_warned:
+                    _ext_version_warned = True
+                    logger.warning(
+                        f"Extended telemetry packet is {EXT_SIZE_V2} bytes, expected "
+                        f"{EXT_SIZE}. The Lua mod in bng_mod/ is older than this build; "
+                        "centred-wheel telemetry will be unavailable."
+                    )
             elif protocol_mode == "extended" and len(data) == EXT_SIZE_V1:
                 # Older mod half. Decode what it does send and pad the implement block, so a
                 # version skew costs the loader features rather than all telemetry.
                 try:
-                    unpacked = (
-                        struct.unpack(EXT_FORMAT_V1, data) + EXT_V1_IMPLEMENT_DEFAULTS
+                    unpacked = struct.unpack(EXT_FORMAT_V1, data) + (
+                        EXT_V1_IMPLEMENT_DEFAULTS + EXT_V2_WHEEL_DEFAULTS
                     )
                 except Exception:
                     continue
@@ -8161,7 +8306,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     logger.warning(
                         f"Extended telemetry packet is {EXT_SIZE_V1} bytes, expected "
                         f"{EXT_SIZE}. The Lua mod in bng_mod/ is older than this build; "
-                        f"implement (bucket/fork) telemetry will be unavailable."
+                        "implement and centred-wheel telemetry will be unavailable."
                     )
             elif protocol_mode == "outgauge" and len(data) >= OG_SIZE:
                 try:
@@ -8179,6 +8324,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                 if baseline_frame:
                     _telemetry_baseline_pending = False
                 if protocol_mode == "extended":
+                    protocol_flags = int(unpacked[0])
                     showLights = unpacked[13]
                     (
                         speed_ms,
@@ -8228,7 +8374,16 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         implement_lift,
                         implement_activity,
                         articulation_deg,
-                    ) = unpacked[14:]
+                    ) = unpacked[14:50]
+                    (
+                        tire_p_f,
+                        tire_p_r,
+                        tire_t_f,
+                        tire_t_r,
+                        brake_t_f,
+                        brake_t_r,
+                        telemetry_presence,
+                    ) = unpacked[50:]
                     last_oil_pressure, last_air_pressure, last_air_pressure_max = (
                         oil_pressure,
                         air_pressure,
@@ -8253,6 +8408,10 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         last_brake_temp_rl,
                         last_brake_temp_rr,
                     ) = brake_t_fl, brake_t_fr, brake_t_rl, brake_t_rr
+                    last_tire_pressure_f, last_tire_pressure_r = tire_p_f, tire_p_r
+                    last_tire_temp_f, last_tire_temp_r = tire_t_f, tire_t_r
+                    last_brake_temp_f, last_brake_temp_r = brake_t_f, brake_t_r
+                    last_telemetry_presence = int(telemetry_presence)
 
                     # Turn signal / hazard announcements
                     cur_left = sig_left_in > 0.5
@@ -8298,6 +8457,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         if not baseline_frame:
                             say("Fog lights on" if cur_fog else "Fog lights off")
                 else:  # outgauge
+                    protocol_flags = int(unpacked[2])
                     showLights = unpacked[13]
                     speed_ms, rpm, turbo, engtemp, fuel, oil_pressure, oiltemp = (
                         unpacked[5:12]
@@ -8322,7 +8482,8 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     last_turbo,
                     last_engtemp,
                     last_oiltemp,
-                ) = speed_ms, rpm, fuel, turbo, engtemp, oiltemp
+                    last_protocol_flags,
+                ) = speed_ms, rpm, fuel, turbo, engtemp, oiltemp, protocol_flags
                 last_throttle, last_brake, last_clutch = (
                     max(0.0, min(1.0, throttle)),
                     max(0.0, min(1.0, brake)),
@@ -9458,6 +9619,11 @@ def _run_engine():
     audio_controller_ref = audio_controller
 
     _apply_live_config(audio_controller)
+
+    # Controller actions arrive on the TCP event-loop thread even when the
+    # keyboard module is unavailable or cannot install elevated hooks.
+    _start_command_worker()
+    register_accessibility_action_callback(_on_accessibility_action)
 
     watcher_thread = threading.Thread(target=_config_watcher, args=(STOP,), daemon=True)
     watcher_thread.start()

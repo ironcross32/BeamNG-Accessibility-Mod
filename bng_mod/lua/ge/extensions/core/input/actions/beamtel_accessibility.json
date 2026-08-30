@@ -1,0 +1,29 @@
+{
+  "beamtel_accessibility_status_up": {
+    "cat": "accessibility",
+    "order": 1,
+    "ctx": "tlua",
+    "actionMap": "Normal",
+    "onDown": "extensions.accessibilityInput.trigger('status_up')",
+    "title": "Accessibility menu up",
+    "desc": "Move to and announce the previous available status item."
+  },
+  "beamtel_accessibility_status_down": {
+    "cat": "accessibility",
+    "order": 2,
+    "ctx": "tlua",
+    "actionMap": "Normal",
+    "onDown": "extensions.accessibilityInput.trigger('status_down')",
+    "title": "Accessibility menu down",
+    "desc": "Move to and announce the next available status item."
+  },
+  "beamtel_accessibility_status_repeat": {
+    "cat": "accessibility",
+    "order": 3,
+    "ctx": "tlua",
+    "actionMap": "Normal",
+    "onDown": "extensions.accessibilityInput.trigger('status_repeat')",
+    "title": "Accessibility menu repeat",
+    "desc": "Announce the fresh value of the selected status item without moving."
+  }
+}
