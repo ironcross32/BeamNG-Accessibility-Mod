@@ -40,6 +40,11 @@ local function csLog(level, msg)
   log(level, 'ClickspotAccess', msg)
 end
 
+local function sendListState(packet)
+  if udpSend then udpSend:send(packet) end
+end
+
+
 -- =================================================================================================
 --  Pick the one action string to present, and to fire, for a trigger.
 --
@@ -514,6 +519,7 @@ function M.onExtensionLoaded()
   csLog('info', "Accessible clickspot detection extension loaded.")
   -- Bind sockets here so Ctrl+L Lua reload re-opens them.
   setupSockets()
+  sendListState("TRIGGER_LIST_OFF")
 end
 
 function M.onVehicleSwitched(oldId, newId, player)
@@ -521,6 +527,7 @@ function M.onVehicleSwitched(oldId, newId, player)
   if player ~= 0 then return end  -- only care about player 0
   csLog('info', "Vehicle switched from " .. tostring(oldId) .. " to " .. tostring(newId))
   -- Force a cache rebuild with retry
+  sendListState("TRIGGER_LIST_PENDING")
   triggerCache = {}
   triggerCacheVehID = nil
   lastHoveredId = -1
@@ -540,6 +547,7 @@ function M.onWorldReadyState(state)
     lastHoveredId = -1
 
     setupSockets()
+    sendListState("TRIGGER_LIST_OFF")
   end
 end
 
@@ -561,12 +569,15 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
           cacheRetryCount = 0
           cacheRetryTimer = 0
           csLog('info', "Clickspot detection activated.")
+          sendListState("TRIGGER_LIST_PENDING")
           buildTriggerCache()
         elseif cmdUpper == "OFF" and isActive then
           isActive = false
           lastHoveredId = -1
           csLog('info', "Clickspot detection deactivated.")
+          sendListState("TRIGGER_LIST_OFF")
         elseif cmdUpper == "RECACHE" and isActive then
+          sendListState("TRIGGER_LIST_PENDING")
           triggerCacheVehID = nil
           buildTriggerCache()
         elseif cmd:sub(1, 5) == "SNAP:" then
@@ -590,6 +601,7 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
   -- 2. Check if vehicle changed
   local currentVehId = be:getPlayerVehicleID(0)
   if currentVehId and currentVehId >= 0 and currentVehId ~= triggerCacheVehID and currentVehId ~= pendingCacheVehID then
+    sendListState("TRIGGER_LIST_PENDING")
     pendingCacheVehID = currentVehId
     cacheRetryTimer = 0
     cacheRetryCount = 0

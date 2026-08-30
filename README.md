@@ -125,11 +125,26 @@ In reverse, the scanner measures from the back of your vehicle and reports the b
 - Ctrl+Shift+C: Clickspot detection
 - Ctrl+N: Accessible node grabber
 
-#### Controller status actions
+#### Controller accessibility menu
 
-BeamNG's **Accessibility** controls category contains three normal actions: **Accessibility menu up**, **Accessibility menu down**, and **Accessibility menu repeat**. They are intentionally unbound so the mod does not take over any controller or keyboard input. In Options > Controls > Bindings, bind them to your preferred controller modifier plus D-pad up, D-pad down, and a repeat button. Using a modifier avoids firing the vehicle or menu actions already assigned to the same controls.
+BeamNG's **Accessibility** controls category contains six Normal actions: **Accessibility menu up**, **Accessibility menu down**, **Accessibility menu repeat**, **Accessibility next menu**, **Accessibility previous menu**, and **Accessibility activate**. They are intentionally unbound so the mod does not take over controller or keyboard input. In Options > Controls > Bindings, assign them to a controller modifier plus D-pad up/down, D-pad left/right, and two face or shoulder buttons. Using a modifier avoids firing vehicle or UI actions already assigned to the same controls.
 
-These actions work without turning on Ctrl+S status mode and without elevated keyboard hooks. Up and down move through the same status list as the keyboard arrows; repeat reads a fresh value for the selected item without moving. Controller and keyboard navigation share one selection.
+The menu starts on **Status** whenever beamtel starts. Up and down wrap through the current screen, Repeat reads the selected value, function, or clickspot without moving, Next/Previous menu wrap through **Status**, **Functions**, and **Click spots**, and Activate repeats a Status value or runs the highlighted Function or clickspot. All three screens preserve separate cursors. These actions use the existing command worker, so Ctrl+S status mode, elevated keyboard hooks, and BeamNG window focus are not required.
+
+The **Status** screen is the same live, conditionally filtered telemetry catalog used by Ctrl+S keyboard navigation. The flat **Functions** screen announces category names when you enter each run and includes:
+
+- **Vehicle scanner:** scanner toggle and target selection, scanner readouts, trailer/ramp alignment, and coupler-distance callouts.
+- **Alignment:** instrument toggle, alignment/cannon readout, and reference-band selection.
+- **Driving assistance:** pedal tones, heading/coordinate guidance, drift, low-speed, wheel-slip, obstacle and road detection, plus road status.
+- **Waypoints:** mark, speak, and read distance/bearing to a waypoint.
+- **Vehicle information:** redline, maximum turbo and air pressure when supported, attitude, coordinates, and damage.
+- **Camera:** camera-information toggle plus heading, altitude, pitch, vehicle bearing, and vehicle distance.
+- **Interaction:** accessible node grabber, clickspot detection, and unit switching.
+- **Environment:** terrain scan while driving. This command cannot activate an on-screen control when the game world is unavailable.
+
+Availability is recalculated on every press. For example, scanner readouts appear after the scanner is enabled, waypoint commands after marking a waypoint, camera readouts after camera information is enabled, and turbo or pneumatic readouts only on vehicles that publish those capabilities.
+
+The **Click spots** screen lists the current vehicle's completed clickspot scan. When detection is off it contains one item, **Turn on clickspot detection**, so it can be enabled without returning to Functions. While the vehicle is being scanned it reads **Detecting click spots**; an empty completed scan reads **No click spots found**. Those two status items are harmless when activated. Once results arrive, up/down wrap through their names and Activate performs the same cursor snap and clickspot press/release as Enter in the keyboard clickspot browser. Changing vehicles clears the old list immediately rather than exposing stale controls from the previous vehicle.
 
 #### Camera info (free camera):
 
@@ -248,7 +263,7 @@ Arrangement types are: line (all vehicles in a row), side by side (abreast), two
 
 **Buffer mode** commandeers the bracket keys for itself. These step through the 100 most recent messages. Left bracket navigates backwards through the buffer (older messages), and right bracket moves forward (newer messages).
 
-**Clickspot detection** looks for interactables on the interior or exterior of a vehicle — buttons, switches, levers, latches, etc. Press F9 then Ctrl+Shift+C to enable it; this will announce how many clickspots were found. Clickspots are then discoverable with the mouse: a beep sounds when the pointer enters one, and a reverse beep when it leaves. Click the mouse to perform the associated action. A menu-driven approach can also be activated with F9 then Ctrl+Shift+Alt+C, opening a virtual browser where you can move through all clickspots with the arrow keys and press Enter to activate one.
+**Clickspot detection** looks for interactables on the interior or exterior of a vehicle — buttons, switches, levers, latches, etc. Press F9 then Ctrl+Shift+C to enable it; this will announce how many clickspots were found. Clickspots are then discoverable with the mouse: a beep sounds when the pointer enters one, and a reverse beep when it leaves. Click the mouse to perform the associated action. A menu-driven approach can also be activated with F9 then Ctrl+Shift+Alt+C, opening a virtual browser where you can move through all clickspots with the arrow keys and press Enter to activate one. Activations are silent by default; enable **Announce clickspot actions** under **Automatic announcements** to hear success and failure feedback such as “Jumped to …” or “Cannot jump, …”. Clickspot scan results and names while browsing remain audible regardless of this setting.
 
 **Obstacle detection** is off at startup and toggled with Ctrl+O. It follows the selected
 forward or reverse path, starts measurements at the vehicle surface, and sounds only the most

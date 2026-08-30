@@ -197,6 +197,7 @@ DEFAULT_CONFIG = {
     "announce_speed": True,
     "speed_announce_interval": 25,
     "announce_gear": True,
+    "announce_clickspot_actions": False,
     "scanner_distance_callout_enabled": False,
     "scanner_distance_callout_interval": 10,
     "scanner_steer_tone_enabled": True,
@@ -2658,6 +2659,23 @@ def _send_scan_cmd(command):
         logger.error(f"Failed to send terrain scan command via UDP: {e}")
 
 
+def trigger_terrain_scan_driving_only():
+    """Start a terrain scan only while live driving telemetry is present.
+
+    Unlike F9+Space, this path never falls through to a UI context action. Controller
+    activation can therefore be delayed until after a screen transition without risking
+    an unrelated button press in BeamNG's menus.
+    """
+    if not _world_is_active():
+        say("Terrain scan is only available while driving", exclude_from_buffer=True)
+        return
+    scan_seen_before = _last_scan_reply_ts
+    _send_scan_cmd("SCAN")
+    threading.Thread(
+        target=_watch_scan_reply, args=(scan_seen_before,), daemon=True
+    ).start()
+
+
 def _send_scanner_cmd(command):
     try:
         cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -2973,11 +2991,99 @@ def nodegrab_listener(audio_controller, stop_event):
         logger.info("Node grabber listener stopped.")
 
 
+def _clickspot_set_pending():
+    """Clear published rows while Lua rebuilds them for the active vehicle."""
+    global clickspot_mode_active, clickspot_trigger_list, clickspot_list_loading
+    global _clickspot_trigger_building, _clickspot_expected_count
+    global current_clickspot_index
+    with state_lock:
+        clickspot_mode_active = True
+        clickspot_trigger_list = []
+        clickspot_list_loading = True
+        _clickspot_trigger_building = None
+        _clickspot_expected_count = None
+        current_clickspot_index = 0
+
+
+def _clickspot_set_off():
+    """Synchronize Python with a Lua-side detector shutdown or world reset."""
+    global clickspot_mode_active, clickspot_trigger_list, clickspot_list_loading
+    global _clickspot_trigger_building, _clickspot_expected_count
+    global current_clickspot_index
+    with state_lock:
+        clickspot_mode_active = False
+        clickspot_trigger_list = []
+        clickspot_list_loading = False
+        _clickspot_trigger_building = None
+        _clickspot_expected_count = None
+        current_clickspot_index = 0
+
+
+def _clickspot_begin_list(count):
+    """Begin an atomic clickspot list transfer; publish zero rows immediately."""
+    global clickspot_mode_active, clickspot_trigger_list, clickspot_list_loading
+    global _clickspot_trigger_building, _clickspot_expected_count
+    global current_clickspot_index
+    count = max(0, int(count))
+    with state_lock:
+        clickspot_mode_active = True
+        clickspot_trigger_list = []
+        _clickspot_trigger_building = {}
+        _clickspot_expected_count = count
+        clickspot_list_loading = count > 0
+        current_clickspot_index = 0
+        if count == 0:
+            _clickspot_trigger_building = None
+            _clickspot_expected_count = None
+
+
+def _clickspot_append_row(cache_idx, trigger_id, display_name):
+    """Stage one row and atomically publish the list when its announced count arrives."""
+    global clickspot_trigger_list, clickspot_list_loading
+    global _clickspot_trigger_building, _clickspot_expected_count
+    global current_clickspot_index
+    with state_lock:
+        if _clickspot_trigger_building is None or _clickspot_expected_count is None:
+            logger.warning("Clickspot row arrived outside a list transfer; ignoring it")
+            return False
+        if cache_idx < 0 or cache_idx >= _clickspot_expected_count:
+            logger.warning(
+                "Clickspot cache index %r is outside the announced list", cache_idx
+            )
+            return False
+        _clickspot_trigger_building[cache_idx] = (
+            cache_idx,
+            trigger_id,
+            display_name,
+        )
+        if len(_clickspot_trigger_building) != _clickspot_expected_count:
+            return False
+        clickspot_trigger_list = [
+            _clickspot_trigger_building[idx]
+            for idx in sorted(_clickspot_trigger_building)
+        ]
+        _clickspot_trigger_building = None
+        _clickspot_expected_count = None
+        clickspot_list_loading = False
+        current_clickspot_index = 0
+        return True
+
+
+def _announce_clickspot_action(display_name, failure_reason=None):
+    """Speak clickspot activation feedback only when its opt-in setting is enabled."""
+    if announce_clickspot_actions:
+        if failure_reason is None:
+            message = f"Jumped to {display_name}"
+        else:
+            message = f"Cannot jump, {failure_reason}"
+        say(message, exclude_from_buffer=True)
+
+
 def clickspot_listener(audio_controller, stop_event):
     """Listens for UDP packets from clickspotAccessible.lua — trigger hover data and list."""
     import ctypes
 
-    global clickspot_trigger_list, clickspot_last_hover_id
+    global clickspot_last_hover_id
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -3010,9 +3116,21 @@ def clickspot_listener(audio_controller, stop_event):
                     clickspot_last_hover_id = -1
                     continue
 
+                if text == "TRIGGER_LIST_PENDING":
+                    _clickspot_set_pending()
+                    continue
+
+                if text == "TRIGGER_LIST_OFF":
+                    _clickspot_set_off()
+                    continue
+
                 if text.startswith("TRIGGER_LIST:"):
-                    count = int(text[13:])
-                    clickspot_trigger_list = []
+                    try:
+                        count = int(text[13:])
+                    except ValueError:
+                        logger.warning("Malformed clickspot list count: %r", text)
+                        continue
+                    _clickspot_begin_list(count)
                     if count == 0:
                         say(
                             "No clickspots found on this vehicle",
@@ -3029,12 +3147,13 @@ def clickspot_listener(audio_controller, stop_event):
                     # TRIGGER:<cacheIndex>,<triggerId>,<displayName>
                     parts = text[8:].split(",", 2)
                     if len(parts) == 3:
-                        cache_idx = int(parts[0])
-                        trigger_id = int(parts[1])
-                        display_name = parts[2]
-                        clickspot_trigger_list.append(
-                            (cache_idx, trigger_id, display_name)
-                        )
+                        try:
+                            cache_idx = int(parts[0])
+                            trigger_id = int(parts[1])
+                        except ValueError:
+                            logger.warning("Malformed clickspot row: %r", text)
+                            continue
+                        _clickspot_append_row(cache_idx, trigger_id, parts[2])
                     continue
 
                 if text.startswith("HOVER:"):
@@ -3062,13 +3181,13 @@ def clickspot_listener(audio_controller, stop_event):
                         vw, vh = int(parts[2]), int(parts[3])
                         display_name = parts[5]
                         warp_cursor_to_viewport(sx, sy, vw, vh)
-                        # No beep on menu-initiated jump — speech only
-                        say(f"Jumped to {display_name}", exclude_from_buffer=True)
+                        # Menu activation never beeps; its success speech is opt-in.
+                        _announce_clickspot_action(display_name)
                     continue
 
                 if text.startswith("SNAP_FAIL:"):
                     reason = text[10:]
-                    say(f"Cannot jump, {reason}", exclude_from_buffer=True)
+                    _announce_clickspot_action(None, failure_reason=reason)
                     continue
 
             except socket.timeout:
@@ -3657,6 +3776,9 @@ last_fog = -1
 # Status keyboard mode
 status_keyboard_mode_active = False
 current_status_metric_index = 0
+current_functions_item_index = 0
+current_clickspot_index = 0
+current_accessibility_screen_index = 0
 status_arrow_hooks = []
 
 # Buffer Mode
@@ -4047,7 +4169,11 @@ _nodegrab_scroll_hook = None
 
 # Clickspot Detection State
 clickspot_mode_active = False
+announce_clickspot_actions = False
 clickspot_trigger_list = []  # list of (cache_index, trigger_id, display_name)
+clickspot_list_loading = False
+_clickspot_trigger_building = None
+_clickspot_expected_count = None
 clickspot_last_hover_id = -1
 
 # Vehicle-Specific Bindings State
@@ -4643,6 +4769,179 @@ STATUS_METRICS = [
 ]
 
 
+def _function_item(
+    label,
+    category,
+    name=None,
+    ctrl=False,
+    shift=False,
+    alt=False,
+    is_available=lambda: True,
+    handler=None,
+):
+    item = {
+        "label": label,
+        "category": category,
+        "isAvailable": is_available,
+    }
+    if handler is not None:
+        item["handler"] = handler
+    else:
+        item["command"] = (name, ctrl, shift, alt)
+    return item
+
+
+# A flat controller catalog over the existing F9 command layer. Categories are spoken
+# boundaries, not nested menus. Availability is deliberately live: modes toggled by one
+# item can expose or remove dependent items before the next controller press.
+FUNCTION_ITEMS = [
+    _function_item("Toggle vehicle scanner", "Vehicle scanner", "v", ctrl=True),
+    _function_item(
+        "Next vehicle scanner target", "Vehicle scanner", "tab"
+    ),
+    _function_item(
+        "Previous vehicle scanner target",
+        "Vehicle scanner",
+        "tab",
+        shift=True,
+    ),
+    _function_item(
+        "Lock onto nearest vehicle",
+        "Vehicle scanner",
+        "tab",
+        ctrl=True,
+    ),
+    _function_item(
+        "Distance and orientation",
+        "Vehicle scanner",
+        "d",
+        is_available=lambda: scan_mode_active,
+    ),
+    _function_item(
+        "Relative bearing",
+        "Vehicle scanner",
+        "d",
+        shift=True,
+        is_available=lambda: scan_mode_active,
+    ),
+    _function_item(
+        "Trailer or ramp alignment",
+        "Vehicle scanner",
+        "v",
+        shift=True,
+        is_available=lambda: scan_mode_active or dock_mode_active,
+    ),
+    _function_item(
+        "Coupler distance callouts",
+        "Vehicle scanner",
+        "d",
+        ctrl=True,
+        shift=True,
+        is_available=lambda: scan_mode_active,
+    ),
+    _function_item("Toggle alignment instrument", "Alignment", "i", ctrl=True),
+    _function_item("Alignment or cannon readout", "Alignment", "i"),
+    _function_item("Cycle reference band", "Alignment", "i", shift=True),
+    _function_item("Pedal tones", "Driving assistance", "c", ctrl=True),
+    _function_item("Heading guidance", "Driving assistance", "h", ctrl=True),
+    _function_item(
+        "Coordinate guidance",
+        "Driving assistance",
+        "g",
+        ctrl=True,
+        is_available=lambda: marked_coord_x is not None,
+    ),
+    _function_item("Drift detection", "Driving assistance", "d", ctrl=True),
+    _function_item(
+        "Low-speed detection", "Driving assistance", "l", ctrl=True, shift=True
+    ),
+    _function_item("Wheel-slip detection", "Driving assistance", "k", ctrl=True),
+    _function_item("Obstacle detection", "Driving assistance", "o", ctrl=True),
+    _function_item("Road detection", "Driving assistance", "r", ctrl=True),
+    _function_item(
+        "Road-status readout", "Driving assistance", "r", ctrl=True, shift=True
+    ),
+    _function_item("Mark waypoint", "Waypoints", "c", shift=True),
+    _function_item(
+        "Speak marked coordinates",
+        "Waypoints",
+        "c",
+        alt=True,
+        is_available=lambda: marked_coord_x is not None,
+    ),
+    _function_item(
+        "Distance and bearing",
+        "Waypoints",
+        "w",
+        is_available=lambda: marked_coord_x is not None,
+    ),
+    _function_item(
+        "Redline RPM",
+        "Vehicle information",
+        "r",
+        shift=True,
+        is_available=lambda: protocol_mode == "extended",
+    ),
+    _function_item(
+        "Maximum turbo pressure",
+        "Vehicle information",
+        "t",
+        shift=True,
+        is_available=lambda: protocol_mode == "extended"
+        and bool(int(last_protocol_flags) & OG_TURBO),
+    ),
+    _function_item(
+        "Air pressure",
+        "Vehicle information",
+        "p",
+        is_available=lambda: protocol_mode == "extended"
+        and last_air_pressure_max > 0,
+    ),
+    _function_item("Attitude", "Vehicle information", "a"),
+    _function_item("Coordinates", "Vehicle information", "c"),
+    _function_item("Damage report", "Vehicle information", "m"),
+    _function_item("Toggle camera information", "Camera", "f", alt=True),
+    _function_item(
+        "Camera heading", "Camera", "h", alt=True, is_available=lambda: free_cam_active
+    ),
+    _function_item(
+        "Camera altitude", "Camera", "a", alt=True, is_available=lambda: free_cam_active
+    ),
+    _function_item(
+        "Camera pitch", "Camera", "p", alt=True, is_available=lambda: free_cam_active
+    ),
+    _function_item(
+        "Vehicle bearing", "Camera", "v", alt=True, is_available=lambda: free_cam_active
+    ),
+    _function_item(
+        "Vehicle distance", "Camera", "d", alt=True, is_available=lambda: free_cam_active
+    ),
+    _function_item("Accessible node grabber", "Interaction", "n", ctrl=True),
+    _function_item(
+        "Clickspot detection", "Interaction", "c", ctrl=True, shift=True
+    ),
+    _function_item("Switch units", "Interaction", "u"),
+    _function_item(
+        "Terrain scan",
+        "Environment",
+        is_available=_world_is_active,
+        handler=trigger_terrain_scan_driving_only,
+    ),
+]
+
+ACCESSIBILITY_SCREENS = ("Status", "Functions", "Click spots")
+ACCESSIBILITY_ACTIONS = frozenset(
+    {
+        "status_up",
+        "status_down",
+        "status_repeat",
+        "next_menu",
+        "previous_menu",
+        "activate",
+    }
+)
+
+
 
 def _hook_suppressed(key, handler):
     """Suppressing KEY_DOWN hook that can always be torn down again.
@@ -4701,45 +5000,160 @@ def release_arrow_owners(reason=""):
             logger.warning(f"Released orphaned status-mode arrow hooks ({reason})")
 
 
-def navigate_status(action):
-    global current_status_metric_index
-    if action not in {"status_up", "status_down", "status_repeat"}:
-        logger.warning("Ignoring unknown status navigation action: %r", action)
+def _execute_function_item(item):
+    handler = item.get("handler")
+    if handler is not None:
+        handler()
         return
+    name, ctrl, shift, alt = item["command"]
+    _invoke_f9_command(name, ctrl=ctrl, shift=shift, alt=alt)
+
+
+def navigate_accessibility_menu(action):
+    """Navigate or activate the controller-facing accessibility screens."""
+    global current_accessibility_screen_index
+    global current_status_metric_index, current_functions_item_index
+    global current_clickspot_index
+
+    if action not in ACCESSIBILITY_ACTIONS:
+        logger.warning("Ignoring unknown accessibility action: %r", action)
+        return
+
+    execute_item = None
+    clickspot_action = None
+    speech = None
     with state_lock:
-        available_metrics = [m for m in STATUS_METRICS if m["isAvailable"]()]
-        if not available_metrics:
-            say("No status metrics available", exclude_from_buffer=True)
-            return
-        current_status_metric_index %= len(available_metrics)
-        previous_category = available_metrics[current_status_metric_index].get("category")
-        if action == "status_down":
-            current_status_metric_index = (current_status_metric_index + 1) % len(
-                available_metrics
-            )
-        elif action == "status_up":
-            current_status_metric_index = (
-                current_status_metric_index - 1 + len(available_metrics)
-            ) % len(available_metrics)
-        metric = available_metrics[current_status_metric_index]
-        value, unit = metric["getValue"]()
-        value_text = f"{value} {unit}".strip()
-        category = metric.get("category")
-        label = metric["label"]
-        if category and category != previous_category:
-            label = f"{category}: {label}"
-        say(
-            f"{label}, {value_text}"
-            if action != "status_repeat"
-            else value_text,
-            exclude_from_buffer=True,
-        )
+        if action == "next_menu":
+            current_accessibility_screen_index = (
+                current_accessibility_screen_index + 1
+            ) % len(ACCESSIBILITY_SCREENS)
+        elif action == "previous_menu":
+            current_accessibility_screen_index = (
+                current_accessibility_screen_index - 1
+            ) % len(ACCESSIBILITY_SCREENS)
+
+        switched_screen = action in {"next_menu", "previous_menu"}
+        if current_accessibility_screen_index == 0:
+            available_metrics = [m for m in STATUS_METRICS if m["isAvailable"]()]
+            if not available_metrics:
+                speech = "No status metrics available"
+            else:
+                current_status_metric_index %= len(available_metrics)
+                previous_category = available_metrics[current_status_metric_index].get(
+                    "category"
+                )
+                if not switched_screen and action == "status_down":
+                    current_status_metric_index = (
+                        current_status_metric_index + 1
+                    ) % len(available_metrics)
+                elif not switched_screen and action == "status_up":
+                    current_status_metric_index = (
+                        current_status_metric_index - 1
+                    ) % len(available_metrics)
+
+                metric = available_metrics[current_status_metric_index]
+                value, unit = metric["getValue"]()
+                value_text = f"{value} {unit}".strip()
+                category = metric.get("category")
+                label = metric["label"]
+                if switched_screen:
+                    if category:
+                        label = f"{category}: {label}"
+                    speech = f"Status: {label}, {value_text}"
+                elif action in {"status_repeat", "activate"}:
+                    speech = value_text
+                else:
+                    if category and category != previous_category:
+                        label = f"{category}: {label}"
+                    speech = f"{label}, {value_text}"
+        elif current_accessibility_screen_index == 1:
+            available_items = [i for i in FUNCTION_ITEMS if i["isAvailable"]()]
+            if not available_items:
+                speech = "No functions available"
+            else:
+                current_functions_item_index %= len(available_items)
+                previous_category = available_items[current_functions_item_index][
+                    "category"
+                ]
+                if not switched_screen and action == "status_down":
+                    current_functions_item_index = (
+                        current_functions_item_index + 1
+                    ) % len(available_items)
+                elif not switched_screen and action == "status_up":
+                    current_functions_item_index = (
+                        current_functions_item_index - 1
+                    ) % len(available_items)
+
+                item = available_items[current_functions_item_index]
+                label = item["label"]
+                category = item["category"]
+                if switched_screen:
+                    speech = f"Functions: {category}: {label}"
+                elif action == "activate":
+                    execute_item = item
+                elif action == "status_repeat":
+                    speech = label
+                else:
+                    if category != previous_category:
+                        label = f"{category}: {label}"
+                    speech = label
+        else:
+            if not clickspot_mode_active:
+                clickspot_items = [("enable", None, "Turn on clickspot detection")]
+            elif clickspot_list_loading:
+                clickspot_items = [("status", None, "Detecting click spots")]
+            elif not clickspot_trigger_list:
+                clickspot_items = [("status", None, "No click spots found")]
+            else:
+                clickspot_items = [
+                    ("clickspot", cache_idx, display_name)
+                    for cache_idx, _trigger_id, display_name in clickspot_trigger_list
+                ]
+
+            current_clickspot_index %= len(clickspot_items)
+            if not switched_screen and action == "status_down":
+                current_clickspot_index = (current_clickspot_index + 1) % len(
+                    clickspot_items
+                )
+            elif not switched_screen and action == "status_up":
+                current_clickspot_index = (current_clickspot_index - 1) % len(
+                    clickspot_items
+                )
+
+            kind, cache_idx, label = clickspot_items[current_clickspot_index]
+            if switched_screen:
+                speech = f"Click spots: {label}"
+            elif action == "activate":
+                if kind == "enable":
+                    clickspot_action = ("enable", None)
+                elif kind == "clickspot":
+                    clickspot_action = ("activate", cache_idx)
+                else:
+                    speech = label
+            else:
+                speech = label
+
+    if speech is not None:
+        say(speech, exclude_from_buffer=True)
+    if execute_item is not None:
+        _execute_function_item(execute_item)
+    if clickspot_action is not None:
+        kind, cache_idx = clickspot_action
+        if kind == "enable":
+            _invoke_f9_command("c", ctrl=True, shift=True)
+        else:
+            _activate_clickspot(cache_idx)
+
+
+def navigate_status(action):
+    """Compatibility entry point for Ctrl+S arrow navigation."""
+    navigate_accessibility_menu(action)
 
 
 def _on_accessibility_action(action):
-    # The TCP callback runs on aiohttp's event-loop thread. Status reads and
+    # The TCP callback runs on aiohttp's event-loop thread. Menu reads and
     # speech stay serialized with keyboard commands on the command worker.
-    _command_dispatch(navigate_status, action)
+    _command_dispatch(navigate_accessibility_menu, action)
 
 
 def on_status_arrow_press(event):
@@ -5445,14 +5859,9 @@ def _send_clickspot_cmd(command):
         logger.error(f"Failed to send clickspot command via UDP: {e}")
 
 
-def _clickspot_browser_on_enter(idx, line, data):
-    """Virtual browser enter callback — snap cursor to trigger and execute press+release."""
-    if data is None:
-        return
-    cache_idx = data
+def _activate_clickspot(cache_idx):
+    """Snap to and activate one cached clickspot through Lua's command path."""
     _send_clickspot_cmd(f"SNAP:{cache_idx}")
-    # Also execute a press+release to activate the trigger
-    import threading as _th
 
     def _do_exec():
         time.sleep(0.1)  # small delay to let SNAP/cursor warp complete
@@ -5460,19 +5869,28 @@ def _clickspot_browser_on_enter(idx, line, data):
         time.sleep(0.15)
         _send_clickspot_cmd(f"EXEC:{cache_idx},0")
 
-    _th.Thread(target=_do_exec, daemon=True).start()
+    threading.Thread(target=_do_exec, daemon=True).start()
+
+
+def _clickspot_browser_on_enter(idx, line, data):
+    """Virtual browser enter callback — snap cursor to trigger and execute press+release."""
+    if data is not None:
+        _activate_clickspot(data)
 
 
 def toggle_clickspot_mode(audio_controller):
-    global clickspot_mode_active, clickspot_trigger_list
-    clickspot_mode_active = not clickspot_mode_active
-    clickspot_trigger_list = []
+    with state_lock:
+        turning_on = not clickspot_mode_active
+    if turning_on:
+        _clickspot_set_pending()
+    else:
+        _clickspot_set_off()
 
-    command = "ON" if clickspot_mode_active else "OFF"
+    command = "ON" if turning_on else "OFF"
     _send_clickspot_cmd(command)
 
     say(
-        f"Clickspot detection {'on' if clickspot_mode_active else 'off'}",
+        f"Clickspot detection {'on' if turning_on else 'off'}",
         exclude_from_buffer=True,
     )
 
@@ -5816,14 +6234,14 @@ def open_clickspot_browser():
     )
 
 
-def _mcp_press_command(name, ctrl=False, shift=False, alt=False):
-    """Invoke an F9 command in-process on behalf of the MCP server.
+def _invoke_f9_command(name, ctrl=False, shift=False, alt=False):
+    """Invoke an F9 command in-process without injecting an operating-system key.
 
     _on_next_key_press duck-types its event -- it reads only .event_type and .name, with
-    the modifiers coming from _capture_mods -- so a command can be driven without OS key
-    injection and without BeamNG having focus. The modifier dict is saved and restored
-    because a real capture may be in progress, and _command_context is set so speech
-    behaves as it would for a genuine keypress.
+    the modifiers coming from _capture_mods -- so controller and MCP commands can reuse the
+    keyboard handlers without BeamNG having focus. The modifier dict is saved and restored
+    because a real capture may be in progress, and _command_context is set so speech behaves
+    as it would for a genuine keypress.
     """
     global _command_context
     if audio_controller_ref is None:
@@ -5842,6 +6260,11 @@ def _mcp_press_command(name, ctrl=False, shift=False, alt=False):
         _capture_mods.clear()
         _capture_mods.update(saved)
     return True
+
+
+def _mcp_press_command(name, ctrl=False, shift=False, alt=False):
+    """MCP-facing wrapper retained for the server registration below."""
+    return _invoke_f9_command(name, ctrl=ctrl, shift=shift, alt=alt)
 
 
 def _on_next_key_press(event, audio_controller):
@@ -6831,11 +7254,7 @@ def _on_next_key_press(event, audio_controller):
             # missing or deaf.
             say(info_fail[1] or "No vehicle information", exclude_from_buffer=True)
         elif _world_is_active():
-            _scan_seen_before = _last_scan_reply_ts
-            _send_scan_cmd("SCAN")
-            threading.Thread(
-                target=_watch_scan_reply, args=(_scan_seen_before,), daemon=True
-            ).start()
+            trigger_terrain_scan_driving_only()
         else:
             broadcast({"type": "context_action", "action": "activate"})
 
@@ -9505,6 +9924,7 @@ def _apply_live_config(audio_controller):
         compass_highlight_nth_click, \
         compass_click_interval_deg
     global announce_turn_signals, announce_speed, speed_announce_interval, announce_gear
+    global announce_clickspot_actions
     global scanner_distance_callout_enabled, scanner_distance_callout_interval
     global announce_implement_proximity, announce_cannon_shot
     global road_follow_guidance_enabled, road_junction_speech_enabled
@@ -9528,6 +9948,9 @@ def _apply_live_config(audio_controller):
         announce_speed = cfg.get("announce_speed", True)
         speed_announce_interval = cfg.get("speed_announce_interval", 25)
         announce_gear = cfg.get("announce_gear", True)
+        announce_clickspot_actions = bool(
+            cfg.get("announce_clickspot_actions", False)
+        )
         scanner_distance_callout_enabled = cfg.get("scanner_distance_callout_enabled", False)
         scanner_distance_callout_interval = cfg.get("scanner_distance_callout_interval", 10)
         announce_implement_proximity = bool(cfg.get("implement_proximity_speech", True))
@@ -9584,6 +10007,7 @@ def _run_engine():
     cfg = load_config()
     global UNITS_MODE, oil_chime_enabled
     global announce_turn_signals, announce_speed, speed_announce_interval, announce_gear
+    global announce_clickspot_actions
     global scanner_distance_callout_enabled, scanner_distance_callout_interval
     global announce_implement_proximity, announce_cannon_shot
     global road_follow_guidance_enabled, road_junction_speech_enabled
@@ -9596,6 +10020,7 @@ def _run_engine():
     announce_speed = cfg.get("announce_speed", True)
     speed_announce_interval = cfg.get("speed_announce_interval", 25)
     announce_gear = cfg.get("announce_gear", True)
+    announce_clickspot_actions = bool(cfg.get("announce_clickspot_actions", False))
     scanner_distance_callout_enabled = cfg.get("scanner_distance_callout_enabled", False)
     scanner_distance_callout_interval = cfg.get("scanner_distance_callout_interval", 10)
     announce_implement_proximity = bool(cfg.get("implement_proximity_speech", True))

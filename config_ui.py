@@ -644,6 +644,19 @@ class ConfigPanel(wx.ScrolledWindow):
         )
         auto_sizer.Add(self.chk_announce_gear, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
+        self.chk_announce_clickspot_actions = wx.CheckBox(
+            sb_auto, label="Announce clickspot actions"
+        )
+        self.chk_announce_clickspot_actions.SetToolTip(
+            "Speak success or failure feedback after activating a clickspot."
+        )
+        auto_sizer.Add(
+            self.chk_announce_clickspot_actions,
+            0,
+            wx.LEFT | wx.RIGHT | wx.BOTTOM,
+            6,
+        )
+
         self.chk_scanner_callout = wx.CheckBox(sb_auto, label="Periodic scanner distance callouts")
         self.chk_scanner_callout.SetToolTip(
             "When the vehicle scanner is active and has a target, periodically announce "
@@ -1327,6 +1340,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_announce_turn_signals,
             self.chk_announce_speed,
             self.chk_announce_gear,
+            self.chk_announce_clickspot_actions,
             self.chk_scanner_callout,
             self.chk_scanner_steer_tone,
             self.chk_ui_nav_hold,
@@ -1620,6 +1634,9 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_announce_turn_signals.SetValue(cfg.get("announce_turn_signals", True))
             self.chk_announce_speed.SetValue(cfg.get("announce_speed", True))
             self.chk_announce_gear.SetValue(cfg.get("announce_gear", True))
+            self.chk_announce_clickspot_actions.SetValue(
+                cfg.get("announce_clickspot_actions", False)
+            )
             self.chk_scanner_callout.SetValue(cfg.get("scanner_distance_callout_enabled", False))
             callout_val = cfg.get("scanner_distance_callout_interval", 10)
             callout_idx = self._callout_intervals.index(callout_val) if callout_val in self._callout_intervals else 1
@@ -1706,6 +1723,9 @@ class ConfigPanel(wx.ScrolledWindow):
         cfg["announce_turn_signals"] = self.chk_announce_turn_signals.GetValue()
         cfg["announce_speed"] = self.chk_announce_speed.GetValue()
         cfg["announce_gear"] = self.chk_announce_gear.GetValue()
+        cfg["announce_clickspot_actions"] = (
+            self.chk_announce_clickspot_actions.GetValue()
+        )
         cfg["scanner_distance_callout_enabled"] = self.chk_scanner_callout.GetValue()
         ci = self.choice_callout_interval.GetSelection()
         cfg["scanner_distance_callout_interval"] = self._callout_intervals[ci] if 0 <= ci < len(self._callout_intervals) else 10

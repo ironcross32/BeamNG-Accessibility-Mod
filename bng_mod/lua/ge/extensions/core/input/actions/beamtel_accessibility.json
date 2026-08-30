@@ -6,7 +6,7 @@
     "actionMap": "Normal",
     "onDown": "extensions.accessibilityInput.trigger('status_up')",
     "title": "Accessibility menu up",
-    "desc": "Move to and announce the previous available status item."
+    "desc": "Move to and announce the previous available item on the selected accessibility screen."
   },
   "beamtel_accessibility_status_down": {
     "cat": "accessibility",
@@ -15,7 +15,7 @@
     "actionMap": "Normal",
     "onDown": "extensions.accessibilityInput.trigger('status_down')",
     "title": "Accessibility menu down",
-    "desc": "Move to and announce the next available status item."
+    "desc": "Move to and announce the next available item on the selected accessibility screen."
   },
   "beamtel_accessibility_status_repeat": {
     "cat": "accessibility",
@@ -24,6 +24,33 @@
     "actionMap": "Normal",
     "onDown": "extensions.accessibilityInput.trigger('status_repeat')",
     "title": "Accessibility menu repeat",
-    "desc": "Announce the fresh value of the selected status item without moving."
+    "desc": "Announce the selected value or function without moving."
+  },
+  "beamtel_accessibility_next_menu": {
+    "cat": "accessibility",
+    "order": 4,
+    "ctx": "tlua",
+    "actionMap": "Normal",
+    "onDown": "extensions.accessibilityInput.trigger('next_menu')",
+    "title": "Accessibility next menu",
+    "desc": "Move to and announce the next accessibility screen."
+  },
+  "beamtel_accessibility_previous_menu": {
+    "cat": "accessibility",
+    "order": 5,
+    "ctx": "tlua",
+    "actionMap": "Normal",
+    "onDown": "extensions.accessibilityInput.trigger('previous_menu')",
+    "title": "Accessibility previous menu",
+    "desc": "Move to and announce the previous accessibility screen."
+  },
+  "beamtel_accessibility_activate": {
+    "cat": "accessibility",
+    "order": 6,
+    "ctx": "tlua",
+    "actionMap": "Normal",
+    "onDown": "extensions.accessibilityInput.trigger('activate')",
+    "title": "Accessibility activate",
+    "desc": "Repeat the selected status value or execute the selected function."
   }
 }

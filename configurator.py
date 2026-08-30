@@ -113,6 +113,7 @@ DEFAULT_CONFIG = {
     "announce_speed": True,
     "speed_announce_interval": 25,
     "announce_gear": True,
+    "announce_clickspot_actions": False,
     "scanner_distance_callout_enabled": False,
     "scanner_distance_callout_interval": 10,
     "scanner_steer_tone_enabled": True,
@@ -358,6 +359,7 @@ def load_config():
         _coerce("announce_speed", bool, True)
         _coerce("speed_announce_interval", int, 25)
         _coerce("announce_gear", bool, True)
+        _coerce("announce_clickspot_actions", bool, False)
         _coerce("scanner_distance_callout_enabled", bool, False)
         _coerce("scanner_distance_callout_interval", int, 10)
         _coerce("scanner_steer_tone_enabled", bool, True)

@@ -33,6 +33,7 @@ diagnostic/*
 !diagnostic/road_detector_sim.lua
 !diagnostic/obstacle_audio_sim.py
 !diagnostic/obstacle_detector_sim.lua
+!diagnostic/controller_menu_sim.py
 
 # misc
 *.zip

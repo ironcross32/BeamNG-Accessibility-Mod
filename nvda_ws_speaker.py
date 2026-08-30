@@ -195,7 +195,14 @@ def handle_ws_message(data):
 
     elif msg_type == "accessibility_action":
         action = data.get("action")
-        if action not in {"status_up", "status_down", "status_repeat"}:
+        if action not in {
+            "status_up",
+            "status_down",
+            "status_repeat",
+            "next_menu",
+            "previous_menu",
+            "activate",
+        }:
             logger.warning(
                 "[bnvda] Ignoring unknown accessibility action: %r", action
             )

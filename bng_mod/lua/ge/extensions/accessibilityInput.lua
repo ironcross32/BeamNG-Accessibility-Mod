@@ -8,6 +8,9 @@ local allowedActions = {
   status_up = true,
   status_down = true,
   status_repeat = true,
+  next_menu = true,
+  previous_menu = true,
+  activate = true,
 }
 
 local function registerCategory()
