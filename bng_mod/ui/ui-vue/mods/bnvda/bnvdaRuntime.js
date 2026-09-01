@@ -358,15 +358,16 @@ export function installBNVDA($rootScope, dependencies) {
           // else -- arming it any earlier and the tab name queues behind itself.
           function emitSpeak(txt, src) {
             var interrupt = true;
-            if (_vueTabQueueText && txt === _vueTabQueueText) {
-              _vueTabQueueText = '';
-              _vueTabQueueUntil = nowTS() + VUE_TAB_QUEUE_MS;
-            } else if (nowTS() < _vueTabQueueUntil && navBurstIsNavSource(src)) {
-              // One utterance only: the landing item. Anything after it is a new
-              // movement and interrupts normally, or a held sweep would stack up
-              // behind a tab name nobody is waiting on any more.
+            if (_speakQueueAfterText && txt === _speakQueueAfterText) {
+              _speakQueueAfterText = '';
+              _speakQueueUntil = nowTS() + (_speakQueueAfterMs || VUE_TAB_QUEUE_MS);
+              _speakQueueLeft = _speakQueueAfterMax || 1;
+            } else if (nowTS() < _speakQueueUntil && _speakQueueLeft > 0 && navBurstIsNavSource(src)) {
+              // Bounded by BOTH the window and the count. Anything past either is
+              // a new movement and interrupts normally, or a held sweep would
+              // stack up behind an announcement nobody is waiting on any more.
               interrupt = false;
-              _vueTabQueueUntil = 0;
+              if (--_speakQueueLeft <= 0) _speakQueueUntil = 0;
             }
             lastSpoken = txt;
             lastSource = src;
@@ -1643,11 +1644,15 @@ export function installBNVDA($rootScope, dependencies) {
           var _vueOptionsCategoryGeneration = 0;
           var _vueOptionsCategoryEchoElement = null;
           var _vueOptionsCategoryEchoUntil = 0;
-          var PARTS_DROPDOWN_ACTIVATION_TIMEOUT_MS = 1500;
+          var PARTS_DROPDOWN_ACTIVATION_TIMEOUT_MS = 5000;
+          var PARTS_SEARCH_FOCUS_MAX_FRAMES = 60;
+          var PARTS_SEARCH_FOCUS_STABLE_FRAMES = 3;
           var _partsDropdownActivation = null;
           var _partsDropdownActivationTimer = null;
           var _partsDropdownBlockedDirections = {};
           var _partsDropdownPopup = null;
+          var _partsSearchFocus = null;
+          var _partsSearchFocusGeneration = 0;
           var VUE_HINT_IDLE_MS = 3000;
           // vuePauseHintSet is the most expensive thing the focus poll touches:
           // nested querySelectorAll over footers/hints/binding-containers, each
@@ -1759,7 +1764,7 @@ export function installBNVDA($rootScope, dependencies) {
           function vuePartsDropdown() {
             var dropdowns = toArray(document.querySelectorAll('.bng-dropdown-content'));
             for (var i = 0; i < dropdowns.length; i++) {
-              if (visibleVueElement(dropdowns[i]) && dropdowns[i].querySelector('.dropdown-option, [role=option]')) return dropdowns[i];
+              if (visibleVueElement(dropdowns[i])) return dropdowns[i];
             }
             return null;
           }
@@ -1774,6 +1779,12 @@ export function installBNVDA($rootScope, dependencies) {
             }
             for (var i = 0; i < options.length; i++) if (visibleVueElement(options[i])) return options[i];
             return null;
+          }
+
+          function activeVuePartsDropdownOption(dropdown) {
+            if (!dropdown || !dropdown.contains(document.activeElement)) return null;
+            var option = closest(document.activeElement, '.dropdown-option, [role=option]');
+            return option && visibleVueElement(option) ? option : null;
           }
 
           function activeVuePartsDropdown() {
@@ -1809,6 +1820,110 @@ export function installBNVDA($rootScope, dependencies) {
             return null;
           }
 
+          function combinedPartsSearchInput(element) {
+            if (!element) return null;
+            var container = closest(element, '.pause-tab-combined-search');
+            var input = container && container.querySelector('input[type=search], input.search-input, input');
+            return input && visibleVueElement(input) ? input : null;
+          }
+
+          function currentCombinedPartsSearchInput() {
+            var inputs = toArray(document.querySelectorAll(
+              '.pause-tab-combined-search input[type=search], ' +
+              '.pause-tab-combined-search input.search-input, ' +
+              '.pause-tab-combined-search input'
+            ));
+            for (var i = 0; i < inputs.length; i++) {
+              if (visibleVueElement(inputs[i])) return inputs[i];
+            }
+            return null;
+          }
+
+          function cancelPartsSearchFocus(restoreOrigin) {
+            var request = _partsSearchFocus;
+            _partsSearchFocus = null;
+            _partsSearchFocusGeneration++;
+            if (restoreOrigin && request) focusVuePartsRow(request.originRow);
+          }
+
+          function failPartsSearchFocus(request) {
+            if (_partsSearchFocus !== request) return;
+            _partsSearchFocus = null;
+            _partsSearchFocusGeneration++;
+            focusVuePartsRow(request.originRow);
+            clearTimeout(focusDebounceTimer);
+            clearTimeout(kbFocusDebounceTimer);
+            lastFocusedElement = document.activeElement;
+            scheduleSpeak('Search did not receive keyboard focus; try again.', P.CONTROLLER);
+          }
+
+          function retryPartsSearchFocus(request) {
+            if (_partsSearchFocus !== request || request.generation !== _partsSearchFocusGeneration) return;
+            var route = (location.hash || '') + '|' + (location.pathname || '');
+            if (loadingActive || route !== request.route ||
+                (request.originRow && (!request.originRow.isConnected ||
+                 !closest(request.originRow, PARTS_CONTAINER_SELECTOR)))) {
+              cancelPartsSearchFocus(false);
+              return;
+            }
+            var input = currentCombinedPartsSearchInput();
+            if (input && document.activeElement === input) {
+              request.stableFrames++;
+              if (request.stableFrames >= PARTS_SEARCH_FOCUS_STABLE_FRAMES) {
+                _partsSearchFocus = null;
+                return;
+              }
+              trackedRequestAnimationFrame(function () { retryPartsSearchFocus(request); });
+              return;
+            }
+            request.stableFrames = 0;
+            if (input) {
+              request.inputSeen = true;
+              try { input.focus({ preventScroll: true }); }
+              catch (e) { try { input.focus(); } catch (e2) {} }
+              if (document.activeElement === input) {
+                request.stableFrames = 1;
+                trackedRequestAnimationFrame(function () { retryPartsSearchFocus(request); });
+                return;
+              }
+            }
+            else if (request.inputSeen) {
+              cancelPartsSearchFocus(false);
+              return;
+            }
+            request.frames++;
+            if (request.frames >= PARTS_SEARCH_FOCUS_MAX_FRAMES) {
+              failPartsSearchFocus(request);
+              return;
+            }
+            trackedRequestAnimationFrame(function () { retryPartsSearchFocus(request); });
+          }
+
+          function armPartsSearchFocus(originRow, restart) {
+            var route = (location.hash || '') + '|' + (location.pathname || '');
+            if (!restart && _partsSearchFocus && _partsSearchFocus.route === route) return;
+            cancelPartsSearchFocus(false);
+            var request = {
+              generation: _partsSearchFocusGeneration,
+              route: route,
+              originRow: originRow || focusedVuePartsRow(),
+              inputSeen: false,
+              frames: 0,
+              stableFrames: 0
+            };
+            _partsSearchFocus = request;
+            // Take keyboard focus before the next key event, then keep checking
+            // while BeamNG asynchronous scope activations finish.
+            retryPartsSearchFocus(request);
+          }
+
+          function ensurePartsSearchRealFocus(element) {
+            var input = combinedPartsSearchInput(element);
+            if (!input || document.activeElement === input) return true;
+            armPartsSearchFocus(focusedVuePartsRow());
+            return false;
+          }
+
           function vuePartsRowCanOpenDropdown(row) {
             if (!row || !row.isConnected || !row.querySelector('.dropdown-display')) return false;
             return !(row.disabled || row.getAttribute('aria-disabled') === 'true' ||
@@ -1822,26 +1937,63 @@ export function installBNVDA($rootScope, dependencies) {
             _partsDropdownActivation = null;
             if (clearDirectionLatch) {
               _partsDropdownBlockedDirections = {};
-              _partsDropdownPopup = null;
             }
           }
 
+          function focusVuePartsRow(row) {
+            if (!row || !row.isConnected) return false;
+            var target = row.querySelector('.bng-accitem-caption[bng-nav-item], .bng-accitem-caption') || row;
+            if (!target || typeof target.focus !== 'function') return false;
+            try { target.focus({ preventScroll: true }); }
+            catch (e) { try { target.focus(); } catch (e2) { return false; } }
+            return document.activeElement === target;
+          }
+
+          function partsDropdownActivationTimedOut(activation) {
+            if (_partsDropdownActivation !== activation) return;
+            clearPartsDropdownActivation(false);
+            var route = (location.hash || '') + '|' + (location.pathname || '');
+            if (loadingActive || route !== activation.route || !activation.row ||
+                !activation.row.isConnected || !closest(activation.row, PARTS_CONTAINER_SELECTOR)) {
+              _partsDropdownPopup = null;
+              return;
+            }
+            var trigger = activation.row && activation.row.querySelector('.bng-dropdown');
+            var visiblyOpen = activation.dropdownSeen ||
+              (trigger && trigger.querySelector('.dropdown-arrow.opened'));
+            if (visiblyOpen && trigger && typeof trigger.click === 'function') {
+              try { trigger.click(); } catch (e) {}
+            }
+            _partsDropdownPopup = null;
+            focusVuePartsRow(activation.row);
+            scheduleSpeak('Options did not open; try again.', P.CONTROLLER);
+          }
+
           function armPartsDropdownActivation(row) {
-            clearPartsDropdownActivation(true);
+            clearPartsDropdownActivation(false);
+            _partsDropdownPopup = null;
             _partsDropdownActivation = {
               row: row,
               route: (location.hash || '') + '|' + (location.pathname || ''),
-              dropdownSeen: false
+              dropdownSeen: false,
+              loadingAnnounced: false
             };
+            var activation = _partsDropdownActivation;
             _partsDropdownActivationTimer = trackedSetTimeout(function() {
-              clearPartsDropdownActivation(true);
+              partsDropdownActivationTimedOut(activation);
             }, PARTS_DROPDOWN_ACTIVATION_TIMEOUT_MS);
           }
 
-          function partsDirectionName(action) {
+          function partsDirectionState(action, value) {
             var name = String(action || '').toLowerCase().replace(/[-\s]+/g, '_');
-            var match = name.match(/(?:^|_)(up|down|left|right)$/);
-            return match ? match[1] : '';
+            if (/^focus_[udlr]$/.test(name)) {
+              return { key: name, pressed: navigationValuePressed(value) };
+            }
+            if (name === 'focus_ud' || name === 'focus_lr') {
+              var scalar = Number(value);
+              return { key: name, pressed: isFinite(scalar) && Math.abs(scalar) >= 0.35 };
+            }
+            return null;
           }
 
           function navigationValuePressed(value) {
@@ -1849,12 +2001,17 @@ export function installBNVDA($rootScope, dependencies) {
           }
 
           function discardPartsDropdownDirection(event, action, value) {
-            var direction = partsDirectionName(action);
+            var direction = partsDirectionState(action, value);
             if (!direction) return false;
-            var pressed = navigationValuePressed(value);
-            if (_partsDropdownActivation && pressed) _partsDropdownBlockedDirections[direction] = true;
-            var discard = !!_partsDropdownActivation || !!_partsDropdownBlockedDirections[direction];
-            if (!pressed) delete _partsDropdownBlockedDirections[direction];
+            if (_partsDropdownActivation && direction.pressed) {
+              _partsDropdownBlockedDirections[direction.key] = true;
+              if (!_partsDropdownActivation.loadingAnnounced) {
+                _partsDropdownActivation.loadingAnnounced = true;
+                scheduleSpeak('Loading options.', P.CONTROLLER);
+              }
+            }
+            var discard = !!_partsDropdownActivation || !!_partsDropdownBlockedDirections[direction.key];
+            if (!direction.pressed) delete _partsDropdownBlockedDirections[direction.key];
             if (!discard) return false;
             if (event) {
               if (typeof event.preventDefault === 'function') event.preventDefault();
@@ -1869,7 +2026,8 @@ export function installBNVDA($rootScope, dependencies) {
             var route = (location.hash || '') + '|' + (location.pathname || '');
             if (!root || route !== activation.route || !activation.row.isConnected ||
                 !closest(activation.row, PARTS_CONTAINER_SELECTOR)) {
-              clearPartsDropdownActivation(true);
+              clearPartsDropdownActivation(false);
+              _partsDropdownPopup = null;
               return null;
             }
             var dropdown = vuePartsDropdown();
@@ -1878,10 +2036,11 @@ export function installBNVDA($rootScope, dependencies) {
               _partsDropdownPopup = dropdown;
             }
             else if (activation.dropdownSeen) {
-              clearPartsDropdownActivation(true);
+              clearPartsDropdownActivation(false);
+              _partsDropdownPopup = null;
               return null;
             }
-            var option = focusedVuePartsDropdownOption(dropdown);
+            var option = activeVuePartsDropdownOption(dropdown);
             if (option) {
               // Direction presses made during activation stay latched until release.
               clearPartsDropdownActivation(false);
@@ -2110,13 +2269,64 @@ export function installBNVDA($rootScope, dependencies) {
           var _vueTabSeen = false;
           var _vueTabTimer = null;
           var _vueTabGeneration = 0;
-          // The tab name that is about to go out, and the window it opens once it
-          // has. Long enough to cover the settle plus a slow route push and the
-          // engine's own autofocus, which is when a landing focus move arrives;
-          // short enough that a genuine second move by the driver still interrupts.
-          var _vueTabQueueText = '';
-          var _vueTabQueueUntil = 0;
+          // An utterance that must not be cut off, and the window it opens once it
+          // has actually gone out. Two callers arm it: the tab name, and the
+          // binding editor's conflict summary. Both are announcements the driver
+          // is given rather than asked for, and both are immediately followed by
+          // a focus move that would otherwise talk over them.
+          //
+          // Named for the mechanism rather than for the tab, because it no longer
+          // holds only a tab name -- a variable called _vueTabQueueText holding a
+          // conflict summary is how the next reader concludes the conflict path
+          // has its own queue and adds a second one.
+          //
+          // The duration is per arm. The tab window covers the settle plus a slow
+          // route push and the engine's own autofocus, which is when a landing
+          // focus move arrives; short enough that a genuine second move by the
+          // driver still interrupts. The conflict window is longer because the
+          // utterance it protects is a whole sentence of action names rather than
+          // two words, so the focus move it has to outlast can land much later
+          // into it -- and it costs at most ONE queued utterance either way,
+          // since emitSpeak closes the window on the first one it queues.
+          //
+          // The COUNT is per arm too, and that is what the conflict summary
+          // actually needed. A tab name is followed by exactly one thing, the
+          // landing item, so one is right there. The binding popup instead emits
+          // a short BURST as it settles -- measured from the speech log: the
+          // filter-type row ("Automatic") at +29 ms, then the real focus landing
+          // ("Assigned control, A button") at +234 ms. With a cap of one the
+          // window was spent on the filter row and the focus landing interrupted
+          // the summary anyway, which is exactly the symptom the queue was added
+          // to remove: the fix was live and the announcement was still cut off.
+          // The cap is what bounds the cost -- without it a held sweep inside the
+          // window would stack an utterance every ~240 ms behind a summary nobody
+          // is waiting on any more, which is the hazard the one-only rule was
+          // protecting against in the first place.
+          var _speakQueueAfterText = '';
+          var _speakQueueAfterMs = 0;
+          var _speakQueueAfterMax = 0;
+          var _speakQueueUntil = 0;
+          var _speakQueueLeft = 0;
           var VUE_TAB_QUEUE_MS = 900;
+          var VUE_CONFLICT_QUEUE_MS = 2500;
+          var VUE_CONFLICT_QUEUE_MAX = 4;
+
+          function armSpeakQueue(text, ms, maxItems) {
+            _speakQueueAfterText = text;
+            _speakQueueAfterMs = ms;
+            _speakQueueAfterMax = maxItems || 1;
+          }
+          // Dropped rather than left armed: an utterance that never reached
+          // emitSpeak (deduped, replaced inside the debounce, or suppressed by a
+          // loading screen) would otherwise open the window around some unrelated
+          // later one.
+          function clearSpeakQueue() {
+            _speakQueueAfterText = '';
+            _speakQueueAfterMs = 0;
+            _speakQueueAfterMax = 0;
+            _speakQueueUntil = 0;
+            _speakQueueLeft = 0;
+          }
           // Let the tab strip settle before reading it, so a route push that
           // re-syncs selectedTab does not get announced twice.
           var VUE_TAB_SETTLE_MS = 60;
@@ -2201,10 +2411,23 @@ export function installBNVDA($rootScope, dependencies) {
           // The element the focus path would speak about, resolved WITHOUT the
           // parts-dropdown activation side effect so the tab announcer can ask the
           // same question the poll asks and be sure of the same answer.
+          function firstMeaningfulVueFocusMarker(root) {
+            var markers = toArray(root.querySelectorAll('.focus-visible'));
+            for (var i = 0; i < markers.length; i++) {
+              var searchInput = combinedPartsSearchInput(markers[i]);
+              if (searchInput && document.activeElement !== searchInput) {
+                ensurePartsSearchRealFocus(markers[i]);
+                continue;
+              }
+              return markers[i];
+            }
+            return null;
+          }
+
           function focusedVueElement(root, bindingPopup, activatedDropdownFocused) {
             return vueBindingEditorFocused(bindingPopup) || activatedDropdownFocused ||
               focusedVuePartsDropdownOption(activeVuePartsDropdown()) ||
-              focusedVueMainMenuItem(root) || root.querySelector('.focus-visible') ||
+              focusedVueMainMenuItem(root) || firstMeaningfulVueFocusMarker(root) ||
               (root.contains(document.activeElement) ? document.activeElement : null) ||
               document.querySelector('.bng-dropdown-content .dropdown-option.focus-visible');
           }
@@ -2236,7 +2459,7 @@ export function installBNVDA($rootScope, dependencies) {
               if (generation !== _vueTabGeneration) return;
               var root = vueScreenRoot();
               if (!root || vueTabPath(root) !== tabPath) return;
-              _vueTabQueueText = tabPath;
+              armSpeakQueue(tabPath, VUE_TAB_QUEUE_MS, 1);
               scheduleSpeak(tabPath, P.CONTROLLER);
             }, VUE_TAB_SETTLE_MS);
           }
@@ -2245,11 +2468,7 @@ export function installBNVDA($rootScope, dependencies) {
             _vueTabPath = '';
             _vueTabSeen = false;
             _vueTabGeneration++;
-            // Dropped rather than left armed: a tab name that never reached
-            // emitSpeak (deduped, or suppressed by a loading screen) would
-            // otherwise open the window around some unrelated later utterance.
-            _vueTabQueueText = '';
-            _vueTabQueueUntil = 0;
+            clearSpeakQueue();
             if (_vueTabTimer) { clearTimeout(_vueTabTimer); _vueTabTimer = null; }
           }
 
@@ -2357,6 +2576,7 @@ export function installBNVDA($rootScope, dependencies) {
             var combined = closest(target, '.pause-tab-combined') || (root.matches && root.matches('.pause-tab-combined') ? root : null);
             var search = combined && closest(target, 'input[type="search"], input.search-input, .search input, [class*="search"] input');
             if (search) {
+              if (!ensurePartsSearchRealFocus(search)) return true;
               scheduleSpeak('Search, edit; press Enter to return to Parts.', src);
               return true;
             }
@@ -2504,11 +2724,23 @@ export function installBNVDA($rootScope, dependencies) {
             if (navBurstHeldCount() === 0 && _navBurst.active) navBurstArm(NAV_RELEASE_DRAIN_MS);
           }
 
+          function handlePartsUiNavCapture(event) {
+            var detail = event && event.detail;
+            if (!detail) return;
+            var action = String(detail.name || '').toLowerCase();
+            var value = detail.value;
+            if (action === 'ok') handleVueOptionsOk(value);
+            if (action === 'context' && navigationValuePressed(value)) {
+              var row = focusedVuePartsRow();
+              if (row) armPartsSearchFocus(row, true);
+            }
+            discardPartsDropdownDirection(event, action, value);
+          }
+          listen(document, 'ui_nav', handlePartsUiNavCapture, true);
+
           subscribe($rootScope, 'UINavigation', function (_event, action, value) {
-            // Before the parts-dropdown filter: a discarded direction is still a
-            // real key movement as far as speech pacing is concerned.
             trackNavigationHold(action, value);
-            if (discardPartsDropdownDirection(_event, action, value)) return;
+            // Compatibility fallback for builds that do not emit ui_nav.
             if (action === 'ok') handleVueOptionsOk(value);
           });
 
@@ -2570,6 +2802,33 @@ export function installBNVDA($rootScope, dependencies) {
             return cleanText(value);
           }
 
+          // EditBindingBasicInfo.vue gives the two action buttons icons.edit and
+          // icons.trashBin1 and nothing else -- no label, no aria, no tooltip --
+          // so which icon it is IS the identity. Compared against the catalog
+          // rather than against a hard-coded code point, which is a font build
+          // detail, exactly as todPlayLabel does.
+          //
+          // An unrecognised glyph returns '' and is announced as the neutral
+          // "Binding action" rather than being guessed at. Guessing here means a
+          // one-in-two chance of announcing the delete button as Reassign, which
+          // is the one wrong answer in this popup that costs the user a binding.
+          function bindingActionRole(button) {
+            var glyphs = ((button && (button.innerText || button.textContent)) || '').replace(/[^-]/g, '');
+            var trashGlyph = iconGlyphOf('trashBin1'), editGlyph = iconGlyphOf('edit');
+            if (trashGlyph && glyphs.indexOf(trashGlyph) !== -1) return 'delete';
+            if (editGlyph && glyphs.indexOf(editGlyph) !== -1) return 'reassign';
+            return '';
+          }
+
+          // The control the buttons act on, read from the row beside them.
+          function assignedBindingName(scopeEl) {
+            var binding = scopeEl && scopeEl.querySelector && scopeEl.querySelector(
+              '.assigned-control-value .binding-wrapper, .assigned-control-value .binding-container, ' +
+              '.binding-wrapper, .binding-container, .bng-binding');
+            if (!binding) return '';
+            return getBindingFriendlyName(binding) || cleanText(binding.innerText || binding.textContent);
+          }
+
           // Basic Info, Axis Options, and FFB Options share these row shapes.
           function vueBindingEditorInfo(element, popup) {
             if (!element || !popup || !popup.contains(element)) return null;
@@ -2619,7 +2878,37 @@ export function installBNVDA($rootScope, dependencies) {
               return { role: role, label: label, state: state, position: position };
             }
 
-            // DOM order is Reassign followed by Delete in the assigned row.
+            // 0.39 moved these two buttons OUT of the assigned-control row.
+            // EditBindingBasicInfo.vue now renders .detail-controls-actions as a
+            // SIBLING of the .bng-row, both children of .detail-controls, so
+            // nothing above them matches .bng-row/[class*=row], the row walk
+            // below returned null, and both fell through to the generic button
+            // fallback -- which finds no text (icon-only, no aria-label, no
+            // tooltip, and cleanText strips the PUA glyph) and announced each of
+            // them as the bare word "Button".
+            //
+            // They are named by ICON, the way todPlayLabel already reads the TOD
+            // play/pause button, and never by position: the trash button is
+            // rendered under v-if="!isNewBinding", so on a NEW binding the lone
+            // button is Reassign at index 0 and any index rule is right only by
+            // luck -- and being right by luck about which of two buttons is the
+            // destructive one is the whole hazard here.
+            var actionsGroup = closest(control, '.detail-controls-actions');
+            if (actionsGroup && button && popup.contains(actionsGroup)) {
+              position = toArray(actionsGroup.querySelectorAll('button, [role=button]')).indexOf(button);
+              role = bindingActionRole(button);
+              label = role === 'delete' ? 'Delete binding' :
+                (role === 'reassign' ? 'Reassign' : 'Binding action');
+              if (!role) role = 'binding-action';
+              var current = assignedBindingName(closest(actionsGroup, '.detail-controls') || popup);
+              state = current ? 'currently ' + current : '';
+              if (vueBindingEditorDisabled(button, actionsGroup)) state = [state, 'disabled'].filter(Boolean).join(', ');
+              return { role: role, label: label, state: state, position: position };
+            }
+
+            // Kept for the row itself, and for a layout that puts the buttons
+            // back inside it. The actions branch above runs first, so the two
+            // cannot disagree about a button they both see.
             var assignedRow = closest(control, '.bng-row, [class*=row]');
             var binding = assignedRow && assignedRow.querySelector('.binding-container, .bng-binding, [class*=binding-container]');
             if (assignedRow && binding && popup.contains(assignedRow)) {
@@ -2666,6 +2955,65 @@ export function installBNVDA($rootScope, dependencies) {
             if (button) { role = 'button'; label = buttonText || label || 'Button'; state = vueBindingEditorDisabled(button, row) ? 'disabled' : ''; }
             else state = vueControlState(control, row);
             return { role: role, label: label, state: state, position: position };
+          }
+
+          // The conflict list is rendered but SILENT. EditBindingBasicInfo.vue
+          // puts "This control is also assigned to:" in a .detail-conflicts
+          // header that is not a nav item, so nothing says a conflict EXISTS --
+          // the .conflict-row items below it are announced by the branch above,
+          // but only if you already knew to go looking. A DOM dump taken on a
+          // real conflicting assignment had seven of them on screen unspoken.
+          //
+          // This restores the summary handleBindingEditResult used to speak on
+          // the AngularJS panel. That path did not regress here: 0.39's Vue
+          // rewrite orphaned it outright (every selector it used matched zero
+          // elements), and 8fde680 removed what was by then a corpse. So the
+          // warning has been missing since the port, not since the cleanup.
+          //
+          // Keyed on the conflict NAMES, never on the popup opening: reassigning
+          // to a different control without leaving the popup produces a new set
+          // that must be announced, and a set that has not changed must not be.
+          // An EMPTY set is deliberately silent rather than "no conflicts" --
+          // opening the editor is not a question anyone asked, and narrating a
+          // non-event on every open is the chatter the slam gate's NONE state
+          // already refuses. Absence of the warning is the all-clear.
+          var _vueBindingConflictKey = '';
+
+          function vueBindingConflictNames(popup) {
+            var list = popup && popup.querySelector('.detail-conflicts-list, [class*=conflicts-list]');
+            if (!list) return [];
+            var rows = toArray(list.querySelectorAll('.conflict-row, [class*=conflict-row]'));
+            var names = [];
+            for (var i = 0; i < rows.length; i++) {
+              var label = rows[i].querySelector('.bng-row-label, [class*=row-label], [class*=label]');
+              var name = cleanText((label && label.innerText) || rows[i].innerText || rows[i].textContent);
+              if (name) names.push(name);
+            }
+            return names;
+          }
+
+          function announceVueBindingConflicts(popup) {
+            if (!popup) { _vueBindingConflictKey = ''; return; }
+            var names = vueBindingConflictNames(popup);
+            var key = names.join('|');
+            if (key === _vueBindingConflictKey) return;
+            _vueBindingConflictKey = key;
+            if (!names.length) return;
+            var msg = names.length + ' conflict' + (names.length > 1 ? 's' : '') +
+              '. This control is also assigned to: ' + names.join(', ') + '.';
+            // The popup takes focus the moment it is populated, and that focus
+            // announcement was cutting this off mid-sentence -- so the summary
+            // landed, reliably, and was never heard. Same fix the tab name
+            // already uses: the NEXT navigation utterance queues behind this one
+            // instead of interrupting it. Armed before scheduleSpeak, and keyed
+            // on the exact text, so the window opens only if this actually
+            // reaches emitSpeak rather than being deduped or replaced inside the
+            // debounce.
+            armSpeakQueue(msg, VUE_CONFLICT_QUEUE_MS, VUE_CONFLICT_QUEUE_MAX);
+            // P.SYSTEM, never a nav priority: this must not be swallowed or
+            // delayed by held-navigation coalescing, which captures only
+            // P.KEYBOARD/P.CONTROLLER.
+            scheduleSpeak(msg, P.SYSTEM);
           }
 
           function speakVueBindingEditor(element, src, popup) {
@@ -2964,7 +3312,9 @@ export function installBNVDA($rootScope, dependencies) {
               var root = vueScreenRoot();
               updateTuningSliderDebounce(root);
               if (!root) {
-                clearPartsDropdownActivation(true);
+                clearPartsDropdownActivation(false);
+                _partsDropdownPopup = null;
+                cancelPartsSearchFocus(false);
                 resetVueHintLifecycle();
                 // Only on the transition out — this branch re-runs once a second
                 // during gameplay, and resetting every tick would stop non-Vue
@@ -2975,6 +3325,7 @@ export function installBNVDA($rootScope, dependencies) {
                 _vueOptionsCategoryGeneration++;
                 if (_vueOptionsCategoryTimer) { clearTimeout(_vueOptionsCategoryTimer); _vueOptionsCategoryTimer = null; }
                 resetVueTabTracking();
+                announceVueBindingConflicts(null);
                 scheduleVuePoll(nextDelay);
                 return;
               }
@@ -2983,6 +3334,10 @@ export function installBNVDA($rootScope, dependencies) {
               // nav-burst interval measurements on the first item of a sweep.
               nextDelay = NAV_POLL_FAST_MS;
               var bindingPopup = vueBindingEditorPopup();
+              // Speaks only on a CHANGE of the conflict set, and resets itself
+              // when the popup goes away, so this costs one class-selector miss
+              // per tick on every other screen.
+              announceVueBindingConflicts(bindingPopup);
               var optionsCategory = bindingPopup ? '' : vueOptionsCategoryLabel(root);
               if (optionsCategory && optionsCategory !== _vueOptionsCategory) {
                 _vueOptionsCategory = optionsCategory;
@@ -3021,7 +3376,11 @@ export function installBNVDA($rootScope, dependencies) {
                 tabPath + '|' + (subScreen ? subScreen.className.toString() : '') + '|' +
                 (dialog ? ((dialog.id || '') + ':' + (dialog.className || '').toString()) : 'screen');
               if (screenKey !== _vueWatchScreen) {
-                if (_vueWatchScreen !== null) clearPartsDropdownActivation(true);
+                if (_vueWatchScreen !== null) {
+                  clearPartsDropdownActivation(false);
+                  _partsDropdownPopup = null;
+                  cancelPartsSearchFocus(false);
+                }
                 // Never let an announcement pending from the old screen land here --
                 // EXCEPT when the screen changed because a tab changed. Holding a
                 // bumper sweeps tabs the same way holding a direction sweeps a list,
@@ -3272,6 +3631,7 @@ export function installBNVDA($rootScope, dependencies) {
           var kbFocusDebounceTimer = null; // keyboard path
           function processFocusChange(element, src) {
             src = (src !== undefined) ? src : P.CONTROLLER;
+            if (!ensurePartsSearchRealFocus(element)) return;
 
             if (src === P.CONTROLLER) {
               // Controller wins: cancel any pending keyboard debounce as well.
@@ -3332,6 +3692,7 @@ export function installBNVDA($rootScope, dependencies) {
                 // (i.e. some other class changed on a still-focused element).
                 var oldClass = mutation.oldValue || '';
                 if (oldClass.indexOf('focus-visible') !== -1) continue;
+                if (!ensurePartsSearchRealFocus(targetElement)) continue;
                 processFocusChange(targetElement);
               }
             };
@@ -3888,6 +4249,9 @@ export function installBNVDA($rootScope, dependencies) {
             if (shown) {
               sawLoadingStart = true;
               loadingActive = true;
+              clearPartsDropdownActivation(false);
+              _partsDropdownPopup = null;
+              cancelPartsSearchFocus(false);
               suppressNextCameraEvent = true;
               if (speakTimer) {
                 window.clearTimeout(speakTimer);
