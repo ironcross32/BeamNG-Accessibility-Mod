@@ -6,27 +6,34 @@ local M = {}
 local PYTHON_HOST = "127.0.0.1"
 local PYTHON_PORT_DATA = 4462
 local CMD_LISTEN_PORT = 4463
-local SCAN_INTERVAL = 0.2
+-- Lane correction needs steering-scale latency. Current-edge projection is cheap;
+-- the older 5 Hz interval left up to 200 ms between observations before any
+-- hysteresis, which made the old stop cue arrive after the driver had overshot.
+local SCAN_INTERVAL = 0.05
 local SEARCH_RADIUS_M = 500.0
 local BUCKET_SIZE_M = 50.0
 local OVERPASS_Z_TOLERANCE = 6.0
-local DORMANT_AFTER_MISSES = 5
+local DORMANT_AFTER_MISSES = 20
 local ENTER_SLACK_M = 0.5
 local EXIT_SLACK_M = 2.0
-local ENTER_TICKS = 2
-local EXIT_TICKS = 3
+local ENTER_TICKS = 4
+local EXIT_TICKS = 8
 local MIN_DRIVABILITY = 0.25
 local JUNCTION_SEARCH_M = 240.0
-local CORRECTION_HEADING_ENTER_DEG = 6.0
-local CORRECTION_HEADING_EXIT_DEG = 3.0
 -- BeamNG's radius is the whole road half-width, not a lane half-width. A
 -- correctly driven two-way lane commonly sits around ratio 0.5, so centreline
--- thresholds below that turn ordinary lane keeping into a permanent warning.
+-- recovery keeps the side the driver already occupies and aims for that band.
 local CORRECTION_LATERAL_ENTER_RATIO = 0.75
-local CORRECTION_LATERAL_EXIT_RATIO = 0.60
+local CORRECTION_PREDICTED_ENTER_RATIO = 0.82
+local CORRECTION_TARGET_RATIO = 0.50
+local CORRECTION_TARGET_TOLERANCE_RATIO = 0.12
+local CORRECTION_SETTLED_HEADING_DEG = 6.0
+local CORRECTION_SETTLED_LATERAL_SPEED_MPS = 0.35
+local CORRECTION_UNWIND_BEARING_DEG = 3.0
+local CORRECTION_UNWIND_LEAD_SECONDS = 1.0
 local DRIFT_MIN_OUTWARD_SPEED_MPS = 0.20
 local DRIFT_WARNING_SECONDS = 3.0
-local DRIFT_SPEED_SMOOTH_ALPHA = 0.35
+local DRIFT_SPEED_SMOOTH_ALPHA = 0.10
 local OFFROAD_MERGE_ANGLE_DEG = 30.0
 local OFFROAD_INTERCEPT_MIN_M = 20.0
 local OFFROAD_INTERCEPT_MAX_M = 180.0
@@ -41,6 +48,7 @@ local currentEdge, onRoad = nil, false
 local enterTicks, exitTicks = 0, 0
 local orientationArmed = true
 local correctionActive, correctionClearTicks = false, 0
+local correctionTargetSide = 0
 local activeJunctionId = nil
 local lastVehicleId = nil
 local lateralTrackEdgeId, lateralTrackDirection = nil, nil
@@ -274,7 +282,8 @@ local function followLookahead(edge, projection, directionSign, lookahead)
   if lookahead <= remaining then
     local fromStart = directionSign > 0 and edge.length * projection.t + lookahead
       or edge.length * (1 - projection.t) + lookahead
-    return pointAlong(edge, directionSign, fromStart), false
+    return pointAlong(edge, directionSign, fromStart), false,
+      edgeDirection(edge, directionSign)
   end
   local distanceLeft = lookahead - remaining
   local nodeId = directionSign > 0 and edge.outNode or edge.inNode
@@ -282,20 +291,20 @@ local function followLookahead(edge, projection, directionSign, lookahead)
   for _ = 1, 24 do
     local choices = outgoing(nodeId, incoming, incomingDir)
     if #choices == 0 then
-      return directionSign > 0 and edge.outPos or edge.inPos, false
+      return directionSign > 0 and edge.outPos or edge.inPos, false, incomingDir
     end
-    if #choices > 1 then return nil, true end
+    if #choices > 1 then return nil, true, nil end
     local choice = choices[1]
     local sign = choice.forward and 1 or -1
     if distanceLeft <= choice.edge.length then
-      return pointAlong(choice.edge, sign, distanceLeft), false
+      return pointAlong(choice.edge, sign, distanceLeft), false, choice.direction
     end
     distanceLeft = distanceLeft - choice.edge.length
     incoming, incomingDir = choice.edge, choice.direction
     nodeId = choice.to
     edge, directionSign = choice.edge, sign
   end
-  return nil, false
+  return nil, false, nil
 end
 
 local function offRoadIntercept(edge, projection, position, vehicleForward, speed)
@@ -469,6 +478,7 @@ local function resetTracking(reason)
   enterTicks, exitTicks = 0, 0
   orientationArmed = true
   correctionActive, correctionClearTicks = false, 0
+  correctionTargetSide = 0
   activeJunctionId = nil
   lastVehicleId = nil
   resetLateralTracking()
@@ -510,6 +520,7 @@ local function performScan()
     end
     onRoad, currentEdge, orientationArmed = false, nil, true
     correctionActive, correctionClearTicks = false, 0
+    correctionTargetSide = 0
     resetLateralTracking()
     -- The map has a navgraph, but nothing vertically compatible is within the
     -- bounded search. R2 can represent that without pointing at an overpass;
@@ -530,6 +541,7 @@ local function performScan()
       enterTicks, exitTicks = 0, 0
       orientationArmed = true
       correctionActive, correctionClearTicks = false, 0
+      correctionTargetSide = 0
       resetLateralTracking()
     end
   else
@@ -556,10 +568,11 @@ local function performScan()
   end
 
   currentEdge = edge
-  local travelReference, directionSign = resolvedTravel(player, vehicleForward, edge)
+  local _, directionSign = resolvedTravel(player, vehicleForward, edge)
   local speed = flatLength(player:getVelocity())
   local lookaheadDistance = clamp(8 + speed * 2, 12, 70)
-  local target, ambiguous = followLookahead(edge, projection, directionSign, lookaheadDistance)
+  local target, ambiguous, targetTangent = followLookahead(
+    edge, projection, directionSign, lookaheadDistance)
   local junction = findJunctionAhead(edge, projection, directionSign)
   local earlyDistance = clamp(speed * 7, 30, 140)
   local nearDistance = clamp(speed * 2, 12, 35)
@@ -581,11 +594,15 @@ local function performScan()
     activeJunctionId = nil
   end
 
-  local correction = {active = false, bearing = 0, severity = 0}
-  if target and not ambiguous and not inDecisionZone then
+  local correction = {active = false, bearing = 0, severity = 0,
+    phase = "idle", settled = false}
+  if target and targetTangent and not ambiguous and not inDecisionZone then
     local pathTangent = edgeDirection(edge, directionSign)
     if pathTangent then
-      local headingError = bearingToDir(travelReference, pathTangent)
+      -- Heading and emitted bearing use the vehicle's forward frame. Velocity is
+      -- still used for travel direction and boundary prediction, but never as an
+      -- HRTF reference: during sideslip those frames can differ substantially.
+      local headingError = bearingToDir(forwardFlat, pathTangent)
       local lateralRatio = projection.distance / math.max(0.5, projection.radius)
       local offsetX = position.x - projection.point.x
       local offsetY = position.y - projection.point.y
@@ -601,8 +618,10 @@ local function performScan()
       else
         lastSignedLateral = signedLateral
       end
-      -- Positive means the vehicle is moving farther from the centreline on
-      -- whichever side it currently occupies; steady lane offset is zero.
+
+      -- Predict containment rather than warning on heading alone. A harmless
+      -- transient yaw in a wide road stays quiet; an outward course warns before
+      -- the vehicle reaches the same physical point at any practical speed.
       local outwardSpeed = 0
       if signedLateral > 0 then outwardSpeed = smoothedLateralSpeed
       elseif signedLateral < 0 then outwardSpeed = -smoothedLateralSpeed end
@@ -613,46 +632,110 @@ local function performScan()
       end
       local driftingOutward = outwardSpeed > DRIFT_MIN_OUTWARD_SPEED_MPS
         and secondsToBoundary <= DRIFT_WARNING_SECONDS
-      -- Aim back toward the safe road interior over a short, speed-adjusted
-      -- distance. This gives lateral warnings a useful side without inheriting
-      -- the natural bearing of a distant lookahead point around a bend.
-      local lateralAimDistance = clamp(8 + speed, 12, 25)
-      local lateralCorrection = math.deg(math.atan2(-signedLateral, lateralAimDistance))
-      local correctionBearing = headingError + lateralCorrection
-      if correctionBearing > 180 then correctionBearing = correctionBearing - 360 end
-      if correctionBearing < -180 then correctionBearing = correctionBearing + 360 end
-      local shouldEnter = math.abs(headingError) > CORRECTION_HEADING_ENTER_DEG
-        or lateralRatio > CORRECTION_LATERAL_ENTER_RATIO
+      local predictionSeconds = clamp(1.2 + speed * 0.025, 1.2, 2.2)
+      local predictedLateral = signedLateral + smoothedLateralSpeed * predictionSeconds
+      local predictedRatio = math.abs(predictedLateral) / math.max(0.5, projection.radius)
+      local shouldEnter = lateralRatio > CORRECTION_LATERAL_ENTER_RATIO
+        or predictedRatio > CORRECTION_PREDICTED_ENTER_RATIO
         or driftingOutward
-      local safelyAligned = math.abs(headingError) < CORRECTION_HEADING_EXIT_DEG
-        and lateralRatio < CORRECTION_LATERAL_EXIT_RATIO
-        and not driftingOutward
-      if correctionActive then
-        if safelyAligned then correctionClearTicks = correctionClearTicks + 1 else correctionClearTicks = 0 end
-        if correctionClearTicks >= 3 then correctionActive, correctionClearTicks = false, 0 end
-      elseif shouldEnter then
+      if not correctionActive and shouldEnter then
         correctionActive, correctionClearTicks = true, 0
-      end
-      if correctionActive then
-        local headingSeverity = clamp(
-          (math.abs(headingError) - CORRECTION_HEADING_ENTER_DEG) / 39, 0, 1)
-        local lateralSeverity = clamp(
-          (lateralRatio - CORRECTION_LATERAL_ENTER_RATIO)
-            / (1 - CORRECTION_LATERAL_ENTER_RATIO), 0, 1)
-        local driftSeverity = 0
-        if driftingOutward then
-          local timeSeverity = clamp(
-            1 - secondsToBoundary / DRIFT_WARNING_SECONDS, 0, 1)
-          local speedSeverity = clamp(
-            (outwardSpeed - DRIFT_MIN_OUTWARD_SPEED_MPS) / 1.3, 0, 1)
-          driftSeverity = math.max(timeSeverity, speedSeverity)
+        if edge.oneWay or projection.radius < 2.5 then
+          correctionTargetSide = 0
+        elseif math.abs(signedLateral) > 0.1 then
+          correctionTargetSide = signedLateral > 0 and 1 or -1
+        elseif math.abs(predictedLateral) > 0.1 then
+          correctionTargetSide = predictedLateral > 0 and 1 or -1
+        else
+          correctionTargetSide = 0
         end
-        correction = {active = true, bearing = correctionBearing,
-          severity = math.max(0.05, headingSeverity, lateralSeverity, driftSeverity)}
+      end
+
+      if correctionActive then
+        -- On a two-way road, recover to the centre of the side already occupied,
+        -- not the road centreline. This never asks a driver to cross into the
+        -- opposing side merely to silence the instrument.
+        local targetOffset = correctionTargetSide
+          * projection.radius * CORRECTION_TARGET_RATIO
+        local targetError = signedLateral - targetOffset
+        -- Counter measured lateral motion as well as geometric displacement.
+        -- Clamp the pursuit point to the same side so even a fast slide cannot
+        -- turn lane recovery into an instruction to cross the centreline.
+        local pursuitOffset = targetOffset
+          - smoothedLateralSpeed * predictionSeconds
+        if correctionTargetSide > 0 then
+          pursuitOffset = clamp(pursuitOffset,
+            projection.radius * 0.20, projection.radius * 0.70)
+        elseif correctionTargetSide < 0 then
+          pursuitOffset = clamp(pursuitOffset,
+            -projection.radius * 0.70, -projection.radius * 0.20)
+        else
+          pursuitOffset = clamp(pursuitOffset,
+            -projection.radius * 0.50, projection.radius * 0.50)
+        end
+        local lookaheadTarget = vec3(
+          target.x - targetTangent.y * pursuitOffset,
+          target.y + targetTangent.x * pursuitOffset,
+          target.z)
+        local toTarget = vec3(
+          lookaheadTarget.x - position.x, lookaheadTarget.y - position.y, 0)
+        local correctionBearing = 0
+        if toTarget:length() > 1e-6 then
+          correctionBearing = bearingToDir(forwardFlat, toTarget:normalized())
+        end
+
+        local targetClosingSpeed = 0
+        if targetError > 0 then targetClosingSpeed = -smoothedLateralSpeed
+        elseif targetError < 0 then targetClosingSpeed = smoothedLateralSpeed end
+        local secondsToTarget = math.huge
+        if targetClosingSpeed > 0.05 then
+          secondsToTarget = math.abs(targetError) / targetClosingSpeed
+        end
+        local targetTolerance = math.max(
+          0.35, projection.radius * CORRECTION_TARGET_TOLERANCE_RATIO)
+        local settled = math.abs(targetError) <= targetTolerance
+          and math.abs(headingError) <= CORRECTION_SETTLED_HEADING_DEG
+          and math.abs(smoothedLateralSpeed) <= CORRECTION_SETTLED_LATERAL_SPEED_MPS
+        if settled then correctionClearTicks = correctionClearTicks + 1
+        else correctionClearTicks = 0 end
+        if correctionClearTicks >= 2 then
+          correctionActive, correctionClearTicks, correctionTargetSide = false, 0, 0
+          correction.settled = true
+        else
+          local unwind = math.abs(correctionBearing) <= CORRECTION_UNWIND_BEARING_DEG
+            or secondsToTarget <= CORRECTION_UNWIND_LEAD_SECONDS
+          local lateralSeverity = clamp(
+            (lateralRatio - CORRECTION_LATERAL_ENTER_RATIO)
+              / (1 - CORRECTION_LATERAL_ENTER_RATIO), 0, 1)
+          local predictedSeverity = clamp(
+            (predictedRatio - CORRECTION_LATERAL_ENTER_RATIO)
+              / (1 - CORRECTION_LATERAL_ENTER_RATIO), 0, 1)
+          local driftSeverity = 0
+          if driftingOutward then
+            local timeSeverity = clamp(
+              1 - secondsToBoundary / DRIFT_WARNING_SECONDS, 0, 1)
+            local speedSeverity = clamp(
+              (outwardSpeed - DRIFT_MIN_OUTWARD_SPEED_MPS) / 1.3, 0, 1)
+            driftSeverity = math.max(timeSeverity, speedSeverity)
+          end
+          local courseSeverity = clamp(math.abs(correctionBearing) / 35, 0, 1)
+          correction = {active = true,
+            bearing = unwind and 0 or correctionBearing,
+            severity = math.max(0.05, lateralSeverity, predictedSeverity,
+              driftSeverity, courseSeverity),
+            phase = unwind and "unwind" or "correct",
+            settled = false,
+            lateralRatio = lateralRatio,
+            headingError = headingError}
+          if secondsToBoundary < 1000 then
+            correction.timeToEdge = secondsToBoundary
+          end
+        end
       end
     end
   else
     correctionActive, correctionClearTicks = false, 0
+    correctionTargetSide = 0
     resetLateralTracking()
   end
 

@@ -487,4 +487,17 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
   end
 end
 
+-- =================================================================================================
+--  Shared with bindingLearn.lua
+--
+--  bindingLearn answers a different question (what is the button under your thumb) but must
+--  name the control and the action the SAME way this browser does, or the two readouts of one
+--  binding disagree. There is no case for a second copy here -- the mod duplicates a helper
+--  only where the two answers genuinely differ (cannonShot vs vehicleSpawnerAccessible).
+-- =================================================================================================
+
+M.deviceKey       = deviceKey
+M.controlToSpeech = controlToSpeech
+M.translate       = translate
+
 return M

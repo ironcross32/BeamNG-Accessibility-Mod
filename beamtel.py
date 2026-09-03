@@ -12,6 +12,8 @@ from nvda_ws_speaker import (
     register_loading_state_callback,
     register_settings_request_callback,
     register_accessibility_action_callback,
+    register_screen_context_callback,
+    register_page_text_callback,
     broadcast,
     bnvda_debug_enabled,
 )
@@ -217,6 +219,10 @@ DEFAULT_CONFIG = {
     # Spoken outcome of a shot fired out of the large cannon. No keybind: it announces itself
     # when the car comes to rest, which is the only moment it has anything to say.
     "cannon_shot_readout": True,
+    # Learn Bindings Mode speaks "A button. Shift up." by default. The game also ships a
+    # full sentence of description per action, which is useful the first time through and
+    # tiring once the pad is known -- hence a setting rather than a fixed choice.
+    "binding_learn_speak_description": False,
     "ai_describer_provider": "gemini",
     # Gemini's key/model keep their original names so existing configs migrate
     # for free; every other provider is namespaced.
@@ -1706,7 +1712,13 @@ def _dock_phrase_ramp(dock: dict) -> str:
     # The ramp's own inclination. Context, not an instruction — the driver of the car cannot
     # change it — but a steeply raised ramp is one you are about to drive UP, which changes the
     # approach speed, so it is worth a word once it is steep enough to matter.
+    # -999 is the mod's "could not measure" sentinel, sent when rampGeometry's five chosen
+    # nodes are not collision surface and the plane through them is therefore structure rather
+    # than floor. It is deliberately not 0.0, which would read as a level ramp; the magnitude
+    # band matches the one _ramp_self_phrase already applies to the same sentinel.
     pitch = dock.get("entry_theta")
+    if pitch is not None and abs(pitch) > 900:
+        pitch = None
     if pitch is not None and abs(pitch) >= RAMP_DOCK_PITCH_DEG:
         bits.append(f"ramp {'up' if pitch > 0 else 'down'} {abs(pitch):.0f} degrees")
 
@@ -3932,6 +3944,7 @@ scanner_distance_callout_interval = 10
 # are configured inside audio.py's apply_config; only the speech gate lives here.
 announce_implement_proximity = True
 announce_cannon_shot = True
+announce_binding_learn_description = False
 # "Bucket" / "Forks" / "Grapple" once the mod reports one, else "" for every other vehicle.
 # Read by toggle_scan_mode, which needs to say which end of the machine it is aiming from.
 _implement_word_current = ""
@@ -4202,10 +4215,31 @@ _vinfo_event = threading.Event()
 # command is the ordinary consequence of updating one side. See request_vehicle_info.
 _vinfo_absent = False
 
+# ---------- UI page text (bnvdaRuntime.js) ----------
+# The UI runtime latches which readable screen is on -- today only the mod repository /
+# automation details pages, whose spec table and description body carry nothing focusable.
+# The latch exists so the controller Functions menu can hide the entry everywhere else;
+# the readout itself always asks the runtime, which answers `notdetails` if the screen has
+# since gone.
+_ui_screen_context = ""
+_ui_screen_title = ""
+_page_text_lines = []
+_page_text_title = ""
+_page_text_error = None  # None, or a (code, sentence) pair
+_page_text_event = threading.Event()
+# Same latch, and the same reason, as _vinfo_absent: F9 SPACE is the terrain scan and is
+# pressed while driving, so a UI half that predates this feature must not charge the full
+# timeout to every press. See request_page_text.
+_page_text_absent = False
+
 _vehicle_bindings_list = []  # list of (cache_index, line)
 _vehicle_bindings_vehicle = ""
 _vehicle_bindings_building = None  # accumulator between BEGIN and END
 _vehicle_bindings_building_name = ""
+
+# Learn Bindings Mode. This flag drives the keepalive only -- the mod owns the real state and
+# reports it back on the LEARNMODE: line, which is also what gets spoken.
+_binding_learn_active = False
 
 # Generic Virtual Browser State
 _vbrowser_lines = []
@@ -4502,6 +4536,7 @@ _F9_HELP = {
     ("i", False, False, False): "Alignment readout, or cannon aim when in a cannon",
     ("i", False, True, False): "Cycle alignment reference band",
     ("i", True, False, False): "Toggle alignment instrument (implement or ramp)",
+    ("b", False, True, False): "Toggle learn bindings mode",
 }
 
 # F10 (AI) command descriptions
@@ -4917,8 +4952,23 @@ FUNCTION_ITEMS = [
         "Vehicle distance", "Camera", "d", alt=True, is_available=lambda: free_cam_active
     ),
     _function_item("Accessible node grabber", "Interaction", "n", ctrl=True),
+    # Reachable from the controller as well as from F9, which is the point: this mode exists to
+    # be used by somebody holding a pad they do not yet understand. It works from in here
+    # because the mod's own six accessibility actions are exempt and keep firing while the mode
+    # is on -- so the menu that armed it can still disarm it.
+    _function_item("Learn bindings mode", "Interaction", "b", shift=True),
     _function_item(
         "Clickspot detection", "Interaction", "c", ctrl=True, shift=True
+    ),
+    # Available only while the UI runtime has a readable screen latched, so the entry is
+    # absent everywhere else rather than present and answering "nothing to read". The
+    # handler is a lambda because open_page_text_browser is defined further down the file
+    # than this catalog.
+    _function_item(
+        "Read page text",
+        "Interaction",
+        handler=lambda: open_page_text_browser(),
+        is_available=lambda: _ui_screen_context == "mod_details",
     ),
     _function_item("Switch units", "Interaction", "u"),
     _function_item(
@@ -5009,6 +5059,27 @@ def _execute_function_item(item):
     _invoke_f9_command(name, ctrl=ctrl, shift=shift, alt=alt)
 
 
+def _drive_virtual_browser(action):
+    """Move the open virtual browser from a controller's accessibility actions."""
+    if action in ("next_menu", "previous_menu"):
+        close_virtual_browser(speak_exit=True)
+        return
+    if action == "status_up":
+        _on_vbrowser_nav(SimpleNamespace(name="up"))
+        return
+    if action == "status_down":
+        _on_vbrowser_nav(SimpleNamespace(name="down"))
+        return
+    if action == "activate" and _vbrowser_on_enter is not None:
+        _on_vbrowser_enter(None)
+        return
+    # status_repeat, and activate on a read-only list: re-read where we are. A browser
+    # with no enter action has nothing to activate, and silence there would read as the
+    # pad having stopped working.
+    if _vbrowser_lines:
+        say(_vbrowser_lines[_vbrowser_index], exclude_from_buffer=True)
+
+
 def navigate_accessibility_menu(action):
     """Navigate or activate the controller-facing accessibility screens."""
     global current_accessibility_screen_index
@@ -5017,6 +5088,17 @@ def navigate_accessibility_menu(action):
 
     if action not in ACCESSIBILITY_ACTIONS:
         logger.warning("Ignoring unknown accessibility action: %r", action)
+        return
+
+    # A virtual browser wins over the three accessibility screens, which is the rule
+    # on_status_arrow_press already applies on the keyboard -- it returns early while a
+    # browser is up. Without the same rule here the pad could OPEN a browser from the
+    # Functions menu (the mod page readout does exactly that) and then have no way to move
+    # through it, because open_virtual_browser hooks the keyboard arrows and nothing else.
+    # next_menu/previous_menu is the way out: it is what a listener reaches for to leave,
+    # and it costs no seventh action to bind.
+    if _vbrowser_active:
+        _drive_virtual_browser(action)
         return
 
     execute_item = None
@@ -5397,6 +5479,15 @@ VEHICLE_BINDINGS_LISTEN_PORT = (
     4467  # UDP port to receive vehicle binding lists from vehicleBindings.lua
 )
 VEHICLE_BINDINGS_CMD_PORT = 4468  # UDP port to send commands to vehicleBindings.lua
+BINDING_LEARN_LISTEN_PORT = (
+    4479  # UDP port to receive learn-mode events from bindingLearn.lua
+)
+BINDING_LEARN_CMD_PORT = 4480  # UDP port to send LEARN_ON/LEARN_OFF/KEEPALIVE/DIAG
+# The keepalive interval, against bindingLearn.lua's HEARTBEAT_TIMEOUT_S of 6.0. Well under
+# half of it on purpose: with the mode on, every binding in the game runs through the mod, so
+# a couple of dropped datagrams must not be able to end it -- and beamtel dying must end it
+# within seconds. Same reasoning trailerAngle.lua's heartbeat rests on.
+BINDING_LEARN_KEEPALIVE_S = 1.0
 ENV_LISTEN_PORT = 4474  # UDP port to receive environment rows from environmentAccessible.lua
 ENV_CMD_PORT = 4475  # UDP port to send commands to environmentAccessible.lua
 VEHICLE_INFO_LISTEN_PORT = 4477  # UDP port to receive vehicle info rows from vehicleInfo.lua
@@ -5906,6 +5997,181 @@ def _send_vehicle_bindings_cmd(command):
         logger.error(f"Failed to send vehicle bindings command via UDP: {e}")
 
 
+def _send_binding_learn_cmd(command):
+    try:
+        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        cmd_sock.sendto(command.encode("utf-8"), ("127.0.0.1", BINDING_LEARN_CMD_PORT))
+        cmd_sock.close()
+    except Exception as e:
+        logger.error(f"Failed to send binding learn command via UDP: {e}")
+
+
+def toggle_binding_learn_mode():
+    """Ask the mod to enter or leave Learn Bindings Mode.
+
+    Lua owns the authoritative state, and the confirmation is spoken from the LEARNMODE: reply
+    rather than from this request. That is not fussiness: entering the mode can fail on the Lua
+    side (the wrapper or the binding re-push), and announcing "learn bindings on" here would
+    claim a mode that is not running -- in a feature whose whole promise is that your buttons
+    have stopped doing things. If the mod never answers, nothing is said and the log carries it.
+    """
+    global _binding_learn_active
+    _binding_learn_active = not _binding_learn_active
+    _send_binding_learn_cmd("LEARN_ON" if _binding_learn_active else "LEARN_OFF")
+
+
+def binding_learn_keepalive_thread_fn(stop_event):
+    """Hold the mod's watchdog open while learn mode is on.
+
+    This thread IS the safety property. With the mode on, every binding in the game points at
+    the mod; if beamtel dies the game is unplayable until it is restarted. The mod tears the
+    mode down after HEARTBEAT_TIMEOUT_S of silence, so simply not sending is the recovery.
+    """
+    while not stop_event.is_set():
+        stop_event.wait(BINDING_LEARN_KEEPALIVE_S)
+        if stop_event.is_set():
+            break
+        if _binding_learn_active:
+            _send_binding_learn_cmd("KEEPALIVE")
+
+
+def _binding_learn_phrase(row):
+    """Render one learn-mode press into a spoken line.
+
+    Control first, then what it does: the control is what the listener just touched and is the
+    thing they are trying to attach a meaning to, so leading with it means the answer arrives
+    in the order the question was asked. The description is long, so it is off by default.
+
+    A press is reported as a GROUP, because one control routinely carries several bindings at
+    once -- a stock pad has btn_a on accept, menu_item_select, shiftUp, triggerAction0 and
+    bigMapControllerSelect. Sent one at a time each announcement interrupted the last and only
+    the final one was ever heard, which reads as the rest being ignored rather than as a mod
+    that only says one thing. The count is spoken because "this button does three things" is
+    itself the answer to the question being asked. `items` is optional on the wire and a packet
+    without it is read as a single unnamed-count action, for the reason every other tail in this
+    project carries: bng_mod/ is a live junction and the two halves genuinely go out of step.
+    """
+    control = (row.get("control") or "").strip()
+
+    # Holding a modifier over a control that carries no binding for it is not an unbound control
+    # as far as the engine is concerned -- it falls through and fires the bare binding. The mod
+    # drops that fall-through and marks the report, because "modifier 1 plus d-pad right" is a
+    # different button from "d-pad right" and naming the right indicator for it is a confident
+    # wrong answer about the combination actually pressed. Reported rather than dropped: silence
+    # is indistinguishable from the mode being broken.
+    if row.get("unbound"):
+        return f"{control}. Nothing bound" if control else "Nothing bound"
+
+    items = row.get("items")
+    if not isinstance(items, list) or not items:
+        items = [
+            {
+                "title": row.get("title") or row.get("action") or "",
+                "desc": row.get("desc") or "",
+                "suppressed": row.get("suppressed", 1),
+            }
+        ]
+
+    parts = []
+    if control:
+        parts.append(control + (", axis" if row.get("kind") == "axis" else ""))
+    elif row.get("kind") == "axis":
+        parts.append("axis")
+    if len(items) > 1:
+        parts.append(f"{len(items)} actions")
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        title = (item.get("title") or "").strip() or "unnamed action"
+        # An exempt binding fired as well as being named -- menu navigation, the pad's modifier
+        # buttons, and this mod's own controller keys. Saying so is what stops "it did something
+        # anyway" reading as a bug.
+        if not item.get("suppressed"):
+            title += ", still active"
+        if announce_binding_learn_description:
+            desc = (item.get("desc") or "").strip()
+            if desc and desc != (item.get("title") or "").strip():
+                title += ". " + desc
+        parts.append(title)
+
+    return ". ".join(p for p in parts if p)
+
+
+def binding_learn_listener(stop_event):
+    """Listens for Learn Bindings Mode events from bindingLearn.lua."""
+    global _binding_learn_active
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", BINDING_LEARN_LISTEN_PORT))
+        sock.settimeout(0.2)
+        logger.info(
+            f"Binding learn listener started on port {BINDING_LEARN_LISTEN_PORT}"
+        )
+
+        while not stop_event.is_set():
+            try:
+                data, _addr = sock.recvfrom(4096)
+                text = data.decode("utf-8", errors="ignore").strip()
+                if not text:
+                    continue
+
+                if text.startswith("LEARN:"):
+                    # JSON rather than a positional or k=v tail: the action description is free
+                    # text with commas and quotes in it. Same call vehicleInfo.lua's INFO_ROW
+                    # already makes.
+                    try:
+                        row = json.loads(text[6:])
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"Malformed learn packet: {e}")
+                        continue
+                    if not isinstance(row, dict):
+                        continue
+                    # interrupt=True: presses come as fast as the user can make them, and the
+                    # answer they want is about the button under their thumb now.
+                    say(_binding_learn_phrase(row))
+                    continue
+
+                if text.startswith("LEARNMODE:"):
+                    body = text[10:]
+                    state, _, reason = body.partition(";")
+                    on = state.strip().upper() == "ON"
+                    _binding_learn_active = on
+                    logger.info(f"Learn bindings mode {'on' if on else 'off'}: {reason}")
+                    say(
+                        f"Learn bindings {'on' if on else 'off'}",
+                        exclude_from_buffer=True,
+                    )
+                    continue
+
+                if text.startswith("LEARNFAIL:"):
+                    code, _, sentence = text[10:].partition(";")
+                    logger.error(f"Learn bindings failed ({code}): {sentence}")
+                    # Every current code means the mode is not running -- it would not start
+                    # (nowrap, norefresh), or it has ended and is still repairing (norestore).
+                    # Leaving the flag set would spend the next Shift+B turning off a mode that
+                    # was never on, so the user would have to press twice to get in.
+                    _binding_learn_active = False
+                    # A failure here is never silent. Every code names a state in which the
+                    # user's controls are not behaving the way the mode just promised.
+                    say(sentence or "Learn bindings failed", exclude_from_buffer=True)
+                    continue
+
+            except socket.timeout:
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Binding learn listener socket error.")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+        logger.info("Binding learn listener stopped.")
+
+
 def _vehicle_bindings_on_enter(idx, line, data):
     """Virtual browser enter callback — fire the highlighted vehicle action."""
     if data is None:
@@ -6023,6 +6289,105 @@ def request_vehicle_info(model=None, config=None, timeout=0.6):
     if _vinfo_error:
         return [], _vinfo_error
     return _vinfo_render(_vinfo_rows), None
+
+
+def _on_screen_context(context, title):
+    """The UI runtime says which readable screen is up (empty when none)."""
+    global _ui_screen_context, _ui_screen_title
+    _ui_screen_context = context
+    _ui_screen_title = title
+
+
+def _on_page_text(lines, title, code, sentence):
+    global _page_text_lines, _page_text_title, _page_text_error, _page_text_absent
+    _page_text_absent = False
+    if code:
+        _page_text_lines = []
+        _page_text_title = ""
+        _page_text_error = (code, sentence)
+    else:
+        _page_text_lines = lines
+        _page_text_title = title
+        _page_text_error = None
+    _page_text_event.set()
+
+
+def request_page_text(timeout=0.6):
+    """Ask the UI runtime for the current readable screen and wait briefly.
+
+    Returns (lines, failure) with the same contract request_vehicle_info uses: failure is
+    None on success and otherwise a (code, sentence) pair. `notdetails` is the answer on
+    every screen in the game that is not a mod details page, so the caller must fall
+    through silently on it -- speaking it would replace the terrain scan with a complaint
+    on a key that has always scanned.
+    """
+    global _page_text_lines, _page_text_title, _page_text_error, _page_text_absent
+    _page_text_event.clear()
+    _page_text_lines = []
+    _page_text_title = ""
+    _page_text_error = None
+    broadcast({"type": "page_text"})
+
+    # Asked again -- a reply is how the latch clears -- but not WAITED for.
+    if not _page_text_event.wait(0.0 if _page_text_absent else timeout):
+        _page_text_absent = True
+        return [], ("timeout", "")
+
+    if _page_text_error:
+        return [], _page_text_error
+    return list(_page_text_lines), None
+
+
+def _read_mod_details_page():
+    """F9 SPACE on a mod repository details page. True when it handled the press.
+
+    Gated on the latch BEFORE the round trip: this key is the terrain scan and is pressed
+    while driving, so the ordinary case has to cost nothing at all. The latch is pushed on
+    entering and leaving the route and re-pushed on every transport pong, so a UI reload or
+    a beamtel restart cannot leave it stuck on.
+
+    A failure is spoken only when the screen really was up and still could not be read --
+    the user asked a question about a mod and deserves the reason. A timeout says nothing
+    about the mod, only that the UI half is missing or deaf, so it stays silent and the
+    chain falls through to the scan.
+    """
+    if _ui_screen_context != "mod_details":
+        return False
+    lines, failure = request_page_text()
+    if lines:
+        open_virtual_browser(
+            lines,
+            title=f"{_page_text_title or 'Mod details'}, {len(lines)} items",
+        )
+        return True
+    if failure and failure[0] not in ("notdetails", "timeout"):
+        say(failure[1] or "No mod information", exclude_from_buffer=True)
+        return True
+    return False
+
+
+def open_page_text_browser():
+    """Read the current readable screen, or say why it cannot be read.
+
+    Used by the controller Functions menu, where the entry only appears while a readable
+    screen is latched -- so unlike the F9 SPACE path, every failure here IS news and is
+    spoken, including the one that means the screen went away underneath the menu.
+    """
+    lines, failure = request_page_text()
+    if lines:
+        open_virtual_browser(
+            lines,
+            title=f"{_page_text_title or 'Page text'}, {len(lines)} items",
+        )
+        return True
+    if failure and failure[0] == "timeout":
+        say("The mod interface did not answer", exclude_from_buffer=True)
+    else:
+        say(
+            (failure[1] if failure else "") or "Nothing to read here",
+            exclude_from_buffer=True,
+        )
+    return False
 
 
 def _send_env_cmd(command):
@@ -7143,6 +7508,16 @@ def _on_next_key_press(event, audio_controller):
     ):
         open_vehicle_bindings_browser()
     elif (
+        name == "b"
+        and _capture_mods["shift"]
+        and not _capture_mods["ctrl"]
+        and not _capture_mods["alt"]
+    ):
+        # Shift+B sits next to plain B on purpose: the browser LISTS this vehicle's special
+        # controls, and this names whatever control you press on any device. Same subject,
+        # two directions.
+        toggle_binding_learn_mode()
+    elif (
         name == "n"
         and not _capture_mods["ctrl"]
         and not _capture_mods["shift"]
@@ -7222,9 +7597,16 @@ def _on_next_key_press(event, audio_controller):
     elif name == "space" and not (
         _capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]
     ):
-        # One key, three answers. On the stock vehicle selector it reads the details page's
-        # specifications; driving, it is the terrain sonification scan; in a menu it activates
+        # One key, four answers. On the stock vehicle selector it reads the details page's
+        # specifications; on a mod repository details page it reads that mod's sheet and
+        # description; driving, it is the terrain sonification scan; in a menu it activates
         # the on-screen control, which is what this key has always done.
+        #
+        # The mod page sits after the selector and before the scan for the selector's own
+        # reason: being on that route is a POSITIVE fact about an open screen, where
+        # _world_is_active() is a recency heuristic that also goes false while paused. Its
+        # "notdetails" answer -- which is what every other screen in the game returns -- falls
+        # through in silence, so nothing that works today can regress.
         #
         # The selector is asked FIRST, and that ordering is the one real priority call here.
         # The other two disambiguate cleanly on _world_is_active(), because the only screens
@@ -7253,6 +7635,8 @@ def _on_next_key_press(event, audio_controller):
             # a timeout says nothing about the vehicle at all, only that the mod half is
             # missing or deaf.
             say(info_fail[1] or "No vehicle information", exclude_from_buffer=True)
+        elif _read_mod_details_page():
+            pass
         elif _world_is_active():
             trigger_terrain_scan_driving_only()
         else:
@@ -9927,6 +10311,7 @@ def _apply_live_config(audio_controller):
     global announce_clickspot_actions
     global scanner_distance_callout_enabled, scanner_distance_callout_interval
     global announce_implement_proximity, announce_cannon_shot
+    global announce_binding_learn_description
     global road_follow_guidance_enabled, road_junction_speech_enabled
     global road_junction_earcon_enabled, road_include_private
     global obstacle_warning_sensitivity
@@ -9955,6 +10340,9 @@ def _apply_live_config(audio_controller):
         scanner_distance_callout_interval = cfg.get("scanner_distance_callout_interval", 10)
         announce_implement_proximity = bool(cfg.get("implement_proximity_speech", True))
         announce_cannon_shot = bool(cfg.get("cannon_shot_readout", True))
+        announce_binding_learn_description = bool(
+            cfg.get("binding_learn_speak_description", False)
+        )
         road_follow_guidance_enabled = bool(
             cfg.get("road_follow_guidance_enabled", True)
         )
@@ -10010,6 +10398,7 @@ def _run_engine():
     global announce_clickspot_actions
     global scanner_distance_callout_enabled, scanner_distance_callout_interval
     global announce_implement_proximity, announce_cannon_shot
+    global announce_binding_learn_description
     global road_follow_guidance_enabled, road_junction_speech_enabled
     global road_junction_earcon_enabled, road_include_private
     global obstacle_warning_sensitivity
@@ -10025,6 +10414,9 @@ def _run_engine():
     scanner_distance_callout_interval = cfg.get("scanner_distance_callout_interval", 10)
     announce_implement_proximity = bool(cfg.get("implement_proximity_speech", True))
     announce_cannon_shot = bool(cfg.get("cannon_shot_readout", True))
+    announce_binding_learn_description = bool(
+        cfg.get("binding_learn_speak_description", False)
+    )
     road_follow_guidance_enabled = bool(cfg.get("road_follow_guidance_enabled", True))
     road_junction_speech_enabled = bool(cfg.get("road_junction_speech_enabled", True))
     road_junction_earcon_enabled = bool(cfg.get("road_junction_earcon_enabled", True))
@@ -10067,6 +10459,8 @@ def _run_engine():
     register_dom_dump_callback(_on_dom_dump_received)
     register_loading_state_callback(_on_loading_state_changed)
     register_settings_request_callback(_broadcast_ui_settings)
+    register_screen_context_callback(_on_screen_context)
+    register_page_text_callback(_on_page_text)
 
     # Wait for the updater's answer before touching the game. The timeout is the
     # failure path, not the normal one: a flow that never answers -- a dialog the
@@ -10193,6 +10587,19 @@ def _run_engine():
     # Ask for the current vehicle's bindings, in case beamtel started after the
     # game had already spawned one and the load-time push was missed.
     _send_vehicle_bindings_cmd("REQUEST")
+
+    binding_learn_thread = threading.Thread(
+        target=binding_learn_listener, args=(STOP,), daemon=True
+    )
+    binding_learn_thread.start()
+    binding_learn_keepalive = threading.Thread(
+        target=binding_learn_keepalive_thread_fn, args=(STOP,), daemon=True
+    )
+    binding_learn_keepalive.start()
+    # No startup request: the mode starts off, and a LEARN_OFF here would be answered by a mod
+    # half that is not in the mode with a message the user did not ask for. If the mode WAS
+    # somehow left on by a previous beamtel, the mod's own keepalive watchdog has already ended
+    # it -- that is the point of the watchdog owning the timeout rather than this side.
 
     environment_thread = threading.Thread(
         target=environment_listener, args=(STOP,), daemon=True
@@ -10343,6 +10750,11 @@ def main():
     app.MainLoop()
 
     # Ensure clean shutdown after GUI closes
+    # Learn mode goes off explicitly first: the watchdog would end it within HEARTBEAT_TIMEOUT_S
+    # anyway, but there is no reason to leave somebody's controls dead for six seconds when we
+    # know we are quitting. The watchdog remains the backstop for the ways we do NOT get here.
+    if _binding_learn_active:
+        _send_binding_learn_cmd("LEARN_OFF")
     STOP.set()
 
 

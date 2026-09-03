@@ -18,6 +18,7 @@ R2_PREFIX = "R2|"
 R2_STALE_SECONDS = 1.0
 _STATES = {"dormant", "offRoad", "onRoad"}
 _PHASES = {"approach", "near"}
+_CORRECTION_PHASES = {"idle", "correct", "unwind"}
 
 
 def _finite_number(value, field):
@@ -35,6 +36,20 @@ def _finite_number(value, field):
 def _bearing(value, field):
     value = _finite_number(value, field)
     return ((value + 180.0) % 360.0) - 180.0
+
+
+def _short_array(value, field, max_items):
+    """Accept BeamNG's empty-table JSON spelling while keeping arrays strict.
+
+    BeamNG's Lua ``jsonEncode`` cannot distinguish an empty array from an empty
+    object, so protocol fields sent as ``{}`` on the wire mean ``[]``.  A
+    non-empty object is still malformed and must not be silently accepted.
+    """
+    if value == {}:
+        value = []
+    if not isinstance(value, list) or len(value) > max_items:
+        raise ValueError(f"{field} must be a short array")
+    return value
 
 
 def parse_r2_packet(text):
@@ -55,9 +70,7 @@ def parse_r2_packet(text):
     if not isinstance(one_way, bool):
         raise ValueError("oneWay must be boolean")
 
-    directions = packet.get("roadDirections", [])
-    if not isinstance(directions, list) or len(directions) > 8:
-        raise ValueError("roadDirections must be a short array")
+    directions = _short_array(packet.get("roadDirections", []), "roadDirections", 8)
     directions = [_bearing(v, "roadDirections") for v in directions]
 
     off_road = packet.get("offRoad")
@@ -73,6 +86,15 @@ def parse_r2_packet(text):
     if correction is not None:
         if not isinstance(correction, dict) or not isinstance(correction.get("active"), bool):
             raise ValueError("correction must contain a boolean active field")
+        correction_data = correction
+        correction_phase = correction.get(
+            "phase", "correct" if correction["active"] else "idle"
+        )
+        if correction_phase not in _CORRECTION_PHASES:
+            raise ValueError("invalid correction phase")
+        settled = correction.get("settled", False)
+        if not isinstance(settled, bool):
+            raise ValueError("correction.settled must be boolean")
         correction = {
             "active": correction["active"],
             "bearing": _bearing(correction.get("bearing", 0.0), "correction.bearing"),
@@ -80,7 +102,21 @@ def parse_r2_packet(text):
                 1.0,
                 max(0.0, _finite_number(correction.get("severity", 0.0), "correction.severity")),
             ),
+            "phase": correction_phase,
+            "settled": settled,
         }
+        for field in ("lateralRatio", "headingError", "timeToEdge"):
+            value = correction_data.get(field)
+            if value is not None:
+                correction[field] = _finite_number(value, f"correction.{field}")
+        if "lateralRatio" in correction:
+            correction["lateralRatio"] = max(0.0, correction["lateralRatio"])
+        if "headingError" in correction:
+            correction["headingError"] = _bearing(
+                correction["headingError"], "correction.headingError"
+            )
+        if "timeToEdge" in correction:
+            correction["timeToEdge"] = max(0.0, correction["timeToEdge"])
 
     junction = packet.get("junction")
     if junction is not None:
@@ -95,9 +131,7 @@ def parse_r2_packet(text):
         entered = junction.get("entered", False)
         if not isinstance(entered, bool):
             raise ValueError("junction.entered must be boolean")
-        exits = junction.get("exits", [])
-        if not isinstance(exits, list) or len(exits) > 16:
-            raise ValueError("junction.exits must be a short array")
+        exits = _short_array(junction.get("exits", []), "junction.exits", 16)
         kind = junction.get("kind", "intersection")
         if not isinstance(kind, str) or not kind.strip() or len(kind) > 40:
             raise ValueError("junction.kind must be a short string")
@@ -351,7 +385,15 @@ class RoadGuidanceFeed:
             parts.append(f"Legal direction{'s' if not packet.get('oneWay') else ''}: {directions}.")
         correction = packet.get("correction")
         if correction and correction.get("active"):
-            parts.append(f"Correction needed: {direction_label(correction.get('bearing', 0.0))}.")
+            if correction.get("phase") == "unwind":
+                parts.append("Straighten steering now.")
+            else:
+                bearing = correction.get("bearing", 0.0)
+                side = "left" if bearing > 0 else "right"
+                strength = "strong" if correction.get("severity", 0.0) >= 0.67 else (
+                    "moderate" if correction.get("severity", 0.0) >= 0.34 else "small"
+                )
+                parts.append(f"Apply a {strength} correction {side}.")
         else:
             parts.append("No correction needed.")
         junction = snap["junction"]

@@ -46,6 +46,16 @@ extensions.load("nodeGrabberAccessible")
 extensions.load("clickspotAccessible")
 extensions.load("vehicleSpawnerAccessible")
 extensions.load("vehicleBindings")
+-- Learn Bindings Mode. Sits beside vehicleBindings because it shares its core_input_actions
+-- dependency and reuses its control-name formatter. Passive: its onUpdate drains a socket and
+-- ticks a timer until Python turns the mode on. Reloaded explicitly for the reason
+-- obstacleDetector is -- this one WRAPS a stock engine function, so a stale copy left behind by
+-- the manual unload mode would be a wrapper whose live half no longer exists.
+if extensions.isExtensionLoaded("bindingLearn") then
+  extensions.reload("bindingLearn")
+else
+  extensions.load("bindingLearn")
+end
 extensions.load("roadDetector")
 extensions.load("uiToggle")
 extensions.load("consoleAccessible")

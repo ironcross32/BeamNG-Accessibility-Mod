@@ -74,7 +74,15 @@ def main():
     assert all(runtime_defaults[key] == tool_defaults[key] for key in road_keys)
 
     valid = packet(
-        correction={"active": True, "bearing": 22, "severity": 1.8},
+        correction={
+            "active": True,
+            "bearing": 22,
+            "severity": 1.8,
+            "phase": "correct",
+            "lateralRatio": 0.82,
+            "headingError": 7,
+            "timeToEdge": 1.4,
+        },
         junction={
             "id": "n1+n2",
             "phase": "approach",
@@ -84,13 +92,36 @@ def main():
         },
     )
     assert valid["correction"]["severity"] == 1.0
+    assert valid["correction"]["phase"] == "correct"
+    assert valid["correction"]["timeToEdge"] == 1.4
     expect_bad("R2|not json")
     expect_bad('R2|{"state":"flying"}')
     expect_bad('R2|{"state":"onRoad","roadDirections":[NaN]}')
+    expect_bad('R2|{"state":"onRoad","roadDirections":{"bad":1}}')
+    expect_bad(
+        'R2|{"state":"onRoad","correction":{"active":true,"phase":"hold"}}'
+    )
     expect_bad('R2|{"state":"onRoad","junction":{"id":"x","phase":"later"}}')
     expect_bad(
         'R2|{"state":"onRoad","junction":{"id":"x","phase":"near","entered":1}}'
     )
+    # Lua's jsonEncode writes an empty table as {}, even where the R2 schema
+    # defines an array.  These are the packets BeamNG emits while no nearby road
+    # is vertically compatible and at junctions with no alternative exits.
+    empty_arrays = parse_r2_packet(
+        'R2|{"state":"offRoad","roadDirections":{},"offRoad":null,'
+        '"correction":null,"junction":null}'
+    )
+    assert empty_arrays["roadDirections"] == []
+    empty_exits = packet(
+        junction={
+            "id": "dead-end",
+            "phase": "near",
+            "distance": 5,
+            "exits": {},
+        }
+    )
+    assert empty_exits["junction"]["exits"] == []
 
     assert direction_list([90, 0, -90]) == "left, straight, and right"
     assert direction_list([30, -30], "or") == "slight left or slight right"
@@ -160,13 +191,30 @@ def main():
         packet(
             oneWay=True,
             roadDirections=[10],
-            correction={"active": True, "bearing": -50, "severity": 0.4},
+            correction={
+                "active": True,
+                "bearing": -50,
+                "severity": 0.4,
+                "phase": "correct",
+            },
             junction=metric_t,
         )
     )
     status = status_feed.status_phrase(True, "metric")
-    for phrase in ("One-way road", "Correction needed: right", "T-junction"):
+    for phrase in ("One-way road", "moderate correction right", "T-junction"):
         assert phrase in status
+
+    status_feed.accept_r2(
+        packet(
+            correction={
+                "active": True,
+                "bearing": 0,
+                "severity": 0.2,
+                "phase": "unwind",
+            }
+        )
+    )
+    assert "Straighten steering now" in status_feed.status_phrase(True, "metric")
 
     print("road_guidance_sim: all diagnostics passed")
 

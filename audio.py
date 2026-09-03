@@ -634,17 +634,25 @@ ROAD_BEEP_MAX_RATE_HZ = 4.0  # pulses/sec when right next to road
 ROAD_BEEP_HALF_DIST_M = 20.0  # exponential half-distance for rate scaling
 
 # Road correction is deliberately a different auditory object from the off-road
-# beacon: a continuous, phase-modulated triangle that vanishes when the vehicle is
-# aligned. Severity pushes the modulator:carrier ratio away from the clean 5:1
-# relationship and raises the index, making the tone progressively rougher.
+# beacon. Short directional pips say "apply steering"; their rate reports how much
+# correction remains. A centred double pip is a separate "unwind now" instruction.
+# This leaves silence between instructions and gives recovery a definite action point.
 ROAD_CORRECTION_CARRIER_HZ = 440.0
-ROAD_CORRECTION_RATIO_MIN = 5.0
-ROAD_CORRECTION_RATIO_MAX = 5.35
-ROAD_CORRECTION_INDEX_MIN = 1.2
-ROAD_CORRECTION_INDEX_MAX = 1.4
+ROAD_CORRECTION_MID_HZ = 523.25
+ROAD_CORRECTION_HIGH_HZ = 659.25
+ROAD_CORRECTION_PIP_MS = 80
+ROAD_CORRECTION_RATE_MIN_HZ = 0.85
+ROAD_CORRECTION_RATE_MAX_HZ = 3.5
+ROAD_CORRECTION_UNWIND_HZ = 659.25
+ROAD_CORRECTION_UNWIND_PIP_MS = 55
+ROAD_CORRECTION_UNWIND_GAP_MS = 55
+ROAD_CORRECTION_UNWIND_REPEAT_S = 0.8
+ROAD_CORRECTION_SETTLED_START_HZ = 659.25
+ROAD_CORRECTION_SETTLED_END_HZ = 880.0
+ROAD_CORRECTION_SETTLED_MS = 130
 ROAD_CORRECTION_MAX_AZIMUTH_DEG = 35.0
-ROAD_CORRECTION_ATTACK_S = 0.035
-ROAD_CORRECTION_RELEASE_S = 0.060
+ROAD_CORRECTION_ATTACK_S = 0.015
+ROAD_CORRECTION_RELEASE_S = 0.025
 
 # Road Orientation Chime (one-shot two-tone cue when transitioning onto a road).
 # First tone is panned to the smaller-|bearing| travel direction (more "ahead-ish") at the
@@ -688,16 +696,12 @@ def road_beacon_rate_hz(distance=0.0):
     ) * rate_norm
 
 
-def road_correction_timbre(severity):
-    """Return the continuous correction tone's modulator ratio and FM index."""
+def road_correction_rate_hz(severity):
+    """Return the directional correction-pip rate for a normalized demand."""
     amount = min(1.0, max(0.0, float(severity)))
-    ratio = ROAD_CORRECTION_RATIO_MIN + (
-        ROAD_CORRECTION_RATIO_MAX - ROAD_CORRECTION_RATIO_MIN
+    return ROAD_CORRECTION_RATE_MIN_HZ + (
+        ROAD_CORRECTION_RATE_MAX_HZ - ROAD_CORRECTION_RATE_MIN_HZ
     ) * amount
-    index = ROAD_CORRECTION_INDEX_MIN + (
-        ROAD_CORRECTION_INDEX_MAX - ROAD_CORRECTION_INDEX_MIN
-    ) * amount
-    return ratio, index
 
 # Coordinate Guidance FM tone
 COORD_GUIDE_FC_ONCOURSE_HZ = 440.0  # Carrier Hz when on course (amp is ~0 anyway)
@@ -1061,6 +1065,7 @@ class AudioController:
         )
         self.ROAD_JUNCTION_WAVEFORM = None
         self.ROAD_JUNCTION_ENTRY_WAVEFORM = None
+        self.ROAD_CORRECTION_SETTLED_WAVEFORM = None
         self.CAM_CLICK_WAVEFORM = None
         self.CAM_HIGHLIGHT_CLICK_WAVEFORM = None
         self.HYDRO_CENTER_CLICK_WAVEFORM = None  # Articulation centre-crossing tick
@@ -1250,6 +1255,7 @@ class AudioController:
         self._road_correction_active = False
         self._road_correction_bearing = 0.0
         self._road_correction_severity = 0.0
+        self._road_correction_phase = "idle"
         self._road_follow_enabled = True
         self._road_beep_timer = 0.0
         self._road_playback_pos = -1.0
@@ -1258,13 +1264,12 @@ class AudioController:
         self._road_amp = 10.0 ** (-14.0 / 20.0)
         self._road_correction_amp = 10.0 ** (-24.0 / 20.0)
         self._road_correction_carrier_phase = 0.0
-        self._road_correction_mod_phase = 0.0
-        self._road_correction_ratio = ROAD_CORRECTION_RATIO_MIN
-        self._road_correction_index = ROAD_CORRECTION_INDEX_MIN
+        self._road_correction_pulse_phase = 0.0
         self._road_correction_env = 0.0
         self._road_correction_render_bearing = 0.0
         self._road_correction_overlap_L = None
         self._road_correction_overlap_R = None
+        self._road_correction_settled_pos = -1
         # Orientation chime: list of pending pulses {"delay": int_samples, "L": np.ndarray, "R": np.ndarray, "pos": int}
         self._road_chime_queue = []
         # Earliest monotonic time at which a new chime is allowed to start. Used to pace
@@ -1748,6 +1753,7 @@ class AudioController:
                 self._road_pulse_L = None
                 self._road_pulse_R = None
                 self._stop_road_correction_voice()
+                self._road_correction_settled_pos = -1
                 self._road_chime_queue = []
                 self._road_junction_queue = []
                 self._road_chime_next_allowed_time = 0.0
@@ -1763,6 +1769,7 @@ class AudioController:
             self._road_pulse_L = None
             self._road_pulse_R = None
             self._stop_road_correction_voice()
+            self._road_correction_settled_pos = -1
             self._road_chime_queue = []
             self._road_junction_queue = []
 
@@ -1784,20 +1791,26 @@ class AudioController:
     def _stop_road_correction_voice(self):
         """Hard-stop correction, including any HRTF convolution tail."""
         self._road_correction_env = 0.0
+        self._road_correction_pulse_phase = 0.0
         self._road_correction_overlap_L = None
         self._road_correction_overlap_R = None
 
-    def _render_road_correction_block(self, frames, active, bearing_deg, severity):
-        """Render one continuous correction block, or its short alignment release."""
+    def _render_road_correction_block(
+        self, frames, active, bearing_deg, severity, phase="correct"
+    ):
+        """Render intermittent correction pips or the centred unwind doublet."""
         if frames <= 0:
             return None
 
         if active:
-            self._road_correction_render_bearing = self._clamp(
-                float(bearing_deg),
-                -ROAD_CORRECTION_MAX_AZIMUTH_DEG,
-                ROAD_CORRECTION_MAX_AZIMUTH_DEG,
-            )
+            if phase == "unwind":
+                self._road_correction_render_bearing = 0.0
+            else:
+                self._road_correction_render_bearing = self._clamp(
+                    float(bearing_deg),
+                    -ROAD_CORRECTION_MAX_AZIMUTH_DEG,
+                    ROAD_CORRECTION_MAX_AZIMUTH_DEG,
+                )
 
         target_env = 1.0 if active else 0.0
         tau = ROAD_CORRECTION_ATTACK_S if active else ROAD_CORRECTION_RELEASE_S
@@ -1811,35 +1824,52 @@ class AudioController:
             self._stop_road_correction_voice()
             return None
 
-        target_ratio, target_index = road_correction_timbre(severity)
-        ratio = np.linspace(
-            self._road_correction_ratio, target_ratio, frames, dtype=np.float64
-        )
-        mod_index = np.linspace(
-            self._road_correction_index, target_index, frames, dtype=np.float64
-        )
-        carrier_inc = ROAD_CORRECTION_CARRIER_HZ / self.samplerate
+        amount = min(1.0, max(0.0, float(severity)))
+        sample_time = np.arange(frames, dtype=np.float64) / self.samplerate
+        pulse_time = self._road_correction_pulse_phase + sample_time
+        if phase == "unwind":
+            cycle_s = ROAD_CORRECTION_UNWIND_REPEAT_S
+            local_time = np.mod(pulse_time, cycle_s)
+            pip_s = ROAD_CORRECTION_UNWIND_PIP_MS / 1000.0
+            second_start = pip_s + ROAD_CORRECTION_UNWIND_GAP_MS / 1000.0
+            pulse_envelope = np.zeros(frames, dtype=np.float64)
+            for start in (0.0, second_start):
+                progress = (local_time - start) / pip_s
+                inside = (progress >= 0.0) & (progress < 1.0)
+                pulse_envelope[inside] = np.sin(np.pi * progress[inside])
+            frequency = ROAD_CORRECTION_UNWIND_HZ
+        else:
+            rate_hz = road_correction_rate_hz(amount)
+            cycle_s = 1.0 / rate_hz
+            local_time = np.mod(pulse_time, cycle_s)
+            pip_s = min(ROAD_CORRECTION_PIP_MS / 1000.0, cycle_s * 0.65)
+            progress = local_time / pip_s
+            pulse_envelope = np.where(
+                progress < 1.0, np.sin(np.pi * np.minimum(progress, 1.0)), 0.0
+            )
+            if amount >= 0.67:
+                frequency = ROAD_CORRECTION_HIGH_HZ
+            elif amount >= 0.34:
+                frequency = ROAD_CORRECTION_MID_HZ
+            else:
+                frequency = ROAD_CORRECTION_CARRIER_HZ
+
+        carrier_inc = frequency / self.samplerate
         carrier_phase = self._road_correction_carrier_phase + carrier_inc * np.arange(
             frames, dtype=np.float64
         )
-        mod_increments = carrier_inc * ratio
-        mod_phase = self._road_correction_mod_phase + np.concatenate(
-            (np.zeros(1, dtype=np.float64), np.cumsum(mod_increments[:-1]))
-        )
-        fm_phase = 2.0 * np.pi * carrier_phase + mod_index * np.sin(
-            2.0 * np.pi * mod_phase
-        )
-        triangle = (2.0 / np.pi) * np.arcsin(np.sin(fm_phase))
-        mono = (triangle * envelope * self._road_correction_amp).astype(np.float32)
-
+        mono = (
+            np.sin(2.0 * np.pi * carrier_phase)
+            * pulse_envelope
+            * envelope
+            * self._road_correction_amp
+        ).astype(np.float32)
         self._road_correction_carrier_phase = float(
             (self._road_correction_carrier_phase + carrier_inc * frames) % 1.0
         )
-        self._road_correction_mod_phase = float(
-            (self._road_correction_mod_phase + np.sum(mod_increments)) % 1.0
+        self._road_correction_pulse_phase = float(
+            (self._road_correction_pulse_phase + frames / self.samplerate) % cycle_s
         )
-        self._road_correction_ratio = target_ratio
-        self._road_correction_index = target_index
 
         bearing = self._road_correction_render_bearing
         use_hrtf = self._hrtf is not None and self._hrtf_user_enabled
@@ -1954,6 +1984,8 @@ class AudioController:
         """Apply one validated R2 state to the road audio renderer."""
         with self.lock:
             was_off = not self._road_on_road
+            was_correction_active = self._road_correction_active
+            previous_phase = self._road_correction_phase
             self._road_on_road = state != "offRoad"
             self._road_beacon_available = state != "offRoad" or off_road is not None
             if off_road:
@@ -1976,12 +2008,33 @@ class AudioController:
                     float(correction.get("severity", 0.0) if correction else 0.0),
                 ),
             )
+            self._road_correction_phase = str(
+                correction.get("phase", "correct") if correction else "idle"
+            )
+            if self._road_correction_active and (
+                not was_correction_active or self._road_correction_phase != previous_phase
+            ):
+                # Every new instruction starts audibly now. In particular, the
+                # centred unwind doublet must not inherit the directional pip's
+                # silent part of its cycle or its HRTF tail.
+                self._stop_road_correction_voice()
+            if (
+                state == "onRoad"
+                and self._road_follow_enabled
+                and correction
+                and correction.get("settled")
+                and self.ROAD_CORRECTION_SETTLED_WAVEFORM is not None
+            ):
+                self._stop_road_correction_voice()
+                self._road_correction_settled_pos = 0
             if state != "onRoad":
                 # Off-road acquisition owns the pulsed beacon, while dormant has
                 # no road voice. Never let correction or its HRTF tail bleed into
                 # either state.
                 self._road_correction_active = False
+                self._road_correction_phase = "idle"
                 self._stop_road_correction_voice()
+                self._road_correction_settled_pos = -1
             if self._road_on_road and was_off:
                 # Just rejoined the road — kill any pending pulse
                 self._road_playback_pos = -1.0
@@ -2126,6 +2179,7 @@ class AudioController:
         self._road_junction_amp = float(10.0 ** (junction_db / 20.0))
         self.ROAD_JUNCTION_WAVEFORM = self._generate_road_junction_pip()
         self.ROAD_JUNCTION_ENTRY_WAVEFORM = self._generate_road_junction_entry()
+        self.ROAD_CORRECTION_SETTLED_WAVEFORM = self._generate_road_correction_settled()
 
         # Regenerate volume-dependent waveforms
         self.CLICK_WAVEFORM = self._generate_click()
@@ -2531,6 +2585,7 @@ class AudioController:
         )
         self.ROAD_JUNCTION_WAVEFORM = self._generate_road_junction_pip()
         self.ROAD_JUNCTION_ENTRY_WAVEFORM = self._generate_road_junction_entry()
+        self.ROAD_CORRECTION_SETTLED_WAVEFORM = self._generate_road_correction_settled()
         self.GUIDANCE_WAVEFORM = self._generate_guidance_tone()  # NEW
         self.LS_CLICK_WAVEFORM = self._generate_lowspeed_click()
         self.LS_STOP_WAVEFORM = self._generate_lowspeed_stop_tone()
@@ -3022,6 +3077,24 @@ class AudioController:
         )
         return (wave * attack * release * self._road_junction_amp).astype(np.float32)
 
+    def _generate_road_correction_settled(self):
+        """Short rising confirmation that lane recovery has actually settled."""
+        samples = int(self.samplerate * ROAD_CORRECTION_SETTLED_MS / 1000.0)
+        if samples <= 0:
+            return None
+        progress = np.arange(samples, dtype=np.float64) / max(1, samples - 1)
+        frequency = ROAD_CORRECTION_SETTLED_START_HZ * (
+            ROAD_CORRECTION_SETTLED_END_HZ / ROAD_CORRECTION_SETTLED_START_HZ
+        ) ** progress
+        phase = 2.0 * np.pi * np.cumsum(frequency) / self.samplerate
+        wave = np.sin(phase)
+        attack = np.minimum(1.0, np.arange(samples) / max(1.0, self.samplerate * 0.006))
+        release = np.minimum(
+            1.0,
+            (samples - np.arange(samples)) / max(1.0, self.samplerate * 0.025),
+        )
+        return (wave * attack * release * self._road_correction_amp).astype(np.float32)
+
     def _generate_guidance_tone(self):
         # A simple, clean sine wave. Amplitude modulation happens in the callback.
         # We'll just return a single period or a small buffer, but since we synthesize continuously
@@ -3219,6 +3292,7 @@ class AudioController:
             road_correction_active = self._road_correction_active
             road_correction_bearing = self._road_correction_bearing
             road_correction_severity = self._road_correction_severity
+            road_correction_phase = self._road_correction_phase
             obstacle_duck = obstacle_duck_gain(
                 obstacle_hazard.get("state", 0) if obstacle_hazard else 0
             )
@@ -4557,15 +4631,16 @@ class AudioController:
             self._road_pulse_L = None
             self._road_pulse_R = None
 
-        # On-road drift is a continuous phase-modulated triangle. Its HRTF azimuth
-        # is deliberately limited to the frontal 70-degree arc: the cue says which
-        # way to correct, without sounding like a target somewhere beside the car.
+        # Directional correction pips say to apply steering; a centred repeating
+        # doublet is the explicit instruction to unwind. The frontal arc keeps a
+        # correction from sounding like a target beside or behind the car.
         if road_active and road_on_road:
             correction_block = self._render_road_correction_block(
                 frames,
                 road_correction_active,
                 road_correction_bearing,
                 road_correction_severity,
+                road_correction_phase,
             )
             if correction_block is not None:
                 correction_l, correction_r = correction_block
@@ -4573,6 +4648,20 @@ class AudioController:
                 bufR += correction_r
         else:
             self._stop_road_correction_voice()
+
+        if road_active and self._road_correction_settled_pos >= 0:
+            waveform = self.ROAD_CORRECTION_SETTLED_WAVEFORM
+            if waveform is not None:
+                start = self._road_correction_settled_pos
+                count = min(frames, len(waveform) - start)
+                if count > 0:
+                    bufL[:count] += waveform[start : start + count]
+                    bufR[:count] += waveform[start : start + count]
+                self._road_correction_settled_pos = start + frames
+                if self._road_correction_settled_pos >= len(waveform):
+                    self._road_correction_settled_pos = -1
+            else:
+                self._road_correction_settled_pos = -1
 
         # Road Orientation Chime: drain the pending two-tone queue
         if road_active and self._road_chime_queue:

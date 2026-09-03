@@ -63,11 +63,8 @@ def main():
         distance=100
     )
 
-    clean_ratio, clean_index = audio.road_correction_timbre(0.0)
-    dirty_ratio, dirty_index = audio.road_correction_timbre(1.0)
-    assert clean_ratio == 5.0 and clean_index == 1.2
-    assert dirty_ratio > clean_ratio and not dirty_ratio.is_integer()
-    assert abs(dirty_index - 1.4) < 1e-9
+    assert audio.road_correction_rate_hz(0.0) == audio.ROAD_CORRECTION_RATE_MIN_HZ
+    assert audio.road_correction_rate_hz(1.0) == audio.ROAD_CORRECTION_RATE_MAX_HZ
 
     # Positive bearings are left. Stereo fallback and HRTF both preserve that contract.
     controller._hrtf = None
@@ -85,23 +82,40 @@ def main():
     assert len(left) == 17 and len(right) == 17
     assert np.max(np.abs(left)) > np.max(np.abs(right))
 
-    # Correction is a solid triangle/FM voice, not a scheduled acquisition pulse.
+    # Correction is a bounded directional pip train. Demand raises its cadence.
     controller._hrtf = None
     controller._hrtf_user_enabled = False
     controller.update_road_guidance(
-        "onRoad", None, {"active": True, "bearing": 90, "severity": 0.25}
+        "onRoad", None,
+        {"active": True, "bearing": 90, "severity": 0.25, "phase": "correct"},
     )
-    correction = controller._render_road_correction_block(512, True, 90, 0.25)
+    correction = controller._render_road_correction_block(
+        4096, True, 90, 0.25, "correct"
+    )
     assert correction is not None
     assert np.max(np.abs(correction[0])) > np.max(np.abs(correction[1]))
+    assert np.count_nonzero(np.abs(correction[0]) < 1e-8) > 0
     assert controller._road_correction_render_bearing == 35.0
     assert controller._road_playback_pos < 0
+
+    # The unwind instruction is a centred doublet and begins immediately when
+    # the protocol phase changes.
+    controller.update_road_guidance(
+        "onRoad", None,
+        {"active": True, "bearing": -20, "severity": 0.4, "phase": "unwind"},
+    )
+    assert controller._road_correction_phase == "unwind"
+    unwind = controller._render_road_correction_block(
+        int(controller.samplerate * 0.25), True, -20, 0.4, "unwind"
+    )
+    assert np.allclose(unwind[0], unwind[1])
+    assert controller._road_correction_render_bearing == 0.0
 
     # HRTF lookup never leaves the requested 35-degree frontal arc.
     fake_hrtf = FakeHRTF()
     controller._hrtf = fake_hrtf
     controller._hrtf_user_enabled = True
-    controller._render_road_correction_block(512, True, -90, 1.0)
+    controller._render_road_correction_block(512, True, -90, 1.0, "correct")
     assert fake_hrtf.bearings[-1] == 325.0
 
     # Alignment releases to silence; leaving the road cuts the voice and tail now.
@@ -147,10 +161,16 @@ def main():
     )
 
     controller.update_road_guidance(
-        "onRoad", None, {"active": True, "bearing": -35, "severity": 0.7}
+        "onRoad", None,
+        {"active": True, "bearing": -35, "severity": 0.7, "phase": "correct"},
     )
     assert controller._road_correction_active
     assert controller._road_correction_bearing == -35
+    controller.update_road_guidance(
+        "onRoad", None,
+        {"active": False, "bearing": 0, "severity": 0, "phase": "idle", "settled": True},
+    )
+    assert controller._road_correction_settled_pos == 0
     controller.clear_road_audio()
     assert not controller._road_correction_active
     assert not controller._road_chime_queue

@@ -132,6 +132,7 @@ DEFAULT_CONFIG = {
     "dock_tone_dbfs": -18.0,
     "scan_tones_enabled": True,
     "cannon_shot_readout": True,
+    "binding_learn_speak_description": False,
     "scan_tone_dbfs": -20.0,
     "ai_describer_provider": "gemini",
     # Gemini's key/model keep their original names so existing configs migrate
@@ -374,6 +375,7 @@ def load_config():
         _coerce("dock_tone_dbfs", float, -18.0)
         _coerce("scan_tones_enabled", bool, True)
         _coerce("cannon_shot_readout", bool, True)
+        _coerce("binding_learn_speak_description", bool, False)
         _coerce("scan_tone_dbfs", float, -20.0)
         _coerce("preferred_device_name", str, "")
         _coerce("audio_poll_interval_sec", float, 2.0)

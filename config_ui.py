@@ -690,10 +690,10 @@ class ConfigPanel(wx.ScrolledWindow):
         # --- Road Guidance Group ---
         sb_road, road_sizer = _group(self, "Road guidance")
         self.chk_road_follow = wx.CheckBox(
-            sb_road, label="Drift correction tone"
+            sb_road, label="Lane correction guidance"
         )
         self.chk_road_follow.SetToolTip(
-            "Play a continuous directional tone only when steering correction is needed while on a road."
+            "Play directional correction pips, a centred straighten-now double pip, and a short recovery confirmation while on a road."
         )
         road_sizer.Add(self.chk_road_follow, 0, wx.ALL, 6)
 
@@ -745,7 +745,7 @@ class ConfigPanel(wx.ScrolledWindow):
         self.spin_road_correction.SetDigits(1)
         self.spin_road_correction.SetName("Lane Correction Volume")
         self.spin_road_correction.SetToolTip(
-            "Volume for the continuous tone that warns of lane drift."
+            "Volume for lane-correction, straighten-now, and recovery-confirmation cues."
         )
         _label_spin(self.spin_road_correction, "Lane Correction Volume")
         road_grid.Add(lbl_road_correction, 0, wx.ALIGN_CENTER_VERTICAL)
@@ -1231,6 +1231,22 @@ class ConfigPanel(wx.ScrolledWindow):
         cannon_sizer.Add(self.chk_cannon_shot, 0, wx.ALL, 6)
         vbox.Add(cannon_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
 
+        # --- Learn Bindings Group ---
+        sb_learn, learn_sizer = _group(self, "Learn Bindings")
+
+        self.chk_learn_desc = wx.CheckBox(sb_learn, label="Speak Full Action Description")
+        self.chk_learn_desc.SetToolTip(
+            "In learn bindings mode (F9 then Shift+B, or the Functions menu on a controller), "
+            "every control you press is named along with what it does, and the binding does "
+            "not fire -- so you can find the handbrake without the car spinning. By default "
+            "each press is announced as just the control and the action, such as \"A button. "
+            "Shift up.\" Turn this on to also hear the game's full sentence of description "
+            "for the action, which helps the first time through a pad and gets tiring once "
+            "you know it."
+        )
+        learn_sizer.Add(self.chk_learn_desc, 0, wx.ALL, 6)
+        vbox.Add(learn_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 10)
+
         # --- Audio Device Group ---
         sb_audio, audio_sizer = _group(self, "Audio Device")
 
@@ -1349,6 +1365,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_dock_tones,
             self.chk_scan_tones,
             self.chk_cannon_shot,
+            self.chk_learn_desc,
             self.chk_road_follow,
             self.chk_road_junction_speech,
             self.chk_road_junction_earcon,
@@ -1571,6 +1588,9 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_dock_tones.SetValue(cfg.get("dock_tones_enabled", True))
             self.chk_scan_tones.SetValue(cfg.get("scan_tones_enabled", True))
             self.chk_cannon_shot.SetValue(cfg.get("cannon_shot_readout", True))
+            self.chk_learn_desc.SetValue(
+                cfg.get("binding_learn_speak_description", False)
+            )
             self.spin_dock.SetValue(cfg.get("dock_tone_dbfs", -18.0))
             self.spin_scan.SetValue(cfg.get("scan_tone_dbfs", -20.0))
 
@@ -1685,6 +1705,7 @@ class ConfigPanel(wx.ScrolledWindow):
         cfg["dock_tones_enabled"] = self.chk_dock_tones.GetValue()
         cfg["scan_tones_enabled"] = self.chk_scan_tones.GetValue()
         cfg["cannon_shot_readout"] = self.chk_cannon_shot.GetValue()
+        cfg["binding_learn_speak_description"] = self.chk_learn_desc.GetValue()
         cfg["dock_tone_dbfs"] = self.spin_dock.GetValue()
         cfg["scan_tone_dbfs"] = self.spin_scan.GetValue()
 

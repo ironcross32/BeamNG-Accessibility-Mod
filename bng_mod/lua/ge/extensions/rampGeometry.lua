@@ -50,9 +50,18 @@ local RAMP_NODE_PAT = "^ramp_"
 --
 -- The last two sit in a *_bumper_F slot rather than a rear one, so they are the entries most
 -- likely to be wrong; they are also the first to drop if they ever misresolve in game.
+--
+-- `onramp` is the one GROUP-tier entry, and it is the drive-on end of the Wheel Roller's tilt
+-- ramp (testroller/testroller_tiltramp.jbeam, groups onramp_R and onramp_L). It earns its place
+-- by naming the way IN: the same jbeam also has offramp_R/offramp_L at the other end, which is
+-- deliberately NOT allowed -- admitting it would put the cloud's centroid back on the machine
+-- centroid, and the displacement rule that derives WHICH END is the mouth would collapse into
+-- residue. A scan of all 124 stock vehicle zips finds `onramp` in exactly one vehicle and
+-- `offramp` in the same one, so neither word can collide with anything shipped.
 local RAMP_PART_WORDS = {
   "cannon_ramp", "tsfb_ramp", "dryvan_ramp", "dryvan_rampextension",
   "us_semi_rollback_deck", "tiltdeck_deck", "us_semi_ramplow", "md_series_ramplow",
+  "onramp",
 }
 -- Checked BEFORE the allowlist, and as plain substrings rather than whole words, because each
 -- of these is a near-miss the zip scan actually turned up rather than a hypothetical:
@@ -65,9 +74,63 @@ local RAMP_PART_WORDS = {
 local RAMP_PART_DENY = {
   "tailgate", "door", "dumptruck_deck", "tiltframe_ram", "spinner_wall",
 }
+-- DECLARED MOUTHS: machines whose way in cannot be INFERRED at all, named outright.
+--
+-- Everything above derives a mouth from a node cloud, and that only works where the cloud says
+-- which end you drive into. Three shipped props defeat it in three different ways, and each was
+-- found by asking rampTruth() next to the machine rather than by reading jbeam:
+--
+--   large_hamster_wheel  carries NO node groups whatsoever and exactly two partOrigin values,
+--                        one of which (large_hamster_wheel_frame) is the drive-in ramps AND the
+--                        whole A-frame together. There is no subset the tiers can name. Worse,
+--                        it has TWO mouths -- a ramp at each end of its axle -- and a centroid
+--                        displacement cannot point at both, so the one-mouth model cannot
+--                        express the machine even given a perfect cloud.
+--   testroller ramp      resolves through the `onramp` group above, and needs no entry here.
+--   testroller multi     has no mouth at all: it is a pair of frictionless cradles you drive
+--                        over. Deliberately NOT declared -- see the note below the table.
+--
+-- Five node NAMES per mouth, in the order mouthL, mouthC, mouthR, innerL, innerR, which is
+-- exactly what cache[].cids holds, so a declaration bypasses the inference and changes nothing
+-- downstream. L and R are the driver's own left and right ON THE WAY IN (the mod-wide
+-- positive-is-LEFT convention), which for the hamster wheel's two ramps means the two entries
+-- are mirrored rather than copied.
+--
+-- Node names are chosen for COLLISION, not for being furthest out. The hamster wheel's outermost
+-- toe nodes are r02ll_2 and friends, one metre further out and 0.1 m lower -- and every one of
+-- them carries collision = false, so they are not a surface anything can drive on and a floor
+-- fitted through them would be a fiction. r02ll/r05ll/r08ll sit at z = 0 with collision on, so
+-- both rows are flat, the derived pitch is 0, and the mouth is a true 6.74 m wide.
+local DECLARED_MOUTHS = {
+  large_hamster_wheel = {
+    -- +X ramp: driving in runs toward -X, so the driver's left is -Y.
+    { "r08ll", "r05ll", "r02ll", "r08l", "r02l" },
+    -- -X ramp: the mirror. Driving in runs toward +X, so the driver's left is +Y.
+    { "r02rr", "r05rr", "r08rr", "r02r", "r08r" },
+  },
+}
+-- WHY THE WHEEL ROLLER IS NOT IN THAT TABLE, since it is the obvious third entry. Its only
+-- candidate mouth is the pair of roller stations the car's wheels sit in, so the half-width a
+-- declaration would publish is half the TRACK WIDTH -- against which every car is too wide, and
+-- the align would announce "you do not fit" about a rig the car fits perfectly. The width margin
+-- is not an optional part of the readout, so a declaration here would buy a square placement at
+-- the cost of a confident wrong answer on the number beside it. It stays findable through the
+-- vehicle scanner, which needs no mouth.
+
 -- A floor, not a fit. The real large_cannon mouth row alone holds around seventeen nodes;
 -- anything under eight is not a ramp and is not worth trying to find two end rows in.
 local MIN_RAMP_NODES = 8
+-- ...and a lower one for the part/group tier, because the two tiers are guarded differently.
+-- Tier 1 is a PATTERN (anything called ramp_something), so its floor is the only thing standing
+-- between the resolve and a handful of coincidentally-named nodes. Tier 2 is an ALLOWLIST of
+-- part and group names verified against the shipped jbeam, so a match there is authored
+-- evidence and needs far less protection from noise.
+--
+-- Six is not arbitrary: it is the least that still supports the two-row analysis everything
+-- downstream is built on -- a mouth row of four and an inner row of two. The tilt ramp is
+-- exactly that (on1r/on1rr/on1l/on1ll at the lip, on3r/on3l behind them) and it is six rather
+-- than eight only because firstGroup drops the two nodes that are in roller_RR as well.
+local MIN_RAMP_NODES_PART = 6
 -- How many distinct partOrigin values a "no ramp here" reply carries back with it. The
 -- allowlist above is a data question that only in-game testing settles, so the resolve has to
 -- say what it DID see -- otherwise identifying a machine the list missed means a log dive on a
@@ -202,8 +265,9 @@ local EDGE_TIE_M = 0.02
 local RESOLVE_TIMEOUT_S = 3.0
 local MAX_TRIES         = 3
 
--- cache[vehID] = {cids = {mouthL, mouthC, mouthR, innerL, innerR},
---                 halfW, alongSpan, floorU, nNodes, wallUsed, naiveHalfW, axisTier, isCannon}
+-- cache[vehID] = {cids = {mouthL, mouthC, mouthR, innerL, innerR, ...more mouths...},
+--                 halfW, alongSpan, floorU, nNodes, wallUsed, naiveHalfW, axisTier, isCannon,
+--                 mouthCount, floorTrusted}
 local cache   = {}
 local pending = {}  -- vehID -> {epoch = n, timer = seconds, tries = n}
 -- Vehicles that answered with nothing usable, or used up their retries. Same flag and the same
@@ -271,6 +335,20 @@ local function luaList(t)
   return "{" .. table.concat(parts, ",") .. "}"
 end
 
+-- Same job for DECLARED_MOUTHS, which is a map of model name to a list of five-name mouths.
+-- Rendered by concatenation rather than passed as a second format slot, because the chunk is
+-- documented as having exactly ONE -- string.format with one argument and two slots is an error
+-- rather than a repeat, and the failure would land in another VM.
+local function luaDeclTable(t)
+  local parts = {}
+  for model, mouths in pairs(t) do
+    local ms = {}
+    for i, m in ipairs(mouths) do ms[i] = luaList(m) end
+    parts[#parts + 1] = '["' .. model .. '"]={' .. table.concat(ms, ",") .. "}"
+  end
+  return "{" .. table.concat(parts, ",") .. "}"
+end
+
 -- =================================================================================================
 --  Resolution (vehicle VM -> GE)
 -- =================================================================================================
@@ -311,6 +389,7 @@ end
 -- ------------------------------------------------------------------------------------------
 local ALLOW = ]] .. luaList(RAMP_PART_WORDS) .. [[
 local DENY  = ]] .. luaList(RAMP_PART_DENY) .. [[
+local DECL_ALL = ]] .. luaDeclTable(DECLARED_MOUTHS) .. [[
 
 local function isAlnum(b)
   if not b then return false end
@@ -341,16 +420,38 @@ local function partIsRamp(s)
   return false
 end
 
--- partOrigin first, group second. group is jbeam data and may be a STRING or an ARRAY of them
--- (a node can belong to several), so it is normalised rather than assumed.
+-- THERE IS NO nd.group AT RUNTIME, and the tier that read one could never fire.
+--
+-- The jbeam source really does write {"group":"onramp_R"} section headers, so a node table
+-- carrying nd.group as a string or an array of them is the obvious reading -- and it is wrong.
+-- The loader resolves group names to INDICES: v.data.groups is a name-to-index map and the
+-- node carries nd.firstGroup, a number. Dumped live off a Wheel Roller tilt ramp, the node
+-- fields are cid, firstGroup, fixed, frictionCoef, name, nodeMaterial, nodeWeight, partName,
+-- partOrigin, partPath, pos, slotType -- no group of any kind. So tier 3 was dead code on
+-- every vehicle in the game, silently: it cost one nil test per node and could only ever
+-- return false, which reads in a log exactly like a machine that has no ramp.
+--
+-- firstGroup is nil for an ungrouped node rather than 0, which matters because 0 is a valid
+-- index (`lift` holds it on this very vehicle) -- so the reverse map needs no sentinel.
+--
+-- It is FIRST group, though: a node declared in two groups reports only one, so a node in
+-- ["roller_RR", "onramp_R"] answers roller_RR and drops out of the ramp cloud. That is why
+-- the tilt ramp's mouth is six nodes and not eight, and it is a limit of the engine's data
+-- rather than of this scan.
+local GROUPNAME = {}
+if v and v.data and type(v.data.groups) == "table" then
+  for gname, gidx in pairs(v.data.groups) do
+    if type(gname) == "string" and type(gidx) == "number" then GROUPNAME[gidx] = gname end
+  end
+end
+
+-- partOrigin first, group second.
 local function nodeIsRampPart(nd)
   if partIsRamp(nd.partOrigin) then return true end
-  local g = nd.group
-  if type(g) == "string" then return partIsRamp(g) end
-  if type(g) == "table" then
-    for _, gv in ipairs(g) do
-      if partIsRamp(gv) then return true end
-    end
+  local gi = nd.firstGroup
+  if type(gi) == "number" then
+    local gname = GROUPNAME[gi]
+    if gname and partIsRamp(gname) then return true end
   end
   return false
 end
@@ -398,6 +499,62 @@ local ok, err = pcall(function()
     if type(c) == "table" and tostring(c.fileName) == "large_cannon" then isCannon = 1 end
   end
 
+  -- ------------------------------------------------------------------------------------
+  -- DECLARED MOUTHS come first and win outright, because they are the answer for machines
+  -- whose cloud cannot produce one. Nothing below can reach a vehicle listed here, which is
+  -- the point: the inference would return a confident wrong mouth rather than nothing.
+  -- ------------------------------------------------------------------------------------
+  local DECLARED = DECL_ALL[tostring(v.data.model)]
+  if DECLARED then
+    local byName = {}
+    for _, nd in pairs(v.data.nodes) do
+      if nd.name then byName[nd.name] = nd end
+    end
+    local cidList, trusted, missing = {}, 1, nil
+    for _, m in ipairs(DECLARED) do
+      for _, nm in ipairs(m) do
+        local nd = byName[nm]
+        if not nd then missing = nm break end
+        cidList[#cidList + 1] = nd.cid
+        -- A node you cannot touch is not a floor. Recorded rather than rejected, so a
+        -- declaration that lands on non-collision structure degrades to "pitch unknown"
+        -- instead of publishing an invented one.
+        if nd.collision == false then trusted = 0 end
+      end
+      if missing then break end
+    end
+    if missing then
+      -- A part configuration that does not carry a declared node is a real possibility and
+      -- must not read as "this machine has no ramp": it names the node so the table can be
+      -- fixed, which is the same argument the parts-seen list makes on the failure path.
+      return reply("", "", "declared mouth names a node this configuration lacks: "
+        .. safeName(missing))
+    end
+    -- NOTE THE SPACES, AND DO NOT REMOVE THEM. This whole chunk is a Lua long string, so two
+    -- adjacent close-square-brackets END it wherever they appear -- and a nested subscript such
+    -- as byName of DECLARED sub 1 sub 1 writes exactly that pair. The file then fails to compile
+    -- hundreds of lines away, in the middle of unrelated code, with nothing pointing at the
+    -- subscript that caused it. Same class of trap as the no-percent rule above, and it bites
+    -- the same way: the first draft of THIS comment spelled the bracket pair out and broke the
+    -- file it was warning about, exactly as the percent comment once did. Split the subscript
+    -- into a local, and never write the pair -- not in code, not in a comment.
+    local first = DECLARED[1]
+    local mL = byName[ first[1] ].pos
+    local mR = byName[ first[3] ].pos
+    local iL = byName[ first[4] ].pos
+    local iR = byName[ first[5] ].pos
+    local cx, cy, cz = (mL.x + mR.x) * 0.5, (mL.y + mR.y) * 0.5, (mL.z + mR.z) * 0.5
+    local ix, iy, iz = (iL.x + iR.x) * 0.5, (iL.y + iR.y) * 0.5, (iL.z + iR.z) * 0.5
+    local dhw = math.sqrt((mL.x - mR.x) ^ 2 + (mL.y - mR.y) ^ 2 + (mL.z - mR.z) ^ 2) * 0.5
+    local dsp = math.sqrt((ix - cx) ^ 2 + (iy - cy) ^ 2 + (iz - cz) ^ 2)
+    -- wallUsed 2 and naiveHalfW equal to halfW: a declared mouth has no wall rule to report
+    -- and no naive alternative to compare against, and saying so beats inventing a figure.
+    local dmeta = tostring(dhw) .. "," .. tostring(dsp) .. ",0," .. tostring(#cidList)
+      .. ",2," .. tostring(dhw) .. ",3," .. tostring(isCannon) .. "," .. tostring(trusted)
+    return reply(table.concat(cidList, ","), dmeta,
+      "declared mouth, " .. tostring(#DECLARED) .. " on this machine")
+  end
+
   local fwd = vec3(obj:getDirectionVector())
   local up  = vec3(obj:getDirectionVectorUp())
   -- MUST be up:cross(fwd), never the negation. implementProximity projects onto its own
@@ -409,13 +566,15 @@ local ok, err = pcall(function()
   -- outright when it is populated, so large_cannon resolves through exactly the code it always
   -- did and the part tier can never change an answer that already worked.
   local T = {
-    {n = 0, c = {}, f = {}, r = {}, u = {}, sf = 0, sr = 0, su = 0},  -- 1: node name
-    {n = 0, c = {}, f = {}, r = {}, u = {}, sf = 0, sr = 0, su = 0},  -- 2: part / group
+    {n = 0, c = {}, f = {}, r = {}, u = {}, k = {}, sf = 0, sr = 0, su = 0},  -- 1: node name
+    {n = 0, c = {}, f = {}, r = {}, u = {}, k = {}, sf = 0, sr = 0, su = 0},  -- 2: part / group
   }
-  local function keep(t, cid, f, r, u)
+  -- `k` carries each kept node's collision flag alongside its projections, so the five chosen
+  -- cids can be tested for being real surface at the end without a second pass over v.data.
+  local function keep(t, cid, f, r, u, coll)
     local i = t.n + 1
     t.n = i
-    t.c[i], t.f[i], t.r[i], t.u[i] = cid, f, r, u
+    t.c[i], t.f[i], t.r[i], t.u[i], t.k[i] = cid, f, r, u, coll
     t.sf, t.sr, t.su = t.sf + f, t.sr + r, t.su + u
   end
 
@@ -427,10 +586,10 @@ local ok, err = pcall(function()
     mn = mn + 1
     mf, mr, mu = mf + f, mr + r, mu + u
     if nd.name and nd.name:find("]] .. RAMP_NODE_PAT .. [[") then
-      keep(T[1], nd.cid, f, r, u)
+      keep(T[1], nd.cid, f, r, u, nd.collision)
     end
     if nodeIsRampPart(nd) then
-      keep(T[2], nd.cid, f, r, u)
+      keep(T[2], nd.cid, f, r, u, nd.collision)
     end
     -- Collected unconditionally, because it is only ever read on the FAILURE path and that is
     -- precisely the path that has nothing else to say.
@@ -445,7 +604,7 @@ local ok, err = pcall(function()
   local pick, tierName = nil, ""
   if T[1].n >= ]] .. MIN_RAMP_NODES .. [[ then
     pick, tierName = T[1], "node name"
-  elseif T[2].n >= ]] .. MIN_RAMP_NODES .. [[ then
+  elseif T[2].n >= ]] .. MIN_RAMP_NODES_PART .. [[ then
     pick, tierName = T[2], "part"
   end
   if not pick then
@@ -454,7 +613,7 @@ local ok, err = pcall(function()
   end
 
   local rn = pick.n
-  local rc, xf, xr, xu = pick.c, pick.f, pick.r, pick.u
+  local rc, xf, xr, xu, rcoll = pick.c, pick.f, pick.r, pick.u, pick.k
   local sf, sr, su = pick.sf, pick.sr, pick.su
 
   mf, mr, mu = mf / mn, mr / mn, mu / mn
@@ -816,9 +975,28 @@ local ok, err = pcall(function()
 
   local cids = rc[wallL] .. "," .. rc[mouthC] .. "," .. rc[wallR] .. ","
             .. rc[innerL] .. "," .. rc[innerR]
+
+  -- IS THE FITTED FLOOR MADE OF SURFACE, OR OF STRUCTURE? A node with collision off is not
+  -- something a wheel can rest on, so a plane through one is not a floor and the pitch and the
+  -- lip height derived from it are fiction.
+  --
+  -- Found on the Wheel Roller tilt ramp, which resolves through the onramp group: that group's
+  -- inner row is on3r/on3l, collision = false, hanging 0.76 m UNDER the deck. The mouth row, the
+  -- axis and the half-width were all correct, and the ramp still announced "ramp down 33
+  -- degrees" and "ramp not down, lip 1.9 feet up" while sitting dead level -- the exact shape of
+  -- error this file exists to refuse, arriving through a field nobody was checking.
+  --
+  -- Reported rather than rejected. Throwing the resolve away would take a correct mouth with it
+  -- and lose the alignment the whole instrument is for; publishing the flag lets the readout
+  -- decline the two numbers it cannot stand behind and keep the three it can.
+  local cidTrusted = 1
+  for _, i in ipairs({ wallL, mouthC, wallR, innerL, innerR }) do
+    if rcoll[i] == false then cidTrusted = 0 end
+  end
+
   local meta = tostring(halfW) .. "," .. tostring(span) .. "," .. tostring(mouthFloorU) .. ","
             .. tostring(rn) .. "," .. tostring(wallUsed) .. "," .. tostring(naiveHalfW) .. ","
-            .. tostring(axisTier) .. "," .. tostring(isCannon)
+            .. tostring(axisTier) .. "," .. tostring(isCannon) .. "," .. tostring(cidTrusted)
   -- The reason field is used on the SUCCESS path too, purely to carry which tiers fired. Both
   -- are name-driven choices that produce confident, plausible numbers when they land on the
   -- wrong thing, so which one answered is the first line worth reading when a half-width or a
@@ -912,7 +1090,11 @@ function M.onRampGeometry(vehID, epoch, cidCsv, metaCsv, reason)
   end
   -- A VM answering with the wrong shape will keep answering with the wrong shape, so this is
   -- terminal too -- the same guard, and the same reasoning, as vehicleGeometry's #ext ~= 6.
-  if #cids ~= 5 or #meta ~= 8 then
+  -- FIVE cids per mouth, and a machine may declare more than one -- the hamster wheel has a
+  -- ramp at each end of its axle. So the test is "a whole number of mouths, at least one",
+  -- never a fixed length. meta went 8 -> 9 with the floor-trust flag and the guard moves with
+  -- it, which is what makes a half-updated install fail loudly instead of mis-reading a field.
+  if #cids < 5 or (#cids % 5) ~= 0 or #meta ~= 9 then
     lastReason[vehID] = string.format("malformed reply: %d cids, %d meta", #cids, #meta)
     stateKind[vehID] = "malformed"
     if not newest then return end
@@ -946,6 +1128,13 @@ function M.onRampGeometry(vehID, epoch, cidCsv, metaCsv, reason)
     -- "it has a ramp" because the two came apart the moment the part tiers admitted trailers;
     -- see the chunk for what reading one as the other did to the firing readout.
     isCannon   = meta[8] == 1,
+    -- How many five-cid mouths cids holds. mouthFrame picks between them by proximity.
+    mouthCount = #cids / 5,
+    -- Whether the five chosen nodes are collision surface. When false the mouth's POSITION,
+    -- AXIS and WIDTH are still good -- they come from the lateral spread and the row centroids,
+    -- which structure below the deck does not distort -- but the floor plane through them is
+    -- not a floor, so pitch and lip height are withheld rather than published wrong.
+    floorTrusted = meta[9] == 1,
   }
   -- The naive half-width is printed even when the wall rule worked. It is the one line that
   -- turns "the clearance feels wrong" into an answer, and it costs nothing to carry.
@@ -1001,9 +1190,19 @@ function M.stateOf(vehID)
     -- The axis tier is named here rather than left in the log, because "it resolved" and "it
     -- resolved by guessing the mouth is at the rear" are different amounts of trust, and this
     -- string is what rampTruth() and the spoken reason both render.
-    return string.format("RESOLVED (%d nodes, half-width %.2f m, axis %s)%s",
-      e.nNodes, e.halfW,
-      (e.axisTier == 2) and "by machine fore/aft, mouth at rear" or "by displacement",
+    -- Tier 3 has to name itself, or a declared mouth renders as "by displacement" -- which is
+    -- the one claim it is not. Whether the mouth was derived or handed over is the first thing
+    -- worth knowing when one looks wrong, since only one of the two can be fixed by tuning.
+    local axisWord = "by displacement"
+    if e.axisTier == 2 then
+      axisWord = "by machine fore/aft, mouth at rear"
+    elseif e.axisTier == 3 then
+      axisWord = "DECLARED, not inferred"
+    end
+    return string.format("RESOLVED (%d nodes, half-width %.2f m, axis %s%s%s)%s",
+      e.nNodes, e.halfW, axisWord,
+      (e.mouthCount or 1) > 1 and string.format(", %d mouths", e.mouthCount) or "",
+      e.floorTrusted == false and ", PITCH WITHHELD (nodes are not collision surface)" or "",
       e.isCannon and " [large_cannon]" or "")
   elseif kind == "pending" then
     local p = pending[vehID]
@@ -1128,9 +1327,35 @@ function M.mouthFrame(vehID)
 
   local ok, res = pcall(function()
     local base = vec3(veh:getPosition())
+
+    -- A MACHINE MAY HAVE MORE THAN ONE MOUTH, and which one is "the" mouth is a fact about
+    -- where the driver is, not about the machine. The hamster wheel has a drive-in ramp at each
+    -- end of its axle: they are equally valid, and answering with a fixed one would send a
+    -- driver standing at the near ramp all the way round the machine to the far one.
+    --
+    -- So the choice is made HERE, per query, by proximity to the player -- the same reasoning
+    -- that keeps the frame itself live rather than remembered. A single-mouth machine takes the
+    -- identical path with one candidate and cannot be affected.
+    local nMouths = entry.mouthCount or 1
+    local best = 0
+    if nMouths > 1 then
+      local ref = nil
+      local pv = getPlayerVehicle(0)
+      if pv then ref = vec3(pv:getPosition()) end
+      if ref then
+        local bestD = math.huge
+        for k = 0, nMouths - 1 do
+          local a1 = base + vec3(veh:getNodePosition(entry.cids[k * 5 + 1]))
+          local a3 = base + vec3(veh:getNodePosition(entry.cids[k * 5 + 3]))
+          local d = ((a1 + a3) * 0.5):distance(ref)
+          if d < bestD then bestD, best = d, k end
+        end
+      end
+    end
+
     local p = {}
     for i = 1, 5 do
-      p[i] = base + vec3(veh:getNodePosition(entry.cids[i]))
+      p[i] = base + vec3(veh:getNodePosition(entry.cids[best * 5 + i]))
     end
     local mouthL, mouthC, mouthR, innerL, innerR = p[1], p[2], p[3], p[4], p[5]
 
@@ -1169,7 +1394,16 @@ function M.mouthFrame(vehID)
       axis = axis, left = left,
       halfW = halfW,
       floorZ = math.min(mouthL.z, math.min(mouthC.z, mouthR.z)),
-      pitchDeg = pitchDeg,
+      -- NIL, not zero, when the five nodes are not collision surface. Zero would read as "this
+      -- ramp is dead level", which is a claim, and the whole point is that we cannot make one.
+      -- Every consumer treats a missing pitch as silence, the same contract the DOCK line's
+      -- optional tail already uses.
+      pitchDeg = entry.floorTrusted ~= false and pitchDeg or nil,
+      -- Carried so the lip height derived from floorZ can be withheld on the same grounds:
+      -- floorZ is the minimum of the same three mouth nodes.
+      floorTrusted = entry.floorTrusted ~= false,
+      mouthIndex = best + 1,
+      mouthCount = nMouths,
     }
   end)
   if not ok then return nil end

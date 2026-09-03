@@ -40,6 +40,8 @@ _DOM_DUMP_CALLBACK = None
 _LOADING_STATE_CALLBACK = None
 _SETTINGS_REQUEST_CALLBACK = None
 _ACCESSIBILITY_ACTION_CALLBACK = None
+_SCREEN_CONTEXT_CALLBACK = None
+_PAGE_TEXT_CALLBACK = None
 
 # Mirrors window.BNVDA_DEBUG from the CEF/UI JS context. The UI runtime reports it
 # whenever it changes, so debug output anywhere in the Python side can be switched on
@@ -69,6 +71,23 @@ def register_settings_request_callback(callback):
     """
     global _SETTINGS_REQUEST_CALLBACK
     _SETTINGS_REQUEST_CALLBACK = callback
+
+
+def register_screen_context_callback(callback):
+    """Register the handler for the UI runtime's screen latch.
+
+    The runtime pushes on entering and on leaving a screen it can read on demand, and
+    again on every transport pong -- beamtel can restart while the UI stays up, and no
+    route change would follow to refill the latch.
+    """
+    global _SCREEN_CONTEXT_CALLBACK
+    _SCREEN_CONTEXT_CALLBACK = callback
+
+
+def register_page_text_callback(callback):
+    """Register the handler for a page-text reply (lines, or a failure code)."""
+    global _PAGE_TEXT_CALLBACK
+    _PAGE_TEXT_CALLBACK = callback
 
 
 def register_accessibility_action_callback(callback):
@@ -192,6 +211,31 @@ def handle_ws_message(data):
                 )
             except Exception as e:
                 logger.error(f"loading_state callback error: {e}")
+
+    elif msg_type == "screen_context":
+        if _SCREEN_CONTEXT_CALLBACK:
+            try:
+                _SCREEN_CONTEXT_CALLBACK(
+                    str(data.get("context", "") or ""),
+                    str(data.get("title", "") or ""),
+                )
+            except Exception as e:
+                logger.error(f"screen_context callback error: {e}")
+
+    elif msg_type == "page_text":
+        if _PAGE_TEXT_CALLBACK:
+            lines = data.get("lines")
+            if not isinstance(lines, list):
+                lines = []
+            try:
+                _PAGE_TEXT_CALLBACK(
+                    [str(x) for x in lines],
+                    str(data.get("title", "") or ""),
+                    str(data.get("code", "") or ""),
+                    str(data.get("sentence", "") or ""),
+                )
+            except Exception as e:
+                logger.error(f"page_text callback error: {e}")
 
     elif msg_type == "accessibility_action":
         action = data.get("action")

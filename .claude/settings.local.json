@@ -79,7 +79,8 @@
       "Bash(ls -d sral*)",
       "Bash(.venv/Scripts/python bake_hrtf.py)",
       "Bash(.venv/Scripts/python -c ' *)",
-      "mcp__beamtel__lua_exec"
+      "mcp__beamtel__lua_exec",
+      "mcp__beamtel__health"
     ],
     "additionalDirectories": [
       "C:\\Users\\bcros\\AppData\\Local\\BeamNG\\BeamNG.drive\\current\\mods\\unpacked\\bng_screenreader_mod"

@@ -55,14 +55,76 @@ Entry point: `scripts/bng_screenreader_mod/modScript.lua` — loads all GE exten
 Grouped by function; each file below carries the full reasoning for its area.
 
 - @docs/lua-telemetry-protocol.md — `lua/vehicle/protocols/796F6C6F313035.lua`, the custom 60 Hz extended telemetry struct on port 4444: `actualSteering`, the ramp hydraulics push, and the loader implement block (`implementFlags` and friends).
-- @docs/lua-geometry.md — `vehicleGeometry.lua` (per-vehicle derived node geometry: extents, hull cids, contact bands, vertical occupancy histogram) and `rampGeometry.lua` (the drive-in mouth of a ramp-equipped machine). Both are libraries with no ports of their own.
+- @docs/lua-geometry.md — `vehicleGeometry.lua` (per-vehicle derived node geometry: extents, hull cids, contact bands, vertical occupancy histogram) and `rampGeometry.lua` (the drive-in mouth of a ramp-equipped machine). Both are libraries with no ports of their own. Note **`nd.group` does not exist at runtime** (it is `nd.firstGroup`, an index into `v.data.groups`), which made rampGeometry's group tier dead code on every vehicle in the game; that a machine whose mouth cannot be INFERRED gets a **declared** one — five node names per mouth, and the hamster wheel has **two**, chosen per query by which is nearer the driver; and that a floor fitted through **non-collision** nodes is not a floor, so the pitch and lip height are **withheld** rather than published (the tilt ramp announced “ramp down 33 degrees” while sitting dead level).
 - @docs/lua-vehicle-scanner.md — `vehicleScanner.lua`: nearest vehicle detection, target cycling, coupler compatibility matching, alignment teleport. Ports 4445/4448.
 - @docs/lua-extensions.md — `beamtelAI.lua`, `obstacleDetector.lua`, `cameraInfo.lua`, `terrainScanner.lua`, `cannonShot.lua`, `trailerAngle.lua`, `nodeGrabberAccessible.lua`, `clickspotAccessible.lua`, `uiToggle.lua`, `consoleAccessible.lua`, `vehicleBindings.lua`, `environmentAccessible.lua`.
 - `vehicleInfo.lua` (see @docs/lua-extensions.md) — the stock vehicle selector's details-page specifications, answered on request. Ports 4477/4478.
 - @docs/lua-implement-proximity.md — `implementProximity.lua`: what the loader's bucket or forks are about to run into, plus the docking readout, the slam gate, ramp mode, the ramp align teleport and the `RAMPSELF:` line. Ports 4469/4470.
+- @docs/lua-binding-learn.md — `bindingLearn.lua`: Learn Bindings Mode. Wraps `core_input_actions.actionToCommands` so a press is announced instead of firing, with the pause/menu category deliberately exempt and a keepalive watchdog that restores the game if beamtel dies. Ports 4479/4480.
 - @docs/lua-ui-runtime.md — `bnvdaAutoSpawner.lua` and `ui/ui-vue/mods/bnvda/bnvdaRuntime.js`, the whole UI accessibility layer.
 
 **No teleport in this mod may reset the vehicle.** See @docs/lua-telemetry-protocol.md — `spawn.safeTeleport`'s 8th argument is `resetVehicle` and it **defaults to true**; every call site must pass `nil, nil, nil, false, false`.
+
+### Generated Levels
+
+The Track Builder makes spline ribbons, not worlds. Terrain, water and ground
+materials are a **level**, and the World Editor that authors one is ImGui with no
+accessibility tree -- so `tools/mapgen/` writes the level from Python instead:
+the `.ter` binary directly (the format is decoded and round-trips three shipped
+game terrains byte-for-byte), the scene as newline-delimited JSON, the POIs as
+the level's own `mainLevel.lua`. See @docs/level-generation.md -- including the
+**sound stage**, where the reason a rolling road cannot be terrain is that
+`groundmodelName` picks friction, roughness and tyre sound and **never motion**,
+so the three rigs are shipped `Type: "Prop"` vehicles SPAWNED by `mainLevel.lua`
+(a level scene cannot hold a vehicle at all -- `gridmap_v2` is 7167 `TSStatic` and
+zero `BeamNGVehicle`); that the Wheel Roller's rollers are **frictionless troughs**
+rather than drums, so it applies essentially **no load** and only the hamster wheel
+makes an engine pull; and that all three prop facings differ because every rig is
+entered heading north and a prop's `+Y` is not the direction you drive into it --
+the tilt ramp's `onramp_*` groups sit at local `+Y`, and the hamster wheel's ramps
+are at the ends of its **axle**, so you enter across the drum and turn 90 degrees
+inside it; and that **rebuilding the level while the game is running deletes it from the
+level list** (`build.py` rmtree's the mod folder, and `core_modmanager.initDB()` plus
+`core_levels.onFilesChanged` puts it back without a restart). Also the
+three conventions the files cannot reveal -- a SpawnSphere is written facing
+**backwards** (`spawn.lua:974` applies a 180 degree flip), scene spawn spheres
+are **not** what the UI offers (that list is `info.json`'s `spawnPoints`, and
+without it the game silently substitutes one entry called "Default"), and a
+terrain berm's steepness is bought with **height**, since the steepest face a
+heightmap can express is `height / metres_per_cell` -- and that a lateral
+threshold falling mid-cell is resolved by a node on **neither** side of it, which
+is how a "one cell" berm ramp came out spanning two nodes and left a climbable
+84% outer face behind a wall that looked right in the source. A `WaterBlock` is
+likewise a box **centred** on `position` with `scale` as its full extent (so the
+surface is `position.z + scale.z / 2`, settled by `getObjBox`/`getWorldBox`
+rather than by reading the shipped data, which does not distinguish the cases),
+and it renders **nothing** without `rippleTex`/`foamTex`/`depthGradientTex` --
+and that a `WaterBlock`'s **waterline is `position.z`**, not the top of
+`getWorldBox` (that box is the collision volume and straddles the surface), which
+only `obj:inWater` on a parked car can settle. Surfaces follow one rule:
+**asphalt is the driving surface and gravel is a margin** laid around what you
+should stay inside, so a rumble always means the same thing; the road verge is
+computed against the union of the network, or every junction gets a gravel bar
+across it. Also the reason
+`extensions.reload("core_levels")` must never be used to refresh the level list
+(`core_levels.onFilesChanged` is the safe one), and that an in-place
+`startFreeroam` reload **does** work (13-16 s, queued behind the unload) -- what
+fails is checking whether it did, since a scene probe placed where a periodic
+profile is mathematically zero reads identically on both builds and a log tail
+from an offset captured after the event reports nothing at all. Also that the two layers of a
+`.ter` are **different kinds of grid** -- heights are NODES (inclusive masks),
+materials are one byte per CELL (half-open masks) -- so a mask written for one
+silently mis-sizes the other, which is how the lane dividers in the suspension
+straights came out 2.5 m wide in the middle of the section and 5 m at its edges;
+that only **14 of the game's 32 ground models make any tire sound at all**
+(`collisiontype` selects it, and SNOW, FOLIAGE and PLASTIC have no branch in
+`sounds.lua` -- a surface that drives convincingly and is silent); that
+`RUMBLE_STRIP` is a **synthesised** effect rather than geometry, which is the
+only reason a flat terrain cell can carry it; and that a heightmap at 2.5 m/cell
+**cannot express a washboard at all** (Nyquist is 5 m, four samples per cycle is
+10 m), so a wavelength must be an exact multiple of the cell size or it beats
+against the node grid, and must not be an integer multiple of the ripple it is
+summed with or the two phase-lock and cancel.
 
 ### UDP Port Map
 
@@ -103,6 +165,8 @@ Grouped by function; each file below carries the full reasoning for its area.
 | 4476 | Game→Python | Trailer articulation angle (trailerAngle.lua) |
 | 4477 | Game→Python | Vehicle information rows (vehicleInfo.lua) |
 | 4478 | Python→Game | Vehicle information commands (INFO_SELECTOR/INFO:) |
+| 4479 | Game→Python | Learn-mode press events (bindingLearn.lua) |
+| 4480 | Python→Game | Learn-mode commands (LEARN_ON/LEARN_OFF/KEEPALIVE/DIAG) |
 | 4481 | Agent→Python | MCP automation server (HTTP, loopback, off by default) |
 | 4579 | Game→Python | UI toast messages |
 | 8765 | WebSocket | NVDA/UI bridge |
@@ -150,6 +214,8 @@ Most settings are consumed on the Python side. `ui_nav_hold_suppression` is the 
 ## Key Patterns
 
 - **Audio callback pattern**: Check triggered events → read state under lock → generate samples → mix all sources → clip to [-0.999, 0.999] → write stereo interleaved output.
+- **Virtual browser ownership**: `open_virtual_browser` hooks the keyboard arrows exclusively, and while one is open it also takes the six controller accessibility actions -- `navigate_accessibility_menu` hands them to `_drive_virtual_browser` instead of the Status/Functions/Click spots screens, with next/previous-menu as the way out. Without that a pad could open a browser from the Functions menu and have no way to move through it. It is the rule `on_status_arrow_press` already applies on the keyboard, extended to the pad.
+- **UI page text**: `bnvdaRuntime.js` answers a `page_text` request with the current readable screen as lines (today the AngularJS mod repository / automation details pages, whose spec table and description body carry nothing focusable), and pushes a `screen_context` latch so the controller Functions menu can hide the entry elsewhere. See @docs/lua-ui-runtime.md -- nothing is read automatically, and `cleanText` must never touch body text.
 - **Keyboard command lifecycle**: F9 → install hooks + 4-second timeout → process key → unhook. Modifier tracking (Ctrl/Shift/Alt) handled in `_on_next_key_press`.
 - **Fallback strategy**: configured speech backend → Prism's highest-priority available one, re-acquired on failure; preferred audio device → system default; air pressure controller → electrics scan for vehicles without dedicated tanks.
 - **Nuitka build config**: Embedded as `# nuitka-project:` pragmas at the top of `beamtel.py` and `configurator.py`. Both build as `--onefile`. beamtel requires admin (`--windows-uac-admin`) and, like configurator, has **no console** (`--windows-console-mode=disable`) -- so it has no usable standard handles either, which is why `updater.apply_and_restart` hands its detached helper explicit DEVNULL handles rather than letting cmd allocate a console of its own.

@@ -345,6 +345,7 @@ try:
         ("Vehicle bearing", ("v", False, False, True)),
         ("Vehicle distance", ("d", False, False, True)),
         ("Accessible node grabber", ("n", True, False, False)),
+        ("Learn bindings mode", ("b", False, True, False)),
         ("Clickspot detection", ("c", True, True, False)),
         ("Switch units", ("u", False, False, False)),
     ]

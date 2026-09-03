@@ -1491,7 +1491,12 @@ local function sendRampDockLine(player, origin, tgt)
   -- is field 2 and needs nothing special from here.
   send(string.format("DOCK:%s,%.3f,%.3f,%.3f,%d,%d,%s,%.3f,%.3f,%.1f,%d,%.1f,%.3f,%s,%.3f",
     tgt.name, range, lateral, 0.0, 0, 0, "RAMP",
-    mouth.floorZ, mouth.floorZ, yaw, 0, pitch or 0.0, -1.0, "RAMP", margin))
+    -- -999, NEVER `pitch or 0.0`. A nil pitch means rampGeometry declined to publish one --
+    -- its five chosen nodes were not collision surface, so the plane through them is structure
+    -- rather than floor -- and zero there does not read as "unknown", it reads as "this ramp is
+    -- dead level", which is the single most reassuring thing this instrument can say. Same
+    -- sentinel and the same argument as the RAMPSELF line's.
+    mouth.floorZ, mouth.floorZ, yaw, 0, pitch or -999, -1.0, "RAMP", margin))
   lastDockLine = "DOCK"
 end
 
@@ -1550,8 +1555,11 @@ function M.rampTruth()
   end
 
   local m = tgt.mouth
-  p(string.format("live mouth half-width %.3f m, floor z %.2f, pitch %.1f deg",
-    m.halfW, m.floorZ, m.pitchDeg))
+  p(string.format("live mouth half-width %.3f m, floor z %.2f, pitch %s, mouth %d of %d",
+    m.halfW, m.floorZ,
+    m.pitchDeg and string.format("%.1f deg", m.pitchDeg)
+      or "WITHHELD (chosen nodes are not collision surface)",
+    m.mouthIndex or 1, m.mouthCount or 1))
   local hw = playerHalfWidth(player:getID())
   local range, lateral, yaw, margin = rampMeasure(origin, m, hw)
   -- The sign of the range is the single most useful thing this readout prints while the mouth
@@ -1701,13 +1709,22 @@ function M.rampAlign()
     -- on. be:getSurfaceHeightBelow reports failure as a huge NEGATIVE number rather than nil --
     -- the vehicle VM's implement block documents the same trap -- so this is a magnitude band,
     -- not a nil check, and NA travels rather than a zero that would read as "lip on the ground".
+    --
+    -- ...and it is withheld on exactly the same grounds as the pitch, because it rests on the
+    -- same nodes: floorZ is the minimum z of the three mouth cids, so if those are structure
+    -- rather than surface the height above ground is measured from the wrong thing. The Wheel
+    -- Roller tilt ramp is the case -- it announced "ramp not down, lip 1.9 feet up" while its
+    -- onramp plate sat flat on the deck. NA already travels for "could not measure" and Python
+    -- already renders it as silence, so declining costs no new plumbing.
     local lipStr = "NA"
-    local okL, lip = pcall(function()
-      local g = be:getSurfaceHeightBelow(mouth.centre)
-      if not g or math.abs(g) > 1e5 then return nil end
-      return mouth.floorZ - g
-    end)
-    if okL and lip then lipStr = string.format("%.2f", lip) end
+    if mouth.floorTrusted ~= false then
+      local okL, lip = pcall(function()
+        local g = be:getSurfaceHeightBelow(mouth.centre)
+        if not g or math.abs(g) > 1e5 then return nil end
+        return mouth.floorZ - g
+      end)
+      if okL and lip then lipStr = string.format("%.2f", lip) end
+    end
 
     ipLog('I', string.format(
       "ramp align: %s [%d], mouth (%.1f,%.1f,%.1f), nose %.2f m, standing off %.2f m, "

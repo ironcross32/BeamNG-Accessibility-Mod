@@ -160,37 +160,74 @@ local mergeAngle = math.deg(math.atan(10 / lead))
 assert(lead >= 20 and mergeAngle <= 30, "off-road intercept produces shallow merge")
 assertEqual(interceptLead(200, 40), 180, "off-road intercept is bounded")
 
--- Correction is local-road error, not raw bearing to a point around a curve.
--- Ratio 0.5 is a normal lane position on a two-way road and must stay quiet.
-local correctionState = {active = false, clear = 0}
-local function correctionScan(headingError, lateralRatio)
-  local enter = math.abs(headingError) > 6 or lateralRatio > 0.75
-  local aligned = math.abs(headingError) < 3 and lateralRatio < 0.60
-  if correctionState.active then
-    correctionState.clear = aligned and correctionState.clear + 1 or 0
-    if correctionState.clear >= 3 then
-      correctionState.active, correctionState.clear = false, 0
-    end
-  elseif enter then
-    correctionState.active, correctionState.clear = true, 0
-  end
-  return correctionState.active
+-- Correction is containment-predictive. Ordinary yaw is not itself a warning;
+-- an outward course that will reach the edge within three seconds is.
+local function correctionRisk(offset, lateralSpeed, radius, speed)
+  local ratio = math.abs(offset) / radius
+  local outward = offset > 0 and lateralSpeed or -lateralSpeed
+  local seconds = math.huge
+  if outward > 0.20 then seconds = math.max(0, radius - math.abs(offset)) / outward end
+  local horizon = clamp(1.2 + speed * 0.025, 1.2, 2.2)
+  local predictedRatio = math.abs(offset + lateralSpeed * horizon) / radius
+  return ratio > 0.75 or predictedRatio > 0.82 or seconds <= 3
 end
-assert(not correctionScan(0, 0.5), "centred-in-lane curved driving is silent")
-assert(correctionScan(10, 0.5), "real heading error enters correction")
-assert(correctionScan(0, 0.5), "first aligned release scan holds")
-assert(correctionScan(0, 0.5), "second aligned release scan holds")
-assert(not correctionScan(0, 0.5), "normal lane position releases correction")
-assert(correctionScan(0, 0.8), "outer road quarter enters lateral correction")
-local rightCorrection = math.deg(math.atan(-3, 12))
-local leftCorrection = math.deg(math.atan(3, 12))
-assert(rightCorrection < 0 and leftCorrection > 0, "lateral pan points toward road interior")
+assert(not correctionRisk(2.0, 0.0, 4, 15), "steady lane position is silent")
+assert(not correctionRisk(2.0, -0.5, 4, 15), "inward course is silent")
+assert(correctionRisk(2.0, 1.0, 4, 15), "outward course warns predictively")
+assert(correctionRisk(-3.2, 0.0, 4, 15), "either outer quarter starts recovery")
+
+local function recoveryTarget(offset, radius, oneWay)
+  if oneWay or radius < 2.5 then return 0 end
+  return (offset > 0 and 1 or -1) * radius * 0.5
+end
+assertEqual(recoveryTarget(3.2, 4, false), 2, "left-side recovery keeps its lane")
+assertEqual(recoveryTarget(-3.2, 4, false), -2, "right-side recovery keeps its lane")
+assertEqual(recoveryTarget(3.2, 4, true), 0, "one-way recovery uses road centre")
+
+-- A simple driver model must see correction, then unwind, then settlement,
+-- without crossing the road centreline. This catches the old late-silence
+-- behavior that unit checks of packet fields could not expose.
+local function recoverTrajectory(initialOffset)
+  local dt, radius = 0.05, 4
+  local offset, lateralSpeed = initialOffset, 0.4 * (initialOffset > 0 and 1 or -1)
+  local target = recoveryTarget(offset, radius, false)
+  local sawCorrect, sawUnwind, settled = false, false, false
+  local nearestCentre = math.abs(offset)
+  for _ = 1, 300 do
+    local error = offset - target
+    local closing = error > 0 and -lateralSpeed or lateralSpeed
+    local secondsToTarget = closing > 0.05 and math.abs(error) / closing or math.huge
+    local bearing = math.deg(math.atan(-error, 15))
+    local unwind = math.abs(bearing) <= 3 or secondsToTarget <= 1.0
+    if unwind then
+      sawUnwind = true
+      lateralSpeed = lateralSpeed * 0.78
+    else
+      sawCorrect = true
+      lateralSpeed = lateralSpeed + (error > 0 and -1 or 1) * dt
+    end
+    offset = offset + lateralSpeed * dt
+    nearestCentre = math.min(nearestCentre, math.abs(offset))
+    if math.abs(offset - target) <= math.max(0.35, radius * 0.12)
+      and math.abs(lateralSpeed) <= 0.35 then
+      settled = true
+      break
+    end
+  end
+  return sawCorrect, sawUnwind, settled, nearestCentre
+end
+local sawCorrect, sawUnwind, settled, nearestCentre = recoverTrajectory(3.4)
+assert(sawCorrect and sawUnwind and settled, "left recovery has all instruction phases")
+assert(nearestCentre > 1.4, "left recovery never approaches the opposing lane")
+sawCorrect, sawUnwind, settled, nearestCentre = recoverTrajectory(-3.4)
+assert(sawCorrect and sawUnwind and settled, "right recovery has all instruction phases")
+assert(nearestCentre > 1.4, "right recovery never approaches the opposing lane")
 
 local driftLast, driftSpeed = nil, 0
 local function driftStep(offset, radius)
   if driftLast == nil then driftLast = offset; return false end
-  local rawSpeed = (offset - driftLast) / 0.2
-  driftSpeed = driftSpeed + 0.35 * (rawSpeed - driftSpeed)
+  local rawSpeed = (offset - driftLast) / 0.05
+  driftSpeed = driftSpeed + 0.10 * (rawSpeed - driftSpeed)
   driftLast = offset
   local outward = offset > 0 and driftSpeed or -driftSpeed
   local seconds = math.huge
@@ -198,13 +235,21 @@ local function driftStep(offset, radius)
   return outward > 0.20 and seconds <= 3
 end
 assert(not driftStep(2.0, 4), "steady lane offset initializes drift tracker")
-assert(not driftStep(2.2, 4), "drift filter rejects first noisy sample")
-assert(driftStep(2.4, 4), "outward motion predicts road departure")
-assert(not driftStep(2.2, 4), "inward correction disarms drift prediction")
+assert(not driftStep(2.05, 4), "drift filter rejects first noisy sample")
+local warned = false
+for i = 2, 12 do
+  if driftStep(2 + i * 0.05, 4) then warned = true end
+end
+assert(warned, "sustained outward motion predicts road departure")
+assert(not driftStep(1.8, 4), "inward correction disarms drift prediction")
 driftLast, driftSpeed = nil, 0
 assert(not driftStep(-2.0, 4), "opposite lane initializes drift tracker")
-assert(not driftStep(-2.2, 4), "opposite-side filter rejects first sample")
-assert(driftStep(-2.4, 4), "opposite-side outward drift is detected")
+assert(not driftStep(-2.05, 4), "opposite-side filter rejects first sample")
+warned = false
+for i = 2, 12 do
+  if driftStep(-2 - i * 0.05, 4) then warned = true end
+end
+assert(warned, "opposite-side outward drift is detected")
 
 local activeJunction = nil
 local function junctionVisible(id, distanceAhead, earlyLimit)

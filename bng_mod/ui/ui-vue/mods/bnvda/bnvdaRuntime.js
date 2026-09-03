@@ -133,11 +133,17 @@ export function installBNVDA($rootScope, dependencies) {
             if (!data) return;
             if (data.type === 'transport_pong') {
               if (loadingActive) send({ type: 'loading_state', active: true, focusText: '' });
+              // beamtel can restart while the UI stays up, which leaves its screen
+              // latch empty with no route change coming to refill it. A pong is the
+              // one moment we know the far side has no state from us -- the same
+              // argument the loading state above already makes.
+              sendModDetailContext();
               return;
             }
             if (data.type === 'context_action') handleContextAction(data.action);
             else if (data.type === 'dom_dump') performDomDump();
             else if (data.type === 'settings') applySettings(data);
+            else if (data.type === 'page_text') sendModDetailsSheet();
           }
           function applySettings(data) {
             if (typeof data.ui_nav_hold_suppression === 'boolean') {
@@ -873,6 +879,217 @@ export function installBNVDA($rootScope, dependencies) {
             completedDownloads.clear();
             repositoryErrors.clear();
           });
+          // ========== MOD REPOSITORY DETAILS ==========
+          // The repository and automation details screens are still AngularJS, and the two
+          // blocks that say what a mod actually IS -- the spec table and the description
+          // body -- carry no bng-nav-item, no tabindex and nothing focusable at all. A
+          // controller sweeps straight past them onto the subscribe button and the focus
+          // path never fires, so the text is unreachable rather than merely terse. This
+          // module answers a Python request with the whole sheet as lines; beamtel renders
+          // it in the virtual browser it already has.
+          var MOD_DETAIL_STATES = {
+            'menu.mods.details': 1,
+            'menu.mods.automationDetails': 1
+          };
+          var MOD_BLOCK_MAX = 300;   // split a longer block on sentence boundaries
+          var MOD_MAX_LINES = 400;   // a runaway description must not become a runaway list
+          var _modDetailActive = false;
+          var _modDetailTitle = '';
+          var _modDetailTagLine = '';
+          var _modDetailAnnounced = '';
+
+          // cleanText is WRONG for body text: it truncates at MAX_LEN (160), so a paragraph
+          // would be cut mid-sentence with an ellipsis and read as though the mod author had
+          // stopped writing. Same glyph strip and whitespace collapse, no cap.
+          function blockText(s) {
+            if (!s) return '';
+            return String(s).replace(/[\uE000-\uF8FF]/g, '').replace(/\s+/g, ' ').trim();
+          }
+
+          // One utterance per paragraph is right until the paragraph is an essay. Split on
+          // sentence ends rather than at a character count, which would cut mid-word.
+          function pushBlock(out, text) {
+            if (!text || out.length >= MOD_MAX_LINES) return;
+            if (text.length <= MOD_BLOCK_MAX) { out.push(text); return; }
+            var parts = text.split(/([.!?])\s+/);
+            var chunk = '';
+            for (var i = 0; i < parts.length; i += 2) {
+              var piece = parts[i] + (parts[i + 1] || '');
+              if (chunk && (chunk.length + piece.length + 1) > MOD_BLOCK_MAX) {
+                out.push(chunk);
+                if (out.length >= MOD_MAX_LINES) return;
+                chunk = '';
+              }
+              chunk = chunk ? (chunk + ' ' + piece) : piece;
+            }
+            if (chunk) out.push(chunk);
+          }
+
+          // BR is listed deliberately: it is empty, so it emits nothing itself, but its
+          // presence sends its parent down the mixed path and the line breaks the author
+          // typed survive as separate lines.
+          var MOD_BLOCK_TAGS = /^(P|DIV|LI|UL|OL|H1|H2|H3|H4|H5|H6|BLOCKQUOTE|PRE|TABLE|TBODY|TR|SECTION|ARTICLE|BR|HR)$/;
+          function collectBlocks(node, out) {
+            if (!node || out.length >= MOD_MAX_LINES) return;
+            var kids = node.children ? toArray(node.children) : [];
+            var hasBlockChild = false;
+            for (var i = 0; i < kids.length; i++) {
+              if (kids[i].tagName && MOD_BLOCK_TAGS.test(kids[i].tagName)) { hasBlockChild = true; break; }
+            }
+            if (!hasBlockChild) {
+              var leaf = blockText(node.innerText || node.textContent || '');
+              if (leaf) pushBlock(out, node.tagName === 'LI' ? '\u2022 ' + leaf : leaf);
+              return;
+            }
+            for (var j = 0; j < node.childNodes.length; j++) {
+              var ch = node.childNodes[j];
+              if (ch.nodeType === 3) {
+                var textNode = blockText(ch.nodeValue);
+                if (textNode) pushBlock(out, textNode);
+              } else if (ch.nodeType === 1) {
+                if (ch.tagName === 'IMG' || ch.tagName === 'SCRIPT' || ch.tagName === 'STYLE') continue;
+                if (MOD_BLOCK_TAGS.test(ch.tagName)) collectBlocks(ch, out);
+                else {
+                  var inline = blockText(ch.innerText || ch.textContent || '');
+                  if (inline) pushBlock(out, inline);
+                }
+              }
+              if (out.length >= MOD_MAX_LINES) return;
+            }
+          }
+
+          // The description is read from the RENDERED DOM, never from modData.message: that
+          // field is an Angular $sce.trustAsHtml wrapper object rather than a string
+          // (repository.js:296), and the DOM already holds the parsed BBCode the user is
+          // looking at. The list page has an ng-bind-html of its own (the repo notice), so
+          // take the largest visible one rather than the first.
+          function modDetailBody() {
+            var nodes = toArray(document.querySelectorAll('[ng-bind-html]'));
+            var best = null, bestLen = 0;
+            for (var i = 0; i < nodes.length; i++) {
+              var el = nodes[i];
+              if (isHidden(el)) continue;
+              var len = ((el.innerText || el.textContent || '')).trim().length;
+              if (len > bestLen) { best = el; bestLen = len; }
+            }
+            return bestLen > 0 ? best : null;
+          }
+
+          function modDetailTable() {
+            var tables = toArray(document.querySelectorAll('table.repodetailtable'));
+            for (var i = 0; i < tables.length; i++) if (!isHidden(tables[i])) return tables[i];
+            return null;
+          }
+
+          // Title and tag line come from the ModReceived payload when we have it, because
+          // the header block in info.html carries no class of any kind and would have to be
+          // reached by position. The DOM walk is the fallback for a runtime installed after
+          // the screen was already open.
+          function modDetailHeader() {
+            var title = _modDetailTitle, tagLine = _modDetailTagLine;
+            if (!title) {
+              var table = modDetailTable();
+              var panel = table ? closest(table, 'md-content') : null;
+              var head = panel ? panel.querySelector('div') : null;
+              var raw = head ? blockText(head.innerText || head.textContent || '') : '';
+              if (raw) title = raw;
+            }
+            return { title: title, tagLine: tagLine };
+          }
+
+          // The rating row is a strip of Material-icon divs, so its text reads as the word
+          // "star" five times over -- and it says nothing about how many are LIT, which is
+          // the entire content of the row. Counted off .star-on rather than matched on the
+          // label, which is localized.
+          function modRatingText(cell) {
+            var stars = cell.querySelectorAll('.star-button');
+            if (!stars.length) return '';
+            var lit = cell.querySelectorAll('.star-button.star-on').length;
+            return lit + ' out of ' + stars.length + ' stars';
+          }
+
+          function readModDetailsSheet() {
+            if (!_modDetailActive) {
+              return { code: 'notdetails', sentence: 'Not on a mod details screen' };
+            }
+            var body = modDetailBody();
+            var table = modDetailTable();
+            if (!body && !table) {
+              return { code: 'loading', sentence: 'Mod details are still loading' };
+            }
+            var lines = [];
+            var head = modDetailHeader();
+            if (head.title) lines.push(head.title);
+            if (head.tagLine && head.tagLine !== head.title) lines.push(head.tagLine);
+            if (table) {
+              var rows = toArray(table.querySelectorAll('tr'));
+              for (var i = 0; i < rows.length; i++) {
+                var cells = toArray(rows[i].children);
+                // The labels are already translated by Angular, so no findTranslateFunc pass.
+                var label = blockText(cells[0] ? (cells[0].innerText || cells[0].textContent) : '');
+                var value = cells[1] ? modRatingText(cells[1]) : '';
+                if (!value) value = blockText(cells[1] ? (cells[1].innerText || cells[1].textContent) : '');
+                label = label.replace(/:\s*$/, '');
+                if (label && value) lines.push(label + ': ' + value);
+                else if (label) lines.push(label);
+              }
+            }
+            if (body) collectBlocks(body, lines);
+            if (!lines.length) {
+              return { code: 'norows', sentence: 'This mod page has no readable text' };
+            }
+            return { lines: lines, title: head.title || 'Mod details' };
+          }
+
+          function sendModDetailsSheet() {
+            var sheet;
+            try { sheet = readModDetailsSheet(); }
+            catch (e) { sheet = { code: 'error', sentence: 'Could not read this mod page' }; }
+            if (sheet.lines) {
+              send({ type: 'page_text', context: 'mod_details', title: sheet.title, lines: sheet.lines });
+            } else {
+              send({ type: 'page_text', code: sheet.code, sentence: sheet.sentence });
+            }
+          }
+
+          function sendModDetailContext() {
+            send({
+              type: 'screen_context',
+              context: _modDetailActive ? 'mod_details' : '',
+              title: _modDetailActive ? _modDetailTitle : ''
+            });
+          }
+
+          // Pushed on entering AND on leaving, so the Python latch cannot stick on a screen
+          // the user walked away from and offer to read a page that is gone.
+          subscribe($rootScope, '$stateChangeSuccess', function (_event, toState) {
+            var name = (toState && toState.name) || '';
+            var active = !!MOD_DETAIL_STATES[name];
+            if (active === _modDetailActive) return;
+            _modDetailActive = active;
+            if (!active) { _modDetailTitle = ''; _modDetailTagLine = ''; _modDetailAnnounced = ''; }
+            sendModDetailContext();
+          });
+
+          // ModReceived is the "data has arrived" signal -- guihooks.trigger from
+          // core/repository.lua, the same route repoError above already rides. It is used
+          // only for the title and the one-line announcement; the sheet itself is read from
+          // the DOM on demand, so nothing here depends on listener ordering against the
+          // stock controller (which replaces modData.message with a trusted wrapper).
+          subscribe($rootScope, 'ModReceived', function (_event, payload) {
+            if (!_modDetailActive) return;
+            var data = (payload && payload.data) || payload || {};
+            _modDetailTitle = blockText(scalarValue(data.title));
+            _modDetailTagLine = blockText(scalarValue(data.tag_line));
+            sendModDetailContext();
+            // Nothing on screen suggests the readout exists, so say once that it does.
+            // P.SYSTEM because held-navigation coalescing must never delay or drop it.
+            var key = _modDetailTitle || String(scalarValue(data.tagid) || '');
+            if (!key || key === _modDetailAnnounced) return;
+            _modDetailAnnounced = key;
+            scheduleSpeak((_modDetailTitle || 'Mod details') + '. Press F9 space to read the details.', P.SYSTEM);
+          });
+
           // ---------- GLOBAL EVENT LISTENERS ----------
           subscribe($rootScope, 'Message', function (event, args) {
             if (!args || !args.msg) return;
