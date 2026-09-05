@@ -290,7 +290,7 @@ raised out of it, so **any slope underfoot is information**.
 | Shallow Ford | (1300, -900) | 0.45 m water, drivable |
 | The Sump | (1500, 340) | 4.5 m water; hydrolocks the engine |
 | Hill Climb base | (0, -780) | foot of the three-kilometre climb |
-| Hill Climb summit | (0, 2265) | flat at z=855.5 m, spawn faces back down |
+| Hill Climb summit | (0, 2265) | flat at z=682.15 m, spawn faces back down |
 | One-Kilometre Tunnel | (-2000, 460) | south-portal spawn facing north into a 1000 m tunnel |
 | Suspension Straights | (-1220, 240) | 3 undulating dirt lanes running north |
 | Sound Stage | (400, -2200) | rolling road, hamster wheel, tilt ramp |
@@ -330,7 +330,7 @@ lane and the rock berm). It is split on each side into one 2.5 m cell of
 `RUMBLE_STRIP` immediately outside the asphalt and one 2.5 m cell of gravel
 outside that. Drifting wide therefore produces two ordered cues: rumble marks
 the asphalt edge, then gravel says the car is continuing toward the berm. The
-berm is the structural backstop, and at 60 % the warnings are the half of that
+berm is the structural backstop, and at 54 % the warnings are the half of that
 arrangement that is any use.
 
 The visible climb is painted into the terrain, but terrain materials alone do
@@ -348,13 +348,29 @@ the actual road near the middle, far outside the detector's 6 m overpass
 tolerance. `useSubdivisions = false` ensures the graph uses the generated
 height-following control points directly.
 
-The original climb met the summit at its full 60 percent grade and the pad
+The original climb met the summit at its full grade and the pad
 became flat in one 2.5 m cell. Although the heights met, that slope discontinuity
 was a hard convex hump in either direction. A 45 m cubic vertical curve now
-starts after the full 3000 m climb at y=2220 and eases continuously from 60
+starts after the full 3000 m climb at y=2220 and eases continuously from 54
 percent to zero at the summit centre (y=2265). A proper rounded crest must keep
-rising while its grade falls, so the final flat pad is 13.5 m higher at 855.5 m;
+rising while its grade falls, so the final flat pad is 12.15 m higher at 682.15 m;
 the north half remains level for turning around.
+
+### The timed hill-climb mission
+
+The base marker is a native `timeTrial` mission POI rather than a second
+level-local marker. Entering it at low speed, including after quick travel,
+opens BeamNG's Activity Start prompt; accepting uses the current vehicle,
+places it just south of the timed line, and runs north through checkpoints every
+250 m to a finish on the flat summit. Recoveries and flips remain available and
+add five seconds each. No medal thresholds are presented: official elapsed time
+and the native personal best are the score.
+
+The mission files are generated at the mod root under
+`gameplay/missions/proving_grounds/timeTrial/hill_climb/`, because gameplay
+missions are not level children. `race.race.json` is synthesized from the same
+height function as the terrain, including the cubic crest, so checkpoint and
+recovery poses cannot drift away from a changed profile.
 
 ### The one-kilometre tunnel
 
@@ -601,23 +617,24 @@ was taken.
 
 ### The climb
 
-`grade(s) = G0 + (G1 - G0) * (s/L)^P`, with `P = 1.5`. The progressive run-up
-remains, but the severe grades arrive earlier: 40 percent of the climb is at or
-above 30 percent grade, compared with 32 percent under the former `P = 2`
-profile.
+`grade(s) = G0 + (G1 - G0) * (s/L)^P`, with `P = 2`. The progressive run-up
+keeps the severe grades near the end so ordinary vehicles retain momentum for
+the finish. The climb reaches its 54 percent maximum only at the end of the
+3000 m profile, immediately before the separate summit vertical curve begins.
 
 | along | grade | height |
 |---|---|---|
 | 0 m | 4.0 % | 50 m |
-| 750 m | 11.0 % | 101 m |
-| 1500 m | 23.8 % | 229 m |
-| 2250 m | 40.4 % | 467 m |
-| 3000 m | 60.0 % | 842 m |
+| 750 m | 7.1 % | 88 m |
+| 1500 m | 16.5 % | 173 m |
+| 2250 m | 32.1 % | 351 m |
+| 3000 m | 54.0 % | 670 m |
 
-ASPHALT's `staticFrictionCoefficient` is 0.98, so 60 % (31 degrees) sits well
-inside the traction limit. That is deliberate: it makes the climb a test of
-**power**, not of grip. Dirt and gravel variants are separate climbs with the
-same parameters -- which is why the profile is parameterised rather than baked.
+The former 60 percent finish exceeded the sustainable traction limit of ordinary
+front-wheel-drive cars once uphill weight transfer unloaded the driven axle. The
+54 percent (28.4 degree) maximum is still a demanding power and momentum test,
+but the road remains asphalt throughout rather than becoming a trick surface.
+Dirt and gravel versions can use the same profile later.
 
 Walls are **terrain berms**, not `TSStatic` guardrails: 12 m of rock rising over a
 single cell at 12.5 m either side of the road, flat-topped out to 22.5 m. A mesh rail
@@ -631,7 +648,7 @@ by a constant that has to be kept equal to the cell size.
 
 That is the third version of this wall, and each failure was less visible than
 the last. The first ramped 3.5 m linearly across the whole 8 m shoulder and
-measured **31-44 %** in game -- *shallower than the 60 % at the top of the climb
+measured **31-44 %** in game -- *shallower than the 54 % at the top of the climb
 it was meant to contain*. The second raised it to 7 m over "one cell" of lateral
 run, which reads as a wall in the source and was still driven over: with
 `CLIMB_HALF_W` at 12.0 and `BERM_RISE` at 2.5, the ramp spanned **two** nodes,

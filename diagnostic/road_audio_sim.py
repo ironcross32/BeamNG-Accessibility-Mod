@@ -160,17 +160,38 @@ def main():
         controller.ROAD_JUNCTION_WAVEFORM,
     )
 
-    controller.update_road_guidance(
-        "onRoad", None,
-        {"active": True, "bearing": -35, "severity": 0.7, "phase": "correct"},
-    )
-    assert controller._road_correction_active
-    assert controller._road_correction_bearing == -35
-    controller.update_road_guidance(
-        "onRoad", None,
-        {"active": False, "bearing": 0, "severity": 0, "phase": "idle", "settled": True},
-    )
-    assert controller._road_correction_settled_pos == 0
+    fake_clock = FakeClock()
+    original_monotonic = audio.time.monotonic
+    audio.time.monotonic = fake_clock
+    try:
+        controller.update_road_guidance(
+            "onRoad", None,
+            {"active": True, "bearing": -35, "severity": 0.7, "phase": "correct"},
+        )
+        assert controller._road_correction_active
+        assert controller._road_correction_bearing == -35
+        settled_packet = {
+            "active": False,
+            "bearing": 0,
+            "severity": 0,
+            "phase": "idle",
+            "settled": True,
+        }
+        settled_event = controller.update_road_guidance(
+            "onRoad", None, settled_packet
+        )
+        assert controller._road_correction_settled_pos == 0
+        assert settled_event == {"settled_triggered": True}
+        repeated_event = controller.update_road_guidance(
+            "onRoad", None, settled_packet
+        )
+        assert repeated_event == {"settled_triggered": False}
+        fake_clock.value += audio.ROAD_CORRECTION_SETTLED_REFRACTORY_S + 0.01
+        assert controller.update_road_guidance(
+            "onRoad", None, settled_packet
+        ) == {"settled_triggered": True}
+    finally:
+        audio.time.monotonic = original_monotonic
     controller.clear_road_audio()
     assert not controller._road_correction_active
     assert not controller._road_chime_queue

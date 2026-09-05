@@ -88,6 +88,7 @@ DEFAULT_CONFIG = {
     "road_junction_earcon_enabled": True,
     "road_include_private": False,
     "road_beep_volume_db": -14.0,
+    "route_beacon_volume_db": -16.0,
     "road_correction_volume_db": -24.0,
     "road_junction_volume_db": -14.0,
     "telemetry_protocol": "extended",
@@ -342,6 +343,7 @@ def load_config():
         _coerce("road_junction_earcon_enabled", bool, True)
         _coerce("road_include_private", bool, False)
         _coerce("road_beep_volume_db", float, -14.0)
+        _coerce("route_beacon_volume_db", float, -16.0)
         _coerce("road_correction_volume_db", float, -24.0)
         _coerce("road_junction_volume_db", float, -14.0)
 
@@ -441,6 +443,7 @@ def load_config():
                     "slip_tone_level_dbfs", "placement_ping_volume_db",
                     "obstacle_buzz_volume_db",
                     "road_beep_volume_db", "road_correction_volume_db", "road_junction_volume_db",
+                    "route_beacon_volume_db",
                     "hrtf_front_emphasis_db",
                     "implement_ground_tone_dbfs", "implement_tilt_tone_dbfs",
                     "dock_tone_dbfs", "scan_tone_dbfs"]:

@@ -332,6 +332,8 @@ try:
         ("Mark waypoint", ("c", False, True, False)),
         ("Speak marked coordinates", ("c", False, False, True)),
         ("Distance and bearing", ("w", False, False, False)),
+        ("Toggle route beacon", ("w", True, False, False)),
+        ("Nearest point of interest", ("w", False, True, False)),
         ("Redline RPM", ("r", False, True, False)),
         ("Maximum turbo pressure", ("t", False, True, False)),
         ("Air pressure", ("p", False, False, False)),
@@ -392,6 +394,7 @@ try:
             "Air pressure",
             "Camera heading",
             "Terrain scan",
+            "Nearest point of interest",
         }.issubset(hidden),
         hidden,
     )
@@ -412,6 +415,7 @@ try:
             "Air pressure",
             "Camera heading",
             "Terrain scan",
+            "Nearest point of interest",
         }.issubset(shown),
         shown,
     )

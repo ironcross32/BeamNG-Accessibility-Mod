@@ -89,6 +89,7 @@ Press F9, then one of the following keys. If you press an invalid key or allow t
 - Shift+C: Mark waypoint at current position
 - Alt+C: Speak marked waypoint coordinates
 - W: Distance and bearing to waypoint
+- Shift+W: Announce the nearest point of interest and its description; when away from it, also announce distance and bearing
 
 #### Vehicle scanner:
 
@@ -136,7 +137,7 @@ The **Status** screen is the same live, conditionally filtered telemetry catalog
 - **Vehicle scanner:** scanner toggle and target selection, scanner readouts, trailer/ramp alignment, and coupler-distance callouts.
 - **Alignment:** instrument toggle, alignment/cannon readout, and reference-band selection.
 - **Driving assistance:** pedal tones, heading/coordinate guidance, drift, low-speed, wheel-slip, obstacle and road detection, plus road status.
-- **Waypoints:** mark, speak, and read distance/bearing to a waypoint.
+- **Waypoints:** mark, speak, and read distance/bearing to a waypoint, or announce the nearest point of interest.
 - **Vehicle information:** redline, maximum turbo and air pressure when supported, attitude, coordinates, and damage.
 - **Camera:** camera-information toggle plus heading, altitude, pitch, vehicle bearing, and vehicle distance.
 - **Interaction:** accessible node grabber, clickspot detection, and unit switching.

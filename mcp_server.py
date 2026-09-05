@@ -480,6 +480,22 @@ def _t_get_state(args):
     return _deps.snapshot_state_fn(sections)
 
 
+def _t_road_diagnostic(args):
+    callback = getattr(_deps, "road_diagnostic_fn", None)
+    if callback is None:
+        raise ToolError("this beamtel build has no road diagnostic recorder")
+    action = str(args.get("action", "status")).strip().lower()
+    if action == "start":
+        _require_world()
+    return callback(
+        action=action,
+        label=args.get("label"),
+        session=args.get("session"),
+        note=args.get("note"),
+        limit=args.get("limit", 20),
+    )
+
+
 # Which settings are secrets is `secretstore`'s list, not a second copy of it:
 # the same names decide what gets sealed on disk and what gets masked here, and
 # two lists would drift the day a provider is added. `get_config` is served to an
@@ -1134,6 +1150,31 @@ TOOLS = [
         ),
         "inputSchema": {"type": "object", "properties": {}},
         "handler": _t_get_config,
+    },
+    {
+        "name": "road_diagnostic",
+        "description": (
+            "Record and review a road-guidance driving attempt. `start` opens a durable "
+            "NDJSON session and enables detailed Lua lane-correction fields; `stop` closes "
+            "it and returns an analysis of settled-band occupancy, correction episodes, "
+            "rapid settled-tone retriggers, steering/target oscillation, and wheel slip. "
+            "`status`, `list`, and `review` are read-only; `mark` adds a timestamped note."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "description": "start | stop | status | mark | review | list",
+                    "default": "status",
+                },
+                "label": {"type": "string", "description": "start: short session label"},
+                "session": {"type": "string", "description": "review: bare .ndjson session file name; omit for latest"},
+                "note": {"type": "string", "description": "mark: note about an observed event"},
+                "limit": {"type": "integer", "description": "list: maximum sessions", "default": 20},
+            },
+        },
+        "handler": _t_road_diagnostic,
     },
     {
         "name": "speech_log",

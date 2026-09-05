@@ -82,16 +82,16 @@ M_GRAVEL, M_ASPHALT, M_DIRT, M_MUD, M_ROCK, M_RUMBLE = range(6)
 # entry at the end leaves every existing index meaning what it meant.
 
 # ------------------------------------------------------------------ hill climb
-# grade(s) = G0 + (G1 - G0) * (s/L)^P -- gentle at the bottom, brutal at the top.
-# P = 1.5 brings the severe grades forward without losing the progressive run-up:
-# 40 percent of the climb is at or above 30 percent grade, versus 32 percent with
-# the old P = 2 profile.
+# grade(s) = G0 + (G1 - G0) * (s/L)^P -- gentle at the bottom, hardest near the top.
+# P = 2 keeps the severe grades near the end so ordinary vehicles retain more
+# momentum for the finish. The separate summit curve below starts only after the
+# profile reaches its full grade, then eases that grade continuously to zero.
 CLIMB_X = 0.0
 CLIMB_Y0 = -780.0
 CLIMB_LEN = 3000.0
 CLIMB_G0 = 0.04             # 4 % at the foot
-CLIMB_G1 = 0.60             # 60 % (31 deg) at the top
-CLIMB_P = 1.5
+CLIMB_G1 = 0.54             # 54 % (28.4 deg) at the top
+CLIMB_P = 2.0
 # CLIMB_HALF_W and BERM_OUTER are deliberately exact multiples of
 # METRES_PER_CELL. A threshold that falls mid-cell is resolved by a heightmap
 # node that is neither road nor berm, which is precisely how the berm acquired a
@@ -111,7 +111,7 @@ CLIMB_ROAD_NODE_STEP = 50.0 # vertical fidelity for the AI/navigation road
 #
 # That is the third version of this wall, and each failure was less visible than
 # the last. The first ramped 3.5 m linearly across the whole 8 m shoulder and
-# measured 31-44 % in game -- shallower than the 60 % at the top of the climb it
+# measured 31-44 % in game -- shallower than the 54 % at the top of the climb it
 # was meant to contain. The second raised it to 7 m over "one cell" of lateral
 # run, which reads as a wall and was still driven over: with CLIMB_HALF_W at 12.0
 # and BERM_RISE at 2.5 the ramp spanned two nodes, and measured mid-climb the
@@ -129,10 +129,11 @@ FLANK_SLOPE = 0.45          # how the mountain falls away outside the berms
 SUMMIT_PAD = 90.0           # flat turn-around beyond the top of the climb
 PAD_WALL_W = 7.5            # wall band around that turn-around (3 cells)
 
-# ASPHALT's staticFrictionCoefficient is 0.98, so a 60 % grade is comfortably
-# inside the traction limit -- which is deliberate. It makes the climb a test of
-# POWER (and of the speed carried into it), not a test of grip. Dirt and gravel
-# variants belong in later climbs; that is why the profile is parameterised.
+# The former 60 % finish exceeded the sustainable traction limit of ordinary
+# front-wheel-drive cars after uphill weight transfer unloaded their driven axle.
+# A 54 % maximum remains demanding, while the later-steepening P = 2 profile lets
+# those vehicles carry more momentum into it. Dirt and gravel variants belong in
+# later climbs; this one remains asphalt throughout.
 
 
 def climb_grade(s):
@@ -153,16 +154,16 @@ CLIMB_PROFILE_TOP_Z = BASE_Z + float(climb_height(CLIMB_LEN))
 CLIMB_Y1 = CLIMB_Y0 + CLIMB_LEN
 SUMMIT_Y = CLIMB_Y1 + SUMMIT_PAD
 
-# The old profile reached its full 60 percent grade at CLIMB_Y1 and then became
+# The old profile reached its full grade at CLIMB_Y1 and then became
 # flat in one heightmap cell. Position was continuous but slope was not, so the
-# join felt like a hard hump. Preserve the whole 3000 m climb, including its 60
-# percent finish, then use the first 45 m of the summit pad as a vertical curve.
+# join felt like a hard hump. Preserve the whole 3000 m climb through its maximum,
+# then use the first 45 m of the summit pad as a vertical curve.
 CLIMB_CREST_START_S = CLIMB_LEN
 CLIMB_CREST_START_Y = CLIMB_Y0 + CLIMB_CREST_START_S
 CLIMB_CREST_END_Y = CLIMB_Y1 + SUMMIT_PAD / 2.0
 CLIMB_CREST_LENGTH = CLIMB_CREST_END_Y - CLIMB_CREST_START_Y
-# A linear reduction in grade from 60 percent to zero gains average-grade times
-# distance: 0.30 * 45 = 13.5 m. Raising the final pad is the only way to round
+# A linear reduction in grade from 54 percent to zero gains average-grade times
+# distance: 0.27 * 45 = 12.15 m. Raising the final pad is the only way to round
 # the crest without weakening the climb or introducing a dip.
 CLIMB_TOP_Z = (CLIMB_PROFILE_TOP_Z
                + 0.5 * float(climb_grade(CLIMB_LEN)) * CLIMB_CREST_LENGTH)

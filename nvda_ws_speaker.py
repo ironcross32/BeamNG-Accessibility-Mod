@@ -42,6 +42,7 @@ _SETTINGS_REQUEST_CALLBACK = None
 _ACCESSIBILITY_ACTION_CALLBACK = None
 _SCREEN_CONTEXT_CALLBACK = None
 _PAGE_TEXT_CALLBACK = None
+_CHALLENGE_EVENT_CALLBACK = None
 
 # Mirrors window.BNVDA_DEBUG from the CEF/UI JS context. The UI runtime reports it
 # whenever it changes, so debug output anywhere in the Python side can be switched on
@@ -94,6 +95,12 @@ def register_accessibility_action_callback(callback):
     """Register the application handler for allowlisted gameplay actions."""
     global _ACCESSIBILITY_ACTION_CALLBACK
     _ACCESSIBILITY_ACTION_CALLBACK = callback
+
+
+def register_challenge_event_callback(callback):
+    """Register the application handler for native mission lifecycle events."""
+    global _CHALLENGE_EVENT_CALLBACK
+    _CHALLENGE_EVENT_CALLBACK = callback
 
 
 def bnvda_debug_enabled():
@@ -256,6 +263,13 @@ def handle_ws_message(data):
                 _ACCESSIBILITY_ACTION_CALLBACK(action)
             except Exception as e:
                 logger.error(f"accessibility_action callback error: {e}")
+
+    elif msg_type == "challenge_event":
+        if _CHALLENGE_EVENT_CALLBACK:
+            try:
+                _CHALLENGE_EVENT_CALLBACK(data)
+            except Exception as e:
+                logger.error(f"challenge_event callback error: {e}")
 
 # ---------- WebSocket Server Logic ----------
 async def ws_handler(request: web.Request):

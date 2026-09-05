@@ -12,6 +12,7 @@ from nvda_ws_speaker import (
     register_loading_state_callback,
     register_settings_request_callback,
     register_accessibility_action_callback,
+    register_challenge_event_callback,
     register_screen_context_callback,
     register_page_text_callback,
     broadcast,
@@ -29,8 +30,22 @@ from types import SimpleNamespace
 import wx
 
 from bnh_logger import get_logger, LOG_FILENAME
-from audio import AudioController, DOCK_RAMP_MAX_RANGE_M
+from audio import AudioController, DOCK_RAMP_MAX_RANGE_M, SCAN_FAMILY_CODES
 from road_guidance import RoadGuidanceFeed, junction_phrase, parse_r2_packet
+from road_diagnostics import RoadDiagnosticRecorder
+from challenge_results import (
+    HillClimbChallengeRecorder,
+    completion_speech as hill_climb_completion_speech,
+)
+from route_beacon import (
+    parse_route_packet,
+    relative_bearing,
+    route_beacon_phrase,
+    target_bearing,
+    normalize_bearing,
+    AT_DESTINATION_M,
+)
+from poi_guidance import parse_poi_packet, poi_phrase
 
 logger = get_logger()
 
@@ -56,6 +71,12 @@ def _get_config_dir():
 CONFIG_DIR = _get_config_dir()
 os.makedirs(CONFIG_DIR, exist_ok=True)
 CONFIG_PATH = os.path.join(CONFIG_DIR, "beamtel_config.json")
+ROAD_DIAGNOSTICS = RoadDiagnosticRecorder(
+    os.path.join(CONFIG_DIR, "road_diagnostics")
+)
+HILL_CLIMB_CHALLENGE = HillClimbChallengeRecorder(
+    os.path.join(CONFIG_DIR, "challenges", "hill_climb")
+)
 
 
 STOP = threading.Event()
@@ -179,6 +200,7 @@ DEFAULT_CONFIG = {
     "obstacle_buzz_volume_db": -18.0,
     "obstacle_warning_sensitivity": "normal",
     "road_beep_volume_db": -14.0,
+    "route_beacon_volume_db": -16.0,
     "road_correction_volume_db": -24.0,
     "road_follow_guidance_enabled": True,
     "road_junction_speech_enabled": True,
@@ -552,6 +574,7 @@ def load_config():
             value = merged.get(key, fallback)
             merged[key] = value if isinstance(value, bool) else fallback
         for key, fallback in (
+            ("route_beacon_volume_db", -16.0),
             ("road_beep_volume_db", -14.0),
             ("road_correction_volume_db", -24.0),
             ("road_junction_volume_db", -14.0),
@@ -1177,12 +1200,17 @@ def road_listener(audio_controller, stop_event):
                         logger.warning(f"Ignored malformed road R2 packet: {exc}")
                         continue
 
+                    telemetry_snapshot = _road_diagnostic_telemetry_snapshot()
+                    HILL_CLIMB_CHALLENGE.record(packet, telemetry_snapshot)
                     events = ROAD_GUIDANCE_FEED.accept_r2(packet)
-                    audio_controller.update_road_guidance(
+                    audio_event = audio_controller.update_road_guidance(
                         packet["state"],
                         packet.get("offRoad"),
                         packet.get("correction"),
-                        road_follow_guidance_enabled,
+                        road_mode_active and road_follow_guidance_enabled,
+                    )
+                    ROAD_DIAGNOSTICS.record(
+                        packet, telemetry_snapshot, audio_event
                     )
 
                     if (
@@ -2094,6 +2122,82 @@ def trailer_angle_listener(stop_event):
         logger.info("Trailer angle listener stopped.")
 
 
+def route_beacon_listener(stop_event):
+    """Listens for the map route's destination from routeBeacon.lua.
+
+    Writes state only. The beacon's bearing is derived in the telemetry loop, where the
+    vehicle's position and heading already arrive at 60 Hz, and the age-out is applied
+    there too -- for the reason _trailer_artic_norm records: a feed that stops has to
+    expire wherever it is READ, because nothing runs in here to notice the silence.
+    """
+    global route_dest_x, route_dest_y
+    global route_remaining_m, route_beacon_stamp
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", ROUTE_BEACON_LISTEN_PORT))
+        sock.settimeout(0.2)
+        logger.info(f"Route beacon listener started on port {ROUTE_BEACON_LISTEN_PORT}")
+        while not stop_event.is_set():
+            try:
+                data, _addr = sock.recvfrom(1024)
+                text = data.decode("utf-8", errors="ignore").strip()
+                if not text.startswith("ROUTE:"):
+                    continue
+
+                packet = parse_route_packet(text)
+
+                # CLEAR is the route being cleared, arrival, or a level change. Distinct
+                # from the age-out on purpose: this one is the mod telling us, so it
+                # takes effect immediately rather than a second and a half later.
+                if packet is None:
+                    with state_lock:
+                        if route_dest_x is not None:
+                            logger.info("Navigation route cleared.")
+                        route_dest_x = None
+                        route_dest_y = None
+                        route_remaining_m = 0.0
+                        route_beacon_stamp = 0.0
+                    continue
+
+                dx, dy, _dz = packet["dest"]
+                with state_lock:
+                    if route_dest_x is None:
+                        logger.info(
+                            "Navigation route set: destination %.1f, %.1f.", dx, dy
+                        )
+                    route_dest_x = dx
+                    route_dest_y = dy
+                    route_remaining_m = packet["route_m"]
+                    route_beacon_stamp = time.monotonic()
+            except socket.timeout:
+                continue
+            except ValueError as e:
+                logger.warning(f"Malformed route beacon packet: {e}")
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Route beacon listener socket error.")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+        logger.info("Route beacon listener stopped.")
+
+
+def _route_is_set():
+    """True when a live route destination is on hand.
+
+    Takes no lock, for the reason _trailer_artic_norm gives: these are floats and a
+    None, each written in one bound assignment, read from the telemetry loop outside
+    its own lock alongside every other value.
+    """
+    if route_dest_x is None:
+        return False
+    return (time.monotonic() - route_beacon_stamp) <= ROUTE_STALE_SEC
+
+
 def _trailer_artic_norm():
     """The trailer angle on the WL-40's normalised -1..1 scale, or 0.0 for silence.
 
@@ -2123,7 +2227,7 @@ def terrain_scan_listener(audio_controller, stop_event):
     and not the 1024/2048 the other listeners use: a short read here would fail as a
     truncated scan, i.e. as a landscape that stops halfway, rather than as an error.
     """
-    global _last_scan_reply_ts
+    global _last_scan_reply_ts, _last_poi_reply_ts
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         sock.bind(("127.0.0.1", TERRAIN_SCAN_LISTEN_PORT))
@@ -2135,10 +2239,32 @@ def terrain_scan_listener(audio_controller, stop_event):
                 text = data.decode("utf-8", errors="ignore").strip()
                 if not text:
                     continue
+                if text.startswith("POI:"):
+                    _last_poi_reply_ts = time.time()
+                    try:
+                        say(
+                            poi_phrase(parse_poi_packet(text), UNITS_MODE),
+                            exclude_from_buffer=True,
+                        )
+                    except ValueError as e:
+                        logger.warning(f"Malformed nearest POI packet: {e}")
+                        say(
+                            "Point of interest response was invalid",
+                            exclude_from_buffer=True,
+                        )
+                    continue
+                if text.startswith("POI_FAIL:"):
+                    _last_poi_reply_ts = time.time()
+                    reason = text.split(":", 1)[1].strip() or "unknown error"
+                    say(
+                        f"Nearest point of interest unavailable. {reason}",
+                        exclude_from_buffer=True,
+                    )
+                    continue
                 lines = text.split("\n")
                 head = lines[0].split(",")
-                _last_scan_reply_ts = time.time()
                 if head[0] == "FAIL":
+                    _last_scan_reply_ts = time.time()
                     say(
                         f"Scan failed. {head[1] if len(head) > 1 else 'unknown'}",
                         exclude_from_buffer=True,
@@ -2146,9 +2272,11 @@ def terrain_scan_listener(audio_controller, stop_event):
                     continue
                 if head[0] != "SCAN" or len(head) < 6:
                     continue
+                _last_scan_reply_ts = time.time()
                 reach = float(head[4])
                 samples = []
                 objects = []
+                pois = []
                 for ln in lines[1:]:
                     if ln == "END":
                         break
@@ -2163,19 +2291,42 @@ def terrain_scan_listener(audio_controller, stop_event):
                         denom = max(1, len(cells) - 1)
                         for i, cell in enumerate(cells):
                             rng = (i / denom) * reach
+                            # The surface family is an OPTIONAL ':' suffix and is stripped
+                            # FIRST, before the "~" and "_" tests, so an older mod half that
+                            # sends none parses byte for byte as it always did. A missing or
+                            # unrecognised code means paved, which is also what "no
+                            # TerrainBlock" means — so the fallback is today's tone.
+                            family = None
+                            if ":" in cell:
+                                cell, code = cell.split(":", 1)
+                                family = SCAN_FAMILY_CODES.get(code)
                             if cell == "~":
                                 # No surface. Not zero — zero is level ground.
-                                samples.append((bearing, rng, None, None))
+                                samples.append((bearing, rng, None, None, None))
                             elif "_" in cell:
                                 dz, depth = cell.split("_", 1)
-                                samples.append((bearing, rng, float(dz), float(depth)))
+                                samples.append(
+                                    (bearing, rng, float(dz), float(depth), None)
+                                )
                             else:
-                                samples.append((bearing, rng, float(cell), None))
+                                samples.append(
+                                    (bearing, rng, float(cell), None, family)
+                                )
                     elif parts[0] == "O" and len(parts) >= 4:
+                        # The fourth field is the mod's p/v kind tag. It was on the wire and
+                        # discarded for a long time; it now picks the ping length, so a cone
+                        # ticks where a car rings. Absent means "v", the safer default.
+                        kind = parts[4] if len(parts) >= 5 else "v"
                         objects.append(
+                            (float(parts[1]), float(parts[2]), float(parts[3]), kind)
+                        )
+                    elif parts[0] == "P" and len(parts) >= 4:
+                        pois.append(
                             (float(parts[1]), float(parts[2]), float(parts[3]))
                         )
-                audio_controller.render_and_play_scan(samples, objects, reach)
+                audio_controller.render_and_play_scan(
+                    samples, objects, reach, pois=pois
+                )
             except socket.timeout:
                 continue
             except (ValueError, IndexError) as e:
@@ -2685,6 +2836,34 @@ def trigger_terrain_scan_driving_only():
     _send_scan_cmd("SCAN")
     threading.Thread(
         target=_watch_scan_reply, args=(scan_seen_before,), daemon=True
+    ).start()
+
+
+def _watch_poi_reply(before, timeout_s=1.5):
+    """Report a missing POI response without confusing it with a scan response."""
+    deadline = time.time() + timeout_s
+    while time.time() < deadline:
+        if _last_poi_reply_ts != before:
+            return
+        time.sleep(0.1)
+    say(
+        "No point of interest response. Terrain scanner not responding",
+        exclude_from_buffer=True,
+    )
+
+
+def trigger_nearest_poi():
+    """Ask the game for the closest big-map POI to the current vehicle."""
+    if not _world_is_active():
+        say(
+            "Nearest point of interest is only available while driving",
+            exclude_from_buffer=True,
+        )
+        return
+    poi_seen_before = _last_poi_reply_ts
+    _send_scan_cmd("NEAREST_POI")
+    threading.Thread(
+        target=_watch_poi_reply, args=(poi_seen_before,), daemon=True
     ).start()
 
 
@@ -3751,6 +3930,27 @@ last_trailer_stamp = 0.0  # time.monotonic() of the last packet; 0.0 = never
 TRAILER_FULL_DEG = 45.0
 TRAILER_STALE_SEC = 1.0  # no packet for this long and the tone goes silent
 
+# --- Route beacon state, written by route_beacon_listener under state_lock ---
+# The DESTINATION, not a bearing. routeBeacon.lua sends a world position because the
+# destination is static while the bearing to it is not: deriving the bearing here means
+# it is recomputed from the 60 Hz MotionSim position and heading rather than arriving at
+# the mod's send rate, so the beacon pans smoothly and a dropped datagram cannot jog it.
+route_beacon_active = False  # the user's F9 Ctrl+W toggle
+route_dest_x = None  # None means no route is set
+route_dest_y = None
+# No route_dest_z: the beacon is flattened like every other bearing in this mod, so the
+# destination's height is not a thing anything here reads. It still rides the wire, where
+# it completes the destination and leaves the tail open for an altitude readout later --
+# but it is deliberately not held as state nothing consumes.
+route_remaining_m = 0.0  # distance along the ROUTE, which is not the crow-flies range
+route_beacon_stamp = 0.0  # time.monotonic() of the last packet; 0.0 = never
+# The mod sends ROUTE:CLEAR when a route goes away, so this age-out is the failure path
+# only -- a crashed extension or a version skew. It matters anyway: without it the beacon
+# would keep pulsing at the last bearing it was told, which is a confident wrong answer
+# about where the destination is. Must stay comfortably above routeBeacon's HEARTBEAT_S
+# (0.35) so a live, unchanging route can never expire.
+ROUTE_STALE_SEC = 1.5
+
 # Expanded Telemetry
 last_clutch_temp = 0.0
 last_g_lat = 0.0
@@ -3867,6 +4067,10 @@ low_speed_mode_active = False
 
 # Wheel slip (lockup / wheelspin) detection state
 slip_mode_active = False
+last_slip_active = False
+last_slip_kind = 0
+last_slip_mag = 0.0
+last_tc_active = False
 
 # Coordinate Guidance State
 coord_guidance_active = False
@@ -3952,6 +4156,9 @@ _implement_word_current = ""
 # When the terrain scanner last answered. The scan speaks nothing on success — the reference
 # ping IS the acknowledgement — so this is the only way to tell "no reply" from "playing".
 _last_scan_reply_ts = 0.0
+# Nearest-POI requests share terrainScanner.lua's socket but have their own reply latch, so
+# a scan and a POI lookup issued close together cannot satisfy one another's timeout.
+_last_poi_reply_ts = 0.0
 
 # When telemetry last arrived on 4444. That feed comes from the vehicle VM's own protocol,
 # so it flows only while a level is loaded with a vehicle in it — which is exactly the
@@ -4092,6 +4299,32 @@ def _mcp_snapshot_state(sections=None):
                 "target": _target_slot,
             }
     return out
+
+
+def _road_diagnostic_telemetry_snapshot():
+    """Fields needed to correlate lane instructions with driver input and traction."""
+    with state_lock:
+        return {
+            "position": {"x": last_pos_x, "y": last_pos_y, "z": last_pos_z},
+            "speed_ms": last_speed_ms,
+            "ground_speed_ms": last_ground_speed_ms,
+            "wheel_speed_ms": last_speed_ms,
+            "throttle": last_throttle,
+            "brake": last_brake,
+            "steering": last_steering,
+            "actual_steering": last_actual_steering,
+            "steering_input": last_steering_input,
+            "heading": last_heading,
+            "roll_rad": last_roll_rad,
+            "pitch_rad": last_pitch_rad,
+            "gear": last_gear_str,
+            "traction_control_active": last_tc_active,
+            "slip_detector_enabled": slip_mode_active,
+            "slip_active": last_slip_active,
+            "slip_kind": last_slip_kind,
+            "slip_magnitude_mps": last_slip_mag,
+            "slip_filtered_mps": _ls_slip_smooth,
+        }
 
 # Docking instrument. dock_mode_active is the user-facing toggle; last_dock is the most
 # recent readout from the mod, or None when there is nothing in range. Written by
@@ -4248,6 +4481,7 @@ _vbrowser_hooks = []
 _vbrowser_active = False
 _vbrowser_on_enter = None
 _vbrowser_on_adjust = None
+_vbrowser_on_escape = None
 _vbrowser_entry_data = []
 
 audio_controller_ref = None
@@ -4488,6 +4722,8 @@ _F9_HELP = {
     ("c", False, True, False): "Mark waypoint at current position",
     ("c", False, False, True): "Speak marked waypoint",
     ("w", False, False, False): "Distance and bearing to waypoint",
+    ("w", True, False, False): "Toggle route beacon",
+    ("w", False, True, False): "Nearest point of interest",
     ("d", False, False, False): "Scanner distance and orientation",
     ("d", False, True, False): "Scanner relative bearing to target",
     ("d", True, False, False): "Toggle drift detection",
@@ -4911,6 +5147,20 @@ FUNCTION_ITEMS = [
         is_available=lambda: marked_coord_x is not None,
     ),
     _function_item(
+        "Toggle route beacon",
+        "Waypoints",
+        "w",
+        ctrl=True,
+        is_available=_route_is_set,
+    ),
+    _function_item(
+        "Nearest point of interest",
+        "Waypoints",
+        "w",
+        shift=True,
+        is_available=_world_is_active,
+    ),
+    _function_item(
         "Redline RPM",
         "Vehicle information",
         "r",
@@ -4969,6 +5219,12 @@ FUNCTION_ITEMS = [
         "Interaction",
         handler=lambda: open_page_text_browser(),
         is_available=lambda: _ui_screen_context == "mod_details",
+    ),
+    _function_item(
+        "Hill-climb reports",
+        "Challenge reports",
+        handler=lambda: open_hill_climb_history(),
+        is_available=lambda: bool(HILL_CLIMB_CHALLENGE.list_reports(limit=1)),
     ),
     _function_item("Switch units", "Interaction", "u"),
     _function_item(
@@ -5062,7 +5318,7 @@ def _execute_function_item(item):
 def _drive_virtual_browser(action):
     """Move the open virtual browser from a controller's accessibility actions."""
     if action in ("next_menu", "previous_menu"):
-        close_virtual_browser(speak_exit=True)
+        _on_vbrowser_escape(None)
         return
     if action == "status_up":
         _on_vbrowser_nav(SimpleNamespace(name="up"))
@@ -5369,6 +5625,12 @@ def _on_vbrowser_adjust(event):
 
 
 def _on_vbrowser_escape(event):
+    if _vbrowser_on_escape is not None:
+        try:
+            _vbrowser_on_escape()
+        except Exception as e:
+            logger.error(f"Virtual browser escape callback error: {e}")
+        return
     close_virtual_browser(speak_exit=True)
 
 
@@ -5385,10 +5647,18 @@ def _on_vbrowser_enter(event):
 
 
 def open_virtual_browser(
-    lines, title=None, on_enter=None, entry_data=None, start_index=0, on_adjust=None
+    lines,
+    title=None,
+    on_enter=None,
+    entry_data=None,
+    start_index=0,
+    on_adjust=None,
+    on_escape=None,
+    announce_interrupt=True,
 ):
     global _vbrowser_lines, _vbrowser_index, _vbrowser_active
     global _vbrowser_on_enter, _vbrowser_entry_data, _vbrowser_on_adjust
+    global _vbrowser_on_escape
     if _vehicle_spawner is not None and _vehicle_spawner.is_modal_open():
         _vehicle_spawner.close_modal()
     close_virtual_browser(speak_exit=False)
@@ -5400,6 +5670,7 @@ def open_virtual_browser(
     _vbrowser_active = True
     _vbrowser_on_enter = on_enter
     _vbrowser_on_adjust = on_adjust
+    _vbrowser_on_escape = on_escape
     _vbrowser_entry_data = list(entry_data) if entry_data else []
     if KEYBOARD_OK:
         try:
@@ -5427,25 +5698,105 @@ def open_virtual_browser(
         except Exception as e:
             logger.error(f"Failed to hook virtual browser keys: {e}")
     if title:
-        say(f"{title}. {_vbrowser_lines[_vbrowser_index]}", exclude_from_buffer=True)
+        say(
+            f"{title}. {_vbrowser_lines[_vbrowser_index]}",
+            interrupt=announce_interrupt,
+            exclude_from_buffer=True,
+        )
     else:
-        say(_vbrowser_lines[_vbrowser_index], exclude_from_buffer=True)
+        say(
+            _vbrowser_lines[_vbrowser_index],
+            interrupt=announce_interrupt,
+            exclude_from_buffer=True,
+        )
 
 
 def close_virtual_browser(speak_exit=True):
     global _vbrowser_lines, _vbrowser_index, _vbrowser_active
     global _vbrowser_on_enter, _vbrowser_entry_data, _vbrowser_on_adjust
+    global _vbrowser_on_escape
     global _env_browser_open
     _env_browser_open = False
     _vbrowser_active = False
     _vbrowser_on_enter = None
     _vbrowser_on_adjust = None
+    _vbrowser_on_escape = None
     _vbrowser_entry_data = []
     _unhook_suppressed(_vbrowser_hooks)
     _vbrowser_lines = []
     _vbrowser_index = 0
     if speak_exit:
         say("Exit", exclude_from_buffer=True)
+
+
+def open_hill_climb_report(summary, return_to_history=None, announce_interrupt=True):
+    """Open one persisted challenge summary in the existing virtual browser."""
+    lines = HILL_CLIMB_CHALLENGE.report_lines(summary, UNITS_MODE)
+    on_escape = None
+    if return_to_history is not None:
+        on_escape = lambda: open_hill_climb_history(start_index=return_to_history)
+    open_virtual_browser(
+        lines,
+        title="Hill-climb report",
+        on_escape=on_escape,
+        announce_interrupt=announce_interrupt,
+    )
+
+
+def open_hill_climb_history(start_index=0):
+    """Browse retained attempts newest-first and activate one for its full report."""
+    reports = HILL_CLIMB_CHALLENGE.list_reports()
+    if not reports:
+        say("No hill-climb reports available", exclude_from_buffer=True)
+        return
+
+    lines = [HILL_CLIMB_CHALLENGE.history_line(item, UNITS_MODE) for item in reports]
+
+    def open_selected(index, _line, summary):
+        open_hill_climb_report(summary, return_to_history=index)
+
+    open_virtual_browser(
+        lines,
+        title=f"Hill-climb report history, {len(lines)} attempts. Press Enter for details",
+        on_enter=open_selected,
+        entry_data=reports,
+        start_index=start_index,
+    )
+
+
+def _present_hill_climb_result(summary, auto_open):
+    if not auto_open or summary.get("status") != "completed":
+        return
+    say(
+        hill_climb_completion_speech(summary),
+        exclude_from_buffer=True,
+        source="hill_climb",
+    )
+    open_hill_climb_report(summary, announce_interrupt=False)
+
+
+def _hill_climb_finalized(summary, auto_open):
+    stats = summary.get("statistics") or {}
+    logger.info(
+        "Hill-climb data quality: attempt=%s, status=%s, samples=%s, "
+        "sample_rate_hz=%s, packet_gaps=%s",
+        summary.get("attempt_id", "unknown"),
+        summary.get("status", "unknown"),
+        stats.get("samples", 0),
+        stats.get("sample_rate_hz", 0),
+        (stats.get("packet_gaps") or {}).get("count", 0),
+    )
+    _command_dispatch(_present_hill_climb_result, summary, auto_open)
+
+
+def _on_hill_climb_event(data):
+    """Handle native mission events arriving on the Lua TCP relay thread."""
+    action = HILL_CLIMB_CHALLENGE.handle_event(
+        data, telemetry=_road_diagnostic_telemetry_snapshot()
+    )
+    if not action or action.get("capture") is None:
+        return
+    _send_road_command("CAPTURE_ON" if action["capture"] else "CAPTURE_OFF")
 
 
 SCANNER_CMD_PORT = 4448  # UDP port to send ON/OFF commands to vehicle scanner
@@ -5508,6 +5859,12 @@ CANNON_SHOT_LISTEN_PORT = (
 TRAILER_ANGLE_LISTEN_PORT = (
     4476  # UDP port to receive trailer articulation angles from trailerAngle.lua
 )
+ROUTE_BEACON_LISTEN_PORT = (
+    4482  # UDP port to receive the map route's destination from routeBeacon.lua
+)
+# No command port for routeBeacon either, and for the same reason: whether a route is
+# set is a fact the game maintains, so the mod has nothing to be told. Whether the
+# beacon SOUNDS is this side's toggle and never leaves the process.
 # No command port for the same reason: the mod reads "is a trailer attached" out of the game's
 # own registry, so there is nothing to tell it and nothing for the driver to switch on.
 CONSOLE_HISTORY_PATH = os.path.join(CONFIG_DIR, "console_history.json")
@@ -5757,6 +6114,39 @@ def _send_road_configuration():
     _send_road_command(f"PRIVATE,{1 if road_include_private else 0}")
 
 
+def road_diagnostic_control(action="status", label=None, session=None, note=None, limit=20):
+    """MCP-facing lifecycle for a loss-resistant road-guidance recording."""
+    action = str(action or "status").strip().lower()
+    if action == "start":
+        if not _world_is_active():
+            raise RuntimeError("no live world; start the recording once driving telemetry is active")
+        if not road_mode_active:
+            raise RuntimeError("road detection is off; enable it before starting the recording")
+        if not road_follow_guidance_enabled:
+            raise RuntimeError("road-follow guidance is disabled in configuration")
+        result = ROAD_DIAGNOSTICS.start(label or "hill-climb")
+        if not _send_road_command("DIAG_ON"):
+            result["warning"] = "recording started, but Lua diagnostic mode could not be requested"
+        result["road_detection_active"] = road_mode_active
+        result["road_guidance_enabled"] = road_follow_guidance_enabled
+        return result
+    if action == "stop":
+        _send_road_command("DIAG_OFF")
+        return ROAD_DIAGNOSTICS.stop()
+    if action == "mark":
+        return ROAD_DIAGNOSTICS.mark(note)
+    if action == "review":
+        return ROAD_DIAGNOSTICS.review(session=session)
+    if action == "list":
+        return {"sessions": ROAD_DIAGNOSTICS.list_sessions(limit=limit)}
+    if action == "status":
+        result = ROAD_DIAGNOSTICS.status()
+        result["road_detection_active"] = road_mode_active
+        result["road_guidance_enabled"] = road_follow_guidance_enabled
+        return result
+    raise ValueError("action must be start, stop, status, mark, review, or list")
+
+
 def speak_road_status():
     say(
         ROAD_GUIDANCE_FEED.status_phrase(road_mode_active, UNITS_MODE),
@@ -5780,6 +6170,40 @@ def toggle_road_mode(audio_controller):
         f"Road detection {'on' if road_mode_active else 'off'}",
         exclude_from_buffer=True,
     )
+
+
+def toggle_route_beacon(audio_controller):
+    """Toggle the crow-flies beacon on the map route's destination.
+
+    Refuses to switch on with no route, the way the coordinate-guidance toggle refuses
+    with no waypoint marked: a mode that reports itself on and then makes no sound is
+    indistinguishable from a broken one, and this instrument's whole promise is that it
+    is audible whenever it is armed.
+    """
+    global route_beacon_active
+
+    if not route_beacon_active:
+        if not _route_is_set():
+            audio_controller.set_route_beacon_mode(False)
+            say(
+                "No route set. Choose a destination on the map first.",
+                exclude_from_buffer=True,
+            )
+            return
+        route_beacon_active = True
+        audio_controller.set_route_beacon_mode(True)
+        dist, brg = relative_bearing(
+            last_pos_x, last_pos_y, last_heading, route_dest_x, route_dest_y
+        )
+        say(
+            route_beacon_phrase(dist, brg, route_remaining_m, UNITS_MODE),
+            exclude_from_buffer=True,
+        )
+        return
+
+    route_beacon_active = False
+    audio_controller.set_route_beacon_mode(False)
+    say("Route beacon off", exclude_from_buffer=True)
 
 
 def _format_camera_diag(heights: str) -> str:
@@ -7157,24 +7581,30 @@ def _on_next_key_press(event, audio_controller):
                 say(f"{head}. {why}", exclude_from_buffer=True)
             else:
                 say(head, exclude_from_buffer=True)
+    elif (
+        name == "w"
+        and _capture_mods["ctrl"]
+        and not (_capture_mods["shift"] or _capture_mods["alt"])
+    ):
+        toggle_route_beacon(audio_controller)
+    elif (
+        name == "w"
+        and _capture_mods["shift"]
+        and not (_capture_mods["ctrl"] or _capture_mods["alt"])
+    ):
+        trigger_nearest_poi()
     elif name == "w" and not (
         _capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]
     ):
         if marked_coord_x is None:
             say("No waypoint marked", exclude_from_buffer=True)
         else:
-            dx = marked_coord_x - x
-            dy = marked_coord_y - y
-            dist = math.sqrt(dx * dx + dy * dy)
+            dist, err = relative_bearing(
+                x, y, heading_snap, marked_coord_x, marked_coord_y
+            )
             if dist < 0.5:
                 say("At waypoint", exclude_from_buffer=True)
             else:
-                target_brg = math.degrees(math.atan2(-dx, -dy)) % 360.0
-                err = heading_snap - target_brg
-                if err > 180.0:
-                    err -= 360.0
-                elif err < -180.0:
-                    err += 360.0
                 turn_dir = "left" if err > 0 else "right"
                 if UNITS_MODE == "imperial":
                     dist_str = f"{dist * 3.28084:.0f} feet"
@@ -8858,6 +9288,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
         _ls_slip_prev_ts
     global coord_target_bearing, _last_coord_bearing_ts
     global _ext_version_warned
+    global last_slip_active, last_slip_kind, last_slip_mag, last_tc_active
     global \
         last_implement_flags, \
         last_implement_edge_height, \
@@ -9320,6 +9751,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     bool(showLights & DL_SHIFT),
                     bool(showLights & DL_TC),
                 )
+                last_tc_active = tc_active_frame
 
                 if protocol_mode == "extended":
                     gear_str = (
@@ -9504,6 +9936,9 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                 _ls_slip_smooth = 0.0
                 _ls_slip_since_ts = 0.0
                 _ls_slip_prev_ts = 0.0
+            last_slip_active = slip_active
+            last_slip_kind = slip_kind
+            last_slip_mag = slip_mag
 
             guidance_diff = 0.0
             if heading_guidance_active:
@@ -9519,19 +9954,33 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     dx = marked_coord_x - last_pos_x
                     dy = marked_coord_y - last_pos_y
                     if dx * dx + dy * dy > 0.25:
-                        coord_target_bearing = (
-                            math.degrees(math.atan2(-dx, -dy)) % 360.0
+                        coord_target_bearing = target_bearing(
+                            last_pos_x, last_pos_y, marked_coord_x, marked_coord_y
                         )
                     _last_coord_bearing_ts = now
 
             coord_bearing_error = 0.0
             if coord_guidance_active and marked_coord_x is not None:
-                diff = last_heading - coord_target_bearing
-                if diff > 180.0:
-                    diff -= 360.0
-                elif diff < -180.0:
-                    diff += 360.0
-                coord_bearing_error = diff
+                coord_bearing_error = normalize_bearing(
+                    last_heading - coord_target_bearing
+                )
+
+            # The route beacon's bearing is derived HERE, from the position and heading
+            # this loop already has at 60 Hz, rather than being sent by the mod -- see
+            # the route state block for why. The age-out lives here too, because this is
+            # where the value is read.
+            if route_beacon_active and _route_is_set():
+                rb_dist, rb_bearing = relative_bearing(
+                    last_pos_x, last_pos_y, last_heading, route_dest_x, route_dest_y
+                )
+                # Standing on the destination: the bearing to a point you are on is
+                # residue and would spin the beacon around the head. Silence is the
+                # honest answer, and the route is about to clear itself anyway.
+                audio_controller.update_route_beacon(
+                    rb_dist > AT_DESTINATION_M, rb_bearing, rb_dist
+                )
+            elif route_beacon_active:
+                audio_controller.update_route_beacon(False)
 
             # NEW: Drift Detection Logic (Continuous)
             if drift_mode_active:
@@ -10449,6 +10898,7 @@ def _run_engine():
     audio_controller.load_hrtf(hrir_path)
 
     _ws_thread, _ws_stop = None, lambda: None
+    HILL_CLIMB_CHALLENGE.set_finalize_callback(_hill_climb_finalized)
     try:
         _ws_thread, _ws_stop = start_server_in_thread(
             lambda text, interrupt=True: say(text, interrupt, source="ui_bridge")
@@ -10461,6 +10911,7 @@ def _run_engine():
     register_settings_request_callback(_broadcast_ui_settings)
     register_screen_context_callback(_on_screen_context)
     register_page_text_callback(_on_page_text)
+    register_challenge_event_callback(_on_hill_climb_event)
 
     # Wait for the updater's answer before touching the game. The timeout is the
     # failure path, not the normal one: a flow that never answers -- a dialog the
@@ -10565,6 +11016,11 @@ def _run_engine():
     )
     trailer_angle_thread.start()
 
+    route_beacon_thread = threading.Thread(
+        target=route_beacon_listener, args=(STOP,), daemon=True
+    )
+    route_beacon_thread.start()
+
     camera_thread = threading.Thread(
         target=camera_listener, args=(audio_controller, STOP), daemon=True
     )
@@ -10650,6 +11106,7 @@ def _run_engine():
                     f9_help=_F9_HELP,
                     world_active_fn=_world_is_active,
                     capture_png_fn=capture_scene_png,
+                    road_diagnostic_fn=road_diagnostic_control,
                     stop_event=STOP,
                     logger=logger,
                     version="1.0",
@@ -10692,6 +11149,15 @@ def _run_engine():
     try:
         telemetry_loop(audio_controller=audio_controller, port=4444, stop_event=STOP)
     finally:
+        if HILL_CLIMB_CHALLENGE.is_capturing():
+            _send_road_command("CAPTURE_OFF")
+        HILL_CLIMB_CHALLENGE.shutdown()
+        if ROAD_DIAGNOSTICS.status()["active"]:
+            try:
+                _send_road_command("DIAG_OFF")
+                ROAD_DIAGNOSTICS.stop()
+            except Exception as exc:
+                logger.error(f"Failed to close road diagnostic recording: {exc}")
         STOP.set()
         audio_controller.stop()
         if _ws_stop:

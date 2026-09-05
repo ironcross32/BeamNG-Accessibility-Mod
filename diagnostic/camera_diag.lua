@@ -1,0 +1,26 @@
+-- Camera / ground diagnostic for the "camera altitude and ground anchor are wrong
+-- since 0.39" investigation.
+--
+-- YOU PROBABLY DON'T NEED THIS FILE. Press F9 then Alt+Shift+A in game instead: that
+-- runs the same checks, speaks a summary, and writes the full detail to
+-- %LOCALAPPDATA%\beamtel\bnvdahook.log. The line below is only a fallback for when the
+-- Python side isn't running.
+--
+-- To use it anyway: copy the single line at the bottom into the Console Command box on
+-- beamtel.py's Main tab with the context set to GE Lua. That box is single-line, so the
+-- whole thing has to stay on one line.
+--
+-- WHAT THE OUTPUT MEANS (three numbers: camera height, surface below it, ray distance):
+--   surface near 0 on smallgrid -> be:getSurfaceHeightBelow sees the GroundPlane, which
+--     is what the fixed code relies on.
+--   surface about -1e20 -> it missed; the retry chain in groundHeightBelow matters.
+--   ray = 2000 -> castRayStatic cannot see the GroundPlane, so the old fallback was dead
+--     code on this map.
+--
+-- GOTCHA worth remembering: core_terrain.getTerrainHeight() returns NO values (not nil)
+-- on a map with no terrain block, and core_camera.getActiveCamName() does the same when
+-- the player is in no vehicle. tostring() of nothing at all raises "value expected"
+-- rather than printing "nil" -- which is exactly how the first version of this
+-- diagnostic died. Wrap such a call in parentheses, as (f()), to force one value.
+
+local c=core_camera.getPosition() print(c.z, be:getSurfaceHeightBelow(c), castRayStatic(c,vec3(0,0,-1),2000))

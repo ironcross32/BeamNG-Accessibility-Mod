@@ -94,6 +94,29 @@ def main():
     assert valid["correction"]["severity"] == 1.0
     assert valid["correction"]["phase"] == "correct"
     assert valid["correction"]["timeToEdge"] == 1.4
+    with_diagnostic = packet(
+        diagnostic={
+            "edgeId": "road_1|road_2",
+            "signedLateral": 3.1,
+            "lateralDistance": 3.1,
+            "lateralSpeed": -0.4,
+            "targetError": 1.1,
+            "withinLateral": False,
+            "withinHeading": True,
+            "withinLateralSpeed": False,
+            "settledCandidate": False,
+            "activeBefore": True,
+            "correctionArmed": False,
+            "rearmTicks": 0,
+            "steeringInput": -0.25,
+            "steering": -0.2,
+            "contactMaterials": "10:ASPHALT,30:RUBBER",
+        }
+    )
+    assert with_diagnostic["diagnostic"]["edgeId"] == "road_1|road_2"
+    assert with_diagnostic["diagnostic"]["lateralSpeed"] == -0.4
+    assert with_diagnostic["diagnostic"]["steeringInput"] == -0.25
+    assert with_diagnostic["diagnostic"]["contactMaterials"] == "10:ASPHALT,30:RUBBER"
     expect_bad("R2|not json")
     expect_bad('R2|{"state":"flying"}')
     expect_bad('R2|{"state":"onRoad","roadDirections":[NaN]}')
@@ -102,6 +125,8 @@ def main():
         'R2|{"state":"onRoad","correction":{"active":true,"phase":"hold"}}'
     )
     expect_bad('R2|{"state":"onRoad","junction":{"id":"x","phase":"later"}}')
+    expect_bad('R2|{"state":"onRoad","diagnostic":{"withinLateral":1}}')
+    expect_bad('R2|{"state":"onRoad","diagnostic":{"contactMaterials":[]}}')
     expect_bad(
         'R2|{"state":"onRoad","junction":{"id":"x","phase":"near","entered":1}}'
     )

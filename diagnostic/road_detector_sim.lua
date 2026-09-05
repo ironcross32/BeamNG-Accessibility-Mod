@@ -93,6 +93,14 @@ assertEqual(t, 0.75, "edge t")
 assertEqual(radius, 6.5, "edge-specific radius")
 assertEqual(dz, 0, "edge z")
 
+-- A retained edge clamps projection to its endpoint. The radial distance then
+-- includes longitudinal overshoot and must never be used as lateral distance.
+local endpointDistance, _, endpointT = project(point(106, 0.2, 0), main)
+local endpointLateral = 0.2
+assertEqual(endpointT, 1, "endpoint projection clamps")
+assert(endpointDistance / 4 > 0.75, "old endpoint metric creates a false warning")
+assert(endpointLateral / 4 < 0.75, "perpendicular metric stays in lane")
+
 local low = edge("low", "l1", "l2", 4, {inPos = point(0, 0, 0), outPos = point(100, 0, 0)})
 local high = edge("high", "h1", "h2", 4, {inPos = point(0, 0, 12), outPos = point(100, 0, 12)})
 local lowDist, lowDz = project(point(30, 1, 0), low)
@@ -184,6 +192,30 @@ assertEqual(recoveryTarget(3.2, 4, false), 2, "left-side recovery keeps its lane
 assertEqual(recoveryTarget(-3.2, 4, false), -2, "right-side recovery keeps its lane")
 assertEqual(recoveryTarget(3.2, 4, true), 0, "one-way recovery uses road centre")
 
+-- Challenge capture is a third, independent consumer of the detector. It must
+-- neither turn on guidance nor turn off an MCP diagnostic session when it ends.
+local modes = {guidance = false, diagnostic = false, challenge = false}
+local function command(name)
+  if name == "ON" then modes.guidance = true
+  elseif name == "OFF" then modes.guidance = false
+  elseif name == "DIAG_ON" then modes.diagnostic = true
+  elseif name == "DIAG_OFF" then modes.diagnostic = false
+  elseif name == "CAPTURE_ON" then modes.challenge = true
+  elseif name == "CAPTURE_OFF" then modes.challenge = false end
+end
+local function shouldScan() return modes.guidance or modes.challenge end
+local function shouldSampleContacts() return modes.diagnostic or modes.challenge end
+command("CAPTURE_ON")
+assert(shouldScan(), "challenge starts the road scan")
+assert(not modes.guidance, "challenge does not enable guidance")
+assert(shouldSampleContacts(), "challenge samples contacts")
+command("DIAG_ON")
+command("CAPTURE_OFF")
+assert(not shouldScan(), "capture stops scanning when guidance is off")
+assert(shouldSampleContacts(), "capture stop preserves diagnostic detail")
+command("ON")
+assert(shouldScan(), "guidance still owns normal scanning")
+
 -- A simple driver model must see correction, then unwind, then settlement,
 -- without crossing the road centreline. This catches the old late-silence
 -- behavior that unit checks of packet fields could not expose.
@@ -191,7 +223,7 @@ local function recoverTrajectory(initialOffset)
   local dt, radius = 0.05, 4
   local offset, lateralSpeed = initialOffset, 0.4 * (initialOffset > 0 and 1 or -1)
   local target = recoveryTarget(offset, radius, false)
-  local sawCorrect, sawUnwind, settled = false, false, false
+  local sawCorrect, sawUnwind, settled, settledTicks = false, false, false, 0
   local nearestCentre = math.abs(offset)
   for _ = 1, 300 do
     local error = offset - target
@@ -208,10 +240,13 @@ local function recoverTrajectory(initialOffset)
     end
     offset = offset + lateralSpeed * dt
     nearestCentre = math.min(nearestCentre, math.abs(offset))
-    if math.abs(offset - target) <= math.max(0.35, radius * 0.12)
-      and math.abs(lateralSpeed) <= 0.35 then
-      settled = true
-      break
+    local lateralSpeedTolerance = clamp(0.45 + 15 * 0.0125, 0.45, 0.75)
+    if math.abs(offset - target) <= math.max(0.50, radius * 0.15)
+      and math.abs(lateralSpeed) <= lateralSpeedTolerance then
+      settledTicks = settledTicks + 1
+      if settledTicks >= 3 then settled = true; break end
+    else
+      settledTicks = 0
     end
   end
   return sawCorrect, sawUnwind, settled, nearestCentre
@@ -222,6 +257,22 @@ assert(nearestCentre > 1.4, "left recovery never approaches the opposing lane")
 sawCorrect, sawUnwind, settled, nearestCentre = recoverTrajectory(-3.4)
 assert(sawCorrect and sawUnwind and settled, "right recovery has all instruction phases")
 assert(nearestCentre > 1.4, "right recovery never approaches the opposing lane")
+
+-- Settlement disarms correction until the vehicle has remained safely inside
+-- both entry bands for half a second. A still-dangerous sample cannot chatter.
+local armed, rearmTicks = false, 0
+local function rearmStep(lateralRatio, predictedRatio, drifting)
+  local safe = lateralRatio <= 0.68 and predictedRatio <= 0.76 and not drifting
+  if not armed then
+    rearmTicks = safe and rearmTicks + 1 or 0
+    if rearmTicks >= 10 then armed, rearmTicks = true, 0 end
+  end
+  return armed
+end
+for _ = 1, 9 do assert(not rearmStep(0.5, 0.6, false), "rearm dwell holds") end
+assert(rearmStep(0.5, 0.6, false), "rearm dwell completes")
+armed, rearmTicks = false, 0
+for _ = 1, 12 do assert(not rearmStep(0.8, 0.8, false), "unsafe state stays latched") end
 
 local driftLast, driftSpeed = nil, 0
 local function driftStep(offset, radius)

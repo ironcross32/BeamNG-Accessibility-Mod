@@ -26,9 +26,17 @@ local JUNCTION_SEARCH_M = 240.0
 local CORRECTION_LATERAL_ENTER_RATIO = 0.75
 local CORRECTION_PREDICTED_ENTER_RATIO = 0.82
 local CORRECTION_TARGET_RATIO = 0.50
-local CORRECTION_TARGET_TOLERANCE_RATIO = 0.12
+local CORRECTION_TARGET_TOLERANCE_RATIO = 0.15
 local CORRECTION_SETTLED_HEADING_DEG = 6.0
-local CORRECTION_SETTLED_LATERAL_SPEED_MPS = 0.35
+local CORRECTION_SETTLED = {
+  lateralSpeedMin = 0.45,
+  lateralSpeedMax = 0.75,
+  lateralSpeedPerMps = 0.0125,
+  ticks = 3,
+  rearmLateralRatio = 0.68,
+  rearmPredictedRatio = 0.76,
+  rearmTicks = 10,
+}
 local CORRECTION_UNWIND_BEARING_DEG = 3.0
 local CORRECTION_UNWIND_LEAD_SECONDS = 1.0
 local DRIFT_MIN_OUTWARD_SPEED_MPS = 0.20
@@ -42,17 +50,25 @@ local JUNCTION_ENTRY_COMPENSATION_S = SCAN_INTERVAL * 0.5
 local udpSend, udpCmd = nil, nil
 local isActive, isDormant = false, false
 local includePrivate = false
+-- Detailed lane state is opt-in because ordinary guidance needs only the compact R2 packet.
+-- DIAG_ON is sent by Python when it has already opened a durable recording file.
+local diagnosticActive = false
+-- Challenge capture is independent of the user's road-guidance toggle and of
+-- the MCP diagnostic recorder. Either detailed consumer keeps contact sampling on.
+local challengeCaptureActive = false
 local scanTimer, missCount = 0, 0
 local edges, adjacency, buckets = {}, {}, {}
 local currentEdge, onRoad = nil, false
 local enterTicks, exitTicks = 0, 0
 local orientationArmed = true
 local correctionActive, correctionClearTicks = false, 0
+local correctionLatch = {armed = true, rearmTicks = 0}
 local correctionTargetSide = 0
 local activeJunctionId = nil
 local lastVehicleId = nil
 local lateralTrackEdgeId, lateralTrackDirection = nil, nil
 local lastSignedLateral, smoothedLateralSpeed = nil, 0
+local diagnosticVehicle = {sample = nil, requestTick = 0}
 
 local function rdLog(level, message) log(level, 'RoadDetector', message) end
 local function clamp(value, lo, hi) return math.max(lo, math.min(hi, value)) end
@@ -77,6 +93,63 @@ end
 local function truthy(value)
   return value == true or value == 1 or value == "1" or value == "true"
 end
+
+-- OutGauge has no steering channel, so diagnostic sessions sample the vehicle VM
+-- directly.  Contact material IDs come from the same wheel data BeamNG uses for
+-- tire effects.  The result is cached in GE and attached to the next R2 packet;
+-- this path is diagnostic-only and runs at 10 Hz.
+local VEHICLE_DIAGNOSTIC_COMMAND = [[
+  local _steeringInput = tonumber((electrics and electrics.values
+    and electrics.values.steering_input) or 0) or 0
+  local _steering = tonumber((electrics and electrics.values
+    and electrics.values.steering) or 0) or 0
+  local _contacts, _seen = {}, {}
+  local _materials = nil
+  if particles and particles.getMaterialsParticlesTable then
+    _materials = particles.getMaterialsParticlesTable()
+  end
+  local function _addContact(_id)
+    _id = tonumber(_id)
+    if not _id or _id < 0 or _seen[_id] then return end
+    _seen[_id] = true
+    local _name = ""
+    if _materials and _materials[_id] then
+      _name = tostring(_materials[_id].name or "")
+    end
+    _name = _name:gsub("[,|]", "_")
+    _contacts[#_contacts + 1] = string.format("%d:%s", _id, _name)
+  end
+  if wheels and wheels.wheels then
+    for _, _wheel in pairs(wheels.wheels) do
+      _addContact(_wheel.contactMaterialID1)
+      _addContact(_wheel.contactMaterialID2)
+    end
+  end
+  table.sort(_contacts)
+  obj:queueGameEngineLua(string.format(
+    "if extensions.roadDetector then extensions.roadDetector.onVehicleDiagnostic(%d,%.9g,%.9g,%q) end",
+    obj:getID(), _steeringInput, _steering, table.concat(_contacts, ",")))
+]]
+
+local function requestVehicleDiagnostic(player)
+  if not diagnosticActive and not challengeCaptureActive then return end
+  diagnosticVehicle.requestTick = diagnosticVehicle.requestTick + 1
+  if diagnosticVehicle.requestTick < 2 then return end
+  diagnosticVehicle.requestTick = 0
+  pcall(function() player:queueLuaCommand(VEHICLE_DIAGNOSTIC_COMMAND) end)
+end
+
+local function diagnosticForVehicle(vehicleId, diagnostic)
+  if not diagnosticActive and not challengeCaptureActive then return nil end
+  diagnostic = diagnostic or {}
+  if diagnosticVehicle.sample and diagnosticVehicle.sample.vehicleId == vehicleId then
+    diagnostic.steeringInput = diagnosticVehicle.sample.steeringInput
+    diagnostic.steering = diagnosticVehicle.sample.steering
+    diagnostic.contactMaterials = diagnosticVehicle.sample.contactMaterials
+  end
+  return diagnostic
+end
+
 local function isPrivateEdge(data)
   return truthy(data.private) or truthy(data.isPrivate) or truthy(data.gated)
     or truthy(data.isGated) or truthy(data.gatedRoad) or truthy(data.privateRoad)
@@ -478,9 +551,11 @@ local function resetTracking(reason)
   enterTicks, exitTicks = 0, 0
   orientationArmed = true
   correctionActive, correctionClearTicks = false, 0
+  correctionLatch.armed, correctionLatch.rearmTicks = true, 0
   correctionTargetSide = 0
   activeJunctionId = nil
   lastVehicleId = nil
+  diagnosticVehicle.sample, diagnosticVehicle.requestTick = nil, 0
   resetLateralTracking()
   if reason then rdLog('info', "Re-arming road detector: " .. reason) end
 end
@@ -498,7 +573,10 @@ local function performScan()
     if missCount >= DORMANT_AFTER_MISSES then
       if not isDormant then rdLog('info', "No roads found on this map; detector is dormant.") end
       isDormant = true
-      sendPacket(dormantPacket(), "DORMANT")
+      local packet = dormantPacket()
+      packet.diagnostic = diagnosticForVehicle(vehicleId, {
+        speed = flatLength(player:getVelocity())})
+      sendPacket(packet, "DORMANT")
     end
     return
   end
@@ -520,13 +598,16 @@ local function performScan()
     end
     onRoad, currentEdge, orientationArmed = false, nil, true
     correctionActive, correctionClearTicks = false, 0
+    correctionLatch.armed, correctionLatch.rearmTicks = true, 0
     correctionTargetSide = 0
     resetLateralTracking()
     -- The map has a navgraph, but nothing vertically compatible is within the
     -- bounded search. R2 can represent that without pointing at an overpass;
     -- legacy has no equivalent and receives its safest silent state.
     sendPacket({state = "offRoad", oneWay = false, roadDirections = {},
-      offRoad = nil, correction = nil, junction = nil}, "DORMANT")
+      offRoad = nil, correction = nil, junction = nil,
+      diagnostic = diagnosticForVehicle(vehicleId, {
+        speed = flatLength(player:getVelocity())})}, "DORMANT")
     return
   end
 
@@ -541,6 +622,7 @@ local function performScan()
       enterTicks, exitTicks = 0, 0
       orientationArmed = true
       correctionActive, correctionClearTicks = false, 0
+      correctionLatch.armed, correctionLatch.rearmTicks = true, 0
       correctionTargetSide = 0
       resetLateralTracking()
     end
@@ -563,7 +645,8 @@ local function performScan()
     if toRoad:length() > 1e-6 then bearing = bearingToDir(forwardFlat, toRoad:normalized()) end
     sendPacket({state = "offRoad", oneWay = false, roadDirections = {},
       offRoad = {bearing = bearing, distance = interceptDistance}, correction = nil,
-      junction = nil}, string.format("OFF_ROAD,%.2f,%.2f", bearing, interceptDistance))
+      junction = nil, diagnostic = diagnosticForVehicle(vehicleId, {speed = speed})},
+      string.format("OFF_ROAD,%.2f,%.2f", bearing, interceptDistance))
     return
   end
 
@@ -596,6 +679,13 @@ local function performScan()
 
   local correction = {active = false, bearing = 0, severity = 0,
     phase = "idle", settled = false}
+  local diagnostic = diagnosticForVehicle(vehicleId, {
+      edgeId = edge.id,
+      edgeT = projection.t,
+      roadRadius = projection.radius,
+      speed = speed,
+      inDecisionZone = inDecisionZone and true or false,
+    })
   if target and targetTangent and not ambiguous and not inDecisionZone then
     local pathTangent = edgeDirection(edge, directionSign)
     if pathTangent then
@@ -603,10 +693,14 @@ local function performScan()
       -- still used for travel direction and boundary prediction, but never as an
       -- HRTF reference: during sideslip those frames can differ substantially.
       local headingError = bearingToDir(forwardFlat, pathTangent)
-      local lateralRatio = projection.distance / math.max(0.5, projection.radius)
       local offsetX = position.x - projection.point.x
       local offsetY = position.y - projection.point.y
       local signedLateral = pathTangent.x * offsetY - pathTangent.y * offsetX
+      -- projection.distance is radial distance from the clamped edge segment. At
+      -- t=0 or t=1 it includes longitudinal overshoot beyond the node, which was
+      -- previously misread as lateral departure and created false corrections.
+      local lateralDistance = math.abs(signedLateral)
+      local lateralRatio = lateralDistance / math.max(0.5, projection.radius)
       if lateralTrackEdgeId ~= edge.id or lateralTrackDirection ~= directionSign then
         lateralTrackEdgeId, lateralTrackDirection = edge.id, directionSign
         lastSignedLateral, smoothedLateralSpeed = signedLateral, 0
@@ -638,8 +732,19 @@ local function performScan()
       local shouldEnter = lateralRatio > CORRECTION_LATERAL_ENTER_RATIO
         or predictedRatio > CORRECTION_PREDICTED_ENTER_RATIO
         or driftingOutward
-      if not correctionActive and shouldEnter then
+      local safelyInside = lateralRatio <= CORRECTION_SETTLED.rearmLateralRatio
+        and predictedRatio <= CORRECTION_SETTLED.rearmPredictedRatio
+        and not driftingOutward
+      if not correctionActive and not correctionLatch.armed then
+        if safelyInside then correctionLatch.rearmTicks = correctionLatch.rearmTicks + 1
+        else correctionLatch.rearmTicks = 0 end
+        if correctionLatch.rearmTicks >= CORRECTION_SETTLED.rearmTicks then
+          correctionLatch.armed, correctionLatch.rearmTicks = true, 0
+        end
+      end
+      if not correctionActive and correctionLatch.armed and shouldEnter then
         correctionActive, correctionClearTicks = true, 0
+        correctionLatch.armed, correctionLatch.rearmTicks = false, 0
         if edge.oneWay or projection.radius < 2.5 then
           correctionTargetSide = 0
         elseif math.abs(signedLateral) > 0.1 then
@@ -649,6 +754,21 @@ local function performScan()
         else
           correctionTargetSide = 0
         end
+      end
+
+      if diagnostic then
+        diagnostic.signedLateral = signedLateral
+        diagnostic.lateralDistance = lateralDistance
+        diagnostic.lateralRatio = lateralRatio
+        diagnostic.lateralSpeed = smoothedLateralSpeed
+        diagnostic.predictedLateral = predictedLateral
+        diagnostic.predictedRatio = predictedRatio
+        diagnostic.predictionSeconds = predictionSeconds
+        diagnostic.outwardSpeed = outwardSpeed
+        diagnostic.shouldEnter = shouldEnter and true or false
+        diagnostic.correctionArmed = correctionLatch.armed and true or false
+        diagnostic.rearmTicks = correctionLatch.rearmTicks
+        if secondsToBoundary < 1000 then diagnostic.timeToEdge = secondsToBoundary end
       end
 
       if correctionActive then
@@ -692,14 +812,41 @@ local function performScan()
           secondsToTarget = math.abs(targetError) / targetClosingSpeed
         end
         local targetTolerance = math.max(
-          0.35, projection.radius * CORRECTION_TARGET_TOLERANCE_RATIO)
-        local settled = math.abs(targetError) <= targetTolerance
-          and math.abs(headingError) <= CORRECTION_SETTLED_HEADING_DEG
-          and math.abs(smoothedLateralSpeed) <= CORRECTION_SETTLED_LATERAL_SPEED_MPS
+          0.50, projection.radius * CORRECTION_TARGET_TOLERANCE_RATIO)
+        local lateralSpeedTolerance = clamp(
+          CORRECTION_SETTLED.lateralSpeedMin
+            + speed * CORRECTION_SETTLED.lateralSpeedPerMps,
+          CORRECTION_SETTLED.lateralSpeedMin,
+          CORRECTION_SETTLED.lateralSpeedMax)
+        local withinLateral = math.abs(targetError) <= targetTolerance
+        local withinHeading = math.abs(headingError) <= CORRECTION_SETTLED_HEADING_DEG
+        local withinLateralSpeed =
+          math.abs(smoothedLateralSpeed) <= lateralSpeedTolerance
+        local settled = withinLateral and withinHeading and withinLateralSpeed
+        local clearTicksBefore = correctionClearTicks
         if settled then correctionClearTicks = correctionClearTicks + 1
         else correctionClearTicks = 0 end
-        if correctionClearTicks >= 2 then
+        if diagnostic then
+          diagnostic.activeBefore = true
+          diagnostic.targetSide = correctionTargetSide
+          diagnostic.targetOffset = targetOffset
+          diagnostic.targetError = targetError
+          diagnostic.targetTolerance = targetTolerance
+          diagnostic.settledHeadingTolerance = CORRECTION_SETTLED_HEADING_DEG
+          diagnostic.settledLateralSpeedTolerance = lateralSpeedTolerance
+          diagnostic.headingError = headingError
+          diagnostic.correctionBearing = correctionBearing
+          if secondsToTarget < 1000 then diagnostic.secondsToTarget = secondsToTarget end
+          diagnostic.withinLateral = withinLateral
+          diagnostic.withinHeading = withinHeading
+          diagnostic.withinLateralSpeed = withinLateralSpeed
+          diagnostic.settledCandidate = settled
+          diagnostic.clearTicksBefore = clearTicksBefore
+          diagnostic.clearTicksAfter = correctionClearTicks
+        end
+        if correctionClearTicks >= CORRECTION_SETTLED.ticks then
           correctionActive, correctionClearTicks, correctionTargetSide = false, 0, 0
+          correctionLatch.armed, correctionLatch.rearmTicks = false, 0
           correction.settled = true
         else
           local unwind = math.abs(correctionBearing) <= CORRECTION_UNWIND_BEARING_DEG
@@ -735,6 +882,7 @@ local function performScan()
     end
   else
     correctionActive, correctionClearTicks = false, 0
+    correctionLatch.armed, correctionLatch.rearmTicks = true, 0
     correctionTargetSide = 0
     resetLateralTracking()
   end
@@ -743,7 +891,8 @@ local function performScan()
   orientationArmed = false
   local directions = makeRoadDirections(vehicleForward, edge)
   local packet = {state = "onRoad", oneWay = edge.oneWay, roadDirections = directions,
-    offRoad = nil, correction = correction, junction = junctionPacket, orientation = orientation}
+    offRoad = nil, correction = correction, junction = junctionPacket,
+    orientation = orientation, diagnostic = diagnostic}
   local legacy = "ON_ROAD"
   if orientation and #directions > 0 then
     local second = directions[2] or directions[1]
@@ -786,6 +935,17 @@ local function retryCmdBind(dtReal)
   if ok and udpCmd then rdLog('info', "Road command socket rebound after retry.") end
 end
 
+function M.onVehicleDiagnostic(vehicleId, steeringInput, steering, contactMaterials)
+  if (not diagnosticActive and not challengeCaptureActive)
+    or tonumber(vehicleId) ~= tonumber(lastVehicleId) then return end
+  diagnosticVehicle.sample = {
+    vehicleId = tonumber(vehicleId),
+    steeringInput = clamp(tonumber(steeringInput) or 0, -1, 1),
+    steering = clamp(tonumber(steering) or 0, -1, 1),
+    contactMaterials = tostring(contactMaterials or ""):sub(1, 500),
+  }
+end
+
 function M.onExtensionUnloaded()
   if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
   if udpCmd then pcall(function() udpCmd:close() end); udpCmd = nil end
@@ -824,18 +984,61 @@ function M.onUpdate(dtReal)
         isActive = true
       elseif upper == "OFF" then
         isActive = false
+      elseif upper == "DIAG_ON" then
+        diagnosticActive = true
+        diagnosticVehicle.sample, diagnosticVehicle.requestTick = nil, 0
+        rdLog('info', "Detailed road diagnostic feed enabled.")
+      elseif upper == "DIAG_OFF" then
+        diagnosticActive = false
+        if not challengeCaptureActive then
+          diagnosticVehicle.sample, diagnosticVehicle.requestTick = nil, 0
+        end
+        rdLog('info', "Detailed road diagnostic feed disabled.")
+      elseif upper == "CAPTURE_ON" then
+        if not isActive and not challengeCaptureActive then resetTracking("challenge capture on") end
+        challengeCaptureActive = true
+        diagnosticVehicle.sample, diagnosticVehicle.requestTick = nil, 0
+        rdLog('info', "Hill-climb challenge capture enabled.")
+      elseif upper == "CAPTURE_OFF" then
+        challengeCaptureActive = false
+        if not diagnosticActive then
+          diagnosticVehicle.sample, diagnosticVehicle.requestTick = nil, 0
+        end
+        rdLog('info', "Hill-climb challenge capture disabled.")
       else
         local privateValue = upper:match("^PRIVATE%s*,%s*([01])$")
         if privateValue then includePrivate = privateValue == "1" end
       end
     end
   end
-  if not isActive then return end
+  if not isActive and not challengeCaptureActive then return end
   scanTimer = scanTimer + (dtReal or 0)
   if scanTimer >= SCAN_INTERVAL then
     scanTimer = scanTimer - SCAN_INTERVAL
+    if diagnosticActive or challengeCaptureActive then
+      local player = be:getPlayerVehicle(0)
+      if player then requestVehicleDiagnostic(player) end
+    end
     performScan()
   end
+end
+
+function M.diagnosticState()
+  return diagnosticActive
+end
+
+function M.challengeCaptureState()
+  return challengeCaptureActive
+end
+
+function M.diagnosticConfig()
+  return {
+    targetToleranceRatio = CORRECTION_TARGET_TOLERANCE_RATIO,
+    settledTicks = CORRECTION_SETTLED.ticks,
+    lateralSpeedMin = CORRECTION_SETTLED.lateralSpeedMin,
+    lateralSpeedMax = CORRECTION_SETTLED.lateralSpeedMax,
+    rearmTicks = CORRECTION_SETTLED.rearmTicks,
+  }
 end
 
 return M

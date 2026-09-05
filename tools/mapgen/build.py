@@ -504,10 +504,6 @@ POI_SECTIONS = [
     ("sump", "The Sump", "warning",
      "Deep water. Driving in will flood and hydrolock a combustion engine.",
      (mapdef.SUMP[0], mapdef.SUMP[1] - 200), (0, 1)),
-    ("climb_base", "Hill Climb - Base", "arrow_upward",
-     "Foot of the straight climb. Starts at 4 percent and steepens to 60, "
-     "with rumble strips along both asphalt edges.",
-     mapdef.CLIMB_BASE, (0, 1)),
     ("climb_summit", "Hill Climb - Summit", "arrow_downward",
      "Top of the climb, facing back down it for the descent.",
      mapdef.CLIMB_SUMMIT, (0, -1)),
@@ -706,6 +702,252 @@ return M
 ''' % (LEVEL, body, rig_body)
 
 
+# ----------------------------------------------------------- hill-climb mission
+
+def _hill_climb_grade_at(world_y):
+    """Numerical tangent of the generated surface, including the crest curve."""
+    half_step = 0.25
+    before = float(mapdef.climb_surface_height(world_y - half_step))
+    after = float(mapdef.climb_surface_height(world_y + half_step))
+    return (after - before) / (2.0 * half_step)
+
+
+def _hill_climb_rotation(world_y):
+    # BeamNG's zero rotation faces +Y. Rotating about +X pitches that direction
+    # into +Z, matching the northbound climb tangent.
+    pitch = math.atan(_hill_climb_grade_at(world_y))
+    return [math.sin(pitch * 0.5), 0.0, 0.0, math.cos(pitch * 0.5)]
+
+
+def hill_climb_race(z):
+    """Native time-trial path, derived from the same profile as the terrain."""
+    ys = [mapdef.CLIMB_Y0 + step for step in np.arange(0.0, mapdef.CLIMB_LEN + 0.1, 250.0)]
+    if ys[-1] != mapdef.CLIMB_CREST_END_Y:
+        ys.append(mapdef.CLIMB_CREST_END_Y)
+
+    node_ids = list(range(10, 10 + len(ys)))
+    recovery_ids = list(range(100, 100 + len(ys)))
+    pathnodes = []
+    recovery_positions = []
+    for index, (node_id, recovery_id, world_y) in enumerate(
+            zip(node_ids, recovery_ids, ys), start=1):
+        grade = _hill_climb_grade_at(world_y)
+        tangent_length = math.sqrt(1.0 + grade * grade)
+        pos = [mapdef.CLIMB_X, float(world_y), sample_height(
+            z, mapdef.CLIMB_X, world_y) + 0.35]
+        pathnodes.append({
+            "customFields": {"values": {}, "names": {}, "tags": {}, "types": {}},
+            "mode": "manual",
+            "name": "Hill climb checkpoint %d" % index,
+            "navRadiusScale": 1,
+            "normal": [0.0, 1.0 / tangent_length, grade / tangent_length],
+            "oldId": node_id,
+            "pos": pos,
+            "radius": 8.5,
+            "recovery": recovery_id,
+            "reverseRecovery": -1,
+            "sidePadding": [1, 1],
+            "visible": True,
+        })
+        recovery_positions.append({
+            "name": "Checkpoint %d recovery" % index,
+            "oldId": recovery_id,
+            "pos": pos,
+            "rot": _hill_climb_rotation(world_y),
+        })
+
+    spawn_y = mapdef.CLIMB_Y0 - 15.0
+    final_y = mapdef.CLIMB_CREST_END_Y + 15.0
+    start_positions = [
+        {
+            "name": "Start Position",
+            "oldId": 2,
+            "pos": [mapdef.CLIMB_X, spawn_y,
+                    sample_height(z, mapdef.CLIMB_X, spawn_y) + 0.35],
+            "rot": _hill_climb_rotation(spawn_y),
+        },
+        {
+            "name": "finalPosFwd",
+            "oldId": 3,
+            "pos": [mapdef.CLIMB_X, final_y,
+                    sample_height(z, mapdef.CLIMB_X, final_y) + 0.35],
+            "rot": [0.0, 0.0, 0.0, 1.0],
+        },
+    ] + recovery_positions
+    segments = [
+        {
+            "capsules": {},
+            "from": node_ids[index],
+            "mode": "waypoint",
+            "name": "Hill climb segment %d" % (index + 1),
+            "oldId": 1000 + index,
+            "to": node_ids[index + 1],
+        }
+        for index in range(len(node_ids) - 1)
+    ]
+    return {
+        "authors": "BeamTel",
+        "classification": {
+            "allowRollingStart": False,
+            "branching": False,
+            "closed": False,
+            "reversible": False,
+        },
+        "date": 1788537600,
+        "defaultLaps": 1,
+        "defaultStartPosition": 2,
+        "description": "Three-kilometre timed hill climb",
+        "difficulty": 24,
+        "endNode": node_ids[-1],
+        "forwardPrefabs": {},
+        "hideMission": False,
+        "name": "Proving Grounds Hill Climb",
+        "pacenotes": {},
+        "pathnodes": pathnodes,
+        "prefabs": {},
+        "reversePrefabs": {},
+        "reverseStartPosition": -1,
+        "rollingReverseStartPosition": -1,
+        "rollingStartPosition": -1,
+        "segments": segments,
+        "startNode": node_ids[0],
+        "startPositions": start_positions,
+    }
+
+
+def hill_climb_mission_info(z):
+    start_x, start_y = mapdef.CLIMB_BASE
+    start_z = sample_height(z, start_x, start_y) + 0.6
+    return {
+        "additionalAttributes": {"difficulty": "high"},
+        "author": "BeamTel",
+        "careerSetup": {
+            "defaultStarKeys": [],
+            "showInFreeroam": True,
+            "skill": "(none)",
+            "starOutroTexts": {},
+            "starRewards": {},
+            "starsActive": {},
+        },
+        "customAdditionalAttributes": {},
+        "date": 1788537600,
+        "description": (
+            "A timed three-kilometre climb from 4 to 54 percent grade. "
+            "Your current vehicle is used and BeamTel records a detailed driving report."
+        ),
+        "devMission": False,
+        "grouping": {"id": "", "label": ""},
+        "isAvailableAsScenario": True,
+        "layers": [
+            {
+                "dir": "/gameplay/missions/proving_grounds/timeTrial/hill_climb/",
+                "fixed": True,
+                "isMissionFolderDir": True,
+                "isMissionTypeDir": False,
+            },
+            {
+                "dir": "/gameplay/missionTypes/timeTrial/",
+                "fixed": True,
+                "isMissionFolderDir": False,
+                "isMissionTypeDir": True,
+            },
+        ],
+        "missionType": "timeTrial",
+        "missionTypeData": {
+            "allowFlip": True,
+            "allowRecover": True,
+            "allowRollingStart": False,
+            "bronze1Laps": -1,
+            "bronze2Laps": -1,
+            "bronze3Laps": -1,
+            "bronzeDynamicLapTimeBase": 0,
+            "bronzeDynamicLapTimePerLap": 0,
+            "bronzeTime": 0,
+            "bronzeTime2": 0,
+            "bronzeTime3": 0,
+            "bronzeTimePenalty": 0,
+            "bronzeTimeTotal": 0,
+            "canChangeLapAmount": False,
+            "closed": False,
+            "defaultLaps": 1,
+            "dynamicRewardsExponentForLaps": 1,
+            "flipLimit": -1,
+            "flipPenalty": 5,
+            "gold1Laps": -1,
+            "gold2Laps": -1,
+            "gold3Laps": -1,
+            "goldDynamicLapTimeBase": 0,
+            "goldDynamicLapTimePerLap": 0,
+            "goldTime": 0,
+            "goldTime2": 0,
+            "goldTime3": 0,
+            "goldTimePenalty": 0,
+            "goldTimeTotal": 0,
+            "justFinishPenalty": 9999,
+            "lapTime1": 0,
+            "lapTime2": 0,
+            "lapTime3": 0,
+            "lapTime4": 0,
+            "lapTime5": 0,
+            "mapPreviewMode": "navgraph",
+            "recoverLimit": -1,
+            "recoverPenalty": 5,
+            "reversible": False,
+            "silver1Laps": -1,
+            "silver2Laps": -1,
+            "silver3Laps": -1,
+            "silverDynamicLapTimeBase": 0,
+            "silverDynamicLapTimePerLap": 0,
+            "silverTime": 0,
+            "silverTime2": 0,
+            "silverTime3": 0,
+            "silverTimePenalty": 0,
+            "silverTimeTotal": 0,
+            "startScreenText": (
+                "Reach the summit as quickly as possible. Recoveries and flips add five seconds."
+            ),
+        },
+        "name": "Proving Grounds Hill Climb",
+        "retryBehaviour": "infiniteRetries",
+        "setupModules": {
+            "environment": {
+                "enabled": False,
+                "time": -1,
+                "timeScale": 0,
+                "todUserSetting": True,
+                "weatherUserSetting": True,
+            },
+            "traffic": {"enabled": False},
+            "vehicles": {
+                "enabled": True,
+                "includePlayerVehicle": True,
+                "playerVehicleDiffs": {},
+                "prioritizePlayerVehicle": True,
+                "vehicles": {},
+            },
+        },
+        "startCondition": {"type": "automatic"},
+        "startTrigger": {
+            "level": LEVEL,
+            "pos": [start_x, start_y, start_z],
+            "radius": 5,
+            "rot": [0.0, 0.0, 0.0, 1.0],
+            "type": "coordinates",
+        },
+        "visibleCondition": {"type": "always"},
+    }
+
+
+def write_hill_climb_mission(out_root, z):
+    mission_dir = os.path.join(
+        out_root, MOD, "gameplay", "missions", LEVEL, "timeTrial", "hill_climb")
+    os.makedirs(mission_dir, exist_ok=True)
+    with open(os.path.join(mission_dir, "info.json"), "w", encoding="utf-8") as handle:
+        json.dump(hill_climb_mission_info(z), handle, indent=2)
+    with open(os.path.join(mission_dir, "race.race.json"), "w", encoding="utf-8") as handle:
+        json.dump(hill_climb_race(z), handle, indent=2)
+
+
 # -------------------------------------------------------------------- images
 
 MAT_COLOURS = {
@@ -803,7 +1045,7 @@ def build(out_root):
             "title": "Proving Grounds",
             "description": ("A flat 5 km plateau with a mud basin, a shallow ford, "
                             "a drowning pool, a three-kilometre hill climb that steepens "
-                            "from 4 to 60 percent, three parallel undulating "
+                            "from 4 to 54 percent, three parallel undulating "
                             "dirt lanes for suspension work, a one-kilometre "
                             "road tunnel with dynamic reverb, and a sound stage "
                             "carrying a rolling road, a hamster wheel and a "
@@ -820,6 +1062,10 @@ def build(out_root):
 
     with open(os.path.join(level_dir, "mainLevel.lua"), "w", encoding="utf-8") as f:
         f.write(main_level_lua(z))
+
+    # Missions live at the mod root, not below levels/. Keeping the race path in
+    # this generator makes every checkpoint follow the synthesized hill profile.
+    write_hill_climb_mission(out_root, z)
 
     return level_dir, z, mat
 
@@ -842,8 +1088,9 @@ def main():
     for s, pct, deg, zz in mapdef.describe_climb():
         print("  %5.0f m along: grade %5.1f%% (%4.1f deg)  height %6.1f m"
               % (s, pct, deg, zz))
-    print("  summit curve: 60.0%% to 0.0%% over %.1f m; flat height %.1f m"
-          % (mapdef.CLIMB_CREST_LENGTH, mapdef.CLIMB_TOP_Z))
+    print("  summit curve: %.1f%% to 0.0%% over %.1f m; flat height %.1f m"
+          % (mapdef.CLIMB_G1 * 100.0, mapdef.CLIMB_CREST_LENGTH,
+             mapdef.CLIMB_TOP_Z))
     counts = np.bincount(mat.ravel(), minlength=len(mapdef.MATERIALS))
     total = float(mat.size)
     print("\nsurface mix")

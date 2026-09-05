@@ -42,6 +42,26 @@ else
   say("hill climb road MISSING")
 end
 
+-- The challenge is discovered from the mod-root gameplay tree, not the level
+-- folder. Finding it through the mission catalogue proves the mounted path and
+-- native start marker are live, rather than merely proving that JSON exists.
+local challengeId = "proving_grounds/timeTrial/hill_climb"
+local challenge = gameplay_missions_missions
+  and gameplay_missions_missions.getMissionById
+  and gameplay_missions_missions.getMissionById(challengeId) or nil
+if challenge then
+  local trigger = challenge.startTrigger or {}
+  local pos = trigger.pos or {}
+  say(string.format(
+    "hill climb challenge: DISCOVERED trigger=(%.1f, %.1f, %.1f) radius=%.1f currentVehicle=%s",
+    tonumber(pos[1]) or -1, tonumber(pos[2]) or -1, tonumber(pos[3]) or -1,
+    tonumber(trigger.radius) or -1,
+    tostring(challenge.setupModules and challenge.setupModules.vehicles
+      and challenge.setupModules.vehicles.includePlayerVehicle == true)))
+else
+  say("hill climb challenge MISSING FROM MISSION CATALOGUE")
+end
+
 -- 2. terrain heights at the named sections -------------------------------------
 -- getSurfaceHeightBelow is the visible-surface answer; core_terrain is the
 -- terrain-only one. They should agree here because nothing is built on top.
@@ -57,7 +77,7 @@ local expect = {
   { "ford bed",     1300,  -900,  49.55 },  -- BASE_Z - 0.45
   { "sump centre",  1500,   340,  45.5 },   -- BASE_Z - 4.5
   { "climb foot",   0,     -780,  50.0 },
-  { "climb summit", 0,      2265, 855.5 },
+  { "climb summit", 0,      2265, 682.15 },
 }
 for _, e in ipairs(expect) do
   local h = groundAt(e[2], e[3])

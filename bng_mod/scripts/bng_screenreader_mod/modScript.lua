@@ -27,6 +27,10 @@ extensions.load("vehicleScanner")
 -- bodies; it holds no scene references between ticks and reads a registry the engine maintains,
 -- so it needs neither implementProximity's late slot nor a command port.
 extensions.load("trailerAngle")
+-- Where the big map's navigation route ends, so Python can pulse a beacon at it. Reads
+-- core_groundMarkers, which the engine maintains; it holds no scene references between ticks
+-- and binds no command port, so like trailerAngle it needs no late slot and nothing to be told.
+extensions.load("routeBeacon")
 extensions.load("beamtelAI")
 extensions.load("vehicleSlots")
 extensions.load("cameraInfo")
@@ -56,7 +60,14 @@ if extensions.isExtensionLoaded("bindingLearn") then
 else
   extensions.load("bindingLearn")
 end
-extensions.load("roadDetector")
+-- roadDetector is manual and owns the challenge-capture command socket. A plain
+-- load after Ctrl+L retains the old module table and source, so challenge events
+-- could reach current Python while CAPTURE_ON was still handled by stale Lua.
+if extensions.isExtensionLoaded("roadDetector") then
+  extensions.reload("roadDetector")
+else
+  extensions.load("roadDetector")
+end
 extensions.load("uiToggle")
 extensions.load("consoleAccessible")
 -- The environment values the stock pause UI does not expose at all (temperature). Passive:
@@ -69,5 +80,18 @@ extensions.load("vehicleInfo")
 -- Loaded late on purpose: an uncaught throw in an extension's onUpdate stops every
 -- extension AFTER it in this list, and this one raycasts against arbitrary scene objects.
 extensions.load("implementProximity")
-extensions.load("bnvdaBridge")
-log('I', 'bng_screenreader_mod', 'modScript.lua executed: accessibility extensions and bnvdaBridge loaded.')
+-- Both are manual extensions, so a plain load after Ctrl+L would retain the old
+-- source. Reload explicitly to keep the lifecycle producer and transport in step.
+if extensions.isExtensionLoaded("bnvdaBridge") then
+  extensions.reload("bnvdaBridge")
+else
+  extensions.load("bnvdaBridge")
+end
+-- Loaded after the transport it calls. This remains passive outside the exact
+-- generated Proving Grounds mission id.
+if extensions.isExtensionLoaded("hillClimbChallenge") then
+  extensions.reload("hillClimbChallenge")
+else
+  extensions.load("hillClimbChallenge")
+end
+log('I', 'bng_screenreader_mod', 'modScript.lua executed: accessibility extensions, bnvdaBridge and hill-climb challenge loaded.')

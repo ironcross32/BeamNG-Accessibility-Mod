@@ -21,7 +21,7 @@ local M = {}
 
 local PYTHON_HOST       = "127.0.0.1"
 local PYTHON_PORT_DATA  = 4471   -- send scan snapshots to Python
-local CMD_LISTEN_PORT   = 4472   -- receive SCAN from Python
+local CMD_LISTEN_PORT   = 4472   -- receive SCAN / NEAREST_POI from Python
 
 -- MUST match SCAN_MAX_RANGE_M in audio.py -- Python's time axis is scaled by the reach we
 -- report, so the two only agree because the ceiling is the same number in both places.
@@ -36,6 +36,63 @@ local SCAN_RAYS_PER_TICK = 100
 local SCAN_MIN_REACH_M  = 20.0   -- a floor, so a tiny map still produces a usable time axis
 local SCAN_RAY_TOP_Z    = 100000.0
 local WATER_PROBE_EPS_M = 0.05
+
+-- Surface families. The scan carries what the ground IS as a one-character suffix on the
+-- cell token; audio.py turns that into a timbre. Omission means paved, which is ALSO what an
+-- unresolved material means, so a map with no TerrainBlock and an older Python half both
+-- render exactly as they always did.
+--
+-- Classified on COLLISIONTYPE, not on the groundmodel name, because collisiontype is already
+-- the game's own answer to "what does this surface sound like" (docs/level-generation.md) and
+-- it collapses the aliases for free -- measured live, ASPHALT, ASPHALT_OLD, ASPHALT_PREPPED,
+-- KICKPLATE and VOID are one collisiontype between them, as are GRAVEL and GRAVEL_WET, ICE
+-- and FRICTIONLESS, SNOW and SNOWBANK.
+--
+-- The list below is therefore REPRESENTATIVE NAMES, resolved to collisiontype ids once per
+-- scan and applied by id. That is what makes it more than a transcribed allowlist: every
+-- other groundmodel sharing one of those ids classifies without being named, a modded map's
+-- own surfaces included. The same capability-over-a-list argument rampGeometry.isCannon()
+-- makes.
+--
+-- Two things about the API, both established by probing a running game and neither guessable
+-- from the engine's own Lua. `be:getGroundModelByID(i).data` is USERDATA, not a table, and
+-- its `.name` field is **nil on every one of the 60 registrations** -- so the registry cannot
+-- be walked and keyed by name, which is what the obvious implementation tries to do (and why
+-- the stock dumpGroundModels writes `gms[gm.name or i]`). The way in is
+-- `be:getGroundModelIDByName(name)`, which is case-insensitive and answers -1 for a name it
+-- does not know. And `.collisiontype` is an INTEGER id, not a string: the index space is the
+-- fixed material list at the top of lua/common/particles.json.
+local FAMILY_NAMES = {
+  d = {"DIRT", "DIRT_DUSTY", "MUD"},
+  v = {"GRAVEL", "SAND", "ROCK"},
+  g = {"GRASS", "BRANCHES_STRONG", "LEAVES_THIN"},
+  -- SNOW rides with ICE. They do not drive alike, but both mean NO GRIP, which is the only
+  -- thing a surface sonification is for -- and snow is one of the surfaces with no tyre-sound
+  -- branch at all, so the scan is the only way to know it is there.
+  i = {"ICE", "SNOW"},
+  -- Everything else, ASPHALT and friends included, resolves to nothing: no suffix, and
+  -- therefore today's tone.
+}
+-- A ray that lands more than this above or below the heightmap found something that is not
+-- the terrain -- a bridge deck, a building roof, a static mesh. Its material is therefore not
+-- the terrain's material, so the cell reports unknown rather than the riverbed underneath it.
+local MAT_TERRAIN_AGREE_M = 1.0
+
+-- Road overlay. getMaterialIdxWs answers for the TERRAIN LAYER only, so an asphalt DecalRoad
+-- laid over grass -- which is how nearly every stock map builds a road -- reports grass, and
+-- "paved is unchanged" would be false in exactly the place it matters most. The navigation
+-- graph is the one thing that knows a road is there. Built one-shot per scan, local to this
+-- file: roadDetector.lua owns the same index but rebuilds it on its own schedule and can be
+-- switched off entirely, so calling into it would make the scan depend on another feature's
+-- state. Its shape is mirrored (buckets, candidates, projection), not imported.
+local ROAD_BUCKET_SIZE_M   = 50.0
+local ROAD_Z_TOLERANCE_M   = 3.0   -- tighter than roadDetector's 6.0: compared against the
+                                   -- cell's own visible surface, not the vehicle's z
+local ROAD_MIN_DRIVABILITY = 0.75
+
+-- POIs. Capped and deduped because a busy map clusters a dozen mission starts on one spot,
+-- and a dozen doublets from one bearing buries the terrain bed the scan exists to draw.
+local POI_MAX = 12
 
 local udpSend = nil
 local udpCmd  = nil
@@ -186,6 +243,157 @@ local function waterAt(waters, p, surfaceZ)
   return nil, nil, nil, false
 end
 
+-- -------------------------------------------------------------------------------------------
+-- Surface material.
+--
+-- NOTE, because the whole rest of this file is ray-budgeted and a reader will assume
+-- otherwise: getMaterialIdxWs is an XY lookup into the terrain's own material layer, NOT a
+-- raycast. It costs nothing against SCAN_RAYS_PER_TICK, which is why the three budgeted ray
+-- sites are still three. It takes z = 0 for the same reason -- the z component is ignored.
+-- -------------------------------------------------------------------------------------------
+local function collisionTypeOf(name)
+  if not (be.getGroundModelIDByName and be.getGroundModelByID) then return nil end
+  local okId, id = pcall(function() return be:getGroundModelIDByName(name) end)
+  if not okId or type(id) ~= "number" or id < 0 then return nil end
+  local okGm, gm = pcall(function() return be:getGroundModelByID(id) end)
+  if not okGm or not gm then return nil end
+  local okCt, ct = pcall(function() return gm.data and gm.data.collisiontype end)
+  if not okCt or type(ct) ~= "number" then return nil end
+  return ct
+end
+
+-- collisiontype id -> family code, built once per scan from the representative names above.
+-- Empty when the API is missing, in which case every cell reports no family and the scan
+-- sounds exactly as it did before this feature existed.
+local function resolveGroundFamilies()
+  local byCollision = {}
+  for fam, names in pairs(FAMILY_NAMES) do
+    for _, name in ipairs(names) do
+      local ct = collisionTypeOf(name)
+      if ct then byCollision[ct] = fam end
+    end
+  end
+  return byCollision
+end
+
+local function materialFamilyAt(x, y, surfaceZ)
+  local terrain = scan.terrain
+  if not terrain then return nil end
+  -- The ray is authoritative for HEIGHT but the material layer is flat, so a cell whose ray
+  -- landed on a bridge or a roof would otherwise be painted with whatever is under it.
+  local groundZ = heightmapAt(x, y, surfaceZ)
+  if groundZ == nil or math.abs(surfaceZ - groundZ) > MAT_TERRAIN_AGREE_M then return nil end
+  local okIdx, idx = pcall(function() return terrain:getMaterialIdxWs(vec3(x, y, 0)) end)
+  if not okIdx or type(idx) ~= "number" then return nil end
+  local cached = scan.matCache[idx]
+  if cached ~= nil then
+    if cached == false then return nil end
+    return cached
+  end
+  local name = nil
+  local okMat, mtl = pcall(function() return terrain:getMaterial(idx) end)
+  if okMat and mtl and mtl.getGroundmodelName then
+    local okGm, gm = pcall(function() return mtl:getGroundmodelName() end)
+    if okGm and type(gm) == "string" and gm ~= "" then name = gm end
+  end
+  if name == nil and terrain.getMaterialName then
+    local okNm, nm = pcall(function() return terrain:getMaterialName(idx) end)
+    if okNm and type(nm) == "string" and nm ~= "" then name = nm end
+  end
+  local fam = nil
+  if name then
+    local ct = collisionTypeOf(name)
+    if ct then fam = scan.groundFamilies[ct] end
+  end
+  scan.matCache[idx] = fam or false
+  return fam
+end
+
+-- -------------------------------------------------------------------------------------------
+-- Road overlay. Pure maths against a prebuilt index; spends no rays either.
+-- -------------------------------------------------------------------------------------------
+local function bucketKey(bx, by)
+  return tostring(bx) .. ":" .. tostring(by)
+end
+
+local function buildRoadIndex(origin, reach)
+  local index, edgeCount = {}, 0
+  local mapData = map and map.getMap and map.getMap() or nil
+  local nodes = mapData and mapData.nodes or nil
+  if not nodes then return index, 0 end
+  local seen = {}
+  for sourceId, sourceNode in pairs(nodes) do
+    local links = sourceNode.links
+    if type(links) == "table" then
+      for targetId, data in pairs(links) do
+        local targetNode = nodes[targetId]
+        if type(data) == "table" and targetNode then
+          local a, b = tostring(sourceId), tostring(targetId)
+          local key = a < b and (a .. "|" .. b) or (b .. "|" .. a)
+          if not seen[key] then
+            seen[key] = true
+            local inPos = data.inPos or sourceNode.pos
+            local outPos = data.outPos or targetNode.pos
+            local drivability = tonumber(data.drivability) or 1.0
+            if inPos and outPos and drivability >= ROAD_MIN_DRIVABILITY then
+              local ip = vec3(inPos.x, inPos.y, inPos.z)
+              local op = vec3(outPos.x, outPos.y, outPos.z)
+              local ir = tonumber(data.inRadius) or tonumber(sourceNode.radius) or 4.0
+              local orr = tonumber(data.outRadius) or tonumber(targetNode.radius) or 4.0
+              local rad = math.max(ir, orr)
+              -- Only edges that can reach the scan disc, so a big map buckets a few hundred
+              -- rather than tens of thousands.
+              local near = math.min(
+                math.sqrt((ip.x - origin.x) ^ 2 + (ip.y - origin.y) ^ 2),
+                math.sqrt((op.x - origin.x) ^ 2 + (op.y - origin.y) ^ 2))
+              if near <= reach + rad + ip:distance(op) then
+                local edge = {a = ip, b = op, ra = ir, rb = orr}
+                edgeCount = edgeCount + 1
+                local minX = math.floor((math.min(ip.x, op.x) - rad) / ROAD_BUCKET_SIZE_M)
+                local maxX = math.floor((math.max(ip.x, op.x) + rad) / ROAD_BUCKET_SIZE_M)
+                local minY = math.floor((math.min(ip.y, op.y) - rad) / ROAD_BUCKET_SIZE_M)
+                local maxY = math.floor((math.max(ip.y, op.y) + rad) / ROAD_BUCKET_SIZE_M)
+                for bx = minX, maxX do
+                  for by = minY, maxY do
+                    local k = bucketKey(bx, by)
+                    index[k] = index[k] or {}
+                    table.insert(index[k], edge)
+                  end
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+  return index, edgeCount
+end
+
+local function onRoad(index, x, y, surfaceZ)
+  local bucket = index[bucketKey(math.floor(x / ROAD_BUCKET_SIZE_M),
+                                math.floor(y / ROAD_BUCKET_SIZE_M))]
+  if not bucket then return false end
+  for _, e in ipairs(bucket) do
+    local dx, dy = e.b.x - e.a.x, e.b.y - e.a.y
+    local len2 = dx * dx + dy * dy
+    local t = 0.0
+    if len2 > 1e-9 then
+      t = ((x - e.a.x) * dx + (y - e.a.y) * dy) / len2
+      if t < 0 then t = 0 elseif t > 1 then t = 1 end
+    end
+    local px, py = e.a.x + dx * t, e.a.y + dy * t
+    local pz = e.a.z + (e.b.z - e.a.z) * t
+    local radius = e.ra + (e.rb - e.ra) * t
+    local dist2 = (x - px) ^ 2 + (y - py) ^ 2
+    -- The z test is what stops an overpass paving the ground beneath it.
+    if dist2 <= radius * radius and math.abs(surfaceZ - pz) <= ROAD_Z_TOLERANCE_M then
+      return true
+    end
+  end
+  return false
+end
+
 -- The game exposes no render/draw-distance scalar to Lua at all -- only per-view farClip
 -- values and $pref::Terrain::lodScale, neither of them queryable from here. The honest
 -- analogue of "or the rendering distance, whichever comes first" is the terrain's own size:
@@ -229,6 +437,116 @@ local function objectKind(veh)
     end
   end
   return "v"
+end
+
+-- Map POIs -- garages, fuel, dealerships, mission starts, and whatever a level publishes
+-- through its own onGetRawPoiListForLevel (the generated Proving Grounds markers included).
+-- gameplay_rawPois is the same aggregation the big map itself uses, so the scan and the map
+-- can never disagree about what is out there. Costs no rays, like gatherObjects.
+local function gatherPois(origin, fwd, left, refZ, reach)
+  local rows, seen, kept = {}, {}, 0
+  if not (gameplay_rawPois and gameplay_rawPois.getRawPoiListByLevel) then return rows end
+  local levelId = getCurrentLevelIdentifier and getCurrentLevelIdentifier() or nil
+  if not levelId then return rows end
+  local ok, list = pcall(gameplay_rawPois.getRawPoiListByLevel, levelId)
+  if not ok or type(list) ~= "table" then return rows end
+  for _, element in ipairs(list) do
+    local marker = element and element.markerInfo and element.markerInfo.bigmapMarker
+    local pos = marker and marker.pos or nil
+    if pos then
+      local rel = vec3(pos.x, pos.y, pos.z) - origin
+      local f = rel:dot(fwd)
+      local l = rel:dot(left)
+      local d = math.sqrt(f * f + l * l)
+      -- Past the reach there is no time slot for it, and pinning it to the last ring would
+      -- state a distance that is not true. Dropped, like an off-map terrain cell.
+      if f >= 0 and d <= reach and kept < POI_MAX then
+        local bearing = math.deg(math.atan2(l, f))
+        -- A bigmap marker's z is frequently a DISPLAY height floating above the ground, and
+        -- the pitch is an elevation readout, so re-ground it where the terrain can say so.
+        local groundZ = heightmapAt(pos.x, pos.y, pos.z) or pos.z
+        local key = string.format("%.0f|%.0f", bearing, d)
+        if not seen[key] then
+          seen[key] = true
+          kept = kept + 1
+          rows[#rows + 1] = string.format("P,%.1f,%.1f,%.1f", bearing, d, groundZ - refZ)
+        end
+      end
+    end
+  end
+  return rows
+end
+
+-- Translate both ordinary string keys and the {txt=..., ctx=...} values used by some stock
+-- activities. Python still strips the small amount of HTML found in descriptions because
+-- presentation cleanup belongs at the speech boundary.
+local function poiText(value)
+  if core_locales and core_locales.translateWithOrWithoutContext then
+    local ok, translated = pcall(core_locales.translateWithOrWithoutContext, value)
+    if ok and type(translated) == "string" and translated ~= "" then return translated end
+  end
+  if type(value) == "table" and value.txt then return tostring(value.txt) end
+  if type(value) == "string" then return value end
+  return ""
+end
+
+-- One result rather than a list: this is the named readout, not the scan's POI sound layer.
+-- Ties prefer a marker with a description, which collapses the common pairing of a richly
+-- described level marker and a bare spawn marker at exactly the same coordinates.
+local function nearestPoi()
+  local player = be:getPlayerVehicle(0)
+  if not player then return nil, "no vehicle" end
+  if not (gameplay_rawPois and gameplay_rawPois.getRawPoiListByLevel) then
+    return nil, "point of interest service unavailable"
+  end
+  local levelId = getCurrentLevelIdentifier and getCurrentLevelIdentifier() or nil
+  if not levelId then return nil, "no level" end
+
+  if gameplay_rawPois.clear then pcall(gameplay_rawPois.clear) end
+  local ok, list = pcall(gameplay_rawPois.getRawPoiListByLevel, levelId)
+  if not ok or type(list) ~= "table" then return nil, "could not read points of interest" end
+
+  local origin = vec3(player:getPosition())
+  local fwd = vec3(player:getDirectionVector())
+  fwd.z = 0
+  if fwd:length() < 1e-4 then return nil, "no heading" end
+  fwd = fwd:normalized()
+  local left = vec3(0, 0, 1):cross(fwd):normalized()
+  local best = nil
+  for _, element in ipairs(list) do
+    local marker = element and element.markerInfo and element.markerInfo.bigmapMarker
+    local pos = marker and marker.pos or nil
+    if pos then
+      local dx, dy = pos.x - origin.x, pos.y - origin.y
+      local distance = math.sqrt(dx * dx + dy * dy)
+      local description = poiText(marker.description
+        or (element.data and element.data.description))
+      local richer = best and description ~= "" and best.description == ""
+      if best == nil or distance < best.distance - 0.25
+          or (math.abs(distance - best.distance) <= 0.25 and richer) then
+        local rel = vec3(dx, dy, 0)
+        best = {
+          name = poiText(marker.name or (element.data and element.data.name)),
+          description = description,
+          distance = distance,
+          bearing = distance < 1e-6 and 0 or math.deg(math.atan2(rel:dot(left), rel:dot(fwd))),
+          radius = math.max(0, tonumber(marker.radius) or 0),
+        }
+      end
+    end
+  end
+  if not best then return nil, "no points of interest found" end
+  if best.name == "" then best.name = "Point of interest" end
+  return best
+end
+
+local function sendNearestPoi()
+  local result, reason = nearestPoi()
+  if not result then
+    send("POI_FAIL:" .. tostring(reason or "unknown error"))
+    return
+  end
+  send("POI:" .. jsonEncode(result))
 end
 
 local function gatherObjects(origin, fwd, left, refZ, reach)
@@ -276,6 +594,11 @@ local function beginScan()
   local left = vec3(0, 0, 1):cross(fwd):normalized()
 
   local waters, waterCounts = resolveWaterObjects()
+  local reach = resolveReach()
+  local okTerrain, terrain = pcall(function()
+    return core_terrain and core_terrain.getTerrain and core_terrain.getTerrain() or nil
+  end)
+  local roadIndex, roadEdges = buildRoadIndex(origin, reach)
   scan = {
     id      = nextId,
     origin  = origin,
@@ -284,7 +607,16 @@ local function beginScan()
     refZ    = nil,         -- first budgeted ray establishes visible ground below the vehicle
     waters  = waters,
     waterCounts = waterCounts,
-    reach   = resolveReach(),
+    reach   = reach,
+    -- nil on smallgrid and gridmap, which have no TerrainBlock at all. Every cell then
+    -- reports no family and the scan sounds exactly as it did before this feature existed.
+    terrain = okTerrain and terrain or nil,
+    groundFamilies = resolveGroundFamilies(),
+    matCache = {},         -- material index -> family code, or false for "resolved to none"
+    roadIndex = roadIndex,
+    roadEdges = roadEdges,
+    roadCells = 0,         -- how many cells the overlay overrode; see M.diag
+    famCounts = {},
     s       = 0,           -- spoke index being filled
     r       = 0,           -- ring index within it
     cur     = nil,         -- the row under construction
@@ -302,12 +634,14 @@ end
 
 local function finishScan()
   local objs = gatherObjects(scan.origin, scan.fwd, scan.left, scan.refZ, scan.reach)
+  local pois = gatherPois(scan.origin, scan.fwd, scan.left, scan.refZ, scan.reach)
   local parts = {
     string.format("SCAN,%d,%d,%d,%.2f,%.2f",
       scan.id, SCAN_BEARINGS, SCAN_RINGS, scan.reach, scan.refZ)
   }
   for _, row in ipairs(scan.rows) do parts[#parts + 1] = row end
   for _, row in ipairs(objs) do parts[#parts + 1] = row end
+  for _, row in ipairs(pois) do parts[#parts + 1] = row end
   parts[#parts + 1] = "END"
   send(table.concat(parts, "\n"))
   lastScanDiag = {
@@ -315,12 +649,31 @@ local function finishScan()
     surfaceMin = scan.surfaceMin, surfaceMax = scan.surfaceMax,
     waterCells = scan.waterCells, dryCells = scan.dryCells,
     missingCells = scan.missingCells, rayCount = scan.rayCount,
+    famCounts = scan.famCounts, roadCells = scan.roadCells, roadEdges = scan.roadEdges,
+    hasTerrain = scan.terrain ~= nil, poiCount = #pois,
   }
   tsLog('D', string.format(
     "scan %d sent: reach %.1f m, refZ %.2f, surface %s..%s, water/dry/missing %d/%d/%d, rays %d, %d objects",
     scan.id, scan.reach, scan.refZ, tostring(scan.surfaceMin), tostring(scan.surfaceMax),
     scan.waterCells, scan.dryCells, scan.missingCells, scan.rayCount, #objs))
   scan = nil
+end
+
+-- The suffix is OPTIONAL and its absence means paved -- which is also what an unresolved
+-- material means, so the two halves going out of step degrades to today's tone rather than
+-- to an error. The road overlay wins over the terrain layer and reports itself as "r", a
+-- separate code that audio.py renders identically to paved: a radius-against-the-road-graph
+-- rule is a heuristic, and a heuristic whose effect cannot be counted is one nobody can
+-- debug. M.diag counts it.
+local function familySuffix(p, surfaceZ)
+  local fam = materialFamilyAt(p.x, p.y, surfaceZ)
+  if onRoad(scan.roadIndex, p.x, p.y, surfaceZ) then
+    scan.roadCells = scan.roadCells + 1
+    fam = "r"
+  end
+  if fam == nil then return "" end
+  scan.famCounts[fam] = (scan.famCounts[fam] or 0) + 1
+  return ":" .. fam
 end
 
 local function appendCell(cell, kind)
@@ -395,9 +748,11 @@ local function stepScan()
           if water and needsBedRay then
             scan.pendingBed = {p = p, surfaceZ = h, water = water}
           elseif water then
+            -- Water carries no family: depth is authoritative, and the material under a lake
+            -- is not the thing being looked at.
             appendCell(string.format("%.1f_%.1f", bedZ - scan.refZ, depth), "water")
           else
-            appendCell(string.format("%.1f", h - scan.refZ), "dry")
+            appendCell(string.format("%.1f", h - scan.refZ) .. familySuffix(p, h), "dry")
           end
         end
       end
@@ -507,6 +862,12 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
           tsLog('E', "beginScan failed: " .. tostring(err))
           send("FAIL,scan error")
         end
+      elseif cmd == "NEAREST_POI" then
+        local ok, err = pcall(sendNearestPoi)
+        if not ok then
+          tsLog('E', "nearest POI failed: " .. tostring(err))
+          send("POI_FAIL:lookup error")
+        end
       end
     end
   end
@@ -538,15 +899,30 @@ function M.diag()
     counts.WaterPlane, table.concat(names.WaterPlane, ","))
   local last = "none"
   if lastScanDiag then
+    -- The family histogram, the overlay count and the POI count are here for the reason the
+    -- water summary already is: the failure mode of a name-driven resolve is a confident
+    -- WRONG number, and no amount of listening will identify it. "0 edges bucketed" and
+    -- "every cell unknown" sound identical from the seat and want different fixes.
+    local fam = {}
+    for _, code in ipairs({"d", "v", "g", "i", "r"}) do
+      fam[#fam + 1] = code .. "=" .. tostring((lastScanDiag.famCounts or {})[code] or 0)
+    end
     last = string.format(
-      "id %d | ref z %.2f | visible surface %s..%s | water/dry/missing %d/%d/%d | rays %d",
+      "id %d | ref z %.2f | visible surface %s..%s | water/dry/missing %d/%d/%d | rays %d"
+      .. " | terrain %s | families %s | road overlay %d cells from %d edges | %d POIs",
       lastScanDiag.id, lastScanDiag.refZ, tostring(lastScanDiag.surfaceMin),
       tostring(lastScanDiag.surfaceMax), lastScanDiag.waterCells, lastScanDiag.dryCells,
-      lastScanDiag.missingCells, lastScanDiag.rayCount)
+      lastScanDiag.missingCells, lastScanDiag.rayCount,
+      lastScanDiag.hasTerrain and "yes" or "NO (every cell unknown, i.e. today's tone)",
+      table.concat(fam, ","), lastScanDiag.roadCells or 0, lastScanDiag.roadEdges or 0,
+      lastScanDiag.poiCount or 0)
   end
   tsLog('I', string.format(
     "water objects: %s | reach %.1f m | grid %dx%d = %d samples | last scan: %s",
     waterSummary, reach, SCAN_BEARINGS, SCAN_RINGS, SCAN_BEARINGS * SCAN_RINGS, last))
 end
+
+-- Console-accessible and useful to diagnostics without putting a datagram on Python's port.
+M.nearestPoi = nearestPoi
 
 return M

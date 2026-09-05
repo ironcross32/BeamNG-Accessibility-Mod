@@ -633,6 +633,29 @@ ROAD_BEEP_MIN_RATE_HZ = 0.7  # pulses/sec when far from road
 ROAD_BEEP_MAX_RATE_HZ = 4.0  # pulses/sec when right next to road
 ROAD_BEEP_HALF_DIST_M = 20.0  # exponential half-distance for rate scaling
 
+# Route beacon (crow-flies homing on the map route's destination) — C5 carrier with an
+# octave-above modulator, giving a clean bell rather than the road beep's warm growl.
+#
+# The timbre has to be distinct from the road beacon above because BOTH CAN SOUND AT
+# ONCE and they mean opposite things: off-road, the road beep says "the nearest road is
+# that way" while this says "your destination is that way", and those are frequently
+# different directions. C5 also clears the occupied slots — compass/cam FM near 900 Hz,
+# scanner/coupler near 1 kHz, slam ticks at 660, and the road beep itself at F#5.
+ROUTE_BEACON_FREQ_HZ = 523.25  # C5 carrier
+ROUTE_BEACON_MOD_HZ = 1046.50  # octave-above modulator (2:1 — bell-like, harmonic)
+ROUTE_BEACON_MOD_INDEX = 0.9  # FM β — gentler than the road beep; this one is ambient
+ROUTE_BEACON_DUR_MS = 110  # pulse length
+ROUTE_BEACON_AMP_DB = -16.0  # default volume; quieter than the road beep, it runs longer
+# The real difference from the road beacon is not the timbre but the SCALE. The road
+# beep's 20 m half-distance is meaningless over a route: every destination would sit
+# pinned at the minimum rate until the last few car lengths. A route is hundreds of
+# metres to kilometres, so the half-distance is two orders of magnitude larger and the
+# rate floor is lower — a beacon that ticks once every two seconds is a background fact,
+# which is what it should be when the destination is still a mile off.
+ROUTE_BEACON_MIN_RATE_HZ = 0.5  # pulses/sec when the destination is far away
+ROUTE_BEACON_MAX_RATE_HZ = 4.0  # pulses/sec when on top of the destination
+ROUTE_BEACON_HALF_DIST_M = 400.0  # exponential half-distance for rate scaling
+
 # Road correction is deliberately a different auditory object from the off-road
 # beacon. Short directional pips say "apply steering"; their rate reports how much
 # correction remains. A centred double pip is a separate "unwind now" instruction.
@@ -650,6 +673,7 @@ ROAD_CORRECTION_UNWIND_REPEAT_S = 0.8
 ROAD_CORRECTION_SETTLED_START_HZ = 659.25
 ROAD_CORRECTION_SETTLED_END_HZ = 880.0
 ROAD_CORRECTION_SETTLED_MS = 130
+ROAD_CORRECTION_SETTLED_REFRACTORY_S = 2.0
 ROAD_CORRECTION_MAX_AZIMUTH_DEG = 35.0
 ROAD_CORRECTION_ATTACK_S = 0.015
 ROAD_CORRECTION_RELEASE_S = 0.025
@@ -693,6 +717,18 @@ def road_beacon_rate_hz(distance=0.0):
     rate_norm = math.exp(-max(0.0, float(distance)) / ROAD_BEEP_HALF_DIST_M)
     return ROAD_BEEP_MIN_RATE_HZ + (
         ROAD_BEEP_MAX_RATE_HZ - ROAD_BEEP_MIN_RATE_HZ
+    ) * rate_norm
+
+
+def route_beacon_rate_hz(distance=0.0):
+    """Pure route-beacon pulse-rate map shared by callback and diagnostics.
+
+    Same shape as :func:`road_beacon_rate_hz` and deliberately so — one learned
+    relationship between rate and closeness — but on the route's own distance scale.
+    """
+    rate_norm = math.exp(-max(0.0, float(distance)) / ROUTE_BEACON_HALF_DIST_M)
+    return ROUTE_BEACON_MIN_RATE_HZ + (
+        ROUTE_BEACON_MAX_RATE_HZ - ROUTE_BEACON_MIN_RATE_HZ
     ) * rate_norm
 
 
@@ -752,6 +788,16 @@ PLACEMENT_PING_AMP_DB = -12.0
 #   PAN is bearing, and nothing else. Level carries no distance information at all -- that
 #     job belongs to time here, and doubling it up on level would only make the far half of
 #     every scan quiet for no added information.
+#   TIMBRE is what the ground IS. It is the only channel left once the other three are spoken
+#     for, which is why surface families are tone colours and never a pitch, a level or a
+#     position. The families are separated on three INDEPENDENT axes rather than on five
+#     shades of one -- brightness (loose < grass < paved < ice < water), roughness (the FM
+#     sidebands, dirt and gravel only) and shimmer (ice's detuned octaves only) -- so a
+#     listener places a surface on scales rather than memorising five sounds. Because the
+#     axes are independent they are also loudness-matched: see _scan_terrain_grain.
+#   RHYTHM belongs to the POI doublet alone. Nothing else in the instrument repeats, and a
+#     repeat is categorical where a timbre is graded -- you never have to decide how
+#     bell-like a thing sounded, only whether it happened once or twice.
 #
 # --- Tuning ---------------------------------------------------------------------------------
 # Pythagorean rather than equal temperament. A landscape is full of repeated intervals --
@@ -787,9 +833,30 @@ SCAN_MAX_RANGE_M = 200.0  # must match SCAN_MAX_RANGE_M in terrainScanner.lua
 SCAN_REF_PING_MS = 250.0  # the calibration ping at middle C
 SCAN_REF_PING_DB = -16.0
 SCAN_REF_LEAD_S = 0.35  # cloud starts here; must exceed the ping's own length
-SCAN_GRAIN_MS = 90.0  # one terrain/water sample
-SCAN_GRAIN_FADE_MS = 8.0  # raised-cosine in and out -- this is the anti-click
-SCAN_PING_MS = 55.0  # one vehicle/prop
+# The grain is LONG and its decay is CONTINUOUS, and those are two different jobs. The old
+# grain was a flat-topped 90 ms window: 8 ms up, 74 ms at full level, 8 ms down. Overlap was
+# never what it lacked -- at 90 ms it already reached past a ring's 83 ms spacing -- what made
+# six hundred grains read as six hundred events is that each one SAT at full level and then
+# stopped. A cubic decay removes the plateau (at half its length the envelope is at 0.125
+# where the flat top is at 1.000), and the extra length then buys the tail that laps the next
+# ring. Measured at 48 kHz: energy centroid 30.1 ms against the old form's 45.0 ms, i.e. the
+# time-is-distance axis gets SHARPER, not blurrier, because the energy moves toward the onset
+# while only the inaudible tail extends. Still above -20 dB of its own peak at 107.2 ms.
+SCAN_GRAIN_MS = 190.0  # one terrain/water sample
+SCAN_GRAIN_ATTACK_MS = 12.0  # the only hard edge left in a grain
+# (1-u)^3 reaches zero WITH ZERO DERIVATIVE at the end of the grain, so the decay is
+# click-free by construction and needs no release taper. Measured last sample 0.0, final
+# slope 1.3e-12. Adding a taper back would be undoing the reason this exponent was chosen.
+SCAN_GRAIN_DECAY_POW = 3.0
+SCAN_GRAIN_FADE_MS = 8.0  # the ping voices' attack; grains no longer have a release edge
+# The reference ping keeps a flat BODY -- it is the pitch everything else is judged against and
+# a listener cannot judge an absolute pitch against a transient. What it gains is the same cubic
+# curve as a RELEASE, so it decays into the cloud instead of stopping dead on an 8 ms cosine.
+# Whole-envelope cubic here would put its energy centroid at 31 ms and turn a 250 ms calibration
+# tone into a click, and at a fixed peak constant would quietly cost it 7.9 dB of RMS.
+SCAN_REF_RELEASE_MS = 90.0
+SCAN_PING_MS = 55.0  # one vehicle
+SCAN_PROP_PING_MS = 22.0  # one prop -- see the kind tag in the O row; bigger thing rings longer
 # Onset jitter, and it is not decoration. Without it every spoke of a given ring fires on
 # the same sample at the same pitch, so flat ground sums perfectly coherently and comes out
 # as twenty-five rhythmic pulses -- the rings themselves become audible as a beat, which is
@@ -816,12 +883,92 @@ SCAN_OBJECT_HARMONICS = (1, 3, 5, 7)  # odd only: hollow and bright, cuts throug
 SCAN_OBJECT_DECAY = 5.0  # 1/e decays across the ping
 SCAN_OBJECT_OCTAVE = 1.0  # transposed up, so pings sit above the bed rather than in it
 
+# --- Surface families ------------------------------------------------------------------------
+# Pitch is elevation, time is distance, pan is bearing, and level carries nothing (see above).
+# All four channels are spoken for, so what the ground IS rides on TIMBRE alone -- on three
+# axes that are independent, so the families are not five shades of one thing:
+#   BRIGHTNESS  paved bright, grass darker, dirt/gravel darkest
+#   ROUGHNESS   FM sidebands, dirt and gravel ONLY -- this is what separates them from grass
+#   SHIMMER     inharmonic partials and a slow beat, ice ONLY
+# Paved and water are unchanged, so nothing already learned is invalidated, and an unknown
+# surface IS paved's tone -- a map with no TerrainBlock renders exactly as it did before.
+# Grass is a MIDDLE tier and has to be audibly one: at the first values tried it landed on a
+# spectral centroid of 1.11 f0 against gravel's 1.10, i.e. indistinguishable from the loose
+# family on brightness, with only the FM left to separate them. Measured now -- loose 1.04
+# (dirt) and 1.10 (gravel), grass 1.21, paved 1.31 -- so the three tiers are ordered and
+# roughly evenly spaced, and grass is still the only one of the three carrying no FM at all.
+SCAN_GRASS_H2_DB = -16.0
+SCAN_GRASS_H3_DB = -26.0
+# Kept at -24 rather than pushed darker: h2 is one of the two partials whose beating IS the
+# roughness (see SCAN_LOOSE_FM_RATIO), so darkening the loose family by dropping it would
+# quietly cost it the cue that distinguishes it from grass.
+SCAN_LOOSE_H2_DB = -24.0
+# The modulator sits BELOW the carrier, so the sidebands land subharmonically and the grain
+# darkens as it roughens. Phase modulation with the modulator locked to the carrier, the same
+# technique _scan_water_grain uses for its vibrato, so the grain keeps ONE pitch -- the
+# elevation channel must not be smeared by the surface channel.
+# 5/6 rather than the obvious 1/2, and the choice is load-bearing. Sidebands land at
+# fc*(1 +/- r): at r = 1/2 the lower one is fc/2, an octave BELOW the fundamental, which a
+# listener reads as a lower note -- i.e. the surface channel leaking into the elevation
+# channel, the one thing that must not happen. At 5/6 it is fc/6, two and a half octaves down
+# and well under the fundamental in level, so it is an under-buzz rather than a pitch. The
+# roughness itself comes from the upper sideband at 11fc/6 beating against the h2 at 2fc, at
+# fc/6 -- 43.6 Hz at middle C, squarely in the psychoacoustic roughness band, which is also
+# why h2 is kept here at all.
+SCAN_LOOSE_FM_RATIO = 5.0 / 6.0
+# Dirt and gravel share the ratio and differ in INDEX, because "gravel is rougher than dirt"
+# is a scale a listener can place a surface on, where two unrelated ratios are two things to
+# memorise. Both are well under 1: J1(I) < J0(I) always, so the sidebands can never overtake
+# the fundamental however the index is nudged.
+SCAN_DIRT_FM_INDEX = 0.35
+SCAN_GRAVEL_FM_INDEX = 0.70
+# Octaves ONLY -- no odd partials at all. That is what separates ice from WATER, which carries
+# every integer harmonic including a strong 3f; brightness alone does not separate them well
+# enough to rely on. The upper pairs are detuned against each other so they beat: shimmer as a
+# consequence of the spectrum rather than as an amplitude envelope bolted on top.
+SCAN_ICE_PARTIALS = ((1.0, 0.0), (2.0, -10.0), (4.0, -16.0), (8.0, -24.0))
+SCAN_ICE_DETUNE_CENTS = 8.0  # 4.8 Hz beat at middle C, 9.7 Hz on the 8f pair: under 20 Hz,
+                             # i.e. shimmer, at every pitch inside the +/-2 octave clamp
+SCAN_ICE_ATTACK_MULT = 2.5  # ice blooms where the others strike
+
+# The wire codes terrainScanner.lua sends. Omission means paved, which is also what an
+# unresolved material means -- see the parse in beamtel.py's terrain_scan_listener.
+# "r" is the nav-graph road overlay and renders IDENTICALLY to paved. It is a separate code
+# only so terrainScanner.lua's diag can answer "how many cells did the overlay override" --
+# a radius-against-the-road-graph rule is a heuristic, and a heuristic whose effect cannot be
+# counted is one nobody can debug.
+SCAN_FAMILY_CODES = {"d": "dirt", "v": "gravel", "g": "grass", "i": "ice", "r": "paved"}
+SCAN_PAVED = "paved"
+# The set _scan_terrain_grain will actually branch on. Anything else on the wire falls back
+# to paved rather than raising, so a newer mod half degrades instead of breaking the scan.
+SCAN_FAMILY_VOICES = frozenset({SCAN_PAVED, "dirt", "gravel", "grass", "ice"})
+
+# --- POI doublets ------------------------------------------------------------------------------
+# Two pings rather than one, because RHYTHM is categorical where timbre is graded: a listener
+# never has to decide how bell-like a thing was, only whether it happened once or twice. Same
+# argument the slam gate's rising earcon makes against the docking lock's falling one.
+# Onset-to-onset is PING + GAP and must stay under one ring's time spacing
+# (SCAN_DURATION_S / (rings - 1) = 83.3 ms today), or the two halves can be heard as two
+# cells one ring apart rather than as one doubled event -- which is the whole cue. 30 + 40
+# is 70 ms, a fast double-tick with 13 ms of margin.
+SCAN_POI_PING_MS = 30.0
+SCAN_POI_GAP_MS = 40.0  # silence between the two halves
+# Ideal-bar modes, i.e. a bell. Inharmonic, so it cannot be mistaken for the object ping's odd
+# harmonics, the water grain's saw, or anything else in the mod.
+SCAN_POI_PARTIALS = (1.0, 2.76, 5.40, 8.93)
+SCAN_POI_DECAY = 6.0
+SCAN_POI_OCTAVE = 1.0  # same register as the object ping: only timbre and rhythm differ
+# BOTH halves are at the SAME pitch. Making the second a fifth above is the obvious "nice"
+# design and it is a violation: pitch is the elevation channel and nothing else may use it.
+# The rhythm is the signature -- nothing else in the instrument repeats.
+
 # The configured level sets the whole cloud; the other two voices are fixed OFFSETS from it
 # rather than levels of their own, so no mix exists in which the terrain bed is inaudible
 # under the pings or the pings vanish into the bed. Same argument the docking pair makes.
 SCAN_TERRAIN_DB = -20.0  # cloud peak; scan_tone_dbfs overrides this
 SCAN_WATER_DB_OFFSET = -3.0  # water is already brighter, so it needs less level to read
 SCAN_OBJECT_DB_OFFSET = 3.0  # pings are the sparse layer and have to stand out
+SCAN_POI_DB_OFFSET = 3.0  # POIs are the sparse layer too
 SCAN_CROSSFADE_MS = 15.0  # replacing an in-flight scan, so a double tap does not click
 
 
@@ -860,28 +1007,112 @@ def scan_pitch_hz(dz_m, octave_offset=0.0):
     )
 
 
-def _scan_envelope(n, sr):
-    """Flat-topped raised-cosine window. The fade is the whole reason there are no clicks,
-    so it is applied to every grain without exception, including ones that land at the very
-    start or the very end of the buffer."""
+def _scan_envelope(n, sr, release_ms=SCAN_REF_RELEASE_MS):
+    """Flat-topped window with a raised-cosine attack and a CUBIC release. Used by the
+    reference ping, which needs a sustained body -- it is the pitch the whole cloud is judged
+    against, and an absolute pitch cannot be judged against a transient. The release is the
+    same (1-u)^3 curve the grains use, so the calibration tone decays into the cloud instead
+    of stopping dead, and it reaches zero with zero derivative so there is nothing to click."""
     env = np.ones(n, dtype=np.float64)
     fade = min(int(sr * SCAN_GRAIN_FADE_MS / 1000.0), n // 2)
     if fade > 0:
-        ramp = 0.5 - 0.5 * np.cos(np.linspace(0.0, math.pi, fade))
-        env[:fade] *= ramp
-        env[-fade:] *= ramp[::-1]
+        env[:fade] *= 0.5 - 0.5 * np.cos(np.linspace(0.0, math.pi, fade))
+    rel = min(int(sr * release_ms / 1000.0), n)
+    if rel > 0:
+        u = np.arange(rel) / float(max(1, rel - 1))
+        env[n - rel :] *= (1.0 - u) ** SCAN_GRAIN_DECAY_POW
     return env
 
 
-def _scan_terrain_grain(freq_hz, sr):
+def _scan_grain_envelope(n, sr, attack_mult=1.0):
+    """The grain window: a short raised-cosine attack times a cubic decay over the WHOLE
+    grain. There is no plateau, and that absence is the entire point -- see the comment on
+    SCAN_GRAIN_MS. `u` runs to exactly 1.0 at the last sample, so the envelope ends at zero
+    value AND zero slope; a release taper here would only undo that."""
+    u = np.arange(n) / float(max(1, n - 1))
+    env = (1.0 - u) ** SCAN_GRAIN_DECAY_POW
+    att = min(int(sr * SCAN_GRAIN_ATTACK_MS * attack_mult / 1000.0), n)
+    if att > 0:
+        env[:att] *= 0.5 - 0.5 * np.cos(np.linspace(0.0, math.pi, att))
+    return env
+
+
+def _scan_family_wave(freq_hz, t, sr, family):
+    """The raw (pre-envelope) waveform for one surface family. Split out from
+    _scan_terrain_grain so the RMS match below can build the paved reference without
+    recursing through the very function that is doing the matching."""
+    nyq = 0.45 * sr
+    if family == "ice":
+        w = np.zeros(len(t), dtype=np.float64)
+        det = 2.0 ** (SCAN_ICE_DETUNE_CENTS / 1200.0)
+        for mult, db in SCAN_ICE_PARTIALS:
+            amp = 10.0 ** (db / 20.0)
+            if mult <= 2.0:
+                if freq_hz * mult < nyq:
+                    w += amp * np.sin(2.0 * math.pi * freq_hz * mult * t)
+                continue
+            # The upper octaves are DETUNED PAIRS, so the shimmer is a consequence of the
+            # spectrum rather than a tremolo bolted on top of it.
+            for f in (freq_hz * mult * det, freq_hz * mult / det):
+                if f < nyq:
+                    w += (amp * 0.5) * np.sin(2.0 * math.pi * f * t)
+        return w
+
+    if family in ("dirt", "gravel"):
+        index = SCAN_DIRT_FM_INDEX if family == "dirt" else SCAN_GRAVEL_FM_INDEX
+        fm = freq_hz * SCAN_LOOSE_FM_RATIO
+        w = np.sin(
+            2.0 * math.pi * freq_hz * t + index * np.sin(2.0 * math.pi * fm * t)
+        )
+        if freq_hz * 2.0 < nyq:
+            w += (10.0 ** (SCAN_LOOSE_H2_DB / 20.0)) * np.sin(4.0 * math.pi * freq_hz * t)
+        return w
+
+    if family == "grass":
+        h2, h3 = SCAN_GRASS_H2_DB, SCAN_GRASS_H3_DB
+    else:
+        h2, h3 = SCAN_TERRAIN_H2_DB, SCAN_TERRAIN_H3_DB
+    w = np.sin(2.0 * math.pi * freq_hz * t)
+    if freq_hz * 2.0 < nyq:
+        w += (10.0 ** (h2 / 20.0)) * np.sin(4.0 * math.pi * freq_hz * t)
+    if freq_hz * 3.0 < nyq:
+        w += (10.0 ** (h3 / 20.0)) * np.sin(6.0 * math.pi * freq_hz * t)
+    return w
+
+
+def _scan_terrain_grain(freq_hz, sr, family=SCAN_PAVED):
+    """One terrain sample. `family` selects TIMBRE and nothing else -- the pitch argument is
+    untouched by it, because pitch is the elevation channel.
+
+    The families are loudness-matched to paved by RMS, and that is what makes "no family is
+    louder than its neighbours" a property of the code rather than of the constants. Peak
+    normalisation alone happens to land within 5% at today's indices, but that is luck at
+    those particular numbers -- measured across the whole +/-2 octave clamp it spreads by
+    over a decibel, and it would stop being true the first time an FM index is nudged.
+
+    The match is TWO-SIDED and deliberately has no peak clamp after it. An attenuate-only
+    rule satisfies the letter of "never louder" and still leaves ice a measured 1.21 dB QUIET
+    at the top of the clamp range, which is level carrying information again -- the thing
+    audio.py's channel list says it must not do. A grain may therefore come out with a peak
+    slightly over 1.0; that is harmless, because the cloud is peak-normalised as a whole
+    afterwards and it is the cloud's peak, not the grain's, that scenario 7 bounds."""
     n = max(1, int(sr * SCAN_GRAIN_MS / 1000.0))
     t = np.arange(n) / float(sr)
-    w = np.sin(2.0 * math.pi * freq_hz * t)
-    w += (10.0 ** (SCAN_TERRAIN_H2_DB / 20.0)) * np.sin(4.0 * math.pi * freq_hz * t)
-    w += (10.0 ** (SCAN_TERRAIN_H3_DB / 20.0)) * np.sin(6.0 * math.pi * freq_hz * t)
-    w *= _scan_envelope(n, sr)
+    mult = SCAN_ICE_ATTACK_MULT if family == "ice" else 1.0
+    w = _scan_family_wave(freq_hz, t, sr, family) * _scan_grain_envelope(n, sr, mult)
     peak = float(np.max(np.abs(w)))
-    return (w / peak if peak > 0 else w).astype(np.float32)
+    if peak > 0:
+        w = w / peak
+    if family != SCAN_PAVED:
+        ref = _scan_family_wave(freq_hz, t, sr, SCAN_PAVED) * _scan_grain_envelope(n, sr)
+        rpeak = float(np.max(np.abs(ref)))
+        if rpeak > 0:
+            ref = ref / rpeak
+        rms = float(np.sqrt(np.mean(w * w)))
+        rms_ref = float(np.sqrt(np.mean(ref * ref)))
+        if rms > 1e-12 and rms_ref > 0.0:
+            w = w * (rms_ref / rms)
+    return w.astype(np.float32)
 
 
 def _scan_water_grain(freq_hz, sr):
@@ -899,13 +1130,22 @@ def _scan_water_grain(freq_hz, sr):
         if freq_hz * k >= nyq:
             break
         w += np.sin(phase * k) / float(k)
-    w *= _scan_envelope(n, sr)
+    w *= _scan_grain_envelope(n, sr)
     peak = float(np.max(np.abs(w)))
     return (w / peak if peak > 0 else w).astype(np.float32)
 
 
-def _scan_object_ping(freq_hz, sr):
-    n = max(1, int(sr * SCAN_PING_MS / 1000.0))
+def _scan_object_ping(freq_hz, sr, kind="v"):
+    """One spawned object. `kind` is the mod's own p/v tag and selects LENGTH only -- a prop
+    ticks, a vehicle rings. Length is an axis nothing else about an object uses, so it costs
+    no new timbre and cannot be confused with the POI doublet's rhythm. The tag was already
+    on the wire and discarded; it is read now.
+
+    The release is the same cubic the grains use, replacing a LINEAR ramp to zero. Linear
+    reaches zero with a non-zero slope, which passes a "starts and ends at silence" check
+    while still producing a faint tick; the cubic reaches zero with zero slope."""
+    ms = SCAN_PROP_PING_MS if kind == "p" else SCAN_PING_MS
+    n = max(1, int(sr * ms / 1000.0))
     t = np.arange(n) / float(sr)
     w = np.zeros(n, dtype=np.float64)
     nyq = 0.45 * sr
@@ -913,11 +1153,44 @@ def _scan_object_ping(freq_hz, sr):
         if freq_hz * k >= nyq:
             break
         w += np.sin(2.0 * math.pi * freq_hz * k * t) / float(k)
-    w *= np.exp(-t * SCAN_OBJECT_DECAY / (SCAN_PING_MS / 1000.0))
+    w *= np.exp(-t * SCAN_OBJECT_DECAY / (ms / 1000.0))
     fade = min(int(sr * SCAN_GRAIN_FADE_MS / 1000.0), n // 2)
     if fade > 0:
         w[:fade] *= 0.5 - 0.5 * np.cos(np.linspace(0.0, math.pi, fade))
-        w[-fade:] *= np.linspace(1.0, 0.0, fade)
+        u = np.arange(fade) / float(max(1, fade - 1))
+        w[-fade:] *= (1.0 - u) ** SCAN_GRAIN_DECAY_POW
+    peak = float(np.max(np.abs(w)))
+    return (w / peak if peak > 0 else w).astype(np.float32)
+
+
+def _scan_poi_doublet(freq_hz, sr):
+    """One map POI: the same short bell struck TWICE.
+
+    Rhythm rather than timbre is what makes it unmistakable, because rhythm is categorical --
+    a listener never has to decide how bell-like a thing sounded, only whether it happened
+    once or twice. The partials are the ideal-bar modes, so it is inharmonic and cannot be
+    confused with the object ping's odd harmonics or the water grain's saw either. Both
+    halves are at the SAME pitch: a rising pair would be the surface channel borrowing the
+    elevation channel."""
+    ping_n = max(1, int(sr * SCAN_POI_PING_MS / 1000.0))
+    gap_n = max(0, int(sr * SCAN_POI_GAP_MS / 1000.0))
+    t = np.arange(ping_n) / float(sr)
+    one = np.zeros(ping_n, dtype=np.float64)
+    nyq = 0.45 * sr
+    for i, mult in enumerate(SCAN_POI_PARTIALS):
+        f = freq_hz * mult
+        if f >= nyq:
+            break
+        one += np.sin(2.0 * math.pi * f * t) / float(i + 1)
+    one *= np.exp(-t * SCAN_POI_DECAY / (SCAN_POI_PING_MS / 1000.0))
+    fade = min(int(sr * SCAN_GRAIN_FADE_MS / 1000.0), ping_n // 2)
+    if fade > 0:
+        one[:fade] *= 0.5 - 0.5 * np.cos(np.linspace(0.0, math.pi, fade))
+        u = np.arange(fade) / float(max(1, fade - 1))
+        one[-fade:] *= (1.0 - u) ** SCAN_GRAIN_DECAY_POW
+    w = np.zeros(ping_n * 2 + gap_n, dtype=np.float64)
+    w[:ping_n] = one
+    w[ping_n + gap_n :] = one
     peak = float(np.max(np.abs(w)))
     return (w / peak if peak > 0 else w).astype(np.float32)
 
@@ -935,7 +1208,9 @@ def _scan_reference_ping(sr):
     return (w * (10.0 ** (SCAN_REF_PING_DB / 20.0))).astype(np.float32)
 
 
-def render_scan(samples, objects, reach_m, sr=DEFAULT_SR, level_db=SCAN_TERRAIN_DB):
+def render_scan(
+    samples, objects, reach_m, sr=DEFAULT_SR, level_db=SCAN_TERRAIN_DB, pois=()
+):
     """Render one whole scan to a finished (N, 2) float32 buffer.
 
     Pure, and called from the LISTENER thread rather than the audio callback. Six hundred
@@ -945,17 +1220,30 @@ def render_scan(samples, objects, reach_m, sr=DEFAULT_SR, level_db=SCAN_TERRAIN_
     fully determined the moment the packet lands. Being pure is also what lets
     diagnostic/terrain_scan_sim.py assert on it with no stream and no clock.
 
-    samples: (bearing_deg, range_m, dz_m, depth_m) -- dz_m None means no surface there,
-             which renders as SILENCE. Zero would mean level ground and would report a
-             plateau where the map simply ends.
-    objects: (bearing_deg, range_m, dz_m)
+    samples: (bearing_deg, range_m, dz_m, depth_m[, family]) -- dz_m None means no surface
+             there, which renders as SILENCE. Zero would mean level ground and would report
+             a plateau where the map simply ends. `family` is a surface name from
+             SCAN_FAMILY_CODES and is OPTIONAL: absent, unrecognised, or SCAN_PAVED all give
+             today's tone, which is what makes a map with no TerrainBlock -- and an older mod
+             half -- render exactly as it did before.
+    objects: (bearing_deg, range_m, dz_m[, kind]) -- kind "p"/"v", defaulting to "v", the
+             safer default because a vehicle is the thing you must not hit.
+    pois:    (bearing_deg, range_m, dz_m)
     """
     if np is None:
         return None
     reach = max(1.0, float(reach_m))
     total_n = (
         int(sr * (SCAN_REF_LEAD_S + SCAN_DURATION_S))
-        + max(int(sr * SCAN_GRAIN_MS / 1000.0), int(sr * SCAN_PING_MS / 1000.0))
+        + max(
+            int(sr * SCAN_GRAIN_MS / 1000.0),
+            int(sr * SCAN_PING_MS / 1000.0),
+            # The doublet is the longest single event whenever the grain is short, so it
+            # belongs in this max even though it is not the longest today -- otherwise
+            # shortening the grain later truncates a POI at the far edge of the scan and
+            # nothing anywhere says so.
+            int(sr * (SCAN_POI_GAP_MS + 2.0 * SCAN_POI_PING_MS) / 1000.0),
+        )
         + int(sr * SCAN_TIME_JITTER_MS / 1000.0)
         + 2
     )
@@ -983,34 +1271,65 @@ def render_scan(samples, objects, reach_m, sr=DEFAULT_SR, level_db=SCAN_TERRAIN_
 
     water_gain = 10.0 ** (SCAN_WATER_DB_OFFSET / 20.0)
     object_gain = 10.0 ** (SCAN_OBJECT_DB_OFFSET / 20.0)
+    poi_gain = 10.0 ** (SCAN_POI_DB_OFFSET / 20.0)
 
-    for bearing_deg, range_m, dz_m, depth_m in samples:
+    for sample in samples:
+        bearing_deg, range_m, dz_m, depth_m = sample[:4]
         if dz_m is None:
             continue  # no surface: silence, never a plateau at level
         # The underscore field is the wire-level water tag. Depth can legitimately be
         # zero where a water surface meets its bed, so its presence -- not its magnitude --
         # selects the brighter water voice.
         is_water = depth_m is not None
+        # Depth is authoritative over the surface family: the material under a lake is not
+        # the thing you are looking at, so water carries no family at all.
+        family = SCAN_PAVED
+        if not is_water and len(sample) > 4 and sample[4]:
+            family = sample[4]
+            if family not in SCAN_FAMILY_VOICES:
+                # A code from a newer mod half. Today's tone, not an error -- bng_mod/ is a
+                # live junction and the two halves genuinely do go out of step.
+                family = SCAN_PAVED
         step = scan_step_from_dz(dz_m)
-        key = ("w" if is_water else "t", step)
+        key = ("w", step) if is_water else ("t", step, family)
         wave = cache.get(key)
         if wave is None:
             hz = scan_pitch_hz(dz_m)
-            wave = _scan_water_grain(hz, sr) if is_water else _scan_terrain_grain(hz, sr)
+            wave = (
+                _scan_water_grain(hz, sr)
+                if is_water
+                else _scan_terrain_grain(hz, sr, family)
+            )
             cache[key] = wave
         t0 = lead + int((min(float(range_m), reach) / reach) * span)
         t0 += int(rng.integers(-jitter_n, jitter_n + 1))
         place(wave, t0, water_gain if is_water else 1.0, -float(bearing_deg) / 90.0)
 
-    for bearing_deg, range_m, dz_m in objects:
+    for obj in objects:
+        bearing_deg, range_m, dz_m = obj[:3]
+        kind = obj[3] if len(obj) > 3 and obj[3] else "v"
+        if kind not in ("p", "v"):
+            kind = "v"
         step = scan_step_from_dz(dz_m)
-        key = ("o", step)
+        key = ("o", step, kind)
         wave = cache.get(key)
         if wave is None:
-            wave = _scan_object_ping(scan_pitch_hz(dz_m, SCAN_OBJECT_OCTAVE), sr)
+            wave = _scan_object_ping(scan_pitch_hz(dz_m, SCAN_OBJECT_OCTAVE), sr, kind)
             cache[key] = wave
         t0 = lead + int((min(float(range_m), reach) / reach) * span)
         place(wave, t0, object_gain, -float(bearing_deg) / 90.0)
+
+    # POIs are placed like objects and for the same reason: they are sparse landmarks, not a
+    # surface, so jittering them would only blur a position that is exactly known.
+    for bearing_deg, range_m, dz_m in pois:
+        step = scan_step_from_dz(dz_m)
+        key = ("P", step)
+        wave = cache.get(key)
+        if wave is None:
+            wave = _scan_poi_doublet(scan_pitch_hz(dz_m, SCAN_POI_OCTAVE), sr)
+            cache[key] = wave
+        t0 = lead + int((min(float(range_m), reach) / reach) * span)
+        place(wave, t0, poi_gain, -float(bearing_deg) / 90.0)
 
     # Normalise the CLOUD, not the finished buffer. The reference ping is a calibration and
     # has to sit at a fixed level whatever the terrain did; normalising the two together
@@ -1057,6 +1376,7 @@ class AudioController:
         self.DROPOFF_SWEEP_WAVEFORM = None  # Terrain drop-off warning
         self.HILL_SWEEP_WAVEFORM = None  # Steep hill warning
         self.ROAD_BEEP_WAVEFORM = None  # Off-road guidance FM beep
+        self.ROUTE_BEACON_WAVEFORM = None  # Route destination homing FM pulse
         self.ROAD_CHIME_FWD_WAVEFORM = (
             None  # G5 orientation chime tone (forward-ish direction)
         )
@@ -1270,6 +1590,7 @@ class AudioController:
         self._road_correction_overlap_L = None
         self._road_correction_overlap_R = None
         self._road_correction_settled_pos = -1
+        self._road_correction_settled_last_time = float("-inf")
         # Orientation chime: list of pending pulses {"delay": int_samples, "L": np.ndarray, "R": np.ndarray, "pos": int}
         self._road_chime_queue = []
         # Earliest monotonic time at which a new chime is allowed to start. Used to pace
@@ -1277,6 +1598,17 @@ class AudioController:
         self._road_chime_next_allowed_time = 0.0
         self._road_junction_queue = []
         self._road_junction_amp = 10.0 ** (ROAD_JUNCTION_AMP_DB / 20.0)
+
+        # Route Beacon State (crow-flies homing on the map route's destination)
+        self._route_beacon_mode_active = False
+        self._route_beacon_available = False
+        self._route_beacon_bearing = 0.0
+        self._route_beacon_distance = 0.0
+        self._route_beacon_timer = 0.0
+        self._route_beacon_playback_pos = -1.0
+        self._route_beacon_pulse_L = None
+        self._route_beacon_pulse_R = None
+        self._route_beacon_amp = 10.0 ** (ROUTE_BEACON_AMP_DB / 20.0)
 
         # NEW: Heading Guidance State
         self._guidance_active = False
@@ -1623,7 +1955,7 @@ class AudioController:
             self._scan_buf = buf
             self._scan_pos = 0
 
-    def render_and_play_scan(self, samples, objects, reach_m):
+    def render_and_play_scan(self, samples, objects, reach_m, pois=()):
         """Render a scan and queue it. Deliberately does the synthesis on the CALLING
         thread -- the UDP listener -- so the audio callback never sees the cost, and so the
         caller needs to know nothing about the configured level or the device sample rate."""
@@ -1634,7 +1966,15 @@ class AudioController:
                 return
             sr = self.samplerate
             level = self._scan_level_db
-        self.play_scan(render_scan(samples, objects, reach_m, sr=sr, level_db=level))
+        started = time.time()
+        buf = render_scan(samples, objects, reach_m, sr=sr, level_db=level, pois=pois)
+        # Logged because this is the number that moves the next time anyone lengthens the
+        # grain, and it is the only warning that the listener thread's budget is going.
+        self.logger.debug(
+            "Terrain scan rendered in %.0f ms (%d samples, %d objects, %d POIs)."
+            % ((time.time() - started) * 1000.0, len(samples), len(objects), len(pois))
+        )
+        self.play_scan(buf)
 
     def stop_scan(self):
         with self.lock:
@@ -1754,6 +2094,7 @@ class AudioController:
                 self._road_pulse_R = None
                 self._stop_road_correction_voice()
                 self._road_correction_settled_pos = -1
+                self._road_correction_settled_last_time = float("-inf")
                 self._road_chime_queue = []
                 self._road_junction_queue = []
                 self._road_chime_next_allowed_time = 0.0
@@ -1770,8 +2111,45 @@ class AudioController:
             self._road_pulse_R = None
             self._stop_road_correction_voice()
             self._road_correction_settled_pos = -1
+            self._road_correction_settled_last_time = float("-inf")
             self._road_chime_queue = []
             self._road_junction_queue = []
+
+    def set_route_beacon_mode(self, is_active):
+        """Arm or silence the route beacon. The user's toggle, nothing else."""
+        with self.lock:
+            self._route_beacon_mode_active = bool(is_active)
+            if not self._route_beacon_mode_active:
+                self._silence_route_beacon()
+
+    def _silence_route_beacon(self):
+        """Drop the beacon's voice. Caller holds the lock.
+
+        Clearing the pulse buffers as well as the position matters: a bearing already
+        convolved into them is a statement about where the destination was, and leaving
+        it to be mixed on some later frame is how a stale direction gets sounded once
+        after the route has gone.
+        """
+        self._route_beacon_available = False
+        self._route_beacon_timer = 0.0
+        self._route_beacon_playback_pos = -1.0
+        self._route_beacon_pulse_L = None
+        self._route_beacon_pulse_R = None
+
+    def update_route_beacon(self, available, bearing_deg=0.0, distance_m=0.0):
+        """Feed the live crow-flies bearing and range to the route's destination.
+
+        ``available`` is false for "no route set", for a feed that has aged out, and
+        for a destination we are standing on -- all three mean the same thing to the
+        renderer, which is silence.
+        """
+        with self.lock:
+            self._route_beacon_available = bool(available)
+            if not self._route_beacon_available:
+                self._silence_route_beacon()
+                return
+            self._route_beacon_bearing = float(bearing_deg)
+            self._route_beacon_distance = max(0.0, float(distance_m))
 
     def _render_directional_pulse(self, base_pulse, bearing_deg):
         """HRTF-convolve (or stereo-pan as fallback) a mono pulse at the given bearing."""
@@ -1982,6 +2360,7 @@ class AudioController:
 
     def update_road_guidance(self, state, off_road, correction, follow_enabled=True):
         """Apply one validated R2 state to the road audio renderer."""
+        settled_triggered = False
         with self.lock:
             was_off = not self._road_on_road
             was_correction_active = self._road_correction_active
@@ -2018,15 +2397,19 @@ class AudioController:
                 # centred unwind doublet must not inherit the directional pip's
                 # silent part of its cycle or its HRTF tail.
                 self._stop_road_correction_voice()
-            if (
-                state == "onRoad"
-                and self._road_follow_enabled
-                and correction
-                and correction.get("settled")
-                and self.ROAD_CORRECTION_SETTLED_WAVEFORM is not None
+            if state == "onRoad" and self._road_follow_enabled and correction and correction.get(
+                "settled"
             ):
                 self._stop_road_correction_voice()
-                self._road_correction_settled_pos = 0
+                now = time.monotonic()
+                if (
+                    self.ROAD_CORRECTION_SETTLED_WAVEFORM is not None
+                    and now - self._road_correction_settled_last_time
+                    >= ROAD_CORRECTION_SETTLED_REFRACTORY_S
+                ):
+                    self._road_correction_settled_pos = 0
+                    self._road_correction_settled_last_time = now
+                    settled_triggered = True
             if state != "onRoad":
                 # Off-road acquisition owns the pulsed beacon, while dormant has
                 # no road voice. Never let correction or its HRTF tail bleed into
@@ -2035,6 +2418,7 @@ class AudioController:
                 self._road_correction_phase = "idle"
                 self._stop_road_correction_voice()
                 self._road_correction_settled_pos = -1
+                self._road_correction_settled_last_time = float("-inf")
             if self._road_on_road and was_off:
                 # Just rejoined the road — kill any pending pulse
                 self._road_playback_pos = -1.0
@@ -2045,6 +2429,7 @@ class AudioController:
                 self._road_playback_pos = -1.0
                 self._road_pulse_L = None
                 self._road_pulse_R = None
+        return {"settled_triggered": settled_triggered}
 
     def clear_obstacles(self):
         """Clear all obstacle data (no obstacles detected)."""
@@ -2167,6 +2552,11 @@ class AudioController:
         correction_db = float(cfg.get("road_correction_volume_db", -24.0))
         self._road_correction_amp = float(10.0 ** (correction_db / 20.0))
         self.ROAD_BEEP_WAVEFORM = self._generate_road_beep()
+        # Route beacon volume. Assigned here AND in _regenerate_waveforms: a source
+        # registered in only one of the two is silently dropped by the next config change.
+        beacon_db = float(cfg.get("route_beacon_volume_db", ROUTE_BEACON_AMP_DB))
+        self._route_beacon_amp = float(10.0 ** (beacon_db / 20.0))
+        self.ROUTE_BEACON_WAVEFORM = self._generate_route_beacon_pulse()
         self.ROAD_CHIME_FWD_WAVEFORM = self._generate_road_chime_tone(
             ROAD_CHIME_FWD_FREQ_HZ
         )
@@ -2577,6 +2967,7 @@ class AudioController:
         self.DROPOFF_SWEEP_WAVEFORM = self._generate_dropoff_sweep()
         self.HILL_SWEEP_WAVEFORM = self._generate_hill_sweep()
         self.ROAD_BEEP_WAVEFORM = self._generate_road_beep()
+        self.ROUTE_BEACON_WAVEFORM = self._generate_route_beacon_pulse()
         self.ROAD_CHIME_FWD_WAVEFORM = self._generate_road_chime_tone(
             ROAD_CHIME_FWD_FREQ_HZ
         )
@@ -3023,6 +3414,24 @@ class AudioController:
         envelope = attack * decay
         return (wave * envelope * self._road_amp).astype(np.float32)
 
+    def _generate_route_beacon_pulse(self):
+        """Route beacon: C5 carrier with an octave-above FM modulator.
+
+        A soft bell rather than the road beep's growl, with a slower attack — this one
+        runs continuously for as long as a route is set, so it has to sit under the
+        driving rather than punch through it the way a short-range cue does."""
+        dur_samples = int(self.samplerate * ROUTE_BEACON_DUR_MS / 1000.0)
+        if dur_samples <= 0:
+            return None
+        t = np.linspace(0, ROUTE_BEACON_DUR_MS / 1000.0, dur_samples, endpoint=False)
+        mod_env = ROUTE_BEACON_MOD_INDEX * np.exp(-18.0 * t)
+        modulator = mod_env * np.sin(2.0 * np.pi * ROUTE_BEACON_MOD_HZ * t)
+        wave = np.sin(2.0 * np.pi * ROUTE_BEACON_FREQ_HZ * t + modulator)
+        attack = 1.0 - np.exp(-120.0 * t)
+        decay = np.exp(-16.0 * t)
+        envelope = attack * decay
+        return (wave * envelope * self._route_beacon_amp).astype(np.float32)
+
     def _generate_road_chime_tone(self, freq_hz):
         """Orientation chime tone: sine carrier at freq_hz with a 1:1 FM modulator whose index
         starts high (clicky attack) and decays sharply to a low sustained value (gentle warmth).
@@ -3293,6 +3702,10 @@ class AudioController:
             road_correction_bearing = self._road_correction_bearing
             road_correction_severity = self._road_correction_severity
             road_correction_phase = self._road_correction_phase
+            route_beacon_on = self._route_beacon_mode_active
+            route_beacon_have = self._route_beacon_available
+            route_beacon_bearing = self._route_beacon_bearing
+            route_beacon_distance = self._route_beacon_distance
             obstacle_duck = obstacle_duck_gain(
                 obstacle_hazard.get("state", 0) if obstacle_hazard else 0
             )
@@ -4630,6 +5043,53 @@ class AudioController:
             self._road_playback_pos = -1.0
             self._road_pulse_L = None
             self._road_pulse_R = None
+
+        # The route beacon: where the map route's destination is, as the crow flies.
+        # Structurally the road beacon above -- rate timer, one convolved pulse, mixed
+        # across block boundaries -- because one learned relationship between pulse rate
+        # and closeness is worth more than a second instrument. What differs is the
+        # distance scale and the timbre, and both differences are load-bearing: the two
+        # can sound simultaneously and point different ways.
+        route_beacon_active = route_beacon_on and route_beacon_have
+        if route_beacon_active and self.ROUTE_BEACON_WAVEFORM is not None:
+            base_pulse = self.ROUTE_BEACON_WAVEFORM
+            dt_rb = frames / self.samplerate
+            rate_hz = route_beacon_rate_hz(distance=route_beacon_distance)
+            interval_sec = 1.0 / max(0.01, rate_hz)
+
+            self._route_beacon_timer += dt_rb
+            if self._route_beacon_timer >= interval_sec:
+                self._route_beacon_timer = 0.0
+                # Convolved once per pulse at the bearing current when it fires, not
+                # per block: a pulse is a single event and re-aiming it mid-flight would
+                # smear the image the HRTF exists to place.
+                (
+                    self._route_beacon_pulse_L,
+                    self._route_beacon_pulse_R,
+                ) = self._render_directional_pulse(base_pulse, route_beacon_bearing)
+                self._route_beacon_playback_pos = 0.0
+
+            if (
+                self._route_beacon_playback_pos >= 0
+                and self._route_beacon_pulse_L is not None
+            ):
+                pulse_L = self._route_beacon_pulse_L
+                pulse_R = self._route_beacon_pulse_R
+                pulse_len = len(pulse_L)
+                start_i = int(self._route_beacon_playback_pos)
+                num_to_mix = min(frames, pulse_len - start_i)
+                if num_to_mix > 0:
+                    bufL[:num_to_mix] += pulse_L[start_i : start_i + num_to_mix]
+                    bufR[:num_to_mix] += pulse_R[start_i : start_i + num_to_mix]
+                next_pos = start_i + frames
+                self._route_beacon_playback_pos = (
+                    float(next_pos) if next_pos < pulse_len else -1.0
+                )
+
+        if not route_beacon_active and self._route_beacon_playback_pos >= 0:
+            self._route_beacon_playback_pos = -1.0
+            self._route_beacon_pulse_L = None
+            self._route_beacon_pulse_R = None
 
         # Directional correction pips say to apply steering; a centred repeating
         # doublet is the explicit instruction to unwind. The frontal arc keeps a

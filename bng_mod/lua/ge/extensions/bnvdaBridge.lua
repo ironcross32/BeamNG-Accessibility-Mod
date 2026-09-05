@@ -108,6 +108,20 @@ function M.sendFromUI(payload)
   enqueue(payload)
 end
 
+-- GE extensions use the same reliable newline-framed transport as the UI.
+-- Accepting a table here keeps lifecycle producers away from hand-built JSON.
+function M.sendFromGE(payload)
+  if state ~= 'connected' then return false end
+  if type(payload) == 'table' then
+    local ok, encoded = pcall(jsonEncode, payload)
+    if not ok or type(encoded) ~= 'string' then return false end
+    payload = encoded
+  end
+  if type(payload) ~= 'string' then return false end
+  enqueue(payload)
+  return true
+end
+
 local function pumpWrites()
   while client and state == 'connected' do
     if not currentFrame then

@@ -1853,6 +1853,7 @@ export function installBNVDA($rootScope, dependencies) {
           var _vueWatchScreen = null;
           var _vueWatchSignature = '';
           var _vueWatchElement = null;
+          var _activityStartSignature = '';
           var _vueConfigFocusEntry = true;
           var _vueOptionsOkDown = false;
           var _vueOptionsActivation = 0;
@@ -1928,6 +1929,8 @@ export function installBNVDA($rootScope, dependencies) {
           }
 
           function vueScreenRoot() {
+            var missionMarker = document.querySelector('.activity-start, .mission-details-layout');
+            if (missionMarker) return missionMarker;
             var configMarker = document.querySelector('.pause-tab-combined, .vehcfg, .parts-browser, .innerTuningCard, .paint-acc-wrapper, .saveload, .parts-packs, .mirrors-card, .adjustment-container, [class*="configuration-combined"], [class*="vehicle-configuration"]');
             if (configMarker && (isVehicleConfigRoute() || closest(configMarker, '.vehcfg, .mirrors-card, [class*="configuration-combined"], [class*="vehicle-configuration"]'))) {
               return closest(configMarker, '.pause-tab-combined, .vehcfg, .mirrors-card, [class*="configuration-combined"], [class*="vehicle-configuration"], #vue-app, .vue-app, main, [role="main"]') || configMarker;
@@ -1957,6 +1960,28 @@ export function installBNVDA($rootScope, dependencies) {
               }
             }
             return null;
+          }
+
+          function activityStartText(root) {
+            if (!root || !root.matches || !root.matches('.activity-start')) return '';
+            var parts = ['Challenge available'];
+            var heading = root.querySelector('.bng-screen-heading');
+            var headingText = cleanText(heading && heading.innerText);
+            if (headingText) parts.push(headingText);
+            var props = toArray(root.querySelectorAll('.activity-props .info-item'));
+            for (var i = 0; i < props.length; i++) {
+              var propText = cleanText(props[i].innerText);
+              if (propText) parts.push(propText);
+            }
+            var buttons = toArray(root.querySelectorAll('.bng-button, button'));
+            var labels = [];
+            for (var j = 0; j < buttons.length; j++) {
+              var buttonText = cleanText(buttons[j].innerText);
+              if (buttonText && labels.indexOf(buttonText) === -1) labels.push(buttonText);
+            }
+            if (labels.length) parts.push('Actions: ' + labels.join(', '));
+            parts.push('Use gameplay interact to start, or Back to close');
+            return parts.join('. ');
           }
 
           function vueOwnLabel(el) {
@@ -3529,6 +3554,7 @@ export function installBNVDA($rootScope, dependencies) {
               var root = vueScreenRoot();
               updateTuningSliderDebounce(root);
               if (!root) {
+                _activityStartSignature = '';
                 clearPartsDropdownActivation(false);
                 _partsDropdownPopup = null;
                 cancelPartsSearchFocus(false);
@@ -3550,6 +3576,16 @@ export function installBNVDA($rootScope, dependencies) {
               // pure sampling jitter to every focus move, and quantized the
               // nav-burst interval measurements on the first item of a sweep.
               nextDelay = NAV_POLL_FAST_MS;
+              var activityText = activityStartText(root);
+              if (activityText) {
+                if (activityText !== _activityStartSignature) {
+                  _activityStartSignature = activityText;
+                  scheduleSpeak(activityText, P.CONTROLLER);
+                }
+                scheduleVuePoll(nextDelay);
+                return;
+              }
+              _activityStartSignature = '';
               var bindingPopup = vueBindingEditorPopup();
               // Speaks only on a CHANGE of the conflict set, and resets itself
               // when the popup goes away, so this costs one class-selector miss

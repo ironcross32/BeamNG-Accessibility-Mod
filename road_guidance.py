@@ -118,6 +118,70 @@ def parse_r2_packet(text):
         if "timeToEdge" in correction:
             correction["timeToEdge"] = max(0.0, correction["timeToEdge"])
 
+    diagnostic = packet.get("diagnostic")
+    if diagnostic is not None:
+        if not isinstance(diagnostic, dict):
+            raise ValueError("diagnostic must be an object or null")
+        parsed_diagnostic = {}
+        for field in (
+            "edgeT",
+            "roadRadius",
+            "signedLateral",
+            "lateralDistance",
+            "lateralRatio",
+            "lateralSpeed",
+            "predictedLateral",
+            "predictedRatio",
+            "predictionSeconds",
+            "targetSide",
+            "targetOffset",
+            "targetError",
+            "targetTolerance",
+            "settledHeadingTolerance",
+            "settledLateralSpeedTolerance",
+            "headingError",
+            "correctionBearing",
+            "secondsToTarget",
+            "outwardSpeed",
+            "timeToEdge",
+            "speed",
+            "clearTicksBefore",
+            "clearTicksAfter",
+            "rearmTicks",
+            "steeringInput",
+            "steering",
+        ):
+            if field in diagnostic:
+                parsed_diagnostic[field] = _finite_number(
+                    diagnostic[field], f"diagnostic.{field}"
+                )
+        for field in (
+            "activeBefore",
+            "shouldEnter",
+            "withinLateral",
+            "withinHeading",
+            "withinLateralSpeed",
+            "settledCandidate",
+            "inDecisionZone",
+            "correctionArmed",
+        ):
+            if field in diagnostic:
+                value = diagnostic[field]
+                if not isinstance(value, bool):
+                    raise ValueError(f"diagnostic.{field} must be boolean")
+                parsed_diagnostic[field] = value
+        edge_id = diagnostic.get("edgeId")
+        if edge_id is not None:
+            if not isinstance(edge_id, str) or len(edge_id) > 200:
+                raise ValueError("diagnostic.edgeId must be a short string")
+            parsed_diagnostic["edgeId"] = edge_id
+        contact_materials = diagnostic.get("contactMaterials")
+        if contact_materials is not None:
+            if not isinstance(contact_materials, str) or len(contact_materials) > 500:
+                raise ValueError("diagnostic.contactMaterials must be a short string")
+            parsed_diagnostic["contactMaterials"] = contact_materials
+        diagnostic = parsed_diagnostic
+
     junction = packet.get("junction")
     if junction is not None:
         if not isinstance(junction, dict):
@@ -152,6 +216,7 @@ def parse_r2_packet(text):
         "roadDirections": directions,
         "offRoad": off_road,
         "correction": correction,
+        "diagnostic": diagnostic,
         "junction": junction,
         # Optional extension used to re-arm orientation after a vehicle/world reload
         # even when the wire state remains onRoad throughout.
