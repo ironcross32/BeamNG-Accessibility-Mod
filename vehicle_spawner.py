@@ -96,6 +96,7 @@ from typing import Any, Callable
 
 try:
     import keyboard  # type: ignore
+
     _KEYBOARD_OK = True
 except Exception:
     keyboard = None  # type: ignore
@@ -106,29 +107,51 @@ except Exception:
 #  Configuration
 # =============================================================================
 
-DATA_PORT = 4460   # receive from Lua
-CMD_PORT  = 4461   # send to Lua
+DATA_PORT = 4460  # receive from Lua
+CMD_PORT = 4461  # send to Lua
 
 # --- Placement editor -------------------------------------------------------
-# Ticker period. Each tick applies one step per held axis, so this is also the
-# maximum ping rate (8/sec) — fast enough to feel continuous, slow enough that
-# successive pings stay individually audible.
-PLACE_TICK_SEC = 0.125
+# Ticker quantum. This is the scheduling granularity for hold-to-repeat, not the
+# repeat rate — each held key carries its own next-due time. Small enough that
+# the 35 ms floor is hit within a few milliseconds. time.sleep() has ~1 ms
+# accuracy on Windows from CPython 3.11 (this project's floor), which is what
+# makes a quantum this fine worth asking for.
+PLACE_TICK_SEC = 0.005
 
 # How long a key must be held before the ticker starts repeating. Below this, a
 # press is a "tap" and moves exactly one unit.
-PLACE_HOLD_DELAY_SEC = 0.35
+PLACE_HOLD_DELAY_SEC = 0.3
 
-# (seconds_held, translation_step_ft, rotation_step_deg). Scanned from the bottom
-# up, so the last entry whose threshold is met wins. Rotation caps at 45 degrees —
-# a held key that stepped by thousands of degrees would just spin uselessly.
-PLACE_LADDER = [
-    (0.35, 1,     1),
-    (1.2,  10,    10),
-    (2.4,  100,   45),
-    (3.6,  1000,  45),
-    (4.8,  10000, 45),
-]
+# A held key accelerates in TIME, never in magnitude: the step is whatever the
+# user selected with 1-4 (or the rotation modifier), and only the interval
+# between steps shortens. Escalating the magnitude instead — which is what this
+# editor used to do — makes the value you land on a function of reaction time,
+# so a key held a moment too long jumps by a thousand feet and cannot be aimed.
+PLACE_REPEAT_START_SEC = 0.125  # first repeat interval
+PLACE_REPEAT_MIN_SEC = 0.035  # floor
+PLACE_REPEAT_RAMP_SEC = 1.5  # start -> floor, measured from the first repeat
+
+# Number-row 1-4 -> feet per translation step. Rotation deliberately ignores this
+# (see _place_rot_step): a rotation has no thousands, and the modifier keys give
+# it three steps of its own without spending a second concept on it.
+PLACE_UNIT_STEPS = {"1": 1, "2": 10, "3": 100, "4": 1000}
+
+# Degrees per rotation step, chosen by the modifier held at the moment of press.
+PLACE_ROT_STEP_DEG = 45  # bare
+PLACE_ROT_STEP_FINE_DEG = 1  # Ctrl
+PLACE_ROT_STEP_COARSE_DEG = 90  # Shift
+
+# Value boundaries that earn a ping, and the PLACEMENT_PING_RUNGS index each maps
+# to. Highest crossing wins, so 1000 sounds as a thousand rather than as a ten.
+PLACE_CROSS_RUNGS = ((10000, 4), (1000, 3), (100, 2), (10, 1))
+
+# A rotation step's own ping rung, since the wrapped angle has no crossings to
+# read. Keeps the modifier audible without a fourth concept.
+PLACE_ROT_STEP_RUNGS = {
+    PLACE_ROT_STEP_FINE_DEG: 0,
+    PLACE_ROT_STEP_DEG: 1,
+    PLACE_ROT_STEP_COARSE_DEG: 2,
+}
 
 # Silence after the last movement before the position is spoken automatically.
 PLACE_IDLE_READOUT_SEC = 1.2
@@ -141,46 +164,50 @@ PLACE_PITCH_DOWN = 0.6
 
 # key name -> (axis, direction). Axes: fwd/right/up translate; pitch/roll/yaw rotate.
 PLACE_KEY_AXES = {
-    "up":        ("fwd",   +1),
-    "down":      ("fwd",   -1),
-    "right":     ("right", +1),
-    "left":      ("right", -1),
-    "page up":   ("up",    +1),
-    "page down": ("up",    -1),
-    "s":         ("pitch", +1),
-    "w":         ("pitch", -1),
-    "d":         ("roll",  +1),
-    "a":         ("roll",  -1),
-    "q":         ("yaw",   +1),
-    "e":         ("yaw",   -1),
+    "up": ("fwd", +1),
+    "down": ("fwd", -1),
+    "right": ("right", +1),
+    "left": ("right", -1),
+    "page up": ("up", +1),
+    "page down": ("up", -1),
+    "s": ("pitch", +1),
+    "w": ("pitch", -1),
+    "d": ("roll", +1),
+    "a": ("roll", -1),
+    "q": ("yaw", +1),
+    "e": ("yaw", -1),
 }
 
 # Sign conventions for the stored angles, matching a right-handed rotation about
 # each of the anchor's axes: +pitch = nose up, +roll = right side down,
 # +yaw = nose swings left. (field, noun, positive_word, negative_word)
 PLACE_ROT_WORDS = [
-    ("rotYawDeg",   "yaw",  "left", "right"),
-    ("rotPitchDeg", "nose", "up",   "down"),
-    ("rotRollDeg",  "roll", "right", "left"),
+    ("rotYawDeg", "yaw", "left", "right"),
+    ("rotPitchDeg", "nose", "up", "down"),
+    ("rotRollDeg", "roll", "right", "left"),
 ]
 
 PLACE_TRANSLATE_AXES = ("fwd", "right", "up")
 
 # Which item field each axis accumulates into.
 PLACE_AXIS_FIELDS = {
-    "fwd":   "offFwdFt",
+    "fwd": "offFwdFt",
     "right": "offRightFt",
-    "up":    "offUpFt",
+    "up": "offUpFt",
     "pitch": "rotPitchDeg",
-    "roll":  "rotRollDeg",
-    "yaw":   "rotYawDeg",
+    "roll": "rotRollDeg",
+    "yaw": "rotYawDeg",
 }
 
-# Default offset for a newly queued item: 15 ft to the right of the anchor, so an
+# Default offset for a newly queued item: 25 ft in front of the anchor, so an
 # item the user never opens the editor on still spawns clear of it.
 PLACE_DEFAULTS = {
-    "offFwdFt": 0, "offRightFt": 15, "offUpFt": 0,
-    "rotPitchDeg": 0, "rotRollDeg": 0, "rotYawDeg": 0,
+    "offFwdFt": 25,
+    "offRightFt": 0,
+    "offUpFt": 0,
+    "rotPitchDeg": 0,
+    "rotRollDeg": 0,
+    "rotYawDeg": 0,
 }
 
 # Filter categories — pulled from catalog metadata fields.
@@ -189,22 +216,54 @@ PLACE_DEFAULTS = {
 # has Config Type == "Police". The field is only populated ("Yes") on police
 # vehicles, so checking it filters down to police-equipped vehicles only.
 FILTER_CATEGORIES = [
-    ("police",     "Police"),
-    ("type",       "Type"),
-    ("brand",      "Brand"),
-    ("bodyStyle",  "Body style"),
+    ("police", "Police"),
+    ("type", "Type"),
+    ("brand", "Brand"),
+    ("bodyStyle", "Body style"),
     ("drivetrain", "Drivetrain"),
     ("propulsion", "Propulsion"),
-    ("country",    "Country"),
+    ("country", "Country"),
 ]
 
 # (type_key, display_label, [(variant_key, variant_label), ...])
 ARRANGE_TYPES: list[tuple[str, str, list[tuple[str, str]]]] = [
-    ("line",          "Line",          [("start", "Anchor at front"), ("end", "Anchor at back"), ("middle", "Anchor in middle")]),
-    ("side_by_side",  "Side by side",  [("left",  "Anchor at left"),  ("right", "Anchor at right"), ("middle", "Anchor in middle")]),
-    ("two_columns",   "Two columns",   [("front", "Anchor at front"), ("middle", "Anchor in middle"), ("back", "Anchor at back")]),
-    ("three_columns", "Three columns", [("front", "Anchor at front"), ("middle", "Anchor in middle"), ("back", "Anchor at back")]),
-    ("boxed_in",      "Boxed in",      [("middle", "Anchor in center")]),
+    (
+        "line",
+        "Line",
+        [
+            ("start", "Anchor at front"),
+            ("end", "Anchor at back"),
+            ("middle", "Anchor in middle"),
+        ],
+    ),
+    (
+        "side_by_side",
+        "Side by side",
+        [
+            ("left", "Anchor at left"),
+            ("right", "Anchor at right"),
+            ("middle", "Anchor in middle"),
+        ],
+    ),
+    (
+        "two_columns",
+        "Two columns",
+        [
+            ("front", "Anchor at front"),
+            ("middle", "Anchor in middle"),
+            ("back", "Anchor at back"),
+        ],
+    ),
+    (
+        "three_columns",
+        "Three columns",
+        [
+            ("front", "Anchor at front"),
+            ("middle", "Anchor in middle"),
+            ("back", "Anchor at back"),
+        ],
+    ),
+    ("boxed_in", "Boxed in", [("middle", "Anchor in center")]),
 ]
 
 
@@ -247,7 +306,7 @@ _catalog_expected = 0
 _catalog_ready = threading.Event()
 
 # Active vehicle list for "mark a vehicle"
-_active_vehicles: list[tuple[int, str]] = []   # (vehId, modelName)
+_active_vehicles: list[tuple[int, str]] = []  # (vehId, modelName)
 _active_vehicles_event = threading.Event()
 
 # Modal state
@@ -256,10 +315,10 @@ _hook_handles: list = []
 
 # Filter state: { category_key: set(values_selected) } — empty set means "no filter"
 _filters: dict[str, set[str]] = {}
-_filter_draft: dict[str, set[str]] | None = None   # snapshot used while in filter dialog
+_filter_draft: dict[str, set[str]] | None = None  # snapshot used while in filter dialog
 
 # Per-screen cursors
-_screen = "main"        # main | configs | to_spawn | manage | filter | place3d | ref | mark_picker | replace_slot | arrange | spacing_edit
+_screen = "main"  # main | configs | to_spawn | manage | filter | place3d | ref | mark_picker | replace_slot | arrange | spacing_edit
 _idx_main = 0
 _idx_configs = 0
 _idx_to_spawn = 0
@@ -269,8 +328,8 @@ _idx_mark = 0
 _idx_manage = 0
 
 # Manage screen state
-_manage_vehicles: list[tuple[int, str]] = []   # snapshot at last refresh
-_manage_selected: set[int] = set()             # vehicle ids selected
+_manage_vehicles: list[tuple[int, str]] = []  # snapshot at last refresh
+_manage_selected: set[int] = set()  # vehicle ids selected
 
 # Currently drilled-into vehicle on main screen
 _drill_vehicle: dict[str, Any] | None = None
@@ -291,7 +350,7 @@ _info_return_screen = "main"
 _to_spawn: list[dict[str, Any]] = []
 
 # Placement wizard scratch state
-_wizard_target_idx: int | None = None     # which item in _to_spawn is being configured
+_wizard_target_idx: int | None = None  # which item in _to_spawn is being configured
 _wizard_ref_mode: str | None = None
 _wizard_ref_veh_id: int | None = None
 _wizard_ref_name: str | None = None
@@ -315,10 +374,13 @@ _place_launch_mode = "standard"
 _place_lock = threading.RLock()
 _place_values: dict[str, int] = dict(PLACE_DEFAULTS)
 _place_snapshot: dict[str, int] = dict(PLACE_DEFAULTS)
-_place_held: dict[str, float] = {}        # key name -> time.monotonic() at press
-_place_last_step: float = 0.0             # when the last step was applied
-_place_readout_pending = False            # armed by a step, disarmed once spoken
-_place_active = threading.Event()         # set while the editor screen is up
+# key name -> {"t": press time, "next": monotonic due time for the next repeat,
+# "rot_step": degrees, resolved from the modifiers at press and frozen there}
+_place_held: dict[str, dict] = {}
+_place_unit_step: int = 1  # feet per translation step; reset to 1 on every entry
+_place_last_step: float = 0.0  # when the last step was applied
+_place_readout_pending = False  # armed by a step, disarmed once spoken
+_place_active = threading.Event()  # set while the editor screen is up
 _place_ticker_thread: threading.Thread | None = None
 
 # When in mark_picker, what we'll write the marked id back into
@@ -326,8 +388,10 @@ _mark_target_idx: int | None = None
 
 # Replace-in-place state
 _idx_replace_slot = 0
-_pending_replace_item: "dict[str, Any] | None" = None   # item assembled on configs screen, awaiting slot pick
-_replace_editing_idx: "int | None" = None               # to_spawn index being reassigned via X key
+_pending_replace_item: "dict[str, Any] | None" = (
+    None  # item assembled on configs screen, awaiting slot pick
+)
+_replace_editing_idx: "int | None" = None  # to_spawn index being reassigned via X key
 
 # When set, the next ACTIVE_VEHICLES packet should re-speak the manage cursor
 # (used when entering the manage page — we can't block the keyboard hook
@@ -337,14 +401,15 @@ _pending_manage_announce: bool = False
 # Arrangement screen state
 _arrange_type_idx: int = 0
 _arrange_variant_idx: int = 0
-_idx_arrange: int = 0               # cursor over 5 rows: type/variant/spacing/queue_btn/active_btn
+_idx_arrange: int = 0  # cursor over 5 rows: type/variant/spacing/queue_btn/active_btn
 _arrange_return_screen: str = "main"
-_player_veh_id: int | None = None   # updated from PLAYER_VEH_ID: Lua response
+_player_veh_id: int | None = None  # updated from PLAYER_VEH_ID: Lua response
 
 
 # =============================================================================
 #  Utilities
 # =============================================================================
+
 
 class _DigitField:
     """Five-digit odometer-style numeric editor for distances in feet.
@@ -354,6 +419,7 @@ class _DigitField:
     values from 0 to 99999 feet. Position 0 is the most significant (leftmost)
     digit.
     """
+
     NDIGITS = 5
 
     def __init__(self, value: int = 15):
@@ -365,7 +431,7 @@ class _DigitField:
             value = int(value)
         except (TypeError, ValueError):
             value = 0
-        value = max(0, min(value, 10 ** self.NDIGITS - 1))
+        value = max(0, min(value, 10**self.NDIGITS - 1))
         s = str(value).rjust(self.NDIGITS, "0")
         self.digits = [int(c) for c in s]
 
@@ -465,6 +531,7 @@ def _send_cmd(cmd: str):
 #  UDP Listener
 # =============================================================================
 
+
 def _listener_loop(stop_event: threading.Event):
     global _listener_sock, _catalog, _catalog_building, _catalog_expected
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -518,7 +585,7 @@ def _handle_packet(text: str):
 
     if text.startswith("CATALOG_ITEM:"):
         try:
-            obj = json.loads(text[len("CATALOG_ITEM:"):])
+            obj = json.loads(text[len("CATALOG_ITEM:") :])
         except Exception as e:
             _logw(f"vehicle_spawner: bad catalog item: {e}")
             return
@@ -547,6 +614,7 @@ def _handle_packet(text: str):
                 else:
                     display = name
                 return (is_prop, display.lower())
+
             _catalog = sorted(_catalog_building, key=_sort_key)
             _catalog_building = []
             _catalog_ready.set()
@@ -554,11 +622,11 @@ def _handle_packet(text: str):
         return
 
     if text.startswith("CATALOG_ERR:"):
-        _logw(f"vehicle_spawner: catalog error: {text[len('CATALOG_ERR:'):]}")
+        _logw(f"vehicle_spawner: catalog error: {text[len('CATALOG_ERR:') :]}")
         return
 
     if text.startswith("ACTIVE_VEHICLES:"):
-        payload = text[len("ACTIVE_VEHICLES:"):]
+        payload = text[len("ACTIVE_VEHICLES:") :]
         entries = []
         if payload:
             for part in payload.split(";"):
@@ -591,7 +659,7 @@ def _handle_packet(text: str):
         return
 
     if text.startswith("RELOAD_DONE:"):
-        body = text[len("RELOAD_DONE:"):]
+        body = text[len("RELOAD_DONE:") :]
         parts = body.split(",")
         if len(parts) == 2:
             _say_safe(f"Reloaded {parts[0]}, failed {parts[1]}.")
@@ -599,7 +667,7 @@ def _handle_packet(text: str):
         return
 
     if text.startswith("REMOVE_DONE:"):
-        body = text[len("REMOVE_DONE:"):]
+        body = text[len("REMOVE_DONE:") :]
         parts = body.split(",")
         if len(parts) == 2:
             _say_safe(f"Removed {parts[0]}, failed {parts[1]}.")
@@ -608,7 +676,7 @@ def _handle_packet(text: str):
 
     if text.startswith("IGNITION_OFF_DONE:"):
         try:
-            n = int(text[len("IGNITION_OFF_DONE:"):])
+            n = int(text[len("IGNITION_OFF_DONE:") :])
         except ValueError:
             n = 0
         _say_safe(f"Ignition off on {n} {'vehicle' if n == 1 else 'vehicles'}.")
@@ -616,14 +684,14 @@ def _handle_packet(text: str):
 
     if text.startswith("SPAWN_OK:"):
         try:
-            n = int(text[len("SPAWN_OK:"):])
+            n = int(text[len("SPAWN_OK:") :])
         except ValueError:
             n = 0
         _say_safe(f"Spawned {n} {'vehicle' if n == 1 else 'vehicles'}.")
         return
 
     if text.startswith("SPAWN_PARTIAL:"):
-        body = text[len("SPAWN_PARTIAL:"):]
+        body = text[len("SPAWN_PARTIAL:") :]
         # body: "<successes>,<fails>,<msg>"
         parts = body.split(",", 2)
         if len(parts) >= 2:
@@ -633,7 +701,7 @@ def _handle_packet(text: str):
         return
 
     if text.startswith("SPAWN_ERR:"):
-        _say_safe(f"Spawn error: {text[len('SPAWN_ERR:'):]}")
+        _say_safe(f"Spawn error: {text[len('SPAWN_ERR:') :]}")
         return
 
     if text == "TELEPORT_OK":
@@ -641,7 +709,7 @@ def _handle_packet(text: str):
         return
 
     if text.startswith("TELEPORT_LAUNCHED:"):
-        parts = text[len("TELEPORT_LAUNCHED:"):].split(",")
+        parts = text[len("TELEPORT_LAUNCHED:") :].split(",")
         try:
             mph = float(parts[0])
             secs = float(parts[1])
@@ -654,7 +722,7 @@ def _handle_packet(text: str):
         return
 
     if text.startswith("TELEPORT_LANDED:"):
-        parts = text[len("TELEPORT_LANDED:"):].split(",")
+        parts = text[len("TELEPORT_LANDED:") :].split(",")
         try:
             miss_m, along_m, cross_m = (float(p) for p in parts[:3])
         except (IndexError, ValueError):
@@ -671,35 +739,42 @@ def _handle_packet(text: str):
         # which one it was is the whole point of measuring.
         bits = []
         if abs(along_m) * M_TO_FT >= 3:
-            bits.append(f"{abs(along_m) * M_TO_FT:.0f} feet "
-                        f"{'long' if along_m > 0 else 'short'}")
+            bits.append(
+                f"{abs(along_m) * M_TO_FT:.0f} feet "
+                f"{'long' if along_m > 0 else 'short'}"
+            )
         if abs(cross_m) * M_TO_FT >= 3:
-            bits.append(f"{abs(cross_m) * M_TO_FT:.0f} feet "
-                        f"{'left' if cross_m > 0 else 'right'}")
-        _say_safe(f"Landed {' and '.join(bits)}." if bits
-                  else f"Landed {miss_ft:.0f} feet off target.")
+            bits.append(
+                f"{abs(cross_m) * M_TO_FT:.0f} feet "
+                f"{'left' if cross_m > 0 else 'right'}"
+            )
+        _say_safe(
+            f"Landed {' and '.join(bits)}."
+            if bits
+            else f"Landed {miss_ft:.0f} feet off target."
+        )
         return
 
     if text.startswith("TELEPORT_ERR:"):
-        _say_safe(f"Move failed: {text[len('TELEPORT_ERR:'):]}")
+        _say_safe(f"Move failed: {text[len('TELEPORT_ERR:') :]}")
         return
 
     if text.startswith("ARRANGE_OK:"):
         try:
-            n = int(text[len("ARRANGE_OK:"):])
+            n = int(text[len("ARRANGE_OK:") :])
         except ValueError:
             n = 0
         _say_safe(f"Arranged {n} {'vehicle' if n == 1 else 'vehicles'}.")
         return
 
     if text.startswith("ARRANGE_ERR:"):
-        _say_safe(f"Arrangement error: {text[len('ARRANGE_ERR:'):]}")
+        _say_safe(f"Arrangement error: {text[len('ARRANGE_ERR:') :]}")
         return
 
     if text.startswith("PLAYER_VEH_ID:"):
         global _player_veh_id
         try:
-            vid = int(text[len("PLAYER_VEH_ID:"):])
+            vid = int(text[len("PLAYER_VEH_ID:") :])
             _player_veh_id = vid if vid >= 0 else None
         except ValueError:
             pass
@@ -709,6 +784,7 @@ def _handle_packet(text: str):
 # =============================================================================
 #  Catalog filtering
 # =============================================================================
+
 
 def _filtered_catalog() -> list[dict[str, Any]]:
     with _state_lock:
@@ -733,7 +809,9 @@ def _filtered_catalog() -> list[dict[str, Any]]:
             if not keep:
                 continue
             if police_only:
-                police_cfgs = [c for c in v.get("configs", []) if c.get("configType") == "Police"]
+                police_cfgs = [
+                    c for c in v.get("configs", []) if c.get("configType") == "Police"
+                ]
                 if not police_cfgs:
                     # Safety net: vehicle was flagged hasPolice in Lua but no
                     # config carries Config Type == Police. Skip it.
@@ -777,7 +855,9 @@ def _filter_dialog_lines() -> list[tuple[str, str, str]]:
 import math as _math
 
 
-def _compute_arrangement_offsets(arr_type: str, variant: str, n_others: int, spacing_m: float) -> list[tuple[float, float]]:
+def _compute_arrangement_offsets(
+    arr_type: str, variant: str, n_others: int, spacing_m: float
+) -> list[tuple[float, float]]:
     """Return (fwd_m, right_m) offsets for each of the n_others vehicles relative to the anchor."""
     s = spacing_m
     N = n_others
@@ -862,8 +942,14 @@ def _compute_arrangement_offsets(arr_type: str, variant: str, n_others: int, spa
         while len(offsets) < N:
             r = ring * s
             ring_slots = [
-                (r, 0.0), (-r, 0.0), (0.0, -r), (0.0, r),
-                (r, r),   (r, -r),   (-r, r),    (-r, -r),
+                (r, 0.0),
+                (-r, 0.0),
+                (0.0, -r),
+                (0.0, r),
+                (r, r),
+                (r, -r),
+                (-r, r),
+                (-r, -r),
             ]
             for sl in ring_slots:
                 offsets.append(sl)
@@ -895,7 +981,9 @@ def _arrange_validate() -> tuple[bool, bool, str]:
     parts = [f"Queue: {n_queue}, Active: {n_active}."]
     if type_key == "boxed_in":
         if n_queue < min_total or n_active < min_total:
-            parts.append(f"Boxed in needs at least {min_total} vehicles (1 anchor + 4 others).")
+            parts.append(
+                f"Boxed in needs at least {min_total} vehicles (1 anchor + 4 others)."
+            )
         if n_active >= min_total and _player_veh_id is None:
             parts.append("Boxed in requires a current vehicle for active mode.")
     elif n_queue < 2 and n_active < 2:
@@ -936,6 +1024,7 @@ def _speak_arrange_item(idx: int):
 #  Speech helpers
 # =============================================================================
 
+
 def _vehicle_summary(v: dict[str, Any]) -> str:
     parts = []
     name = v.get("name") or v.get("model") or "unknown"
@@ -969,7 +1058,11 @@ def _feet(n: int, word: str) -> str:
 def _offset_phrase(vals: dict[str, int]) -> str:
     """Speak only the non-zero components, e.g. '30 feet forward, 4 feet up'."""
     parts = []
-    fwd, right, up = vals.get("offFwdFt", 0), vals.get("offRightFt", 0), vals.get("offUpFt", 0)
+    fwd, right, up = (
+        vals.get("offFwdFt", 0),
+        vals.get("offRightFt", 0),
+        vals.get("offUpFt", 0),
+    )
     if fwd:
         parts.append(_feet(fwd, "forward" if fwd > 0 else "back"))
     if right:
@@ -1049,6 +1142,7 @@ def _speak_position(idx: int, total: int, content: str):
 #  Screen rendering — speak the current cursor item
 # =============================================================================
 
+
 def _speak_current():
     global _idx_main, _idx_configs, _idx_to_spawn, _idx_filter
     global _idx_ref, _idx_mark, _idx_manage
@@ -1083,7 +1177,9 @@ def _speak_current():
             _say_with_prefix("To be spawned list is empty.")
             return
         _idx_to_spawn = max(0, min(_idx_to_spawn, len(_to_spawn) - 1))
-        _speak_position(_idx_to_spawn, len(_to_spawn), _to_spawn_summary(_to_spawn[_idx_to_spawn]))
+        _speak_position(
+            _idx_to_spawn, len(_to_spawn), _to_spawn_summary(_to_spawn[_idx_to_spawn])
+        )
         return
 
     if _screen == "manage":
@@ -1180,6 +1276,7 @@ def _enter_screen(screen: str, announce: bool = True, header: str | None = None)
 # =============================================================================
 #  Key handlers
 # =============================================================================
+
 
 def _on_up(event):
     global _idx_main, _idx_configs, _idx_to_spawn, _idx_filter
@@ -1331,9 +1428,9 @@ def _drill_into_selected():
 
 _PAGES = ["main", "to_spawn", "manage"]
 _PAGE_HEADERS = {
-    "main":     "Vehicle list",
+    "main": "Vehicle list",
     "to_spawn": "To be spawned",
-    "manage":   "Vehicle control",
+    "manage": "Vehicle control",
 }
 
 
@@ -1439,17 +1536,24 @@ def _on_enter(event):
         info = slots[sn]
         if _pending_replace_item is not None:
             item = dict(_pending_replace_item)
-            item.update(replaceSlot=sn, replaceVehId=info["id"], replaceVehName=info["name"])
+            item.update(
+                replaceSlot=sn, replaceVehId=info["id"], replaceVehName=info["name"]
+            )
             with _state_lock:
                 _to_spawn.append(item)
-            _say_safe(f"Will replace slot {sn} {info['name']} with {item['displayName']}. {len(_to_spawn)} queued.")
+            _say_safe(
+                f"Will replace slot {sn} {info['name']} with {item['displayName']}. {len(_to_spawn)} queued."
+            )
             _pending_replace_item = None
             _enter_screen("configs")
         elif _replace_editing_idx is not None:
             with _state_lock:
                 if 0 <= _replace_editing_idx < len(_to_spawn):
                     _to_spawn[_replace_editing_idx].update(
-                        replaceSlot=sn, replaceVehId=info["id"], replaceVehName=info["name"])
+                        replaceSlot=sn,
+                        replaceVehId=info["id"],
+                        replaceVehName=info["name"],
+                    )
             _say_safe(f"Will replace slot {sn} {info['name']}.")
             _replace_editing_idx = None
             _enter_screen("to_spawn")
@@ -1825,6 +1929,7 @@ def _on_page_down(event):
 #  Placement editor
 # =============================================================================
 
+
 def _place_ping(rung: int, azimuth_deg: float, pitch_mult: float = 1.0):
     if _ping is None:
         return
@@ -1834,81 +1939,137 @@ def _place_ping(rung: int, azimuth_deg: float, pitch_mult: float = 1.0):
         pass
 
 
-def _place_ladder(held_sec: float) -> tuple[int, int, int]:
-    """(rung, translation_step_ft, rotation_step_deg) for a key held this long.
+def _place_repeat_interval(held_sec: float) -> float:
+    """Seconds until this key's next repeat, easing from START down to MIN.
 
-    A tap (held_sec ~= 0) falls through to the bottom rung, which is what makes a
-    quick press move exactly one unit.
+    Linear, not curved: the whole point of accelerating in time rather than in
+    magnitude is that the user can predict where a hold lands, and an eased ramp
+    makes the relationship between hold time and distance harder to learn.
+
+    The ramp is measured from the moment repeating begins, not from the press, so
+    the hold delay is not spent on it.
     """
-    idx = 0
-    for i, (thresh, _ft, _deg) in enumerate(PLACE_LADDER):
-        if held_sec >= thresh:
-            idx = i
-    _thresh, ft, deg = PLACE_LADDER[idx]
-    return idx, ft, deg
+    frac = (held_sec - PLACE_HOLD_DELAY_SEC) / PLACE_REPEAT_RAMP_SEC
+    frac = max(0.0, min(1.0, frac))
+    span = PLACE_REPEAT_MIN_SEC - PLACE_REPEAT_START_SEC
+    return PLACE_REPEAT_START_SEC + span * frac
 
 
-def _place_ping_for(deltas: dict[str, int], rung: int):
+def _place_rot_step() -> int:
+    """Degrees per rotation step for the modifiers held right now.
+
+    Ctrl wins over Shift when both are down — fine placement is the intent that
+    cannot be reached any other way.
+    """
+    if _ctrl_pressed():
+        return PLACE_ROT_STEP_FINE_DEG
+    if _shift_pressed():
+        return PLACE_ROT_STEP_COARSE_DEG
+    return PLACE_ROT_STEP_DEG
+
+
+def _place_cross_rung(old: int, new: int) -> int:
+    """Ping rung for a step that took a value from `old` to `new`.
+
+    The ping used to describe the STEP, which said nothing once the step became a
+    thing the user chooses; it now describes the VALUE, firing a heavier tone
+    each time the offset crosses a 10 / 100 / 1000 / 10000 boundary, so the ear
+    tracks where the number is rather than how fast it is moving.
+
+    Compared on the ABSOLUTE value, so -99 -> -100 is a crossing the same way
+    99 -> 100 is; floor division on the signed value keeps -99 and -100 in the
+    same bucket and would miss every negative boundary. Rung 0 (the ones ping)
+    when nothing was crossed, so every step stays audible.
+    """
+    a, b = abs(old), abs(new)
+    for size, rung in PLACE_CROSS_RUNGS:
+        if a // size != b // size:
+            return rung
+    return 0
+
+
+def _place_ping_for(deltas: dict[str, int], rungs: dict[str, int]):
     """Fire the one ping that best describes this tick's combined movement.
 
     Horizontal motion wins (it can be placed properly by HRTF); otherwise height,
     then rotation. Height and pitch have no HRTF representation — the set is
     horizontal-plane only — so they are pitch-shifted instead.
+
+    The rung is per axis, because it now comes from what happened to that axis's
+    own value; whichever axis wins the ping brings its rung with it. Two arrows
+    held together sound the horizontal one, which is the axis the azimuth is
+    describing.
     """
     d_fwd = deltas.get("fwd", 0)
     d_right = deltas.get("right", 0)
     if d_fwd or d_right:
+        rung = max(rungs.get("fwd", 0), rungs.get("right", 0))
         _place_ping(rung, math.degrees(math.atan2(d_right, d_fwd)))
         return
     d_up = deltas.get("up", 0)
     if d_up:
-        _place_ping(rung, 0.0, PLACE_PITCH_UP if d_up > 0 else PLACE_PITCH_DOWN)
+        up = PLACE_PITCH_UP if d_up > 0 else PLACE_PITCH_DOWN
+        _place_ping(rungs.get("up", 0), 0.0, up)
         return
     d_yaw = deltas.get("yaw", 0)
-    if d_yaw:   # positive yaw swings the nose left
-        _place_ping(rung, -90.0 if d_yaw > 0 else 90.0)
+    if d_yaw:  # positive yaw swings the nose left
+        _place_ping(rungs.get("yaw", 0), -90.0 if d_yaw > 0 else 90.0)
         return
     d_roll = deltas.get("roll", 0)
     if d_roll:  # positive roll drops the right side
-        _place_ping(rung, 90.0 if d_roll > 0 else -90.0)
+        _place_ping(rungs.get("roll", 0), 90.0 if d_roll > 0 else -90.0)
         return
     d_pitch = deltas.get("pitch", 0)
     if d_pitch:
-        _place_ping(rung, 0.0, PLACE_PITCH_UP if d_pitch > 0 else PLACE_PITCH_DOWN)
+        up = PLACE_PITCH_UP if d_pitch > 0 else PLACE_PITCH_DOWN
+        _place_ping(rungs.get("pitch", 0), 0.0, up)
 
 
-def _place_apply_steps(now: float, pressed: list[tuple[str, float]]):
+def _place_apply_steps(now: float, pressed: list[tuple[str, int]]):
     """Apply one step for each held key and fire a single ping for the result.
 
-    Each key gets the magnitude its own hold time has earned, so two arrows held
-    together move along the diagonal between them.
+    Every key moves by the unit currently selected — the translation step chosen
+    with 1-4, or the rotation step the key was pressed with — so two arrows held
+    together move along the diagonal between them regardless of how long either
+    has been down.
     """
     global _place_last_step, _place_readout_pending
     deltas: dict[str, int] = {}
-    rung = 0
-    for name, held in pressed:
+    rot_rungs: dict[str, int] = {}
+    for name, rot_step in pressed:
         entry = PLACE_KEY_AXES.get(name)
         if entry is None:
             continue
         axis, direction = entry
-        idx, step_ft, step_deg = _place_ladder(held)
-        step = step_ft if axis in PLACE_TRANSLATE_AXES else step_deg
+        if axis in PLACE_TRANSLATE_AXES:
+            step = _place_unit_step
+        else:
+            step = rot_step
+            # A wrapped angle has no boundaries to cross, so the rotation rung
+            # comes from the step size instead — which is the one thing about a
+            # rotation step worth hearing.
+            rot_rungs[axis] = PLACE_ROT_STEP_RUNGS.get(step, 0)
         deltas[axis] = deltas.get(axis, 0) + direction * step
-        rung = max(rung, idx)
     if not deltas:
         return
+    rungs: dict[str, int] = dict(rot_rungs)
     with _place_lock:
         for axis, d in deltas.items():
             field = PLACE_AXIS_FIELDS[axis]
-            v = _place_values.get(field, 0) + d
+            old = _place_values.get(field, 0)
+            v = old + d
             if axis not in PLACE_TRANSLATE_AXES:
                 # Keep angles in -180..180 so the readout says "yaw right 90"
                 # rather than an ever-growing wound-up number.
                 v = ((v + 180) % 360) - 180
+            else:
+                # Read inside the lock: the rung is a fact about the value this
+                # step moved through, so it cannot be computed from the delta.
+                rungs[axis] = _place_cross_rung(old, v)
             _place_values[field] = v
         _place_last_step = now
         _place_readout_pending = True
-    _place_ping_for(deltas, rung)
+    _place_ping_for(deltas, rungs)
 
 
 def _place_ticker_loop():
@@ -1927,10 +2088,15 @@ def _place_ticker_loop():
             continue
         now = time.monotonic()
         with _place_lock:
-            pressed = [
-                (k, now - t) for k, t in _place_held.items()
-                if now - t >= PLACE_HOLD_DELAY_SEC
-            ]
+            pressed = []
+            for k, rec in _place_held.items():
+                if now - rec["t"] < PLACE_HOLD_DELAY_SEC or now < rec["next"]:
+                    continue
+                pressed.append((k, rec["rot_step"]))
+                # Scheduled from NOW rather than accumulated from the previous
+                # due time: a stall (a GC pause, a slow ping convolution) must
+                # not leave a key owing a burst of catch-up steps.
+                rec["next"] = now + _place_repeat_interval(now - rec["t"])
             idle_due = (
                 not _place_held
                 and _place_readout_pending
@@ -1958,13 +2124,25 @@ def _place_key_down(name: str):
     Windows delivers auto-repeat as a stream of key-down events with no
     interleaved key-up, so a key already in _place_held is ignored here — that
     dedupe is what keeps a tap to a single unit.
+
+    The rotation modifier is polled ONCE, here, and frozen for the life of the
+    hold. It has to be: the ticker runs on its own thread and _ctrl_pressed() /
+    _shift_pressed() are live keyboard polls, so re-reading them mid-hold would
+    silently change the step under the user's finger part-way through a
+    rotation. Releasing Ctrl while still holding Q therefore keeps stepping by
+    one degree until the key comes up.
     """
     now = time.monotonic()
+    rot_step = _place_rot_step()
     with _place_lock:
         if name in _place_held:
             return
-        _place_held[name] = now
-    _place_apply_steps(now, [(name, 0.0)])
+        _place_held[name] = {
+            "t": now,
+            "next": now + PLACE_HOLD_DELAY_SEC + PLACE_REPEAT_START_SEC,
+            "rot_step": rot_step,
+        }
+    _place_apply_steps(now, [(name, rot_step)])
 
 
 def _place_key_up(name: str):
@@ -1985,6 +2163,7 @@ def _speak_place3d_text(with_mode: bool = False) -> str:
 def _enter_place3d():
     """Open the editor on the wizard's target, seeded from its current values."""
     global _place_values, _place_snapshot, _place_last_step, _place_readout_pending
+    global _place_unit_step
     if _place_mode == "teleport":
         # Dead on the anchor. A spawn has to start clear of its anchor or it would
         # spawn inside it, but a teleport is aiming an existing vehicle at a spot the
@@ -1993,10 +2172,15 @@ def _enter_place3d():
     else:
         with _state_lock:
             idx = _wizard_target_idx
-            item = _to_spawn[idx] if idx is not None and 0 <= idx < len(_to_spawn) else None
+            item = (
+                _to_spawn[idx]
+                if idx is not None and 0 <= idx < len(_to_spawn)
+                else None
+            )
             vals = (
                 {f: int(item.get(f, d) or 0) for f, d in PLACE_DEFAULTS.items()}
-                if item is not None else None
+                if item is not None
+                else None
             )
     if vals is None:
         back = _wizard_return_screen()
@@ -2010,6 +2194,9 @@ def _enter_place3d():
         _place_held.clear()
         _place_last_step = 0.0
         _place_readout_pending = False
+        # Back to one foot every time the editor opens, so the step a key is
+        # about to take is knowable without asking.
+        _place_unit_step = 1
     _start_place_ticker()
     _place_active.set()
     _enter_screen("place3d", header="Position")
@@ -2175,6 +2362,32 @@ def _set_wizard_ref(ref_mode: str, ref_veh_id: int | None, ref_name: str | None 
     _enter_place3d()
 
 
+def _on_place_digit(name: str):
+    """Number-row 1-4 pick the translation step. Rotation ignores it."""
+    global _place_unit_step
+    if _screen != "place3d":
+        return
+    step = PLACE_UNIT_STEPS[name]
+    _place_unit_step = step
+    _say_safe(f"{step} foot" if step == 1 else f"{step} feet")
+
+
+def _on_1(event):
+    _on_place_digit("1")
+
+
+def _on_2(event):
+    _on_place_digit("2")
+
+
+def _on_3(event):
+    _on_place_digit("3")
+
+
+def _on_4(event):
+    _on_place_digit("4")
+
+
 def _on_place_letter(name: str):
     """Shared handler for the rotation letters that have no other modal binding."""
     if _screen != "place3d":
@@ -2252,16 +2465,16 @@ def _do_spawn_all():
     # Replacements first: ensures "current vehicle" refs in add-items resolve to the
     # post-replacement player vehicle. Relative order preserved within each group.
     replacements = [it for it in items if it.get("replaceVehId") is not None]
-    additions    = [it for it in items if it.get("replaceVehId") is None]
+    additions = [it for it in items if it.get("replaceVehId") is None]
     ordered = replacements + additions
 
     payload_items = []
     for idx, it in enumerate(ordered):
         is_replace = it.get("replaceVehId") is not None
         entry: dict[str, Any] = {
-            "queueIdx":    idx,
-            "model":       it["model"],
-            "config":      it.get("config", ""),
+            "queueIdx": idx,
+            "model": it["model"],
+            "config": it.get("config", ""),
             "replaceVehId": it.get("replaceVehId"),
         }
         if not is_replace:
@@ -2269,7 +2482,7 @@ def _do_spawn_all():
             # time), so there is nothing to skip here.
             for field, default in PLACE_DEFAULTS.items():
                 entry[field] = int(it.get(field, default) or 0)
-            entry["refMode"]  = it.get("refMode", "auto")
+            entry["refMode"] = it.get("refMode", "auto")
             entry["refVehId"] = it.get("refVehId")
         payload_items.append(entry)
     if not payload_items:
@@ -2292,6 +2505,7 @@ def _do_spawn_all():
 # =============================================================================
 #  Arrangement presets
 # =============================================================================
+
 
 def _on_g(event):
     global _idx_arrange, _arrange_return_screen
@@ -2317,28 +2531,32 @@ def _do_arrange_queue():
     spacing_m = _spacing_field.value() * 0.3048
 
     replacements = [it for it in items if it.get("replaceVehId") is not None]
-    additions    = [it for it in items if it.get("replaceVehId") is None]
+    additions = [it for it in items if it.get("replaceVehId") is None]
     ordered = replacements + additions
 
     payload_items = [
         {
-            "queueIdx":    i,
-            "model":       it["model"],
-            "config":      it.get("config", ""),
+            "queueIdx": i,
+            "model": it["model"],
+            "config": it.get("config", ""),
             "replaceVehId": it.get("replaceVehId"),
         }
         for i, it in enumerate(ordered)
     ]
     arrangement = {
-        "type":        type_key,
-        "variant":     variant_key,
-        "spacingM":    spacing_m,
+        "type": type_key,
+        "variant": variant_key,
+        "spacingM": spacing_m,
         "anchorVehId": None,
     }
 
     n = len(payload_items)
-    _say_safe(f"Spawning {n} {'vehicle' if n == 1 else 'vehicles'} in {type_key.replace('_', ' ')} arrangement, please wait.")
-    _send_cmd(f"SPAWN:{json.dumps({'items': payload_items, 'arrangement': arrangement})}")
+    _say_safe(
+        f"Spawning {n} {'vehicle' if n == 1 else 'vehicles'} in {type_key.replace('_', ' ')} arrangement, please wait."
+    )
+    _send_cmd(
+        f"SPAWN:{json.dumps({'items': payload_items, 'arrangement': arrangement})}"
+    )
     with _state_lock:
         _to_spawn.clear()
         global _idx_to_spawn
@@ -2360,21 +2578,26 @@ def _do_arrange_active():
 
     veh_ids = [vid for vid, _ in avs]
     arrangement = {
-        "type":        type_key,
-        "variant":     variant_key,
-        "spacingM":    spacing_m,
+        "type": type_key,
+        "variant": variant_key,
+        "spacingM": spacing_m,
         "anchorVehId": _player_veh_id,
     }
 
     n = len(veh_ids)
-    _say_safe(f"Arranging {n} {'vehicle' if n == 1 else 'vehicles'} in {type_key.replace('_', ' ')} arrangement, please wait.")
-    _send_cmd(f"TELEPORT_ARRANGE:{json.dumps({'arrangement': arrangement, 'vehicleIds': veh_ids})}")
+    _say_safe(
+        f"Arranging {n} {'vehicle' if n == 1 else 'vehicles'} in {type_key.replace('_', ' ')} arrangement, please wait."
+    )
+    _send_cmd(
+        f"TELEPORT_ARRANGE:{json.dumps({'arrangement': arrangement, 'vehicleIds': veh_ids})}"
+    )
     _close_modal(silent=True)
 
 
 # =============================================================================
 #  Active vehicles request
 # =============================================================================
+
 
 def _request_active_vehicles():
     _active_vehicles_event.clear()
@@ -2386,6 +2609,7 @@ def _request_active_vehicles():
 # =============================================================================
 #  Modal open/close + key hook management
 # =============================================================================
+
 
 # (key_name, handler) pairs, all suppress=True
 def _on_info(event):
@@ -2445,32 +2669,42 @@ def _on_info(event):
 
 
 _MODAL_KEYS = [
-    ("up",        _on_up),
-    ("down",      _on_down),
-    ("left",      _on_left),
-    ("right",     _on_right),
-    ("home",      _on_home),
-    ("end",       _on_end),
-    ("page up",   _on_page_up),
+    ("up", _on_up),
+    ("down", _on_down),
+    ("left", _on_left),
+    ("right", _on_right),
+    ("home", _on_home),
+    ("end", _on_end),
+    ("page up", _on_page_up),
     ("page down", _on_page_down),
-    ("tab",       _on_tab),
-    ("enter",     _on_enter),
-    ("esc",       _on_escape),
-    ("space",     _on_space),
-    ("delete",    _on_delete),
-    ("f",         _on_f),
-    ("c",         _on_c),
-    ("g",         _on_g),
-    ("w",         _on_w),
-    ("r",         _on_r),
-    ("v",         _on_v),
-    ("a",         _on_a),
-    ("x",         _on_x),
-    ("s",         _on_s),
-    ("d",         _on_d),
-    ("q",         _on_q),
-    ("e",         _on_e),
-    ("i",         _on_info),
+    ("tab", _on_tab),
+    ("enter", _on_enter),
+    ("esc", _on_escape),
+    ("space", _on_space),
+    ("delete", _on_delete),
+    ("f", _on_f),
+    ("c", _on_c),
+    ("g", _on_g),
+    ("w", _on_w),
+    ("r", _on_r),
+    ("v", _on_v),
+    ("a", _on_a),
+    ("x", _on_x),
+    ("s", _on_s),
+    ("d", _on_d),
+    ("q", _on_q),
+    ("e", _on_e),
+    ("i", _on_info),
+    # The placement editor's translation step. Bound modally like every other
+    # editor key, which means they are swallowed on the spawner's other screens
+    # too — the same trade w/a/s/d/q/e already make, and the modal is a
+    # full-screen UI, so the game seeing a bare digit under it is not something
+    # worth preserving. Deliberately NOT in PLACE_KEY_AXES: that table installs
+    # the key-RELEASE hooks, and a step-size key is a tap, not a hold.
+    ("1", _on_1),
+    ("2", _on_2),
+    ("3", _on_3),
+    ("4", _on_4),
 ]
 
 
@@ -2481,11 +2715,13 @@ def _enqueue(handler: Callable[..., None]) -> Callable[..., None]:
     Event.wait, etc.) can push the OS-level low-level keyboard hook past
     Windows' LowLevelHooksTimeout, causing the suppressed key to leak through
     to the foreground app (the game)."""
+
     def wrapper(event):
         try:
             _event_queue.put_nowait((handler, event))
         except Exception:
             pass
+
     return wrapper
 
 
@@ -2636,8 +2872,16 @@ def _toggle_modal_async():
 #  Public API
 # =============================================================================
 
-def init(say_fn, is_focused_fn, logger, get_slots_fn=None, close_others_fn=None,
-         ping_fn=None, request_info_fn=None):
+
+def init(
+    say_fn,
+    is_focused_fn,
+    logger,
+    get_slots_fn=None,
+    close_others_fn=None,
+    ping_fn=None,
+    request_info_fn=None,
+):
     global _say, _is_focused, _log, _get_slots_fn, _close_others, _ping
     global _request_info_fn
     _say = say_fn

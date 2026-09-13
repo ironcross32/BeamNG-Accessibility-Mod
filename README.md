@@ -238,14 +238,17 @@ Press F11 to open the accessible vehicle spawner. F11 is suppressed while the sp
 The editor works in the anchor's own frame, so "forward" means the way the anchor is facing.
 
 - Up/Down: Move forward or back; Left/Right: move left or right; Page Up/Page Down: raise or lower
-- W/S: Pitch the nose down or up; A/D: roll left or right; Q/E: yaw left or right
+- 1/2/3/4: Set the movement step to 1, 10, 100 or 1000 feet
+- W/S: Pitch the nose down or up; A/D: roll left or right; Q/E: yaw left or right — 45 degrees a press, 1 degree with Ctrl held, 90 degrees with Shift held
 - Space: Speak the current position; R: Reset to sit right on the anchor
 - X: On a teleport, switch between standard and force mode (see below)
 - Enter: Accept (queues the placement, or moves the vehicle); Escape: Discard
 
 When moving an in-world vehicle, X chooses how it gets there. **Standard** sets it down on the spot exactly. **Force** throws it instead: the game works out the launch velocity that lands it on the mark and flings it, the same way the fling and boost cheats do. It arcs high enough to clear fences and parked cars, announces its launch speed and flight time, and lands approximately — not exactly — on target, taking whatever damage the landing does and ending up facing whichever way it tumbles. Rotation is ignored in force mode for that reason. A target too far away to reach is launched at full speed and announced as landing short. Once the vehicle comes to rest, the mod announces where it actually ended up — "landed on target", or how far short, long, left or right of the mark it finished.
 
-A quick tap moves exactly one foot or one degree. Holding a key escalates the step the longer it is held — 1, 10, 100, 1000, 10000 feet, or 1, 10, 45 degrees. Each step plays a ping whose timbre identifies the magnitude, spatialized in the direction of travel; height and pitch changes are pitch-shifted up or down instead. Holding two arrows moves along the diagonal between them, and after a short pause the full position is spoken automatically.
+The movement step is yours to choose, and it never changes on its own: 1 through 4 on the number row set it to 1, 10, 100 or 1000 feet, and it goes back to 1 foot every time the editor opens. Holding a key does not make each step bigger — it makes them come faster, easing from about eight a second up to thirty over the first second and a half, so a long hold covers ground without ever jumping somewhere you did not ask for. Rotation is separate and ignores the number keys: a rotation key turns 45 degrees a press, 1 degree with Ctrl held, or 90 degrees with Shift held, whichever modifier was down when the key went down.
+
+Every step plays a ping, spatialized in the direction of travel; height and pitch changes are pitch-shifted up or down instead, since the HRTF set is horizontal only. The ping's timbre tracks the **value**, not the step: crossing 10, 100, 1000 or 10000 feet — in either direction, and at every multiple, so 190 to 200 sounds the same as 90 to 100 — deepens the tone for that one step. Counting them is how you know how far out you are without stopping to ask. Holding two arrows moves along the diagonal between them, and after a short pause the full position is spoken automatically.
 
 #### Arrangement presets screen (opened with G from any page)
 
