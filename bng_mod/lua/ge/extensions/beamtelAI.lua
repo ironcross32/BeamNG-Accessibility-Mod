@@ -12,6 +12,13 @@
 -- =================================================================================================
 
 local M = {}
+local assistant = require('ge/extensions/drivingAssistant')
+function M.assistantState() return assistant.diagnosticState() end
+function M.assistantActive() return assistant.owns() end
+
+function M.onAssistantEvent(vid, token, kind, message)
+  assistant.event(vid, token, kind, message)
+end
 
 -- Configuration
 local PYTHON_HOST     = "127.0.0.1"
@@ -100,6 +107,7 @@ end
 -- Called from vehicle VMs via obj:queueGameEngineLua after a STATUS_ALL query.
 function M.onVehicleStatus(vid, mode, targetId)
   if _statusAllPending <= 0 then return end  -- stale callback after timeout
+  if assistant.owns(vid) then mode = assistant.status() end
   _statusAllResults[vid] = {mode = mode, targetId = targetId}
   _statusAllPending = _statusAllPending - 1
   if _statusAllPending <= 0 then
@@ -116,6 +124,8 @@ local function applyMode(mode, targetID)
   end
 
   currentMode = mode
+
+  if assistant.owns(player:getID()) then assistant.off() end
 
   if mode == "disabled" then
     player:queueLuaCommand('ai.setMode("disabled")')
@@ -215,6 +225,7 @@ end
 -- fresh instance whose locals are nil -- so it closes nothing and the outgoing instance keeps
 -- the port, leaving the reloaded copy permanently deaf. Hence this hook.
 function M.onExtensionUnloaded()
+  assistant.off('Extension unloaded. Steering assistance off')
   if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
   if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
 end
@@ -227,6 +238,7 @@ function M.onExtensionLoaded()
 end
 
 function M.onWorldReadyState(state)
+  assistant.off('Level changed. Steering assistance off')
   aiLog('info', "onWorldReadyState triggered with state: " .. tostring(state))
 
   if state == 2 then
@@ -236,6 +248,8 @@ function M.onWorldReadyState(state)
 end
 
 function M.onUpdate(dtReal, dtSim, dtRaw)
+  local ok, err = pcall(assistant.update, dtSim or 0)
+  if not ok then assistant.off('Navigation failure. Steering assistance off'); aiLog('error', tostring(err)) end
   retryCmdBind(dtReal)
   -- Drive the STATUS_ALL timeout so unresponsive vehicles don't stall the report.
   if _statusAllTimeout > 0 then
@@ -259,7 +273,7 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
   if not data then return end
 
   local cmd = data:match("^%s*(.-)%s*$")
-  aiLog('info', "Received command: " .. cmd)
+  if not cmd:find('^ASSISTANT_HEARTBEAT') then aiLog('info', "Received command: " .. cmd) end
 
   -- Parse "TYPE:arg" format
   local cmdType, cmdArg = cmd:match("^([%u_]+):(.*)$")
@@ -267,6 +281,19 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
     cmdType = cmd
     cmdArg = nil
   end
+
+  if cmdType:find('^ASSISTANT_') then
+    local success, message = pcall(assistant.command, cmdType, cmdArg, sendResponse)
+    if not success then assistant.off('Assistant setup failed. Steering assistance off'); aiLog('error', tostring(message)) end
+    return
+  end
+  if assistant.owns() and (cmdType == 'AGGR' or cmdType == 'SPEED' or cmdType == 'CLEARSPEED'
+    or cmdType == 'AVOID' or cmdType == 'LANE') then
+    sendResponse('AI_ERR:Disable the driving assistant before changing AI tuning')
+    return
+  end
+  if (cmdType == 'MODE' and cmdArg == 'disabled')
+    or (cmdType == 'MULTI_MODE' and cmdArg and cmdArg:match('^disabled:')) then assistant.off() end
 
   if cmdType == "MODE" then
     local mode = cmdArg
@@ -381,6 +408,7 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
     for _, vid in ipairs(vehicleIDs) do
       local v = scenetree.findObjectById(vid)
       if v then
+        if assistant.owns(vid) then assistant.off() end
         if targetID and (mode == "chase" or mode == "follow" or mode == "flee") then
           v:queueLuaCommand('ai.setTargetObjectID(' .. targetID .. ')')
         end
@@ -462,6 +490,10 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
     end
 
   elseif cmdType == "STATUS" then
+    if assistant.owns() then
+      assistant.command('ASSISTANT_STATUS', nil, sendResponse)
+      return
+    end
     local speedStr = "off"
     if currentSpeedLimit then
       speedStr = tostring(math.floor(currentSpeedLimit * 3.6 + 0.5))
@@ -471,5 +503,12 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
     sendResponse("AI_STATUS:" .. status)
   end
 end
+
+function M.onVehicleResetted(vid)
+  if assistant.owns(vid) then assistant.off('Vehicle reset. Steering assistance off') end
+end
+
+function M.onClientEndMission() assistant.off('Level changed. Steering assistance off') end
+function M.onVehicleSwitched() assistant.off('Vehicle changed. Steering assistance off') end
 
 return M

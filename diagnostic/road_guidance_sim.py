@@ -15,6 +15,7 @@ from road_guidance import (  # noqa: E402
     direction_list,
     junction_phrase,
     parse_r2_packet,
+    one_way_phrase,
 )
 
 
@@ -65,6 +66,9 @@ def main():
     road_keys = (
         "road_follow_guidance_enabled",
         "road_junction_speech_enabled",
+        "road_stop_sign_speech_enabled",
+        "road_traffic_light_speech_enabled",
+        "road_speed_limit_speech_enabled",
         "road_junction_earcon_enabled",
         "road_include_private",
         "road_beep_volume_db",
@@ -245,4 +249,7 @@ def main():
 
 
 if __name__ == "__main__":
+    assert one_way_phrase(0) == "One-way road. Legal travel is ahead"
+    assert one_way_phrase(92) == "One-way road. Legal travel is 92 degrees to your left"
+    assert one_way_phrase(-175) == "One-way road. Legal travel is 175 degrees to your right"
     main()

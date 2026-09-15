@@ -98,7 +98,7 @@ def main():
     assert controller._road_correction_render_bearing == 35.0
     assert controller._road_playback_pos < 0
 
-    # The unwind instruction is a centred doublet and begins immediately when
+    # The unwind instruction is a directional doublet and begins immediately when
     # the protocol phase changes.
     controller.update_road_guidance(
         "onRoad", None,
@@ -108,8 +108,19 @@ def main():
     unwind = controller._render_road_correction_block(
         int(controller.samplerate * 0.25), True, -20, 0.4, "unwind"
     )
-    assert np.allclose(unwind[0], unwind[1])
-    assert controller._road_correction_render_bearing == 0.0
+    assert np.max(np.abs(unwind[1])) > np.max(np.abs(unwind[0]))
+    assert controller._road_correction_render_bearing == -25.0
+
+    for phase in ("correct", "unwind"):
+        for bearing in (-0.1, 0.0, 0.1):
+            controller._stop_road_correction_voice()
+            left, right = controller._render_road_correction_block(
+                4096, True, bearing, 0.25, phase
+            )
+            if bearing == 0:
+                assert np.allclose(left, right)
+            else:
+                assert (np.max(np.abs(left)) > np.max(np.abs(right))) == (bearing > 0)
 
     # HRTF lookup never leaves the requested 35-degree frontal arc.
     fake_hrtf = FakeHRTF()
@@ -117,6 +128,9 @@ def main():
     controller._hrtf_user_enabled = True
     controller._render_road_correction_block(512, True, -90, 1.0, "correct")
     assert fake_hrtf.bearings[-1] == 325.0
+    for bearing, expected in ((-0.1, 335.0), (0.1, 25.0), (0.0, 0.0)):
+        controller._render_road_correction_block(512, True, bearing, 0.25, "unwind")
+        assert fake_hrtf.bearings[-1] == expected
 
     # Alignment releases to silence; leaving the road cuts the voice and tail now.
     released = controller._render_road_correction_block(512, False, 0, 0)

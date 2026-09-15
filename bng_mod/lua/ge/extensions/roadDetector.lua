@@ -2,6 +2,10 @@
 -- R2 packets precede legacy packets so new and old executables can share this mod.
 
 local M = {}
+local roadSignals = require('ge/extensions/roadSignals')
+local signalGeneration = 0
+local signalSnapshot = {}
+local activeSignalId = nil
 
 local PYTHON_HOST = "127.0.0.1"
 local PYTHON_PORT_DATA = 4462
@@ -19,7 +23,7 @@ local EXIT_SLACK_M = 2.0
 local ENTER_TICKS = 4
 local EXIT_TICKS = 8
 local MIN_DRIVABILITY = 0.25
-local JUNCTION_SEARCH_M = 240.0
+local JUNCTION_SEARCH_M = 400.0
 -- BeamNG's radius is the whole road half-width, not a lane half-width. A
 -- correctly driven two-way lane commonly sits around ratio 0.5, so centreline
 -- recovery keeps the side the driver already occupies and aims for that band.
@@ -49,6 +53,7 @@ local JUNCTION_ENTRY_COMPENSATION_S = SCAN_INTERVAL * 0.5
 
 local udpSend, udpCmd = nil, nil
 local isActive, isDormant = false, false
+local assistantWasActive = false
 local includePrivate = false
 -- Detailed lane state is opt-in because ordinary guidance needs only the compact R2 packet.
 -- DIAG_ON is sent by Python when it has already opened a durable recording file.
@@ -58,6 +63,7 @@ local diagnosticActive = false
 local challengeCaptureActive = false
 local scanTimer, missCount = 0, 0
 local edges, adjacency, buckets = {}, {}, {}
+local navigationGeneration = 0
 local currentEdge, onRoad = nil, false
 local enterTicks, exitTicks = 0, 0
 local orientationArmed = true
@@ -202,6 +208,7 @@ local function addEdgeToBuckets(edge)
 end
 
 local function rebuildNavigationModel(reason)
+  navigationGeneration = navigationGeneration + 1
   edges, adjacency, buckets = {}, {}, {}
   local mapData = map and map.getMap and map.getMap() or nil
   local nodes = mapData and mapData.nodes or nil
@@ -316,6 +323,33 @@ local function nearestCompatibleEdge(position)
     end
   end
   return bestEdge, bestProjection
+end
+
+local function signalRoadCandidates(position)
+  local result, seen = {}, {}
+  local bx, by = math.floor(position.x / BUCKET_SIZE_M), math.floor(position.y / BUCKET_SIZE_M)
+  for x = bx - 1, bx + 1 do
+    for y = by - 1, by + 1 do
+      for _, edge in ipairs(buckets[tostring(x) .. ':' .. tostring(y)] or {}) do
+        if not seen[edge.id] and edge.drivability >= MIN_DRIVABILITY
+          and (includePrivate or not edge.private) then
+          seen[edge.id] = true
+          result[#result + 1] = edge
+        end
+      end
+    end
+  end
+  return result
+end
+
+function M.signalAt(position, forward, speed)
+  forward = vec3(forward.x, forward.y, 0):normalized()
+  local edge, projection, sign = roadSignals.matchRoad(position, forward,
+    signalRoadCandidates(position), projectOnEdge)
+  if not edge then return nil, 'none', nil end
+  local signal, status = roadSignals.find(core_trafficSignals, edge, projection,
+    sign, forward, outgoing, projectOnEdge, 400)
+  return signal, status, edge.id, roadSignals.warningDistance(speed or 0), edge, projection, sign
 end
 
 local function projectionInsideExitBoundary(projection, edge)
@@ -486,7 +520,7 @@ local function junctionZone(startNode, incomingEdge, incomingDirection, initialC
   local ids = {}
   for nodeId, _ in pairs(zone) do table.insert(ids, tostring(nodeId)) end
   table.sort(ids)
-  return clusterBearings(exitBearings), ids
+  return clusterBearings(exitBearings), ids, zone
 end
 
 local function findJunctionAhead(edge, projection, directionSign)
@@ -507,6 +541,7 @@ local function findJunctionAhead(edge, projection, directionSign)
         id = table.concat(ids, "+"),
         kind = classifyJunction(exits, #ids > 1),
         distance = math.max(0, distance - nodeRadius),
+        centreDistance = distance,
         exits = exits,
       }
     end
@@ -515,6 +550,12 @@ local function findJunctionAhead(edge, projection, directionSign)
     nodeId, incoming, incomingDir = choice.to, choice.edge, choice.direction
   end
   return nil
+end
+
+function M.proximityAt(position, forward, speed, activeId)
+  local signal, status, edgeId, warning, edge, projection, sign = M.signalAt(position, forward, speed)
+  local junction = edge and findJunctionAhead(edge, projection, sign)
+  return roadSignals.proximity(signal, junction, speed, activeId), signal, status, edgeId, warning
 end
 
 local function makeRoadDirections(vehicleForward, edge)
@@ -530,6 +571,10 @@ end
 
 local function sendPacket(packet, legacy)
   if not udpSend then return end
+  packet.signalContext = tostring(M) .. ":" .. tostring(signalGeneration)
+  packet.signalStatus = packet.signalStatus or "none"
+  signalSnapshot = {context = packet.signalContext, status = packet.signalStatus,
+    signal = packet.signal, proximity = packet.proximity, roadState = packet.state}
   local ok, encoded = pcall(jsonEncode, packet)
   if ok and encoded then udpSend:send("R2|" .. encoded) end
   udpSend:send(legacy)
@@ -546,6 +591,9 @@ local function resetLateralTracking()
 end
 
 local function resetTracking(reason)
+  signalGeneration = signalGeneration + 1
+  signalSnapshot.proximity = nil
+  activeSignalId = nil
   isDormant, missCount, scanTimer = false, 0, 0
   currentEdge, onRoad = nil, false
   enterTicks, exitTicks = 0, 0
@@ -867,7 +915,7 @@ local function performScan()
           end
           local courseSeverity = clamp(math.abs(correctionBearing) / 35, 0, 1)
           correction = {active = true,
-            bearing = unwind and 0 or correctionBearing,
+            bearing = correctionBearing,
             severity = math.max(0.05, lateralSeverity, predictedSeverity,
               driftSeverity, courseSeverity),
             phase = unwind and "unwind" or "correct",
@@ -890,15 +938,37 @@ local function performScan()
   local orientation = orientationArmed
   orientationArmed = false
   local directions = makeRoadDirections(vehicleForward, edge)
+  local frontPosition, frontNode, frontOffset = roadSignals.frontPosition(player)
+  local proximity, signal, signalStatus, signalEdge, warningDistance =
+    M.proximityAt(frontPosition, forwardFlat, speed, signalSnapshot.proximity and signalSnapshot.proximity.id)
+  if proximity then proximity.speed = math.max(0, player:getVelocity():dot(forwardFlat)) end
+  if signal and (signal.groupId == activeSignalId or signal.distance <= warningDistance) then
+    activeSignalId = signal.groupId
+  else
+    activeSignalId = nil
+    signal = nil
+    if signalStatus == "available" then signalStatus = "none" end
+  end
   local packet = {state = "onRoad", oneWay = edge.oneWay, roadDirections = directions,
+    signal = signal, signalStatus = signalStatus, proximity = proximity,
     offRoad = nil, correction = correction, junction = junctionPacket,
     orientation = orientation, diagnostic = diagnostic}
+  -- Navigation limits may be authored or generated by BeamNG; the graph does
+  -- not retain that distinction. Never present an absent/infinite limit as zero.
+  local speedLimit = tonumber(edge.raw and edge.raw.speedLimit)
+  if speedLimit and speedLimit > 0 and speedLimit < math.huge then
+    packet.speedLimit = speedLimit
+  end
   local legacy = "ON_ROAD"
   if orientation and #directions > 0 then
     local second = directions[2] or directions[1]
     legacy = string.format("ON_ROAD,%.2f,%.2f", directions[1], second)
   end
   sendPacket(packet, legacy)
+  signalSnapshot.edge = signalEdge
+  signalSnapshot.frontNode = frontNode
+  signalSnapshot.frontOffset = frontOffset
+  signalSnapshot.warningDistance = warningDistance
 end
 
 local function setupSockets()
@@ -972,6 +1042,8 @@ function M.onNavgraphReloaded()
 end
 
 function M.onUpdate(dtReal)
+  local assistantActive = extensions.beamtelAI and extensions.beamtelAI.assistantActive
+    and extensions.beamtelAI.assistantActive() or false
   retryCmdBind(dtReal)
   if udpCmd then
     while true do
@@ -980,7 +1052,7 @@ function M.onUpdate(dtReal)
       local command = data:match("^%s*(.-)%s*$")
       local upper = command:upper()
       if upper == "ON" then
-        if not isActive then resetTracking("toggle on") end
+        if not isActive and not assistantActive then resetTracking("toggle on") end
         isActive = true
       elseif upper == "OFF" then
         isActive = false
@@ -1011,7 +1083,9 @@ function M.onUpdate(dtReal)
       end
     end
   end
-  if not isActive and not challengeCaptureActive then return end
+  if assistantActive and not assistantWasActive and not isActive then resetTracking('assistant on') end
+  assistantWasActive = assistantActive
+  if not isActive and not challengeCaptureActive and not assistantActive then return end
   scanTimer = scanTimer + (dtReal or 0)
   if scanTimer >= SCAN_INTERVAL then
     scanTimer = scanTimer - SCAN_INTERVAL
@@ -1027,6 +1101,10 @@ function M.diagnosticState()
   return diagnosticActive
 end
 
+function M.signalSnapshot()
+  return signalSnapshot
+end
+
 function M.challengeCaptureState()
   return challengeCaptureActive
 end
@@ -1039,6 +1117,240 @@ function M.diagnosticConfig()
     lateralSpeedMax = CORRECTION_SETTLED.lateralSpeedMax,
     rearmTicks = CORRECTION_SETTLED.rearmTicks,
   }
+end
+
+-- This adapter does not depend on the announcement scanner's enabled state.
+local assistantRoutes = require('ge/extensions/assistantRoutes')
+
+local function sortedOutgoing(node, edge, direction)
+  local result = outgoing(node, edge, direction)
+  table.sort(result, function(a, b) return tostring(a.to) < tostring(b.to) end)
+  return result
+end
+
+local function assistantJunction(record)
+  local direction = edgeDirection(record.edge, record.forward and 1 or -1)
+  local initial = sortedOutgoing(record.to, record.edge, direction)
+  local _, ids, zone = junctionZone(record.to, record.edge, direction, initial)
+  local paths, queue = {[record.to] = {}}, {record.to}
+  local exits, unsupported = {}, false
+  local head = 1
+  while head <= #queue do
+    local node = queue[head]
+    head = head + 1
+    local prefix = paths[node]
+    local incoming = prefix[#prefix] or record
+    local incomingDir = edgeDirection(incoming.edge, incoming.forward and 1 or -1)
+    for _, nextRecord in ipairs(sortedOutgoing(node, incoming.edge, incomingDir)) do
+      local path = {}
+      for _, item in ipairs(prefix) do path[#path + 1] = item end
+      path[#path + 1] = nextRecord
+      if zone[nextRecord.to] then
+        if paths[nextRecord.to] then
+          unsupported = true -- A directed cycle needs numbered-exit handling.
+        else
+          paths[nextRecord.to] = path
+          queue[#queue + 1] = nextRecord.to
+        end
+      else
+        local bearing = bearingToDir(direction,
+          edgeDirection(nextRecord.edge, nextRecord.forward and 1 or -1))
+        exits[#exits + 1] = {id = tostring(node) .. '>' .. tostring(nextRecord.to),
+          bearing = bearing, records = path}
+        -- Detect compact one-way circuits outside the grouped intersection.
+        local probe, visited, length = nextRecord, {}, 0
+        for _ = 1, 32 do
+          if not probe.edge.oneWay or length > 350 then break end
+          if zone[probe.to] or visited[probe.to] then unsupported = true; break end
+          visited[probe.to] = true
+          local turns = sortedOutgoing(probe.to, probe.edge,
+            edgeDirection(probe.edge, probe.forward and 1 or -1))
+          local continuation = nil
+          for _, candidate in ipairs(turns) do
+            if candidate.edge.oneWay then
+              if continuation then continuation = nil; break end
+              continuation = candidate
+            end
+          end
+          if not continuation then break end
+          probe = continuation
+          length = length + probe.edge.length
+        end
+      end
+    end
+  end
+  return {id = table.concat(ids, '+'), zone = zone,
+    choices = assistantRoutes.choices(exits), unsupported = unsupported}
+end
+
+local function extendAssistantRoute(state)
+  local length = -(state.travelled or 0)
+  for _, record in ipairs(state.records) do length = length + record.edge.length end
+  local visited = {}
+  while length < 800 and #state.records < 256 do
+    local last = state.records[#state.records]
+    if visited[last.to] then return nil, 'Unresolvable navigation loop' end
+    visited[last.to] = true
+    local choices = sortedOutgoing(last.to, last.edge,
+      edgeDirection(last.edge, last.forward and 1 or -1))
+    if #choices ~= 1 then
+      state.junction = assistantJunction(last)
+      return state
+    end
+    state.records[#state.records + 1] = choices[1]
+    length = length + choices[1].edge.length
+  end
+  return state
+end
+
+function M.assistantStart(player)
+  if #edges == 0 and not rebuildNavigationModel('driving assistant') then
+    return nil, 'Navigation is unavailable'
+  end
+  local facing = player:getDirectionVector()
+  local position = player:getPosition()
+  local edge, projection, sign, score
+  local nearest, nearestProjection
+  for _, candidate in ipairs(candidateEdges(position)) do
+    local p = projectOnEdge(position, candidate)
+    if candidate.drivability >= MIN_DRIVABILITY and (includePrivate or not candidate.private)
+      and math.abs(p.dz) <= OVERPASS_Z_TOLERANCE then
+      if not nearestProjection or p.distance < nearestProjection.distance then
+        nearest, nearestProjection = candidate, p
+      end
+      local direction = edgeDirection(candidate, 1)
+      local travel = (not candidate.oneWay and facing:dot(direction) < 0) and -1 or 1
+      local angle = math.abs(bearingToDir(facing, edgeDirection(candidate, travel)))
+      local rank = math.max(0, p.distance - p.radius) * 2 + p.distance + angle / 30
+      if p.distance <= p.radius + 8 and angle < 80 and (not score or rank < score) then
+        edge, projection, sign, score = candidate, p, travel, rank
+      end
+    end
+  end
+  if not edge then
+    if nearest and nearestProjection.distance <= nearestProjection.radius + 8 then
+      local direction = edgeDirection(nearest, 1)
+      if not nearest.oneWay and facing:dot(direction) < 0 then direction = direction * -1 end
+      local angle = bearingToDir(facing, direction)
+      return nil, (nearest.oneWay and 'One-way road. Legal travel is ' or 'Road alignment is ')
+        .. string.format('%d degrees to your %s. Align with the road and enable again',
+          math.floor(math.abs(angle) + 0.5), angle > 0 and 'left' or 'right')
+    end
+    return nil, 'No reachable navigable road nearby'
+  end
+  local record = {edge = edge, forward = sign > 0,
+    from = sign > 0 and edge.inNode or edge.outNode,
+    to = sign > 0 and edge.outNode or edge.inNode}
+  if not legalRecord(record) then return nil, 'This road is not legal in this direction' end
+  local angle = bearingToDir(facing, edgeDirection(edge, sign))
+  local message = edge.oneWay and ('One-way road. Legal travel is '
+    .. (math.abs(angle) < 10 and 'ahead' or string.format('%d degrees to your %s',
+      math.floor(math.abs(angle) + 0.5), angle > 0 and 'left' or 'right'))) or nil
+  return extendAssistantRoute({records = {record}, generation = navigationGeneration,
+    roadMessage = message})
+end
+
+function M.assistantChoose(state, name)
+  local choice = state.junction and state.junction.choices[name]
+  if not choice then return nil, 'No valid turn selected. Brake' end
+  for _, record in ipairs(choice.records) do state.records[#state.records + 1] = record end
+  state.committed = choice.records[#choice.records]
+  state.junction = nil
+  return extendAssistantRoute(state)
+end
+
+function M.assistantReverse(state, player)
+  if state.generation ~= navigationGeneration then return nil, 'Navigation changed' end
+  if not state.reverseTracking then
+    local records = {}
+    for _, record in ipairs(state.history or {}) do records[#records+1] = record end
+    for _, record in ipairs(state.records) do records[#records+1] = record end
+    state.records, state.history, state.reverseTracking = records, {}, true
+    state.reverseSign, state.reverseLane = nil, nil
+  end
+  local guidance, err = assistantRoutes.reverseTarget(state, player:getPosition(),
+    player:getDirectionVector(), player:getVelocity():length(), projectOnEdge)
+  if not guidance then return nil, err end
+  state.reverseGuidance = guidance
+  state.hazard, state.recovering = false, guidance.offset > 2
+  return state
+end
+
+function M.assistantUpdate(state, player, dt)
+  if state.generation ~= navigationGeneration then return nil, 'Navigation changed' end
+  local position = player:getPosition()
+  local best, index
+  -- Track only the explicit connected route, never jump to a crossing road.
+  for i = 1, math.min(#state.records, 8) do
+    local projection = projectOnEdge(position, state.records[i].edge)
+    if math.abs(projection.dz) <= OVERPASS_Z_TOLERANCE
+      and (not best or projection.distance < best.distance - 0.1) then
+      best, index = projection, i
+    end
+  end
+  if not best then return nil, 'Road elevation tracking lost. Brake' end
+  state.offset = math.max(0, best.distance - best.radius)
+  -- Keep the committed connected path while the stock planner steers back onto
+  -- it. A short shoulder excursion must not hand steering back mid-corner.
+  if state.offset > 25 then return nil, 'Too far from the route to rejoin. Brake' end
+  local wasRecovering = state.recovering
+  state.recovering = state.offset > (wasRecovering and 0.5 or 2)
+  if state.recovering then
+    if not wasRecovering or state.offset < (state.recoveryBest or math.huge) - 0.5 then
+      state.recoveryBest, state.recoveryStall = state.offset, 0
+    elseif player:getVelocity():length() > 1 then
+      state.recoveryStall = (state.recoveryStall or 0) + (dt or 0)
+    end
+    if (state.recoveryStall or 0) > 12 then return nil, 'Unable to rejoin the route. Brake' end
+  else state.recoveryBest, state.recoveryStall = nil, 0 end
+  local obstruction = false
+  state.hazardDetail = {reason = 'clear'}
+  if castRayStatic and player:getVelocity():length() > 1 then
+    local forward = player:getDirectionVector()
+    local front = roadSignals.frontPosition and roadSignals.frontPosition(player) or (position + forward * 2)
+    local rayStart = front + vec3(0, 0, 0.75)
+    local range = clamp(player:getVelocity():length() * 2, 8, 30)
+    local distance = castRayStatic(rayStart, forward, range)
+    state.hazardDetail = {distance = distance, range = range, reason = 'clear',
+      position = {position.x, position.y, position.z}, forward = {forward.x, forward.y, forward.z}}
+    if distance < range then
+      local hit = rayStart + forward * distance
+      local reason, height
+      obstruction, reason, height = require('ge/extensions/assistantRoutes').obstacleHit(state.records, hit, projectOnEdge)
+      state.hazardDetail.reason, state.hazardDetail.height = reason, height
+      state.hazardDetail.hit = {hit.x, hit.y, hit.z}
+    end
+  end
+  state.hazardTime = obstruction and ((state.hazardTime or 0) + (dt or 0)) or 0
+  state.hazard = state.hazardTime >= 0.2
+  state.hazardDetail.seconds = state.hazardTime
+  state.history = state.history or {}
+  for _ = 1, index - 1 do
+    state.history[#state.history+1] = table.remove(state.records, 1)
+    if #state.history > 16 then table.remove(state.history, 1) end
+  end
+  local first = state.records[1]
+  local travelled = (first.forward and best.t or 1 - best.t) * first.edge.length
+  state.travelled = travelled
+  if state.committed and first == state.committed and travelled > best.radius + 2 then
+    state.committed = nil
+  elseif state.committed and index > 1 then
+    local found = false
+    for _, record in ipairs(state.records) do if record == state.committed then found = true end end
+    if not found then state.committed = nil end
+  end
+  if not state.junction then
+    local ok, err = extendAssistantRoute(state)
+    if not ok then return nil, err end
+  end
+  local distance = -travelled
+  for _, record in ipairs(state.records) do distance = distance + record.edge.length end
+  local last = state.records[#state.records]
+  local radius = last.forward and last.edge.outRadius or last.edge.inRadius
+  state.distance = math.max(0, distance - radius)
+  state.path = assistantRoutes.nodes(state.records)
+  if not state.path then return nil, 'Disconnected navigation route' end
+  return state
 end
 
 return M

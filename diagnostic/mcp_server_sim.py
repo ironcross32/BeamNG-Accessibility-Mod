@@ -76,6 +76,7 @@ def _send_udp(port, msg):
 
 _captures = []
 _road_diagnostics = []
+_assistant_diagnostics = []
 _FAKE_PNG = b"\x89PNG\r\n\x1a\n" + b"x" * 512
 
 
@@ -108,6 +109,8 @@ mcp_server.init(
         capture_png_fn=_capture_png,
         road_diagnostic_fn=lambda **kwargs: _road_diagnostics.append(kwargs)
         or {"active": False},
+        assistant_diagnostic_fn=lambda **kwargs: _assistant_diagnostics.append(kwargs)
+        or {"recording": False},
         stop_event=threading.Event(),
         logger=None,
         version="test",
@@ -166,7 +169,7 @@ check("3a tools/list returns tools", len(tools) >= 10, len(tools))
 names = {t["name"] for t in tools}
 for expect in (
     "health", "lua_exec", "speech_log", "speak", "press_command", "diag",
-    "camera_control", "screenshot", "road_diagnostic",
+    "camera_control", "screenshot", "road_diagnostic", "assistant_diagnostic",
 ):
     check("3b tools/list contains " + expect, expect in names)
 check("3c every tool has an inputSchema object", all(t["inputSchema"]["type"] == "object" for t in tools))
@@ -224,6 +227,13 @@ check(
     not r["isError"] and _road_diagnostics[-1]["action"] == "status",
     r,
 )
+
+r = call("assistant_diagnostic", {"action": "read", "since_seq": 12, "limit": 5})
+check("7f3 assistant diagnostic cursor reaches its backend",
+      not r["isError"] and _assistant_diagnostics[-1]["since_seq"] == 12
+      and _assistant_diagnostics[-1]["limit"] == 5, r)
+r = call("assistant_diagnostic", {"action": "start"})
+check("7f4 assistant recording requires a live world", r["isError"], r)
 
 r = call("send_command", {"module": "terrainScanner", "payload": "SCAN"})
 check("7g send_command routes to the right port", (4472, "SCAN") in _sent, _sent[-3:])

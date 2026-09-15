@@ -62,7 +62,7 @@ Press F9, then one of the following keys. If you press an invalid key or allow t
 
 #### Telemetry readouts:
 
-- S: Speak speed
+- S: Speak speed and current map speed limit (requires road detection or steering assistance for limit data)
 - R: Speak RPM
 - Shift+R: Speak redline RPM
 - G: Speak gear
@@ -121,7 +121,7 @@ In reverse, the scanner measures from the back of your vehicle and reports the b
 - Ctrl+K: Toggle wheel slip detection (lockup / wheelspin)
 - Ctrl+O: Toggle obstacle detection
 - Ctrl+R: Toggle road guidance
-- Ctrl+Shift+R: Speak current road status, legal directions, correction state, and the next known intersection
+- Ctrl+Shift+R: Speak current road status, legal directions, correction state, the next known intersection, and stop sign or traffic-light state
 - Ctrl+G: Toggle coordinate guidance
 - Ctrl+Shift+C: Clickspot detection
 - Ctrl+N: Accessible node grabber
@@ -179,6 +179,7 @@ If the game stops sending camera data — which happens when the Lua side reload
 Press F10, then one of the following keys.
 
 - D: Disable AI
+- H: Toggle driving assistant for the current player vehicle, regardless of slot selection
 - T: Traffic mode
 - R: Random mode
 - S: Stop AI
@@ -194,6 +195,28 @@ Press F10, then one of the following keys.
 - ?: Toggle input help mode
 
 Some AI modes require a road network to be present, thus, they will not work on maps like Grid Small Pure.
+
+The driving assistant is experimental and starts off each session. Disable ordinary AI before enabling it, and wait for “Driving assistant on” before relying on its steering. You retain throttle, brake, handbrake, clutch, and gear selection; you remain responsible for speed, stopping, and traffic lights. “Slow down” is advisory. F10, H turns assistance off, and F10, D also disables it regardless of selected vehicle slots.
+
+After the assistant announces a junction, hold steering left or right continuously for one second to select that turn. It announces “left/right selected. Release steering”; you can then centre the controls and the selection stays latched. Another full one-second hold can select a different available turn before commitment. Brief movements and unavailable directions do not erase a valid selection. Input within ±0.25 counts as centred. About two seconds before the junction (12–35 metres), it commits the latched turn and announces “Turning left/right.” With no latch, it uses the current input, with centred steering requesting straight. If that direction is unavailable, it automatically chooses an available exit, preferring straight, then left, then right. Enabling inside the commitment zone also uses this immediate fallback. Selections clear for the next junction and when assistance ends.
+
+Available exits play as HRTF tones in three fixed slots: left, centre, right. An unavailable exit is silent; a T junction plays left, silence, right. HRTF uses your audio setting, with stereo panning as the fallback. A distinct pair of descending tones signals disengagement, including connection loss, independently of speech and the road-detection switch. Gearbox messages caused by the assist's internal planner changes are suppressed; normal player-triggered shifter messages remain available.
+
+Junction distance beeps work with assistance, or during manual driving with road detection enabled (F9, Ctrl+R). Centred pips repeat faster as the vehicle approaches the junction. They measure from the front of the vehicle to the mapped stopping point used by stock AI, or to the junction boundary when no applicable control point is available. A known stop sign or red signal produces double pips; green retains single approach pips so you can slow for a turn. Single pips also cover uncontrolled or unknown signals: they are distance feedback, not permission to proceed. The cue starts earlier at higher speeds and goes quiet while stopped. The Road guidance settings include a separate distance-beep switch; volume uses Intersection Tone Volume. These cues do not control speed or braking.
+
+For observation while driving, MCP provides `assistant_diagnostic` with `start`, `status`, `read`, `mark`, `stop`, `review`, and `list`. Recording does not enable assistance. It saves inputs, planner state, available and selected exits, junction-distance cues, announcements, and disengagement reasons under `%LOCALAPPDATA%/beamtel/assistant_diagnostics`. See [assistant diagnostics](docs/assistant-diagnostics.md) for the observation workflow.
+
+One-way road announcements now tell you the legal direction relative to the vehicle. Activation searches nearby eligible roads using the vehicle's facing direction, and wrong-way refusals give an angle and side to align toward. On a modest departure from the road, “Rejoining the road. Slow down” means the assistant is retaining the chosen route while steering back; “Back on the road” confirms recovery. It still disengages if the route is too far away, its elevation no longer matches, or recovery makes no progress. “Obstacle ahead. Brake” warns of a static obstruction; the assistant does not apply the brakes.
+
+Selecting reverse, or rolling backward, now switches to low-speed reverse steering guidance. It follows a rearward point on the known road path instead of letting the forward AI attempt a sweeping recovery turn. You keep control of gears, speed, and stopping. Forward assistance restarts from your current position once you select a forward gear and stop rolling backward. Turn selections are cleared when the forward route restarts. If the known reverse path ends or no usable target remains behind the car, it tells you to stop and disengages with the off sound. Reverse guidance does not provide rear obstacle avoidance.
+
+Forward driving follows navigable roads using the game's lane behavior. It provides no lane-change requests, destination navigation, automatic braking, or persistent activation. Unsupported junctions and detected roundabouts disengage assistance before entry. Vehicle changes, resets, lost connections, and navigation/control failures also disengage it. Ordinary AI commands targeting the assisted vehicle end assistance; AI tuning is rejected while assistance is active. Full keyboard, gamepad, wheel, and driving validation is still pending; see [driving assistant validation](docs/driving-assistant-validation.md).
+
+Map speed limits are announced when road detection or steering assistance starts and when the limit changes. F9, S reads your speed and the current map limit in your selected units. Manual driving requires road detection on (F9, Ctrl+R). The Road guidance setting **Speak map speed limit changes** controls automatic announcements; the speed readout remains available with it off. Changes must remain stable for 0.75 seconds, and brief missing samples do not repeat announcements. Missing or stale data is reported as unavailable on request.
+
+These are navigation graph limits, which may be authored by the map creator or estimated by BeamNG from road properties. They may differ from roadside signs, and the graph does not identify which values were estimated. A road's limit is not a safe speed for every bend or junction: continue to use the junction beeps and slow-down warnings. This feature does not change throttle or braking.
+
+Stop-sign and traffic-light notifications are shared by road guidance and steering assistance. Either mode enables them; turning one mode off while the other stays on preserves notifications and their announcement history. The separate stop-sign and traffic-light speech preferences still apply. F9, Ctrl+Shift+R can read the road and traffic-control status with either mode active. Notifications stop when both modes are off or during loading.
 
 ### F11 Layer (Vehicle Spawner)
 
@@ -279,6 +302,8 @@ is not yet included. Protocol and cue details are in [docs/obstacle-warning.md](
 **Road guidance** is road awareness rather than destination routing. Turn it on with F9 then Ctrl+R. Off road, a spatial beacon points toward an intercept farther along the nearest vertically compatible road, giving you a shallower approach than its perpendicular nearest point; one-way travel is respected. After you join a road, one directional chime identifies its legal travel direction or both directions; one-way roads are announced. While safely contained on the road it stays silent. If your present course predicts that you will leave the safe lane band, short spatial pips indicate the direction to apply steering; stronger corrections use a higher pitch and faster cadence. A centred repeating double pip means straighten the steering now, and a short rising tone confirms that recovery has settled. On a two-way road recovery keeps the side you already occupy rather than pulling toward the road centreline. Correction direction is limited to 35 degrees either side of straight ahead and pauses at ambiguous junctions.
 
 About seven seconds before a meaningful intersection or dead end, speech describes its shape and available exits. A centred double pip confirms the near-junction zone, then a distinct descending tone marks entry into the physical intersection area. At an ambiguous branch, correction guidance pauses instead of silently choosing an exit. Private and gated roads are excluded by default. The Road guidance group in Configuration controls correction, intersection speech, the junction tones, private-road inclusion, and separate off-road beacon, lane-correction, and intersection volume levels. F9 then Ctrl+Shift+R gives the current road state on demand even when automatic intersection speech is disabled.
+
+Road guidance also announces registered stop signs and traffic lights ahead, with a close reminder within 12 meters of the mapped stopping point. Distances start at the vehicle's front-most live node. Advance warning allows roughly eight seconds, with extra braking distance at higher speeds, within a 60-to-400-meter range. The scan follows clear road continuations past side streets. Where a shallow split or shared controlled junction leaves the approach uncertain, it gives an early general warning and waits to announce a light color until the approach is resolved. Traffic-light changes are spoken while approaching or waiting, including flashing states. Stop signs and traffic lights have separate speech checkboxes in the Road guidance settings, both enabled by default. The road-status command includes the current control even when its automatic speech is disabled. The stopping point is the one supplied by the map for AI traffic, which may not match a painted line exactly. Decorative or unregistered signs/lights and lane-specific turn arrows cannot be read. Italy has registered stop signs; West Coast USA has both stop signs and working traffic lights.
 
 The enhanced behavior requires the R2 feed from the matching mod. A newer executable still accepts the older road packets and says that only legacy guidance is available; a newer mod continues sending those packets for older executables. If R2 stops for more than one second, road audio is silenced rather than continuing from stale data.
 

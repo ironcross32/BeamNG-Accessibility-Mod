@@ -480,6 +480,17 @@ def _t_get_state(args):
     return _deps.snapshot_state_fn(sections)
 
 
+def _t_assistant_diagnostic(args):
+    callback = getattr(_deps, "assistant_diagnostic_fn", None)
+    if callback is None:
+        raise ToolError("this beamtel build has no assistant diagnostic recorder; restart the receiver after updating")
+    action = str(args.get("action", "status")).strip().lower()
+    if action == "start":
+        _require_world()
+    return callback(action=action, label=args.get("label"), session=args.get("session"),
+                    note=args.get("note"), limit=args.get("limit", 100), since_seq=args.get("since_seq", 0))
+
+
 def _t_road_diagnostic(args):
     callback = getattr(_deps, "road_diagnostic_fn", None)
     if callback is None:
@@ -1131,7 +1142,7 @@ TOOLS = [
         "name": "get_state",
         "description": (
             "Snapshot of beamtel's live state. Sections: telemetry, position, implement, "
-            "trailer, dock, cannon, scanner, modes, slots, liveness. Omit `sections` for all."
+            "trailer, dock, cannon, scanner, modes, slots, assistant, road, liveness. Omit `sections` for all."
         ),
         "inputSchema": {
             "type": "object",
@@ -1150,6 +1161,27 @@ TOOLS = [
         ),
         "inputSchema": {"type": "object", "properties": {}},
         "handler": _t_get_config,
+    },
+    {
+        "name": "assistant_diagnostic",
+        "description": (
+            "Observe the driving assistant while the player drives. start records vehicle inputs, "
+            "AI steering/braking, route and turn choices at 5 Hz plus announcements and disengagement "
+            "reasons to NDJSON. It does not enable or drive the assistant. status gives latest state "
+            "and sample age; read returns events after since_seq; mark adds a note; stop closes the "
+            "recording; review summarizes a session; list returns saved session names."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "default": "status",
+                           "enum": ["start", "stop", "status", "read", "mark", "review", "list"]},
+                "label": {"type": "string"}, "session": {"type": "string"},
+                "note": {"type": "string"}, "since_seq": {"type": "integer", "default": 0},
+                "limit": {"type": "integer", "default": 100},
+            },
+        },
+        "handler": _t_assistant_diagnostic,
     },
     {
         "name": "road_diagnostic",

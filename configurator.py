@@ -85,7 +85,11 @@ DEFAULT_CONFIG = {
     "obstacle_warning_sensitivity": "normal",
     "road_follow_guidance_enabled": True,
     "road_junction_speech_enabled": True,
+    "road_stop_sign_speech_enabled": True,
+    "road_traffic_light_speech_enabled": True,
+    "road_speed_limit_speech_enabled": True,
     "road_junction_earcon_enabled": True,
+    "road_junction_proximity_enabled": True,
     "road_include_private": False,
     "road_beep_volume_db": -14.0,
     "route_beacon_volume_db": -16.0,
@@ -340,7 +344,11 @@ def load_config():
         _coerce("obstacle_warning_sensitivity", str, "normal")
         _coerce("road_follow_guidance_enabled", bool, True)
         _coerce("road_junction_speech_enabled", bool, True)
+        _coerce("road_stop_sign_speech_enabled", bool, True)
+        _coerce("road_traffic_light_speech_enabled", bool, True)
+        _coerce("road_speed_limit_speech_enabled", bool, True)
         _coerce("road_junction_earcon_enabled", bool, True)
+        _coerce("road_junction_proximity_enabled", bool, True)
         _coerce("road_include_private", bool, False)
         _coerce("road_beep_volume_db", float, -14.0)
         _coerce("route_beacon_volume_db", float, -16.0)

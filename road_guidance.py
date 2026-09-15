@@ -19,6 +19,10 @@ R2_STALE_SECONDS = 1.0
 _STATES = {"dormant", "offRoad", "onRoad"}
 _PHASES = {"approach", "near"}
 _CORRECTION_PHASES = {"idle", "correct", "unwind"}
+_SIGNAL_STATES = {
+    "stop", "red", "yellow", "green", "redYellow", "flashingRed",
+    "flashingYellow", "flashingGreen", "off", "unknown",
+}
 
 
 def _finite_number(value, field):
@@ -210,14 +214,85 @@ def parse_r2_packet(text):
             "exits": [_bearing(v, "junction.exits") for v in exits],
         }
 
+    signal = packet.get("signal")
+    signal_status = packet.get("signalStatus", "unsupported")
+    if not isinstance(signal_status, str) or signal_status not in {"unsupported", "inactive", "none", "available"}:
+        raise ValueError("invalid signalStatus")
+    signal_context = packet.get("signalContext", "")
+    if not isinstance(signal_context, str) or len(signal_context) > 200:
+        raise ValueError("invalid signalContext")
+    if signal is not None:
+        if not isinstance(signal, dict):
+            raise ValueError("signal must be an object or null")
+        signal_id = signal.get("id")
+        if not isinstance(signal_id, str) or not signal_id or len(signal_id) > 160:
+            raise ValueError("invalid signal.id")
+        kind = signal.get("kind")
+        signal_state = signal.get("state")
+        if (not isinstance(kind, str) or kind not in {"stopSign", "trafficLight"}
+            or not isinstance(signal_state, str) or signal_state not in _SIGNAL_STATES):
+            raise ValueError("invalid signal kind or state")
+        if (kind == "stopSign") != (signal_state == "stop"):
+            raise ValueError("signal state does not match kind")
+        if not isinstance(signal.get("phase"), str) or signal["phase"] not in _PHASES:
+            raise ValueError("invalid signal.phase")
+        distance = _finite_number(signal.get("distance"), "signal.distance")
+        if distance < 0 or distance > 1000:
+            raise ValueError("invalid signal.distance")
+        if signal_status != "available" or state != "onRoad":
+            raise ValueError("signal requires an available on-road feed")
+        group_id = signal.get("groupId", signal_id)
+        if not isinstance(group_id, str) or not group_id or len(group_id) > 160:
+            raise ValueError("invalid signal.groupId")
+        preview = signal.get("preview", False)
+        if not isinstance(preview, bool):
+            raise ValueError("invalid signal.preview")
+        if preview and kind == "trafficLight" and signal_state != "unknown":
+            raise ValueError("preview cannot claim an approach-specific light state")
+        signal = {"id": signal_id, "kind": kind, "state": signal_state,
+                  "phase": signal["phase"], "distance": distance,
+                  "groupId": group_id, "preview": preview}
+    elif signal_status == "available":
+        raise ValueError("available signal is missing")
+
+    proximity = packet.get("proximity")
+    if proximity is not None:
+        if not isinstance(proximity, dict) or state != "onRoad":
+            raise ValueError("proximity requires an on-road object")
+        target_id = proximity.get("id")
+        if not isinstance(target_id, str) or not target_id or len(target_id) > 200:
+            raise ValueError("invalid proximity.id")
+        action, source = proximity.get("action"), proximity.get("source")
+        if action not in ("stop", "approach") or source not in ("stopPoint", "junctionBoundary"):
+            raise ValueError("invalid proximity action or source")
+        if source == "junctionBoundary" and action == "stop":
+            raise ValueError("junction geometry cannot establish a stop requirement")
+        distance = _finite_number(proximity.get("distance"), "proximity.distance")
+        speed = _finite_number(proximity.get("speed"), "proximity.speed")
+        if not 0 <= distance <= 1000 or speed < 0:
+            raise ValueError("invalid proximity distance or speed")
+        proximity = {"id": target_id, "distance": distance, "speed": speed,
+                     "action": action, "source": source}
+
+    speed_limit = packet.get("speedLimit")
+    if speed_limit is not None:
+        speed_limit = _finite_number(speed_limit, "speedLimit")
+        if speed_limit <= 0 or state != "onRoad":
+            raise ValueError("speedLimit requires a positive on-road value")
+
     return {
         "state": state,
+        "speedLimit": speed_limit,
+        "proximity": proximity,
         "oneWay": one_way,
         "roadDirections": directions,
         "offRoad": off_road,
         "correction": correction,
         "diagnostic": diagnostic,
         "junction": junction,
+        "signal": signal,
+        "signalStatus": signal_status,
+        "signalContext": signal_context,
         # Optional extension used to re-arm orientation after a vehicle/world reload
         # even when the wire state remains onRoad throughout.
         "orientation": packet.get("orientation") is True,
@@ -269,6 +344,13 @@ def road_direction_list(bearings, conjunction="and"):
     return _joined(labels, conjunction)
 
 
+def one_way_phrase(bearing):
+    if abs(bearing) <= 10:
+        return "One-way road. Legal travel is ahead"
+    side = "left" if bearing > 0 else "right"
+    return f"One-way road. Legal travel is {abs(bearing):.0f} degrees to your {side}"
+
+
 def format_road_distance(metres, units):
     value = max(0.0, float(metres))
     if str(units).lower().startswith("imp"):
@@ -295,6 +377,32 @@ def junction_phrase(junction, units):
     return f"{lead} in {distance}."
 
 
+def signal_phrase(signal, units, change=False):
+    if signal.get("preview"):
+        control = "Stop sign" if signal["kind"] == "stopSign" else "Traffic lights"
+        return f"{control} ahead, about {format_road_distance(signal['distance'], units)}."
+    if signal["kind"] == "stopSign":
+        return f"Stop sign in {format_road_distance(signal['distance'], units)}."
+    names = {
+        "red": "red", "yellow": "yellow", "green": "green",
+        "redYellow": "red and yellow", "flashingRed": "flashing red",
+        "flashingYellow": "flashing yellow", "flashingGreen": "flashing green",
+        "off": "off", "unknown": "state unknown",
+    }
+    state = names.get(signal["state"], "state unknown")
+    if change:
+        return f"Traffic light {state}."
+    return f"Traffic light {state}, in {format_road_distance(signal['distance'], units)}."
+
+
+def map_speed_limit_phrase(speed_ms, units):
+    if speed_ms is None:
+        return "Map speed limit unavailable."
+    value = round(speed_ms * (2.2369362920544 if units == "imperial" else 3.6))
+    unit = "mph" if units == "imperial" else "kilometers per hour"
+    return f"Map speed limit {value} {unit}."
+
+
 class RoadGuidanceFeed:
     """Thread-safe R2/legacy feed state and once-per-junction event tracking."""
 
@@ -316,10 +424,53 @@ class RoadGuidanceFeed:
             self._junction_missing = 0
             self._announced_phases = set()
             self.last_known_junction = None
+            self._signal_context = None
+            self._signal_history = {}
+            self._signal_options = None
+            self._speed_context = None
+            self._speed_candidate = None
+            self._speed_since = None
+            self._speed_announced = None
 
-    def accept_r2(self, packet, now=None):
+    def arm_orientation(self):
+        """Reintroduce manual road guidance without forgetting shared alerts."""
+        with self._lock:
+            self._orientation_armed = True
+            self._last_state = None
+
+    def _speed_limit_event(self, packet, now, enabled):
+        context = (packet.get("signalContext"), enabled)
+        if (context != self._speed_context or self.last_r2_time is None
+            or now - self.last_r2_time > R2_STALE_SECONDS):
+            self._speed_candidate = self._speed_announced = None
+            self._speed_since = None
+        self._speed_context = context
+        if not enabled:
+            return None
+        value = packet.get("speedLimit") if packet["state"] == "onRoad" else None
+        value = round(value, 3) if value is not None else None
+        if value != self._speed_candidate or self._speed_since is None:
+            self._speed_candidate, self._speed_since = value, now
+        # Edge selection can flicker at junctions. A brief missing sample must
+        # neither repeat the old limit nor announce that it disappeared.
+        dwell = 0.75 if value is not None else 3.0
+        if now - self._speed_since < dwell or value == self._speed_announced:
+            return None
+        self._speed_announced = value
+        if packet["state"] != "onRoad":
+            return None
+        return {"value": value}
+
+    def accept_r2(self, packet, now=None, *, stop_signs=True, traffic_lights=True, speed_limits=True):
         now = self._clock() if now is None else float(now)
         with self._lock:
+            speed_event = self._speed_limit_event(packet, now, speed_limits)
+            context = packet.get("signalContext")
+            options = (stop_signs, traffic_lights)
+            if (context != self._signal_context or options != self._signal_options
+                or self.last_r2_time is None or now - self.last_r2_time > R2_STALE_SECONDS):
+                self._signal_history.clear()
+            self._signal_context, self._signal_options = context, options
             previous_state = self._last_state
             self.mode = "r2"
             self.last_r2_time = now
@@ -357,7 +508,22 @@ class RoadGuidanceFeed:
                     junction_event = deepcopy(junction)
                     junction_event["phase"] = event_phase
 
-            return {"orientation": orientation, "junction": junction_event}
+            signal_event = None
+            # Brief edge-selection gaps must not repeat an approach announcement.
+            self._signal_history = {k: v for k, v in self._signal_history.items()
+                                    if now - v[2] < 5.0}
+            signal = packet.get("signal")
+            if signal and (stop_signs if signal["kind"] == "stopSign" else traffic_lights):
+                key = (signal["kind"], signal.get("groupId", signal["id"]))
+                previous = self._signal_history.get(key)
+                near = signal["phase"] == "near"
+                changed = previous is not None and previous[0] != signal["state"]
+                if previous is None or changed or (near and not previous[1]):
+                    signal_event = dict(signal, change=changed)
+                self._signal_history[key] = (signal["state"], near or bool(previous and previous[1]), now)
+
+            return {"orientation": orientation, "junction": junction_event,
+                    "signal": signal_event, "speedLimit": speed_event}
 
     def r2_recent(self, now=None):
         now = self._clock() if now is None else float(now)
@@ -392,6 +558,7 @@ class RoadGuidanceFeed:
             )
             self.mode = "legacy" if legacy_recent else "stale"
             if newly_stale:
+                self._signal_history.clear()
                 self.packet = None
                 self._last_state = None
                 self._orientation_armed = True
@@ -406,6 +573,14 @@ class RoadGuidanceFeed:
                 "legacy": deepcopy(self.legacy_state),
                 "junction": deepcopy(self.last_known_junction),
             }
+
+    def speed_limit_phrase(self, enabled, units):
+        with self._lock:
+            recent = (self.last_r2_time is not None
+                      and self._clock() - self.last_r2_time <= R2_STALE_SECONDS)
+            packet = self.packet or {}
+            value = packet.get("speedLimit") if enabled and recent and packet.get("state") == "onRoad" else None
+        return map_speed_limit_phrase(value, units)
 
     def status_phrase(self, enabled, units):
         if not enabled:
@@ -441,6 +616,7 @@ class RoadGuidanceFeed:
             return f"Off road. Road {side}, {dist} away."
 
         parts = ["On road."]
+        parts.append(self.speed_limit_phrase(enabled, units))
         directions = road_direction_list(
             packet.get("roadDirections", []), conjunction="or"
         )
@@ -462,6 +638,15 @@ class RoadGuidanceFeed:
         else:
             parts.append("No correction needed.")
         junction = snap["junction"]
+        signal = packet.get("signal")
+        if signal:
+            parts.append(signal_phrase(signal, units))
+        elif packet.get("signalStatus", "unsupported") == "unsupported":
+            parts.append("Traffic control data unavailable.")
+        elif packet.get("signalStatus") == "inactive":
+            parts.append("Traffic signal system inactive.")
+        else:
+            parts.append("No stop sign or traffic light reported ahead.")
         if junction:
             parts.append("Next, " + junction_phrase(junction, units))
         else:

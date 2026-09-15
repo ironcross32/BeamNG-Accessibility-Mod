@@ -705,11 +705,40 @@ class ConfigPanel(wx.ScrolledWindow):
         )
         road_sizer.Add(self.chk_road_junction_speech, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
+        self.chk_road_stop_signs = wx.CheckBox(sb_road, label="Speak approaching stop signs")
+        self.chk_road_stop_signs.SetToolTip(
+            "While road guidance or steering assistance is on, announce stop signs ahead and remind you within 12 meters."
+        )
+        road_sizer.Add(self.chk_road_stop_signs, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+        self.chk_road_traffic_lights = wx.CheckBox(sb_road, label="Speak traffic lights and state changes")
+        self.chk_road_traffic_lights.SetToolTip(
+            "While road guidance or steering assistance is on, announce the light on your approach and changes while waiting."
+        )
+        road_sizer.Add(self.chk_road_traffic_lights, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+
+        self.chk_road_speed_limits = wx.CheckBox(sb_road, label="Speak map speed limit changes")
+        self.chk_road_speed_limits.SetToolTip(
+            "Announce the current map speed limit and changes with road detection or steering assistance on. "
+            "BeamNG may estimate these limits; they may differ from signs and are not safe turn speeds. "
+            "F9, S still reads the limit when this option is off."
+        )
+        road_sizer.Add(self.chk_road_speed_limits, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+
+        self.chk_road_junction_proximity = wx.CheckBox(
+            sb_road, label="Junction distance beeps (manual driving and AI assist)"
+        )
+        self.chk_road_junction_proximity.SetToolTip(
+            "Beep faster towards the mapped stopping point or junction boundary. "
+            "Double pips mean a known stop requirement; single pips include green lights. "
+            "Manual driving requires road guidance on. Uses Intersection Tone Volume."
+        )
+        road_sizer.Add(self.chk_road_junction_proximity, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+
         self.chk_road_junction_earcon = wx.CheckBox(
             sb_road, label="Intersection proximity and entry tones"
         )
         self.chk_road_junction_earcon.SetToolTip(
-            "Play a double pip near a junction and a different tone on entering it."
+            "Play an entry tone, plus a near-junction double pip when distance beeps are disabled."
         )
         road_sizer.Add(self.chk_road_junction_earcon, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
@@ -1368,7 +1397,11 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_learn_desc,
             self.chk_road_follow,
             self.chk_road_junction_speech,
+            self.chk_road_stop_signs,
+            self.chk_road_traffic_lights,
+            self.chk_road_speed_limits,
             self.chk_road_junction_earcon,
+            self.chk_road_junction_proximity,
             self.chk_road_private,
             self.chk_mcp_server,
         ):
@@ -1620,9 +1653,13 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_road_junction_speech.SetValue(
                 cfg.get("road_junction_speech_enabled", True)
             )
+            self.chk_road_stop_signs.SetValue(cfg.get("road_stop_sign_speech_enabled", True))
+            self.chk_road_traffic_lights.SetValue(cfg.get("road_traffic_light_speech_enabled", True))
+            self.chk_road_speed_limits.SetValue(cfg.get("road_speed_limit_speech_enabled", True))
             self.chk_road_junction_earcon.SetValue(
                 cfg.get("road_junction_earcon_enabled", True)
             )
+            self.chk_road_junction_proximity.SetValue(cfg.get("road_junction_proximity_enabled", True))
             self.chk_road_private.SetValue(cfg.get("road_include_private", False))
             self.spin_road_beep.SetValue(cfg.get("road_beep_volume_db", -14.0))
             self.spin_road_correction.SetValue(
@@ -1718,12 +1755,16 @@ class ConfigPanel(wx.ScrolledWindow):
         cfg["slip_tone_level_dbfs"] = self.spin_slip_tone_level.GetValue()
         cfg["placement_ping_volume_db"] = self.spin_placement_ping_level.GetValue()
         cfg["road_follow_guidance_enabled"] = self.chk_road_follow.GetValue()
+        cfg["road_stop_sign_speech_enabled"] = self.chk_road_stop_signs.GetValue()
+        cfg["road_traffic_light_speech_enabled"] = self.chk_road_traffic_lights.GetValue()
+        cfg["road_speed_limit_speech_enabled"] = self.chk_road_speed_limits.GetValue()
         cfg["road_junction_speech_enabled"] = (
             self.chk_road_junction_speech.GetValue()
         )
         cfg["road_junction_earcon_enabled"] = (
             self.chk_road_junction_earcon.GetValue()
         )
+        cfg["road_junction_proximity_enabled"] = self.chk_road_junction_proximity.GetValue()
         cfg["road_include_private"] = self.chk_road_private.GetValue()
         cfg["road_beep_volume_db"] = self.spin_road_beep.GetValue()
         cfg["road_correction_volume_db"] = self.spin_road_correction.GetValue()

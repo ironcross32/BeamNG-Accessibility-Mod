@@ -658,7 +658,8 @@ ROUTE_BEACON_HALF_DIST_M = 400.0  # exponential half-distance for rate scaling
 
 # Road correction is deliberately a different auditory object from the off-road
 # beacon. Short directional pips say "apply steering"; their rate reports how much
-# correction remains. A centred double pip is a separate "unwind now" instruction.
+# correction remains. A directional double pip says "ease off" while retaining
+# the remaining correction direction.
 # This leaves silence between instructions and gives recovery a definite action point.
 ROAD_CORRECTION_CARRIER_HZ = 440.0
 ROAD_CORRECTION_MID_HZ = 523.25
@@ -675,6 +676,7 @@ ROAD_CORRECTION_SETTLED_END_HZ = 880.0
 ROAD_CORRECTION_SETTLED_MS = 130
 ROAD_CORRECTION_SETTLED_REFRACTORY_S = 2.0
 ROAD_CORRECTION_MAX_AZIMUTH_DEG = 35.0
+ROAD_CORRECTION_MIN_AZIMUTH_DEG = 25.0
 ROAD_CORRECTION_ATTACK_S = 0.015
 ROAD_CORRECTION_RELEASE_S = 0.025
 
@@ -1597,6 +1599,11 @@ class AudioController:
         # repeated chime triggers from the lua side so successive pairs don't pile up.
         self._road_chime_next_allowed_time = 0.0
         self._road_junction_queue = []
+        self._assistant_cue_queue = []
+        self._junction_proximity_enabled = True
+        self._junction_proximity = None
+        self._junction_proximity_time = 0.0
+        self._junction_proximity_phase = 0.0
         self._road_junction_amp = 10.0 ** (ROAD_JUNCTION_AMP_DB / 20.0)
 
         # Route Beacon State (crow-flies homing on the map route's destination)
@@ -2102,6 +2109,7 @@ class AudioController:
     def clear_road_audio(self):
         """Silence every road cue without changing the user's mode toggle."""
         with self.lock:
+            self._junction_proximity = None
             self._road_on_road = True
             self._road_correction_active = False
             self._road_beacon_available = False
@@ -2166,6 +2174,106 @@ class AudioController:
             np.float32
         )
 
+    def trigger_assistant_cue(self, kind, choices=()):
+        """Independent cues: three spatial exit slots, or a descending off alarm."""
+        if not self._is_enabled:
+            return
+        with self.lock:
+            queue = []
+            if kind == "junction":
+                # Fixed 240 ms slots preserve the missing centre at a T junction.
+                t = np.arange(int(self.samplerate * 0.12)) / self.samplerate
+                wave = (np.sin(2 * np.pi * 880 * t)
+                        + 0.35 * np.sin(2 * np.pi * 1760 * t))
+                pulse = (wave * np.sin(np.pi * t / 0.12) ** 2 * 0.2).astype(np.float32)
+                for slot, (name, bearing) in enumerate((("left", 90), ("straight", 0), ("right", -90))):
+                    if name in choices:
+                        left, right = self._render_directional_pulse(pulse, bearing)
+                        queue.append({"L": left, "R": right, "pos": 0,
+                                      "delay": int(slot * 0.24 * self.samplerate)})
+            elif kind == "off":
+                # Two falling, harmonically rich tones differ from road pips.
+                t = np.arange(int(self.samplerate * 0.23)) / self.samplerate
+                phase = 2 * np.pi * (660 * t - 440 * t * t / (2 * 0.23))
+                pulse = ((np.sin(phase) + 0.3 * np.sin(2 * phase))
+                         * np.sin(np.pi * t / 0.23) ** 2 * 0.3).astype(np.float32)
+                for delay in (0, int(self.samplerate * 0.31)):
+                    queue.append({"L": pulse, "R": pulse, "pos": 0, "delay": delay})
+            else:
+                return
+            self._assistant_cue_queue = queue
+
+    @property
+    def junction_proximity_enabled(self):
+        return self._junction_proximity_enabled
+
+    def update_junction_proximity(self, target, enabled=True):
+        """Refresh the shared manual/assisted distance cue from validated R2 data."""
+        with self.lock:
+            if not enabled or not self._junction_proximity_enabled:
+                target = None
+            if target and target["speed"] < 0.25:
+                target = None
+            if target and (not self._junction_proximity
+                           or target["id"] != self._junction_proximity["id"]
+                           or target["action"] != self._junction_proximity["action"]):
+                self._junction_proximity_phase = 0.0
+            self._junction_proximity = dict(target) if target else None
+            self._junction_proximity_time = time.monotonic()
+
+    @staticmethod
+    def junction_proximity_period(distance, speed):
+        # Distance stays useful while creeping; time to the point adds urgency
+        # at speed. This is an approach cue, not an estimate of safe corner speed.
+        return max(0.30, min(1.8, distance / 30.0, distance / max(1.0, speed) / 4.0))
+
+    def junction_proximity_snapshot(self):
+        with self.lock:
+            age = time.monotonic() - self._junction_proximity_time
+            target = self._junction_proximity
+            return {"enabled": self._junction_proximity_enabled,
+                    "active": bool(target and self._junction_proximity_enabled and age <= 0.75),
+                    "age_s": round(age, 3), "target": dict(target) if target else None,
+                    "period_s": self.junction_proximity_period(target["distance"], target["speed"]) if target else None}
+
+    def _mix_junction_proximity(self, buf_l, buf_r, frames):
+        with self.lock:
+            target = self._junction_proximity
+            if (not target or not self._junction_proximity_enabled
+                    or time.monotonic() - self._junction_proximity_time > 0.75):
+                self._junction_proximity = None
+                return
+            period = self.junction_proximity_period(target["distance"], target["speed"])
+            # Carry phase across audio blocks and telemetry refreshes. A shorter
+            # period advances the next pip without repeatedly retriggering it.
+            phase = (self._junction_proximity_phase + np.arange(frames) / self.samplerate) % period
+            self._junction_proximity_phase = (self._junction_proximity_phase + frames / self.samplerate) % period
+            pulse_time = np.where(phase >= 0.10, phase - 0.10, phase) if target["action"] == "stop" else phase
+            envelope = np.where(pulse_time < 0.05, np.sin(np.pi * pulse_time / 0.05) ** 2, 0.0)
+            pulse = (np.sin(2 * np.pi * 520 * pulse_time)
+                     + 0.25 * np.sin(2 * np.pi * 1040 * pulse_time))
+            wave = (pulse * envelope * self._road_junction_amp).astype(np.float32)
+            buf_l += wave
+            buf_r += wave
+
+    def _mix_assistant_cues(self, buf_l, buf_r, frames):
+        with self.lock:
+            pending = []
+            for entry in self._assistant_cue_queue:
+                delay, pos = entry["delay"], entry["pos"]
+                if delay >= frames:
+                    entry["delay"] -= frames
+                    pending.append(entry)
+                    continue
+                offset = max(0, delay)
+                count = min(frames - offset, len(entry["L"]) - pos)
+                buf_l[offset:offset + count] += entry["L"][pos:pos + count]
+                buf_r[offset:offset + count] += entry["R"][pos:pos + count]
+                entry["pos"], entry["delay"] = pos + count, 0
+                if entry["pos"] < len(entry["L"]):
+                    pending.append(entry)
+            self._assistant_cue_queue = pending
+
     def _stop_road_correction_voice(self):
         """Hard-stop correction, including any HRTF convolution tail."""
         self._road_correction_env = 0.0
@@ -2176,19 +2284,21 @@ class AudioController:
     def _render_road_correction_block(
         self, frames, active, bearing_deg, severity, phase="correct"
     ):
-        """Render intermittent correction pips or the centred unwind doublet."""
+        """Render directional correction pips or an unwind doublet."""
         if frames <= 0:
             return None
 
         if active:
-            if phase == "unwind":
-                self._road_correction_render_bearing = 0.0
-            else:
-                self._road_correction_render_bearing = self._clamp(
-                    float(bearing_deg),
-                    -ROAD_CORRECTION_MAX_AZIMUTH_DEG,
-                    ROAD_CORRECTION_MAX_AZIMUTH_DEG,
-                )
+            bearing = float(bearing_deg)
+            # Small pursuit angles still need a clearly audible side. Cadence
+            # and the doublet convey demand; azimuth preserves its direction.
+            self._road_correction_render_bearing = (
+                math.copysign(
+                    self._clamp(abs(bearing), ROAD_CORRECTION_MIN_AZIMUTH_DEG,
+                                ROAD_CORRECTION_MAX_AZIMUTH_DEG),
+                    bearing,
+                ) if bearing != 0.0 else 0.0
+            )
 
         target_env = 1.0 if active else 0.0
         tau = ROAD_CORRECTION_ATTACK_S if active else ROAD_CORRECTION_RELEASE_S
@@ -2567,6 +2677,7 @@ class AudioController:
             cfg.get("road_junction_volume_db", ROAD_JUNCTION_AMP_DB)
         )
         self._road_junction_amp = float(10.0 ** (junction_db / 20.0))
+        self._junction_proximity_enabled = bool(cfg.get("road_junction_proximity_enabled", True))
         self.ROAD_JUNCTION_WAVEFORM = self._generate_road_junction_pip()
         self.ROAD_JUNCTION_ENTRY_WAVEFORM = self._generate_road_junction_entry()
         self.ROAD_CORRECTION_SETTLED_WAVEFORM = self._generate_road_correction_settled()
@@ -5091,8 +5202,8 @@ class AudioController:
             self._route_beacon_pulse_L = None
             self._route_beacon_pulse_R = None
 
-        # Directional correction pips say to apply steering; a centred repeating
-        # doublet is the explicit instruction to unwind. The frontal arc keeps a
+        # Directional correction pips say to apply steering; a repeating
+        # doublet says to ease off while retaining direction. The frontal arc keeps a
         # correction from sounding like a target beside or behind the car.
         if road_active and road_on_road:
             correction_block = self._render_road_correction_block(
@@ -6390,6 +6501,8 @@ class AudioController:
                     self._scan_old_buf = None
                     self._scan_old_left = 0
 
+        self._mix_junction_proximity(bufL, bufR, frames)
+        self._mix_assistant_cues(bufL, bufR, frames)
         out = np.stack([bufL, bufR], axis=1).astype(np.float32)
         np.clip(out, -0.999, 0.999, out=out)
         outdata[:] = out

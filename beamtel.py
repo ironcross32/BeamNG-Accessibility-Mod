@@ -31,8 +31,10 @@ import wx
 
 from bnh_logger import get_logger, LOG_FILENAME
 from audio import AudioController, DOCK_RAMP_MAX_RANGE_M, SCAN_FAMILY_CODES
-from road_guidance import RoadGuidanceFeed, junction_phrase, parse_r2_packet
+from road_guidance import RoadGuidanceFeed, junction_phrase, parse_r2_packet, signal_phrase, one_way_phrase, map_speed_limit_phrase
 from road_diagnostics import RoadDiagnosticRecorder
+from driving_assistant import DrivingAssistant
+from assistant_diagnostics import AssistantDiagnosticRecorder
 from challenge_results import (
     HillClimbChallengeRecorder,
     completion_speech as hill_climb_completion_speech,
@@ -71,6 +73,7 @@ def _get_config_dir():
 CONFIG_DIR = _get_config_dir()
 os.makedirs(CONFIG_DIR, exist_ok=True)
 CONFIG_PATH = os.path.join(CONFIG_DIR, "beamtel_config.json")
+ASSISTANT_DIAGNOSTICS = AssistantDiagnosticRecorder(os.path.join(CONFIG_DIR, "assistant_diagnostics"))
 ROAD_DIAGNOSTICS = RoadDiagnosticRecorder(
     os.path.join(CONFIG_DIR, "road_diagnostics")
 )
@@ -204,7 +207,11 @@ DEFAULT_CONFIG = {
     "road_correction_volume_db": -24.0,
     "road_follow_guidance_enabled": True,
     "road_junction_speech_enabled": True,
+    "road_stop_sign_speech_enabled": True,
+    "road_traffic_light_speech_enabled": True,
+    "road_speed_limit_speech_enabled": True,
     "road_junction_earcon_enabled": True,
+    "road_junction_proximity_enabled": True,
     "road_include_private": False,
     "road_junction_volume_db": -14.0,
     "placement_ping_volume_db": -12.0,
@@ -568,7 +575,11 @@ def load_config():
         for key, fallback in (
             ("road_follow_guidance_enabled", True),
             ("road_junction_speech_enabled", True),
+            ("road_stop_sign_speech_enabled", True),
+            ("road_traffic_light_speech_enabled", True),
+            ("road_speed_limit_speech_enabled", True),
             ("road_junction_earcon_enabled", True),
+            ("road_junction_proximity_enabled", True),
             ("road_include_private", False),
         ):
             value = merged.get(key, fallback)
@@ -736,7 +747,9 @@ def scanner_listener(audio_controller, stop_event):
         first_packet = True
         while not stop_event.is_set():
             try:
-                data, addr = sock.recvfrom(1024)
+                # This shared port also carries assistant JSON, including long
+                # committed paths. A truncated datagram cannot be reassembled.
+                data, addr = sock.recvfrom(65535)
                 if first_packet:
                     logger.info(
                         f"First UDP packet received from vehicle scanner (source: {addr})"
@@ -899,6 +912,8 @@ def scanner_listener(audio_controller, stop_event):
                         reason = text[len("ALIGN_FAIL:") :]
                         say(f"Alignment failed. {reason}", exclude_from_buffer=True)
                     # AI control responses
+                    elif text.startswith("ASSISTANT:"):
+                        driving_assistant.receive(text[len("ASSISTANT:"):])
                     elif text.startswith("AI_OK:"):
                         msg = text[len("AI_OK:") :]
                         logger.info(f"AI response: {msg}")
@@ -1182,7 +1197,7 @@ def road_listener(audio_controller, stop_event):
 
         while not stop_event.is_set():
             try:
-                data, addr = sock.recvfrom(4096)
+                data, addr = sock.recvfrom(65535)
                 if first_packet:
                     logger.info(
                         f"First UDP packet received from road detector (source: {addr})"
@@ -1202,13 +1217,26 @@ def road_listener(audio_controller, stop_event):
 
                     telemetry_snapshot = _road_diagnostic_telemetry_snapshot()
                     HILL_CLIMB_CHALLENGE.record(packet, telemetry_snapshot)
-                    events = ROAD_GUIDANCE_FEED.accept_r2(packet)
+                    with _loading_lock:
+                        controls_ready = not (_loading_active or _loading_settling)
+                    awareness_active = controls_ready and (road_mode_active or driving_assistant.active)
+                    events = ROAD_GUIDANCE_FEED.accept_r2(
+                        packet,
+                        stop_signs=awareness_active and road_stop_sign_speech_enabled,
+                        traffic_lights=awareness_active and road_traffic_light_speech_enabled,
+                        speed_limits=awareness_active and road_speed_limit_speech_enabled,
+                    )
                     audio_event = audio_controller.update_road_guidance(
                         packet["state"],
                         packet.get("offRoad"),
                         packet.get("correction"),
                         road_mode_active and road_follow_guidance_enabled,
                     )
+                    audio_controller.update_junction_proximity(
+                        packet.get("proximity"),
+                        enabled=awareness_active,
+                    )
+                    ASSISTANT_DIAGNOSTICS.record_road(packet, audio_controller.junction_proximity_snapshot())
                     ROAD_DIAGNOSTICS.record(
                         packet, telemetry_snapshot, audio_event
                     )
@@ -1236,7 +1264,7 @@ def road_listener(audio_controller, stop_event):
                         if packet["oneWay"]:
                             audio_controller.trigger_road_orientation_chime(directions[0])
                             say(
-                                "One-way road",
+                                one_way_phrase(directions[0]),
                                 interrupt=False,
                                 exclude_from_buffer=True,
                                 source="road_guidance",
@@ -1247,11 +1275,22 @@ def road_listener(audio_controller, stop_event):
                                 directions[0], second
                             )
 
-                    junction = events["junction"]
+                    junction = None if driving_assistant.active else events["junction"]
+                    signal = events["signal"]
+                    if awareness_active and signal:
+                        phrase = signal_phrase(signal, UNITS_MODE, change=signal["change"])
+                        if junction and junction["phase"] == "approach" and road_junction_speech_enabled:
+                            phrase += " " + junction_phrase(junction, UNITS_MODE)
+                        say(
+                            phrase,
+                            source="traffic_control",
+                        )
+
                     if road_mode_active and junction:
                         if (
                             junction["phase"] == "approach"
                             and road_junction_speech_enabled
+                            and not signal
                         ):
                             say(
                                 junction_phrase(junction, UNITS_MODE),
@@ -1261,6 +1300,7 @@ def road_listener(audio_controller, stop_event):
                         elif (
                             junction["phase"] == "near"
                             and road_junction_earcon_enabled
+                            and not audio_controller.junction_proximity_enabled
                         ):
                             audio_controller.trigger_road_junction_earcon()
                         elif (
@@ -1268,6 +1308,12 @@ def road_listener(audio_controller, stop_event):
                             and road_junction_earcon_enabled
                         ):
                             audio_controller.trigger_road_junction_entry_earcon()
+                    if events["speedLimit"]:
+                        say(
+                            map_speed_limit_phrase(events["speedLimit"]["value"], UNITS_MODE),
+                            interrupt=False,
+                            source="road_speed_limit",
+                        )
                     continue
 
                 if text == "DORMANT":
@@ -4037,6 +4083,9 @@ OBSTACLE_PEDAL_DELTA = 0.05
 road_mode_active = False
 road_follow_guidance_enabled = True
 road_junction_speech_enabled = True
+road_stop_sign_speech_enabled = True
+road_traffic_light_speech_enabled = True
+road_speed_limit_speech_enabled = True
 road_junction_earcon_enabled = True
 road_include_private = False
 ROAD_GUIDANCE_FEED = RoadGuidanceFeed()
@@ -4291,6 +4340,13 @@ def _mcp_snapshot_state(sections=None):
                 "telemetry_ever_seen": ever,
                 "world_active_threshold_s": WORLD_ACTIVE_TELEMETRY_S,
             }
+    if on("assistant"):
+        out["assistant"] = driving_assistant.snapshot()
+        out["assistant"]["diagnostics"] = ASSISTANT_DIAGNOSTICS.status()
+    if on("road"):
+        out["road"] = ROAD_GUIDANCE_FEED.snapshot()
+        controller = audio_controller_ref
+        out["road"]["proximity_audio"] = controller.junction_proximity_snapshot() if controller else None
     if on("slots"):
         with _slots_lock:
             out["slots"] = {
@@ -4705,7 +4761,7 @@ def _kb_close_layer():
 
 # F9 command descriptions keyed by (name, ctrl, shift, alt)
 _F9_HELP = {
-    ("s", False, False, False): "Speak speed",
+    ("s", False, False, False): "Speak speed and map speed limit",
     ("r", False, False, False): "Speak RPM",
     ("r", False, True, False): "Speak redline RPM",
     ("g", False, False, False): "Speak gear",
@@ -4777,6 +4833,7 @@ _F9_HELP = {
 
 # F10 (AI) command descriptions
 _F10_HELP = {
+    ("h", False, False, False): "Toggle driving assistant for the current vehicle",
     ("d", False, False, False): "Disable AI",
     ("t", False, False, False): "Traffic mode",
     ("r", False, False, False): "Random mode",
@@ -6114,6 +6171,17 @@ def _send_road_configuration():
     _send_road_command(f"PRIVATE,{1 if road_include_private else 0}")
 
 
+def assistant_diagnostic_control(action="status", **kwargs):
+    action = str(action or "status").strip().lower()
+    if action == "start" and not _world_is_active():
+        raise RuntimeError("no live world; start recording once driving telemetry is active")
+    result = ASSISTANT_DIAGNOSTICS.control(action=action, **kwargs)
+    if action in {"start", "stop"}:
+        _send_ai_command("ASSISTANT_DIAG_ON" if action == "start" else "ASSISTANT_DIAG_OFF")
+    result["assistant"] = driving_assistant.snapshot()
+    return result
+
+
 def road_diagnostic_control(action="status", label=None, session=None, note=None, limit=20):
     """MCP-facing lifecycle for a loss-resistant road-guidance recording."""
     action = str(action or "status").strip().lower()
@@ -6149,7 +6217,7 @@ def road_diagnostic_control(action="status", label=None, session=None, note=None
 
 def speak_road_status():
     say(
-        ROAD_GUIDANCE_FEED.status_phrase(road_mode_active, UNITS_MODE),
+        ROAD_GUIDANCE_FEED.status_phrase(road_mode_active or driving_assistant.active, UNITS_MODE),
         exclude_from_buffer=True,
         source="road_guidance",
     )
@@ -6163,7 +6231,10 @@ def toggle_road_mode(audio_controller):
     _send_road_command(command)
     _send_road_configuration()
 
-    ROAD_GUIDANCE_FEED.reset()
+    if not driving_assistant.active:
+        ROAD_GUIDANCE_FEED.reset()
+    elif road_mode_active:
+        ROAD_GUIDANCE_FEED.arm_orientation()
     audio_controller.set_road_mode(road_mode_active)
 
     say(
@@ -7268,7 +7339,10 @@ def _on_next_key_press(event, audio_controller):
         _clear_next_key_hook(speak_exit=False)
         return
     if name == "s" and not _capture_mods["ctrl"]:
-        say(f"{spd_val} {spd_unit}")
+        limit = ROAD_GUIDANCE_FEED.speed_limit_phrase(
+            road_mode_active or driving_assistant.active, UNITS_MODE
+        )
+        say(f"{spd_val} {spd_unit}. {limit}")
     elif name == "r" and _capture_mods["shift"] and not _capture_mods["ctrl"]:
         say(
             f"Redline {int(round(rpm_max_snap))} RPM"
@@ -8115,6 +8189,15 @@ def _send_ai_command(cmd):
         logger.error(f"Failed to send AI command via UDP: {e}")
 
 
+def _assistant_cue(kind, choices=()):
+    controller = audio_controller_ref
+    if controller:
+        controller.trigger_assistant_cue(kind, choices)
+
+
+driving_assistant = DrivingAssistant(_send_ai_command, say, _assistant_cue, ASSISTANT_DIAGNOSTICS)
+
+
 def _send_slot_command(cmd):
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -8463,7 +8546,8 @@ def _speak_ai_status():
     vid_to_name = {info["id"]: info["name"] for info in slots.values()}
 
     if not slots:
-        say("No vehicles tracked", exclude_from_buffer=True)
+        say("Driving assistant on" if driving_assistant.active else "No vehicles tracked",
+            exclude_from_buffer=True)
         return
 
     parts = []
@@ -8472,7 +8556,9 @@ def _speak_ai_status():
         name = slots[slot_num]["name"]
         key = "0" if slot_num == 10 else str(slot_num)
         cmd = commands.get(vid)
-        if cmd is None:
+        if driving_assistant.active and vid == driving_assistant.vehicle:
+            status = "driving assistant on"
+        elif cmd is None:
             status = "no command given"
         else:
             mode = cmd["mode"]
@@ -8593,6 +8679,8 @@ def _set_target_slot(slot):
 
 def _dispatch_ai_mode(mode):
     """Issue an AI mode command to all selected vehicles, or the player vehicle if none selected."""
+    if mode == "disabled":
+        _send_ai_command("ASSISTANT_OFF")
     _clear_police_lights()
     with _slots_lock:
         selected = set(_selected_slots)
@@ -8905,7 +8993,9 @@ def _on_ai_key_press(event):
             say("No command", exclude_from_buffer=True)
         return
 
-    if name == "d":
+    if name == "h":
+        driving_assistant.toggle()
+    elif name == "d":
         say("AI disabled", exclude_from_buffer=True)
         _dispatch_ai_mode("disabled")
     elif name == "t":
@@ -10762,6 +10852,8 @@ def _apply_live_config(audio_controller):
     global announce_implement_proximity, announce_cannon_shot
     global announce_binding_learn_description
     global road_follow_guidance_enabled, road_junction_speech_enabled
+    global road_stop_sign_speech_enabled, road_traffic_light_speech_enabled
+    global road_speed_limit_speech_enabled
     global road_junction_earcon_enabled, road_include_private
     global obstacle_warning_sensitivity
     global ai_describer_provider, ai_describer_settings, ai_describer_disable_ui_toggle
@@ -10798,6 +10890,9 @@ def _apply_live_config(audio_controller):
         road_junction_speech_enabled = bool(
             cfg.get("road_junction_speech_enabled", True)
         )
+        road_stop_sign_speech_enabled = bool(cfg.get("road_stop_sign_speech_enabled", True))
+        road_traffic_light_speech_enabled = bool(cfg.get("road_traffic_light_speech_enabled", True))
+        road_speed_limit_speech_enabled = bool(cfg.get("road_speed_limit_speech_enabled", True))
         road_junction_earcon_enabled = bool(
             cfg.get("road_junction_earcon_enabled", True)
         )
@@ -10849,6 +10944,8 @@ def _run_engine():
     global announce_implement_proximity, announce_cannon_shot
     global announce_binding_learn_description
     global road_follow_guidance_enabled, road_junction_speech_enabled
+    global road_stop_sign_speech_enabled, road_traffic_light_speech_enabled
+    global road_speed_limit_speech_enabled
     global road_junction_earcon_enabled, road_include_private
     global obstacle_warning_sensitivity
     global ui_nav_hold_suppression
@@ -10868,6 +10965,9 @@ def _run_engine():
     )
     road_follow_guidance_enabled = bool(cfg.get("road_follow_guidance_enabled", True))
     road_junction_speech_enabled = bool(cfg.get("road_junction_speech_enabled", True))
+    road_stop_sign_speech_enabled = bool(cfg.get("road_stop_sign_speech_enabled", True))
+    road_traffic_light_speech_enabled = bool(cfg.get("road_traffic_light_speech_enabled", True))
+    road_speed_limit_speech_enabled = bool(cfg.get("road_speed_limit_speech_enabled", True))
     road_junction_earcon_enabled = bool(cfg.get("road_junction_earcon_enabled", True))
     road_include_private = bool(cfg.get("road_include_private", False))
     obstacle_warning_sensitivity = cfg.get("obstacle_warning_sensitivity", "normal")
@@ -10980,6 +11080,8 @@ def _run_engine():
         target=scanner_listener, args=(audio_controller, STOP), daemon=True
     )
     scanner_thread.start()
+
+    threading.Thread(target=driving_assistant.run, args=(STOP,), daemon=True).start()
 
     callout_thread = threading.Thread(
         target=scanner_callout_thread_fn, args=(STOP,), daemon=True
@@ -11107,6 +11209,7 @@ def _run_engine():
                     world_active_fn=_world_is_active,
                     capture_png_fn=capture_scene_png,
                     road_diagnostic_fn=road_diagnostic_control,
+                    assistant_diagnostic_fn=assistant_diagnostic_control,
                     stop_event=STOP,
                     logger=logger,
                     version="1.0",
