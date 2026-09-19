@@ -48,6 +48,7 @@ from route_beacon import (
     AT_DESTINATION_M,
 )
 from poi_guidance import parse_poi_packet, poi_phrase
+import wheel_slip
 
 logger = get_logger()
 
@@ -630,8 +631,16 @@ EXT_SIZE_V2 = struct.calcsize(EXT_FORMAT_V2)
 
 # v3 appends centred front/rear pressure, tire temperature and brake temperature,
 # followed by an explicit telemetry-presence bitmask. Appending keeps every v2 offset stable.
-EXT_FORMAT = "<H4sBx9fII42fI"
+EXT_FORMAT_V3 = "<H4sBx9fII42fI"
+EXT_SIZE_V3 = struct.calcsize(EXT_FORMAT_V3)
+
+# v4 appends the raw fastest-driven and slowest wheel speeds for the slip detector.
+EXT_FORMAT = "<H4sBx9fII42fI2f"
 EXT_SIZE = struct.calcsize(EXT_FORMAT)
+
+# What a pre-v4 packet implies for the two wheel-extreme floats: -1 = not sent, which
+# drops the slip detector onto its legacy rule (see wheel_slip.py).
+EXT_V3_SLIP_DEFAULTS = (-1.0, -1.0)
 
 # Values a v1 packet implies for the eight implement floats. Mirrors the sentinels in
 # 796F6C6F313035.lua: flags 0 = nothing valid, -1 = no ground reading.
@@ -4120,6 +4129,15 @@ last_slip_active = False
 last_slip_kind = 0
 last_slip_mag = 0.0
 last_tc_active = False
+# The rule itself lives in wheel_slip.py so the analysers and the sim share it.
+slip_detector = wheel_slip.SlipDetector()
+last_slip_result = wheel_slip.INACTIVE
+# Raw wheel extremes from the extended packet; -1 = the mod half does not send them.
+last_wheel_max_driven = -1.0
+last_wheel_min = -1.0
+# MotionSim world velocity, for the direction of travel (see wheel_slip.travel_bearing).
+last_vel_x = 0.0
+last_vel_y = 0.0
 
 # Coordinate Guidance State
 coord_guidance_active = False
@@ -4142,9 +4160,6 @@ _ls_ms_prev_speed_ms = 0.0
 _ls_ms_prev_ts = 0.0
 _ls_stopped = False
 _ls_was_moving = False
-_ls_slip_smooth = 0.0
-_ls_slip_since_ts = 0.0
-_ls_slip_prev_ts = 0.0
 
 # Tuning for the ground-truth derivation. Audio-side response curves live in audio.py.
 LS_ACCEL_TAU_S = 0.15  # EMA time constant for longitudinal accel
@@ -4156,11 +4171,6 @@ LS_STOP_ENTER_MS = 0.20  # ground speed at/below which we call it a standstill
 LS_STOP_EXIT_MS = 0.50  # and above which we call it moving again (hysteresis)
 LS_STOP_TONE_MIN_MS = 1.0  # only chime if we were actually rolling beforehand
 LS_MS_STALE_S = 1.0  # no MotionSim packet for this long => fall back to wheel speed
-SLIP_TAU_S = 0.10
-SLIP_MIN_GROUND_MS = 2.0
-SLIP_ABS_THRESHOLD_MS = 1.5
-SLIP_REL_THRESHOLD = 0.25
-SLIP_SUSTAIN_S = 0.15
 
 # Low speed diagnostics ride on window.BNVDA_DEBUG, set from the accessible console's
 # CEF/UI JS context (`window.BNVDA_DEBUG = true`). An environment variable is no use
@@ -4357,6 +4367,17 @@ def _mcp_snapshot_state(sections=None):
     return out
 
 
+def _travel_bearing_or_none():
+    """Direction of travel, +LEFT of the nose; None when MotionSim is stale or the car is
+    too slow for the direction to mean anything. Plain float reads, called both from the
+    telemetry loop and from the (locked) diagnostic snapshot."""
+    if (time.time() - _ms_last_rx_ts) > LS_MS_STALE_S:
+        return None
+    if last_ground_speed_ms < wheel_slip.DIR_MIN_MS:
+        return None
+    return wheel_slip.travel_bearing(last_vel_x, last_vel_y, last_heading)
+
+
 def _road_diagnostic_telemetry_snapshot():
     """Fields needed to correlate lane instructions with driver input and traction."""
     with state_lock:
@@ -4379,7 +4400,16 @@ def _road_diagnostic_telemetry_snapshot():
             "slip_active": last_slip_active,
             "slip_kind": last_slip_kind,
             "slip_magnitude_mps": last_slip_mag,
-            "slip_filtered_mps": _ls_slip_smooth,
+            "slip_filtered_mps": last_slip_result.filtered_ms,
+            "slip_legacy_rule": last_slip_result.legacy,
+            # The fields wheel_slip.classify reads back out of a recording.
+            "travel_bearing_deg": _travel_bearing_or_none(),
+            "longitudinal_speed_ms": last_slip_result.v_long_ms,
+            "wheel_max_driven_ms": last_wheel_max_driven,
+            "wheel_min_ms": last_wheel_min,
+            "slide_active": last_slip_result.slide_active,
+            "slide_deg": last_slip_result.slide_deg,
+            "slip_azimuth_deg": last_slip_result.azimuth_deg,
         }
 
 # Docking instrument. dock_mode_active is the user-facing toggle; last_dock is the most
@@ -9373,12 +9403,12 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
         _ls_stopped, \
         _ls_was_moving, \
         _ls_diag_last_ts, \
-        _ls_slip_smooth, \
-        _ls_slip_since_ts, \
-        _ls_slip_prev_ts
+        last_vel_x, \
+        last_vel_y
     global coord_target_bearing, _last_coord_bearing_ts
     global _ext_version_warned
     global last_slip_active, last_slip_kind, last_slip_mag, last_tc_active
+    global last_slip_result, last_wheel_max_driven, last_wheel_min
     global \
         last_implement_flags, \
         last_implement_edge_height, \
@@ -9459,6 +9489,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         # a slope doesn't read as extra speed.
                         ground_ms = math.hypot(velX, velY)
                         last_ground_speed_ms = ground_ms
+                        last_vel_x, last_vel_y = velX, velY
                         _ms_last_rx_ts = now
 
                         # Signed longitudinal acceleration by differentiating ground
@@ -9604,9 +9635,25 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     unpacked = struct.unpack(EXT_FORMAT, data)
                 except Exception:
                     continue
+            elif protocol_mode == "extended" and len(data) == EXT_SIZE_V3:
+                try:
+                    unpacked = struct.unpack(EXT_FORMAT_V3, data) + EXT_V3_SLIP_DEFAULTS
+                except Exception:
+                    continue
+                if not _ext_version_warned:
+                    _ext_version_warned = True
+                    logger.warning(
+                        f"Extended telemetry packet is {EXT_SIZE_V3} bytes, expected "
+                        f"{EXT_SIZE}. The Lua mod in bng_mod/ is older than this build; "
+                        "wheel slip detection will use the slower legacy rule."
+                    )
             elif protocol_mode == "extended" and len(data) == EXT_SIZE_V2:
                 try:
-                    unpacked = struct.unpack(EXT_FORMAT_V2, data) + EXT_V2_WHEEL_DEFAULTS
+                    unpacked = (
+                        struct.unpack(EXT_FORMAT_V2, data)
+                        + EXT_V2_WHEEL_DEFAULTS
+                        + EXT_V3_SLIP_DEFAULTS
+                    )
                 except Exception:
                     continue
                 if not _ext_version_warned:
@@ -9621,7 +9668,9 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                 # version skew costs the loader features rather than all telemetry.
                 try:
                     unpacked = struct.unpack(EXT_FORMAT_V1, data) + (
-                        EXT_V1_IMPLEMENT_DEFAULTS + EXT_V2_WHEEL_DEFAULTS
+                        EXT_V1_IMPLEMENT_DEFAULTS
+                        + EXT_V2_WHEEL_DEFAULTS
+                        + EXT_V3_SLIP_DEFAULTS
                     )
                 except Exception:
                     continue
@@ -9707,7 +9756,8 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         brake_t_f,
                         brake_t_r,
                         telemetry_presence,
-                    ) = unpacked[50:]
+                    ) = unpacked[50:57]
+                    last_wheel_max_driven, last_wheel_min = unpacked[57:59]
                     last_oil_pressure, last_air_pressure, last_air_pressure_max = (
                         oil_pressure,
                         air_pressure,
@@ -9798,6 +9848,8 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     implement_lift = 0.0
                     implement_activity = 0.0
                     articulation_deg = 0.0
+                    # No wheel extremes either: the slip detector drops to its legacy rule.
+                    last_wheel_max_driven, last_wheel_min = EXT_V3_SLIP_DEFAULTS
 
                 (
                     last_speed_ms,
@@ -9989,43 +10041,29 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         now - _ms_last_rx_ts,
                     )
 
-            # --- Wheel slip detection (lockup / wheelspin) ---
-            # Positive slip => wheels turning slower than the ground is moving (lockup).
-            # Negative slip => wheels outrunning the ground (wheelspin).
-            slip_active = False
-            slip_kind = 0
-            slip_mag = 0.0
+            # --- Wheel slip (spin / lockup) and side slide ---
+            # All of the rule is in wheel_slip.py. MotionSim is required: without it
+            # there is neither a longitudinal speed nor a direction of travel.
             if slip_mode_active and ms_fresh:
-                slip_dt = (now - _ls_slip_prev_ts) if _ls_slip_prev_ts > 0.0 else 0.0
-                raw_slip = ground_ms - last_speed_ms
-                if 0.0 < slip_dt <= 1.0:
-                    alpha = 1.0 - math.exp(-slip_dt / SLIP_TAU_S)
-                    _ls_slip_smooth += alpha * (raw_slip - _ls_slip_smooth)
+                if protocol_mode == "outgauge":
+                    in_reverse = last_gear_byte == REVERSE
                 else:
-                    _ls_slip_smooth = raw_slip
-                _ls_slip_prev_ts = now
-
-                threshold = max(
-                    SLIP_ABS_THRESHOLD_MS, SLIP_REL_THRESHOLD * ground_ms
+                    in_reverse = (last_gear_str or "").strip().upper().startswith("R")
+                last_slip_result = slip_detector.step(
+                    now,
+                    ground_ms,
+                    _travel_bearing_or_none(),
+                    last_wheel_max_driven,
+                    last_wheel_min,
+                    last_speed_ms,
+                    in_reverse,
                 )
-                diverging = (
-                    ground_ms > SLIP_MIN_GROUND_MS and abs(_ls_slip_smooth) > threshold
-                )
-                if diverging:
-                    if _ls_slip_since_ts == 0.0:
-                        _ls_slip_since_ts = now
-                    # Require the divergence to persist so gearshifts and packet jitter
-                    # don't trip it.
-                    if (now - _ls_slip_since_ts) >= SLIP_SUSTAIN_S:
-                        slip_active = True
-                        slip_kind = -1 if _ls_slip_smooth > 0.0 else 1
-                        slip_mag = abs(_ls_slip_smooth)
-                else:
-                    _ls_slip_since_ts = 0.0
             else:
-                _ls_slip_smooth = 0.0
-                _ls_slip_since_ts = 0.0
-                _ls_slip_prev_ts = 0.0
+                slip_detector.reset()
+                last_slip_result = wheel_slip.INACTIVE
+            slip_active = last_slip_result.active
+            slip_kind = last_slip_result.kind
+            slip_mag = last_slip_result.magnitude_ms if slip_active else 0.0
             last_slip_active = slip_active
             last_slip_kind = slip_kind
             last_slip_mag = slip_mag
@@ -10137,6 +10175,9 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     "slip_active": slip_active,
                     "slip_kind": slip_kind,
                     "slip_mag": slip_mag,
+                    "slide_active": last_slip_result.slide_active,
+                    "slide_deg": last_slip_result.slide_deg,
+                    "slip_azimuth_deg": last_slip_result.azimuth_deg,
                     "coord_guidance_active": coord_guidance_active,
                     "coord_guidance_error_deg": coord_bearing_error,
                 }

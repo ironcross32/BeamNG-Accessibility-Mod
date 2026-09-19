@@ -1189,6 +1189,10 @@ local function getStructDefinition()
     float          braketemp_R;
     unsigned       telemetryPresence;     // FL=1, FR=2, RL=4, RR=8, F=16, R=32,
                                           // clutch temperature valid=64
+
+    // --- Raw wheel extremes for slip detection (appended; -1 = no wheels) ---
+    float          wheelSpeedMaxDriven;   // m/s, fastest PROPULSED wheel, unfiltered
+    float          wheelSpeedMin;         // m/s, slowest wheel of any kind, unfiltered
   ]]
 end
 
@@ -1403,6 +1407,24 @@ local function fillStruct(o, dtSim)
   o.braketemp_F = brakeTemps.F or 0
   o.braketemp_R = brakeTemps.R or 0
   o.telemetryPresence = telemetryPresence
+
+  -- Slip detection must NOT use o.speed: electrics.values.wheelspeed is a smoothed
+  -- average of every wheel. Measured on ice it trailed a 30 ms spin-up by ~0.4 s and
+  -- reported 4.9 m/s with the rears at 21 and the fronts at 0.2. These are the raw
+  -- extremes, read in the same tick: the fastest DRIVEN wheel is what spins, the
+  -- slowest wheel of any kind is what locks.
+  local maxDriven, maxAny, minAny = -1, -1, -1
+  if wheels and wheels.wheelRotators then
+    for _, w in pairs(wheels.wheelRotators) do
+      local s = math.abs((w.angularVelocity or 0) * (w.radius or 0))
+      if s > maxAny then maxAny = s end
+      if w.isPropulsed and s > maxDriven then maxDriven = s end
+      if minAny < 0 or s < minAny then minAny = s end
+    end
+  end
+  -- A machine with no propulsed wheel (pushed, towed) still gets a spin figure.
+  o.wheelSpeedMaxDriven = maxDriven >= 0 and maxDriven or maxAny
+  o.wheelSpeedMin = minAny
 
   o.signal_left_input  = electrics.values.signal_left_input or 0
   o.signal_right_input = electrics.values.signal_right_input or 0

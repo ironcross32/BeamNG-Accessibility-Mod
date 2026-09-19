@@ -11,6 +11,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import wheel_slip
+
 
 SCHEMA_VERSION = 1
 CHALLENGE_ID = "hill_climb"
@@ -22,9 +24,6 @@ GRAVEL_OUTER_M = 12.5
 MAX_SAMPLE_DT_S = 0.25
 RESET_DISTANCE_M = 50.0
 MOVING_SPEED_MS = 0.5
-SLIP_ABS_THRESHOLD_MS = 1.5
-SLIP_REL_THRESHOLD = 0.25
-SLIP_MIN_GROUND_MS = 2.0
 _SAFE_ID = re.compile(r"[^A-Za-z0-9_.-]+")
 
 
@@ -117,17 +116,8 @@ def _contact_flags(packet):
 
 
 def _slip(telemetry):
-    ground = _finite(telemetry.get("ground_speed_ms"), 0.0)
-    wheel = _finite(telemetry.get("wheel_speed_ms"), 0.0)
-    raw = ground - wheel
-    threshold = max(SLIP_ABS_THRESHOLD_MS, SLIP_REL_THRESHOLD * max(0.0, ground))
-    active = ground > SLIP_MIN_GROUND_MS and abs(raw) > threshold
-    return {
-        "active": active,
-        "kind": "lockup" if active and raw > 0 else ("wheelspin" if active else "none"),
-        "magnitude_mps": round(abs(raw), 4),
-        "raw_mps": round(raw, 4),
-    }
+    # One rule for the live tone and every recording (wheel_slip.py).
+    return wheel_slip.classify(telemetry)
 
 
 def analyze_attempt(samples, checkpoints, event):
@@ -147,6 +137,7 @@ def analyze_attempt(samples, checkpoints, event):
         "nav_off_road_s": 0.0,
         "wheelspin_s": 0.0,
         "lockup_s": 0.0,
+        "slide_s": 0.0,
     }
     moving_speed_integral = 0.0
     distance_m = 0.0
@@ -158,6 +149,9 @@ def analyze_attempt(samples, checkpoints, event):
     was_asphalt = True
     slip_episodes = {"wheelspin": 0, "lockup": 0}
     previous_slip = "none"
+    slide_episodes = 0
+    max_slide_deg = 0.0
+    previous_slide = False
 
     for sample in samples:
         telemetry = sample.get("telemetry") or {}
@@ -218,6 +212,13 @@ def analyze_attempt(samples, checkpoints, event):
                 if kind != previous_slip:
                     slip_episodes[kind] += 1
             previous_slip = kind
+            sliding = bool(slip.get("slide"))
+            if sliding:
+                totals["slide_s"] += dt
+                max_slide_deg = max(max_slide_deg, _finite(slip.get("slide_deg"), 0.0))
+                if not previous_slide:
+                    slide_episodes += 1
+            previous_slide = sliding
 
             previous_pos = (previous.get("telemetry") or {}).get("position") or {}
             x0, y0 = _finite(previous_pos.get("x")), _finite(previous_pos.get("y"))
@@ -268,6 +269,8 @@ def analyze_attempt(samples, checkpoints, event):
             "wheelspin_episodes": slip_episodes["wheelspin"],
             "lockup_episodes": slip_episodes["lockup"],
             "max_magnitude_mps": round(max_slip, 3),
+            "slide_episodes": slide_episodes,
+            "max_slide_deg": round(max_slide_deg, 1),
         },
         "checkpoints": checkpoints,
         "recoveries": int(_finite(event.get("recovery_count"), 0.0)),
@@ -575,6 +578,7 @@ class HillClimbChallengeRecorder:
             f"Wheelspin, {_format_time(durations.get('wheelspin_s'))}, {stats.get('slip', {}).get('wheelspin_episodes', 0)} episodes",
             f"Wheel lockup, {_format_time(durations.get('lockup_s'))}, {stats.get('slip', {}).get('lockup_episodes', 0)} episodes",
             f"Maximum wheel slip, {_format_speed(stats.get('slip', {}).get('max_magnitude_mps'), units)} difference",
+            f"Sideways slide, {_format_time(durations.get('slide_s'))}, {stats.get('slip', {}).get('slide_episodes', 0)} episodes, maximum {round(stats.get('slip', {}).get('max_slide_deg', 0.0))} degrees",
             f"Traction control active, {_format_time(durations.get('traction_control_s'))}",
             f"Throttle applied, {_format_time(durations.get('throttle_s'))}",
             f"Brake applied, {_format_time(durations.get('brake_s'))}",

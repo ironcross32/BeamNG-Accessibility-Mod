@@ -14,7 +14,7 @@ dependencies = [
     "ordered-set>=4.1.0",
     # Pinned, not floated: prismatoid is pre-1.0 and its Context/Backend API
     # still moves between minor releases.
-    "prismatoid==0.17.3",
+    "prismatoid==0.18.2",
     "sounddevice>=0.5.2",
     "wxpython>=4.2.3",
     "zstandard>=0.25.0",

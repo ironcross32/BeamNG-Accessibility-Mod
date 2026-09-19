@@ -242,6 +242,24 @@ SLIP_MAG_FOR_FULL = 5.0  # m/s of divergence at which the voice is at full level
 SLIP_FADE_ATTACK_S = 0.04
 SLIP_FADE_DECAY_S = 0.12
 SLIP_AMP_DB = -18.0
+# The voices are HRTF-placed toward the direction of travel, and a 90 Hz sine carries
+# almost no interaural or pinna cue -- ahead and behind would sound identical. So both
+# carriers are band-limited wavetables with harmonics up to SLIP_HARMONIC_TOP_HZ, keeping
+# the pitch identity: a sawtooth for spin, odd harmonics only (square-ish) for lockup.
+SLIP_HARMONIC_TOP_HZ = 5000.0
+SLIP_TABLE_LEN = 4096
+SLIP_TABLE_RMS = 0.6  # the old sine + 0.35 3rd harmonic was ~0.75 RMS; brighter reads louder
+SLIP_AZ_TAU_S = 0.08  # azimuth smoothing, as a unit vector so +-180 never sweeps the front
+# Side-slide voice: band-passed noise, so it cannot be mistaken for either tonal voice
+# and localises well. Two bands crossfaded by slide angle: darker at the threshold,
+# brighter as the car gets more sideways.
+SLIDE_BAND_LO = (700.0, 2000.0)
+SLIDE_BAND_HI = (2000.0, 5500.0)
+SLIDE_NOISE_S = 2.0  # length of the precomputed seamless noise loop
+SLIDE_AM_HZ = 9.0
+SLIDE_AM_DEPTH = 0.35
+SLIDE_DEG_MIN = 12.0  # matches wheel_slip.SLIDE_ENTER_DEG
+SLIDE_DEG_FULL = 45.0
 
 # NEW: Heading Guidance Constants
 GUIDANCE_FREQ_HZ = 440.0  # Steady tone frequency
@@ -1768,6 +1786,18 @@ class AudioController:
         self._slip_fade_gain = 0.0
         self._phase_slip = 0.0
         self._phase_slip_am = 0.0
+        # Side slide and placement (see wheel_slip.py for the rule)
+        self._slide_active = False
+        self._slide_deg = 0.0
+        self._slip_azimuth_deg = 0.0
+        self._slide_fade_gain = 0.0
+        self._phase_slide_am = 0.0
+        self._slide_noise_pos = 0
+        self._slip_az_x, self._slip_az_y = 1.0, 0.0
+        self._slip_overlap_L = None
+        self._slip_overlap_R = None
+        self._slip_tables_sr = None
+        self._slip_tables = None
 
         # Audio Stream and Device Management
         self._audio_stream = None
@@ -2821,6 +2851,9 @@ class AudioController:
             self._slip_active = state.get("slip_active", self._slip_active)
             self._slip_kind = state.get("slip_kind", self._slip_kind)
             self._slip_mag = state.get("slip_mag", self._slip_mag)
+            self._slide_active = state.get("slide_active", self._slide_active)
+            self._slide_deg = state.get("slide_deg", self._slide_deg)
+            self._slip_azimuth_deg = state.get("slip_azimuth_deg", self._slip_azimuth_deg)
 
     def _hrtf_emphasis_gain(self, hrtf_az_deg):
         """Compute front-back emphasis gain. 0 dB at front (0°), emphasis_db at back (180°)."""
@@ -3036,6 +3069,49 @@ class AudioController:
     def _pan_gains(self, p):
         # Delegates, so the callback's panning and render_scan's cannot drift apart.
         return _equal_power_pan(p)
+
+    def _slip_voice_tables(self):
+        """Wavetables for the slip voices, rebuilt only when the sample rate changes.
+
+        Returns ``(spin_table, lock_table, noise_lo, noise_hi)``. The tone tables are one
+        cycle each; the noise loops are periodic, so reading them round and round is
+        seamless.
+        """
+        sr = int(self.samplerate)
+        if self._slip_tables is not None and self._slip_tables_sr == sr:
+            return self._slip_tables
+        top = min(SLIP_HARMONIC_TOP_HZ, 0.45 * sr)
+        ph = np.arange(SLIP_TABLE_LEN) / SLIP_TABLE_LEN
+
+        def _additive(f0, odd_only):
+            out = np.zeros(SLIP_TABLE_LEN)
+            n = 1
+            while n * f0 <= top:
+                if not odd_only or n % 2 == 1:
+                    out += np.sin(2.0 * np.pi * n * ph) / n
+                n += 1
+            rms = float(np.sqrt(np.mean(out * out))) or 1.0
+            return (out * (SLIP_TABLE_RMS / rms)).astype(np.float32)
+
+        n_noise = int(SLIDE_NOISE_S * sr)
+        rng = np.random.default_rng(0x511DE)
+        spec = rng.standard_normal(n_noise // 2 + 1) + 1j * rng.standard_normal(n_noise // 2 + 1)
+        freqs = np.fft.rfftfreq(n_noise, 1.0 / sr)
+
+        def _band(lo, hi):
+            s = spec * ((freqs >= lo) & (freqs <= hi))
+            x = np.fft.irfft(s, n_noise)
+            rms = float(np.sqrt(np.mean(x * x))) or 1.0
+            return (x * (SLIP_TABLE_RMS / rms)).astype(np.float32)
+
+        self._slip_tables = (
+            _additive(SLIP_SPIN_HZ, odd_only=False),
+            _additive(SLIP_LOCK_HZ, odd_only=True),
+            _band(*SLIDE_BAND_LO),
+            _band(*SLIDE_BAND_HI),
+        )
+        self._slip_tables_sr = sr
+        return self._slip_tables
 
     def _norm_from_angle_deg(
         self, deg, start=ATT_START_DEG, stop=ATT_STOP_DEG, cap=90.0
@@ -3882,6 +3958,9 @@ class AudioController:
             slip_active = self._slip_active
             slip_kind = self._slip_kind
             slip_mag = self._slip_mag
+            slide_active = self._slide_active
+            slide_deg = self._slide_deg
+            slip_azimuth_deg = self._slip_azimuth_deg
             scan_speed_ms = self._scan_speed_ms
             scan_closing_ms = self._scan_closing_ms
             scan_base_freq = self._scan_base_freq
@@ -5433,26 +5512,96 @@ class AudioController:
             alpha_dec = 1.0 - math.exp(-dt_ls / max(1e-6, SLIP_FADE_DECAY_S))
             self._slip_fade_gain += alpha_dec * (0.0 - self._slip_fade_gain)
 
-        if self._slip_fade_gain > 0.001:
-            carrier_hz = SLIP_SPIN_HZ if slip_kind > 0 else SLIP_LOCK_HZ
-            inc = carrier_hz / self.samplerate
-            t = (np.arange(frames) * inc + self._phase_slip) % 1.0
-            self._phase_slip = (t[-1] + inc) % 1.0
+        # Side slide: its own fade, so a power drift layers it with the spin voice.
+        if slide_active:
+            alpha_att = 1.0 - math.exp(-dt_ls / max(1e-6, SLIP_FADE_ATTACK_S))
+            self._slide_fade_gain += alpha_att * (1.0 - self._slide_fade_gain)
+        else:
+            alpha_dec = 1.0 - math.exp(-dt_ls / max(1e-6, SLIP_FADE_DECAY_S))
+            self._slide_fade_gain += alpha_dec * (0.0 - self._slide_fade_gain)
 
-            am_inc = SLIP_AM_HZ / self.samplerate
-            am_t = (np.arange(frames) * am_inc + self._phase_slip_am) % 1.0
-            self._phase_slip_am = (am_t[-1] + am_inc) % 1.0
+        # Placement: toward the direction of travel, +LEFT (wheel_slip.voice_azimuth).
+        # Smoothed as a unit vector, so a slide swinging through dead astern stays behind.
+        az_beta = 1.0 - math.exp(-dt_ls / max(1e-6, SLIP_AZ_TAU_S))
+        az_rad = math.radians(float(slip_azimuth_deg))
+        self._slip_az_x += az_beta * (math.cos(az_rad) - self._slip_az_x)
+        self._slip_az_y += az_beta * (math.sin(az_rad) - self._slip_az_y)
 
-            tone = np.sin(2.0 * np.pi * t) + 0.35 * np.sin(2.0 * np.pi * 3.0 * t)
-            tone *= 1.0 - SLIP_AM_DEPTH * (0.5 - 0.5 * np.cos(2.0 * np.pi * am_t))
-
-            mag_norm = self._clamp(slip_mag / SLIP_MAG_FOR_FULL, 0.0, 1.0)
+        if self._slip_fade_gain > 0.001 or self._slide_fade_gain > 0.001:
+            spin_tab, lock_tab, noise_lo, noise_hi = self._slip_voice_tables()
             amp = float(10.0 ** (self._slip_amp_db / 20.0))
-            seg = (tone * amp * (0.35 + 0.65 * mag_norm) * self._slip_fade_gain).astype(
-                np.float32
-            )
-            bufL += seg
-            bufR += seg
+            mono_slip = np.zeros(frames, dtype=np.float32)
+
+            if self._slip_fade_gain > 0.001:
+                carrier_hz = SLIP_SPIN_HZ if slip_kind > 0 else SLIP_LOCK_HZ
+                table = spin_tab if slip_kind > 0 else lock_tab
+                inc = carrier_hz / self.samplerate
+                t = (np.arange(frames) * inc + self._phase_slip) % 1.0
+                self._phase_slip = (t[-1] + inc) % 1.0
+                idx = t * SLIP_TABLE_LEN
+                i0 = idx.astype(np.int64) % SLIP_TABLE_LEN
+                i1 = (i0 + 1) % SLIP_TABLE_LEN
+                fr = (idx - np.floor(idx)).astype(np.float32)
+                tone = table[i0] + (table[i1] - table[i0]) * fr
+
+                am_inc = SLIP_AM_HZ / self.samplerate
+                am_t = (np.arange(frames) * am_inc + self._phase_slip_am) % 1.0
+                self._phase_slip_am = (am_t[-1] + am_inc) % 1.0
+                tone *= 1.0 - SLIP_AM_DEPTH * (0.5 - 0.5 * np.cos(2.0 * np.pi * am_t))
+
+                mag_norm = self._clamp(slip_mag / SLIP_MAG_FOR_FULL, 0.0, 1.0)
+                mono_slip += (
+                    tone * amp * (0.35 + 0.65 * mag_norm) * self._slip_fade_gain
+                ).astype(np.float32)
+
+            if self._slide_fade_gain > 0.001:
+                n = len(noise_lo)
+                pos = self._slide_noise_pos
+                ids = (pos + np.arange(frames)) % n
+                self._slide_noise_pos = int((pos + frames) % n)
+                deg_norm = self._clamp(
+                    (float(slide_deg) - SLIDE_DEG_MIN) / (SLIDE_DEG_FULL - SLIDE_DEG_MIN),
+                    0.0,
+                    1.0,
+                )
+                noise = noise_lo[ids] * (1.0 - deg_norm) + noise_hi[ids] * deg_norm
+                am_inc = SLIDE_AM_HZ / self.samplerate
+                am_t = (np.arange(frames) * am_inc + self._phase_slide_am) % 1.0
+                self._phase_slide_am = (am_t[-1] + am_inc) % 1.0
+                noise *= 1.0 - SLIDE_AM_DEPTH * (0.5 - 0.5 * np.cos(2.0 * np.pi * am_t))
+                mono_slip += (
+                    noise * amp * (0.35 + 0.65 * deg_norm) * self._slide_fade_gain
+                ).astype(np.float32)
+
+            az_deg = math.degrees(math.atan2(self._slip_az_y, self._slip_az_x))
+            placed = False
+            if self._hrtf is not None and self._hrtf_user_enabled:
+                # In-callback convention: the raw +LEFT bearing mod 360, as the dock tone.
+                hrtf_az_slip = az_deg % 360.0
+                ir_l, ir_r = self._hrtf.get_hrir(hrtf_az_slip)
+                if ir_l is not None:
+                    gain = (
+                        self._hrtf_emphasis_gain(hrtf_az_slip) * self._hrtf_distance_gain
+                    )
+                    conv_l = np.convolve(mono_slip, ir_l, mode="full") * gain
+                    conv_r = np.convolve(mono_slip, ir_r, mode="full") * gain
+                    if self._slip_overlap_L is not None:
+                        ol = min(len(self._slip_overlap_L), len(conv_l))
+                        conv_l[:ol] += self._slip_overlap_L[:ol]
+                        conv_r[:ol] += self._slip_overlap_R[:ol]
+                    bufL += conv_l[:frames].astype(np.float32)
+                    bufR += conv_r[:frames].astype(np.float32)
+                    self._slip_overlap_L = conv_l[frames:].copy()
+                    self._slip_overlap_R = conv_r[frames:].copy()
+                    placed = True
+            if not placed:
+                # Stereo fallback has no back hemisphere; the sine keeps the side right.
+                Lg, Rg = self._pan_gains(-math.sin(math.radians(az_deg)))
+                bufL += mono_slip * Lg
+                bufR += mono_slip * Rg
+        else:
+            self._slip_overlap_L = None
+            self._slip_overlap_R = None
 
         heading_mix_l = bufL.copy()
         heading_mix_r = bufR.copy()

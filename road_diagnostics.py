@@ -11,15 +11,15 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import wheel_slip
+
 
 SCHEMA_VERSION = 1
 REPEATED_SETTLED_WINDOW_S = 3.0
 STEERING_DEADZONE = 0.08
 BEARING_DEADZONE_DEG = 3.0
-SLIP_ABS_THRESHOLD_MS = 1.5
-SLIP_REL_THRESHOLD = 0.25
-SLIP_MIN_GROUND_MS = 2.0
-SLIP_SUSTAIN_S = 0.15
+# Recorded episodes shorter than the live detector's own sustain are not episodes.
+SLIP_SUSTAIN_S = wheel_slip.SLIP_SUSTAIN_S
 _SAFE_LABEL = re.compile(r"[^A-Za-z0-9_-]+")
 
 
@@ -325,17 +325,15 @@ def analyze_records(records, path=None):
             )
             last_steer_sign = last_bearing_sign = last_target_sign = 0
 
-        ground = _finite(telemetry.get("ground_speed_ms"))
-        wheel = _finite(telemetry.get("wheel_speed_ms"))
-        raw_slip = (ground - wheel) if ground is not None and wheel is not None else 0.0
+        # One rule for the live tone and every recording (wheel_slip.py).
+        slip = wheel_slip.classify(telemetry)
+        raw_slip = slip["raw_mps"]
         max_abs["raw_slip_mps"] = max(max_abs["raw_slip_mps"], abs(raw_slip))
-        threshold = max(SLIP_ABS_THRESHOLD_MS, SLIP_REL_THRESHOLD * max(0.0, ground or 0.0))
-        slipping = (ground or 0.0) > SLIP_MIN_GROUND_MS and abs(raw_slip) > threshold
-        if slipping:
+        if slip["active"]:
             if current_slip is None:
                 current_slip = {
                     "start_s": round(t, 3),
-                    "kind": "wheelspin" if raw_slip < 0 else "lockup",
+                    "kind": slip["kind"],
                     "max_magnitude_mps": 0.0,
                     "samples": 0,
                     "during_correction": False,
