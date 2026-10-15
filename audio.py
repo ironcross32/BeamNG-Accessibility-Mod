@@ -239,6 +239,13 @@ SLIP_SPIN_HZ = 220.0  # wheels faster than the ground: spinning
 SLIP_AM_HZ = 22.0  # amplitude modulation, gives it a scrubbing character
 SLIP_AM_DEPTH = 0.6
 SLIP_MAG_FOR_FULL = 5.0  # m/s of divergence at which the voice is at full level
+# Pitch rises with the SLIP RATIO (wheel_slip.slip_ratio: divergence over the faster of
+# wheel and MotionSim ground speed, 0..1), not with the absolute divergence -- 3 m/s of
+# spin at 60 mph is a scrabble, 3 m/s from a standstill is all of it. Each carrier climbs
+# this many octaves from its base at ratio 0 to the top at ratio 1 (spin 220 -> 440 Hz,
+# lockup 90 -> 180 Hz), so the two voices never meet in pitch.
+SLIP_PITCH_RISE_OCT = 1.0
+SLIP_PITCH_TAU_S = 0.06  # glide, so packet-rate steps in the ratio do not zipper
 SLIP_FADE_ATTACK_S = 0.04
 SLIP_FADE_DECAY_S = 0.12
 SLIP_AMP_DB = -18.0
@@ -1783,6 +1790,9 @@ class AudioController:
         self._slip_active = False
         self._slip_kind = 0
         self._slip_mag = 0.0
+        self._slip_ratio = 0.0
+        self._slip_ratio_sm = 0.0
+        self._slip_pitch_kind = 0
         self._slip_fade_gain = 0.0
         self._phase_slip = 0.0
         self._phase_slip_am = 0.0
@@ -2851,6 +2861,7 @@ class AudioController:
             self._slip_active = state.get("slip_active", self._slip_active)
             self._slip_kind = state.get("slip_kind", self._slip_kind)
             self._slip_mag = state.get("slip_mag", self._slip_mag)
+            self._slip_ratio = state.get("slip_ratio", self._slip_ratio)
             self._slide_active = state.get("slide_active", self._slide_active)
             self._slide_deg = state.get("slide_deg", self._slide_deg)
             self._slip_azimuth_deg = state.get("slip_azimuth_deg", self._slip_azimuth_deg)
@@ -3958,6 +3969,7 @@ class AudioController:
             slip_active = self._slip_active
             slip_kind = self._slip_kind
             slip_mag = self._slip_mag
+            slip_ratio = self._slip_ratio
             slide_active = self._slide_active
             slide_deg = self._slide_deg
             slip_azimuth_deg = self._slip_azimuth_deg
@@ -5533,11 +5545,31 @@ class AudioController:
             mono_slip = np.zeros(frames, dtype=np.float32)
 
             if self._slip_fade_gain > 0.001:
-                carrier_hz = SLIP_SPIN_HZ if slip_kind > 0 else SLIP_LOCK_HZ
+                base_hz = SLIP_SPIN_HZ if slip_kind > 0 else SLIP_LOCK_HZ
                 table = spin_tab if slip_kind > 0 else lock_tab
-                inc = carrier_hz / self.samplerate
-                t = (np.arange(frames) * inc + self._phase_slip) % 1.0
-                self._phase_slip = (t[-1] + inc) % 1.0
+                # Pitch from the slip ratio. Held while fading out (slip_active drops the
+                # ratio to 0, and the tail should not sweep down), and snapped rather than
+                # glided when the voice changes kind, since the base pitch jumps anyway.
+                target = self._clamp(float(slip_ratio), 0.0, 1.0)
+                prev = self._slip_ratio_sm
+                if slip_kind != self._slip_pitch_kind:
+                    self._slip_pitch_kind = slip_kind
+                    prev = target
+                if slip_active:
+                    beta = 1.0 - math.exp(-dt_ls / max(1e-6, SLIP_PITCH_TAU_S))
+                    self._slip_ratio_sm = prev + beta * (target - prev)
+                else:
+                    self._slip_ratio_sm = prev
+                inc0 = base_hz * 2.0 ** (SLIP_PITCH_RISE_OCT * prev) / self.samplerate
+                inc1 = (
+                    base_hz * 2.0 ** (SLIP_PITCH_RISE_OCT * self._slip_ratio_sm)
+                    / self.samplerate
+                )
+                # Ramp the phase increment across the block: continuous in phase AND
+                # frequency, so the glide has no per-block steps.
+                incs = np.linspace(inc0, inc1, frames, endpoint=False)
+                t = (self._phase_slip + np.cumsum(incs) - incs) % 1.0
+                self._phase_slip = float((self._phase_slip + incs.sum()) % 1.0)
                 idx = t * SLIP_TABLE_LEN
                 i0 = idx.astype(np.int64) % SLIP_TABLE_LEN
                 i1 = (i0 + 1) % SLIP_TABLE_LEN

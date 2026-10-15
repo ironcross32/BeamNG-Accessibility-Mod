@@ -1,38 +1,91 @@
-// Simulation of the held-navigation coalescing gate from bnvdaRuntime.js.
-// Replicates the state machine verbatim against a fake clock so the scenarios
-// can be checked without the game.
+// Simulation of the held-navigation coalescing gate and the tuning apply guard
+// from bnvdaRuntime.js, replayed against a fake clock so the scenarios can be
+// checked without the game.
+//
+// The functions are LIFTED out of the source by name rather than copied. This
+// file used to carry its own copy of the state machine, and that is how it kept
+// passing while the hold tracking it modelled was dead in the game: the sim
+// called press('down'), and the real matcher never recognised the engine's
+// actual event name, focus_d. A copy can only agree with itself.
+//
+//   node diagnostic/navburst_sim.js
 
-const NAV_BURST_GAP_MS = 350;
-const NAV_SETTLE_MIN_MS = 90;
-const NAV_SETTLE_MAX_MS = NAV_BURST_GAP_MS;
-const NAV_SETTLE_FACTOR = 1.5;
-const NAV_RELEASE_DRAIN_MS = 140;
-const NAV_HOLD_STALE_MS = 500;
-const DEBOUNCE_MS = 25;
+const fs = require('fs');
+const path = require('path');
 
-// The repeat interval measured off the part selector with BNVDA_DEBUG on
-// (reported ema 232-244ms). Scenarios below used to run only at 110ms, which sits
-// under every plausible settle ceiling and so could never catch the regression
-// where the settle fires between two repeats.
-const OBSERVED_REPEAT_MS = 240;
+const SRC = path.join(__dirname, '..', 'bng_mod', 'ui', 'ui-vue', 'mods', 'bnvda', 'bnvdaRuntime.js');
+const source = fs.readFileSync(SRC, 'utf8');
+
+// ---------- lift ----------
+function sliceBalanced(name, kind) {
+  const needle = kind === 'fn' ? '\n          function ' + name + '(' : '\n          var ' + name + ' = ';
+  const start = source.indexOf(needle);
+  if (start === -1) throw new Error('could not find ' + kind + ' ' + name + ' in bnvdaRuntime.js');
+  const from = source.indexOf(kind === 'fn' ? ')' : '=', start);
+  let open = null;
+  for (let j = from; j < source.length; j++) {
+    if (source[j] === '{' || source[j] === '[') { open = source[j]; break; }
+  }
+  const close = open === '{' ? '}' : ']';
+  let depth = 0, inStr = null, esc = false;
+  for (let i = from; i < source.length; i++) {
+    const c = source[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === inStr) inStr = null;
+      continue;
+    }
+    if (c === '"' || c === "'") { inStr = c; continue; }
+    if (c === '/' && source[i + 1] === '/') { i = source.indexOf('\n', i); continue; }
+    if (c === open) depth++;
+    else if (c === close) { depth--; if (depth === 0) return source.slice(start, i + 1); }
+  }
+  throw new Error('unbalanced ' + name);
+}
+
+// Scalars and regex literals are lifted by line.
+function sliceLine(name) {
+  const start = source.indexOf('\n          var ' + name + ' = ');
+  if (start === -1) throw new Error('could not find var ' + name);
+  return source.slice(start, source.indexOf('\n', start + 1));
+}
+
+const LINES = [
+  'DEBOUNCE_MS', 'CONTROLLER_DOMINANCE_MS',
+  'NAV_BURST_GAP_MS', 'NAV_SETTLE_MIN_MS', 'NAV_SETTLE_MAX_MS', 'NAV_SETTLE_FACTOR',
+  'NAV_RELEASE_DRAIN_MS', 'NAV_HOLD_STALE_MS', 'NAV_PRESS_FRESH_MS',
+  'NAV_ACTION_RE', 'NAV_AXIS_RE', 'NAV_AXIS_PRESS', 'NAV_AXIS_RELEASE', 'NAV_EDGE_ECHO_MS',
+  'NAV_KICK_ACTIONS', '_navLastPressTs',
+  'VUE_TAB_QUEUE_MS', 'VUE_CONFLICT_QUEUE_MS',
+  'TUNING_SLIDER_DEBOUNCE_MS', 'TUNING_APPLY_QUIET_MS', 'TUNING_APPLY_FALLBACK_MS', 'TUNING_HOLD_STALE_MS',
+  '_tuningStore', '_tuningStockApply', '_tuningApplyHeld', '_tuningApplyTimer',
+];
+const FNS = [
+  'navBurstReset', 'navBurstHeldCount', 'emitSpeak', 'navBurstFlush', 'navSettleDelay',
+  'navBurstArm', 'navBurstOnSettle', 'navBurstIsNavSource', 'navBurstNoteRedundant',
+  'navBurstCapture', 'scheduleSpeak',
+  'navActionName', 'navigationValuePressed', 'trackNavigationInput',
+  'tuningAdjusting', 'releaseHeldTuningApply', 'hookTuningApply',
+];
+
+const lifted =
+  LINES.map(sliceLine).join('') +
+  sliceBalanced('_navBurst', 'var') + ';' +
+  FNS.map(n => sliceBalanced(n, 'fn')).join('\n');
 
 function makeSim() {
-  let now = 0;
-  let timers = [];
-  let seq = 0;
+  let now = 0, seq = 0, timers = [];
   const spoken = [];
-  let navHoldSuppression = true;
-
-  const P = { POINTER: 1, KEYBOARD: 2, CONTROLLER: 3, SYSTEM: 4 };
-  let lastSpoken = '', lastSource = 0, lastSpeakTs = -1e9, speakTimer = null;
-  let loadingActive = false;
+  const kicks = { n: 0 };
+  const cleanups = [];
 
   function setT(fn, d) { const id = ++seq; timers.push({ id, at: now + d, fn }); return id; }
   function clrT(id) { timers = timers.filter(t => t.id !== id); }
   function advance(ms) {
     const end = now + ms;
     for (;;) {
-      timers.sort((a, b) => a.at - b.at);
+      timers.sort((a, b) => a.at - b.at || a.id - b.id);
       if (!timers.length || timers[0].at > end) break;
       const t = timers.shift();
       now = t.at;
@@ -41,90 +94,51 @@ function makeSim() {
     now = end;
   }
 
-  const _navBurst = { lastTs: 0, ema: 0, active: false, text: '', src: 0, timer: null, held: Object.create(null) };
+  const fakeWindow = { bngVue: null };
+  const api = new Function(
+    'window', 'trackedSetTimeout', 'clearTimeout', 'nowTS', 'send', 'log', 'isDebug',
+    'onCleanup', 'kickVuePoll', 'looksLikeCss', 'hasNonAscii', 'charDump',
+    'var P = { POINTER: 1, KEYBOARD: 2, CONTROLLER: 3, SYSTEM: 4 };' +
+    'var lastSpoken = "", lastSource = 0, lastSpeakTs = -1e9, lastControllerTs = -1e9;' +
+    'var speakTimer = null, loadingActive = false, navHoldSuppression = true;' +
+    'var _speakQueueAfterText = "", _speakQueueAfterMs = 0, _speakQueueAfterMax = 0;' +
+    'var _speakQueueUntil = 0, _speakQueueLeft = 0;' +
+    // The radial menu's pointer tracking rides on trackNavigationInput; it is
+    // covered by radial_sim.js.
+    'function radialNoteInput() {}' +
+    'var _vueHintTimer = null, _vueHintGeneration = 0;' +
+    sliceBalanced('vueHintNoteActivity', 'fn') +
+    lifted +
+    '\nreturn { P: P, scheduleSpeak: scheduleSpeak, input: trackNavigationInput,' +
+    ' navBurstReset: navBurstReset, navActionName: navActionName,' +
+    ' hookTuningApply: hookTuningApply, burst: _navBurst,' +
+    ' setSuppression: function (v) { navHoldSuppression = v; },' +
+    ' K: { DEBOUNCE_MS: DEBOUNCE_MS, DRAIN: NAV_RELEASE_DRAIN_MS, STALE: NAV_HOLD_STALE_MS,' +
+    '      GAP: NAV_BURST_GAP_MS, FRESH: NAV_PRESS_FRESH_MS, ECHO: NAV_EDGE_ECHO_MS,' +
+    '      QUIET: TUNING_APPLY_QUIET_MS, FALLBACK: TUNING_APPLY_FALLBACK_MS,' +
+    '      SLIDER: TUNING_SLIDER_DEBOUNCE_MS } };'
+  )(
+    fakeWindow, setT, clrT, () => now,
+    msg => { if (msg.type === 'speak') spoken.push({ t: now, txt: msg.text }); },
+    () => {}, () => false, fn => { cleanups.push(fn); return fn; },
+    () => { kicks.n++; }, () => false, () => false, () => ''
+  );
 
-  function navBurstReset() {
-    if (_navBurst.timer) clrT(_navBurst.timer);
-    _navBurst.timer = null; _navBurst.active = false; _navBurst.ema = 0;
-    _navBurst.held = Object.create(null);
-  }
-  function navBurstHeldCount() {
-    let n = 0; for (const k in _navBurst.held) if (_navBurst.held[k]) n++; return n;
-  }
-  function emitSpeak(txt, src) {
-    lastSpoken = txt; lastSource = src; lastSpeakTs = now;
-    spoken.push({ t: now, txt });
-  }
-  function navBurstFlush() {
-    if (_navBurst.timer) clrT(_navBurst.timer);
-    _navBurst.timer = null; _navBurst.active = false;
-    const txt = _navBurst.text, src = _navBurst.src;
-    _navBurst.text = ''; _navBurst.src = 0;
-    if (!txt || loadingActive) return;
-    if (txt === lastSpoken && src <= lastSource && (now - lastSpeakTs) < 400) return;
-    emitSpeak(txt, src);
-  }
-  function navSettleDelay() {
-    const d = _navBurst.ema * NAV_SETTLE_FACTOR;
-    if (!(d > NAV_SETTLE_MIN_MS)) return NAV_SETTLE_MIN_MS;
-    return d > NAV_SETTLE_MAX_MS ? NAV_SETTLE_MAX_MS : d;
-  }
-  function navBurstArm(delay) {
-    if (_navBurst.timer) clrT(_navBurst.timer);
-    _navBurst.timer = setT(navBurstOnSettle, delay);
-  }
-  function navBurstOnSettle() {
-    _navBurst.timer = null;
-    if (navBurstHeldCount() > 0 && (now - _navBurst.lastTs) < NAV_HOLD_STALE_MS) {
-      navBurstArm(navSettleDelay());
-      return;
-    }
-    navBurstFlush();
-  }
-  function navBurstIsNavSource(src) {
-    return src === P.KEYBOARD || src === P.CONTROLLER;
-  }
-  function navBurstNoteRedundant(txt, src, t) {
-    if (!navHoldSuppression || !navBurstIsNavSource(src)) return;
-    _navBurst.lastTs = t;
-    if (!_navBurst.active) return;
-    _navBurst.text = ''; _navBurst.src = 0;
-  }
-  function navBurstCapture(txt, src, t) {
-    if (!navHoldSuppression) return false;
-    if (!navBurstIsNavSource(src)) return false;
-    const dt = t - _navBurst.lastTs;
-    _navBurst.lastTs = t;
-    if (!_navBurst.active && dt > NAV_BURST_GAP_MS) { _navBurst.ema = 0; return false; }
-    _navBurst.active = true;
-    _navBurst.ema = _navBurst.ema ? (_navBurst.ema * 0.6 + dt * 0.4) : dt;
-    _navBurst.text = txt; _navBurst.src = src;
-    navBurstArm(navSettleDelay());
-    return true;
-  }
-  function scheduleSpeak(txt, src) {
-    if (!txt || loadingActive) return;
-    const t = now;
-    if (txt === lastSpoken && src <= lastSource && (t - lastSpeakTs) < 400) {
-      navBurstNoteRedundant(txt, src, t);
-      return;
-    }
-    if (navBurstCapture(txt, src, t)) return;
-    if (speakTimer) clrT(speakTimer);
-    speakTimer = setT(() => emitSpeak(txt, src), DEBOUNCE_MS);
-  }
-  function press(name) { _navBurst.held[name] = true; }
-  function release(name) {
-    if (!_navBurst.held[name]) return;
-    delete _navBurst.held[name];
-    if (navBurstHeldCount() === 0 && _navBurst.active) navBurstArm(NAV_RELEASE_DRAIN_MS);
-  }
-
-  return {
-    P, spoken, advance, scheduleSpeak, press, release, navBurstReset,
+  const s = Object.assign({}, api, {
+    spoken, kicks, advance, fakeWindow, cleanups,
     now: () => now,
-    setSuppression: v => { navHoldSuppression = v; },
+    texts: () => spoken.map(x => x.txt),
+    move: txt => api.scheduleSpeak(txt, api.P.CONTROLLER),
+  });
+  // The engine moves focus ~40-80ms after the press (measured), and a tap is
+  // down for roughly 100ms.
+  s.tap = (name, txt) => {
+    s.input(name, 1); advance(45);
+    const at = now; s.move(txt);
+    advance(50); s.input(name, 0);
+    return at;
   };
+  return s;
 }
 
 let failures = 0;
@@ -133,174 +147,396 @@ function check(name, cond, detail) {
   else { failures++; console.log(`  FAIL  ${name}${detail ? ' -> ' + detail : ''}`); }
 }
 
-// --- Scenario 1: single tap, key released before speech arrives -------------
+// What the engine really sends, and what the matcher used to look for.
+const OLD_NAV_ACTION_RE = /(^|_)(up|down|left|right|prev|previous|next|scroll|tab|change)(_|$)/;
+// Crossfire's own repeat timing for a held direction (crossfire.js).
+const REPEAT_INITIAL_MS = 500;
+const REPEAT_MS = 200;
+
+// --- Scenario 1: the engine's event names are recognised --------------------
 {
-  console.log('\nScenario 1: single tap');
+  console.log('\nScenario 1: engine event names');
+  const s = makeSim();
+  const names = ['focus_u', 'focus_d', 'focus_l', 'focus_r', 'focus_ud', 'focus_lr', 'tab_l', 'tab_r'];
+  check('every direction the engine sends is tracked',
+        names.every(n => s.navActionName(n) === n), names.filter(n => !s.navActionName(n)).join(','));
+  check('the previous matcher recognised none of the D-pad',
+        ['focus_u', 'focus_d', 'focus_l', 'focus_r'].every(n => !OLD_NAV_ACTION_RE.test(n)));
+  check('one-shot actions are not directions',
+        ['ok', 'back', 'context', 'action_2', 'menu', 'rotate_h_cam'].every(n => s.navActionName(n) === ''));
+}
+
+// --- Scenario 2: single tap --------------------------------------------------
+{
+  console.log('\nScenario 2: single tap');
   const s = makeSim();
   s.advance(1000);
-  s.press('down'); s.advance(80); s.release('down');
-  s.advance(165);            // poll + processFocusChange latency
-  s.scheduleSpeak('Item 5', s.P.CONTROLLER);
+  const at = s.tap('focus_d', 'Item 5');
   s.advance(500);
   check('spoke exactly once', s.spoken.length === 1, JSON.stringify(s.spoken));
   check('spoke the item', s.spoken[0] && s.spoken[0].txt === 'Item 5');
-  check('no added latency (<=50ms after request)', s.spoken[0] && s.spoken[0].t - 1245 <= 50,
-        s.spoken[0] && String(s.spoken[0].t - 1245));
+  check('no latency beyond DEBOUNCE_MS', s.spoken[0] && s.spoken[0].t - at <= s.K.DEBOUNCE_MS,
+        s.spoken[0] && String(s.spoken[0].t - at));
 }
 
-// --- Scenario 2: hold through 20 items, engine emits press/release ----------
+// --- Scenario 3: brisk tapping speaks every row ------------------------------
+// The measured failure: seven taps 220ms apart spoke the first row, nothing for
+// the next five, and the seventh 400ms after it landed.
 {
-  console.log('\nScenario 2: hold 20 items, with release event');
+  console.log('\nScenario 3: seven taps 220ms apart');
   const s = makeSim();
   s.advance(1000);
-  s.press('down');
-  const REPEAT = 110;
-  for (let i = 1; i <= 20; i++) { s.advance(REPEAT); s.scheduleSpeak('Item ' + i, s.P.CONTROLLER); }
+  const lat = [];
+  for (let i = 1; i <= 7; i++) {
+    const start = s.now();
+    const at = s.tap('focus_d', 'Item ' + i);
+    s.advance(220 - (s.now() - start));
+    const hit = s.spoken.find(x => x.txt === 'Item ' + i);
+    lat.push(hit ? hit.t - at : -1);
+  }
+  s.advance(1000);
+  check('every tap spoken', s.spoken.length === 7, JSON.stringify(s.texts()));
+  check('each within DEBOUNCE_MS of its move', lat.every(l => l >= 0 && l <= s.K.DEBOUNCE_MS), lat.join(','));
+
+  // The same moves with no key state reach the cadence path, which is the rule
+  // that used to apply to everything. It must still coalesce -- that is what
+  // shows the taps above were spoken because of the press, not by accident.
+  const c = makeSim();
+  c.advance(1000);
+  for (let i = 1; i <= 7; i++) { c.move('Item ' + i); c.advance(220); }
+  c.advance(1000);
+  check('without key state the same cadence coalesces to first + landing',
+        c.spoken.length === 2 && c.spoken[1].txt === 'Item 7', JSON.stringify(c.texts()));
+}
+
+// --- Scenario 4: a hold speaks the first row and the landing -----------------
+{
+  console.log('\nScenario 4: hold through 12 rows, then release');
+  const s = makeSim();
+  s.advance(1000);
+  s.input('focus_d', 1); s.advance(45); s.move('Item 1');
+  s.advance(REPEAT_INITIAL_MS - 45);
+  for (let i = 2; i <= 12; i++) { s.move('Item ' + i); s.advance(REPEAT_MS); }
   const releaseAt = s.now();
-  s.release('down');
-  s.advance(60); s.scheduleSpeak('Item 21', s.P.CONTROLLER);   // last move still draining
+  s.input('focus_d', 0);
   s.advance(1000);
-  check('spoke exactly twice (first + landing)', s.spoken.length === 2, JSON.stringify(s.spoken));
+  check('spoke exactly twice (first + landing)', s.spoken.length === 2, JSON.stringify(s.texts()));
   check('first spoken is Item 1', s.spoken[0] && s.spoken[0].txt === 'Item 1');
-  check('landing is the final item', s.spoken[1] && s.spoken[1].txt === 'Item 21', JSON.stringify(s.spoken));
+  check('landing is Item 12', s.spoken[1] && s.spoken[1].txt === 'Item 12', JSON.stringify(s.texts()));
   const lat = s.spoken[1] ? s.spoken[1].t - releaseAt : -1;
-  check('landing within 200ms of release', lat >= 0 && lat <= 200, lat + 'ms');
+  check('landing within NAV_RELEASE_DRAIN_MS of release', lat >= 0 && lat <= s.K.DRAIN, lat + 'ms');
 }
 
-// --- Scenario 3: hold with repeats only (no release event at all) -----------
+// --- Scenario 5: landing text that arrives just after the release ------------
+// A slider's value has no focus event behind it, so the release-kicked poll is
+// what reads the final value. It must be taken WITHOUT re-arming the timer.
 {
-  console.log('\nScenario 3: hold 20 items, engine emits no key state');
+  console.log('\nScenario 5: landing text catches up after release');
   const s = makeSim();
   s.advance(1000);
-  const REPEAT = 110;
-  for (let i = 1; i <= 20; i++) { s.advance(REPEAT); s.scheduleSpeak('Item ' + i, s.P.CONTROLLER); }
-  const lastMove = s.now();
+  s.input('focus_r', 1); s.advance(10); s.move('Camber, 1.0');
+  s.advance(500);
+  for (let i = 2; i <= 6; i++) { s.move('Camber, ' + i + '.0'); s.advance(100); }
+  const kicksBefore = s.kicks.n;
+  const releaseAt = s.now();
+  s.input('focus_r', 0);
+  check('the release kicks the poll', s.kicks.n === kicksBefore + 1, String(s.kicks.n - kicksBefore));
+  s.advance(4); s.move('Camber, 7.0');
   s.advance(1000);
-  check('spoke exactly twice', s.spoken.length === 2, JSON.stringify(s.spoken));
-  check('first spoken is Item 1', s.spoken[0] && s.spoken[0].txt === 'Item 1');
-  check('landing is Item 20', s.spoken[1] && s.spoken[1].txt === 'Item 20');
-  const lat = s.spoken[1] ? s.spoken[1].t - lastMove : -1;
-  check('landing within 200ms of last move', lat >= 0 && lat <= 200, lat + 'ms');
+  check('spoke exactly twice', s.spoken.length === 2, JSON.stringify(s.texts()));
+  check('landing is the value read after release', s.spoken[1] && s.spoken[1].txt === 'Camber, 7.0',
+        JSON.stringify(s.texts()));
+  const lat = s.spoken[1] ? s.spoken[1].t - releaseAt : -1;
+  check('late text did not push the landing out', lat >= 0 && lat <= s.K.DRAIN, lat + 'ms');
 }
 
-// --- Scenario 4: uneven cadence must not flush mid-run while still held -----
+// --- Scenario 6: a held sweep that runs into the end of the list -------------
 {
-  console.log('\nScenario 4: uneven repeat while held');
+  console.log('\nScenario 6: hold into the end of a list');
   const s = makeSim();
   s.advance(1000);
-  s.press('down');
-  const gaps = [110, 110, 300, 110, 110, 260, 110];   // two stalls mid-sweep
-  gaps.forEach((g, i) => { s.advance(g); s.scheduleSpeak('Item ' + (i + 1), s.P.CONTROLLER); });
-  s.release('down');
-  s.advance(1000);
-  check('no mid-run announcements', s.spoken.length === 2, JSON.stringify(s.spoken));
-  check('landing is Item 7', s.spoken[1] && s.spoken[1].txt === 'Item 7');
+  s.input('focus_d', 1); s.advance(45); s.move('Item 1');
+  s.advance(REPEAT_INITIAL_MS - 45);
+  for (let i = 2; i <= 5; i++) { s.move('Item ' + i); s.advance(REPEAT_MS); }
+  const lastMove = s.now() - REPEAT_MS;
+  s.advance(2000);                      // still held, nothing left to move to
+  check('landing announced without a release', s.spoken.length === 2 && s.spoken[1].txt === 'Item 5',
+        JSON.stringify(s.texts()));
+  check('after NAV_HOLD_STALE_MS of no movement',
+        s.spoken[1] && s.spoken[1].t - lastMove === s.K.STALE, s.spoken[1] && String(s.spoken[1].t - lastMove));
+  s.input('focus_d', 0); s.advance(1000);
+  check('the eventual release adds nothing', s.spoken.length === 2, JSON.stringify(s.texts()));
 }
 
-// --- Scenario 5: slow tapping stays fully verbose ---------------------------
+// --- Scenario 7: a tap straight after a hold supersedes the landing ----------
 {
-  console.log('\nScenario 5: deliberate slow taps (400ms apart)');
+  console.log('\nScenario 7: tap inside the release drain');
   const s = makeSim();
   s.advance(1000);
-  for (let i = 1; i <= 5; i++) { s.advance(400); s.scheduleSpeak('Item ' + i, s.P.CONTROLLER); }
+  s.input('focus_d', 1); s.advance(45); s.move('Item 1');
+  s.advance(REPEAT_INITIAL_MS - 45);
+  for (let i = 2; i <= 4; i++) { s.move('Item ' + i); s.advance(REPEAT_MS); }
+  s.input('focus_d', 0);
+  s.advance(10);
+  s.input('focus_u', 1); s.advance(20); s.move('Item 3'); s.advance(50); s.input('focus_u', 0);
   s.advance(1000);
-  check('every tap spoken', s.spoken.length === 5, JSON.stringify(s.spoken.map(x => x.txt)));
+  check('the row left behind is never announced', s.texts().indexOf('Item 4') === -1, JSON.stringify(s.texts()));
+  check('the new row is', s.texts()[s.spoken.length - 1] === 'Item 3', JSON.stringify(s.texts()));
 }
 
-// --- Scenario 6: feature disabled reverts to old behavior -------------------
+// --- Scenario 8: one press answers one announcement --------------------------
+// A second utterance from the same press must not ride in as "deliberate" and
+// cut the first one off while the key is still down.
 {
-  console.log('\nScenario 6: suppression disabled');
+  console.log('\nScenario 8: two utterances from one press');
+  const s = makeSim();
+  s.advance(1000);
+  s.input('focus_d', 1); s.advance(45); s.move('Body, expanded');
+  s.advance(30); s.move('Body, expanded, changed');
+  s.advance(15);
+  check('second is held while the key is down', s.spoken.length === 1, JSON.stringify(s.texts()));
+  const releaseAt = s.now();
+  s.input('focus_d', 0);
+  s.advance(1000);
+  check('and spoken on release', s.spoken.length === 2 && s.spoken[1].t - releaseAt <= s.K.DRAIN,
+        JSON.stringify(s.spoken));
+}
+
+// --- Scenario 9: stick axis ---------------------------------------------------
+// An axis reports continuously. Only the crossing is a press, or a deflected
+// stick would mark every repeat as deliberate and defeat the coalescing.
+{
+  console.log('\nScenario 9: thumbstick axis');
+  const s = makeSim();
+  s.advance(1000);
+  [0.1, 0.3, 0.6].forEach(v => { s.input('focus_ud', v); s.advance(5); });
+  s.advance(40); s.move('Item 1');
+  [0.9, 1, 1, 0.95].forEach(v => { s.input('focus_ud', v); s.advance(100); });
+  s.advance(100);
+  for (let i = 2; i <= 5; i++) { s.input('focus_ud', 1); s.move('Item ' + i); s.advance(REPEAT_MS); }
+  check('a deflected stick is one press', s.spoken.length === 1 && s.spoken[0].txt === 'Item 1',
+        JSON.stringify(s.texts()));
+  s.input('focus_ud', 0.4);
+  s.advance(100);
+  check('inside the hysteresis band it is still held', s.spoken.length === 1, JSON.stringify(s.texts()));
+  s.input('focus_ud', 0.1);
+  s.advance(1000);
+  check('landing on release', s.spoken.length === 2 && s.spoken[1].txt === 'Item 5', JSON.stringify(s.texts()));
+}
+
+// --- Scenario 10: the same edge delivered twice -------------------------------
+// ui_nav and the AngularJS broadcast can both carry one press.
+{
+  console.log('\nScenario 10: echoed press');
+  const s = makeSim();
+  s.advance(1000);
+  s.input('focus_d', 1); s.advance(2); s.input('focus_d', 1);
+  check('counted once', s.burst.fresh === 1, String(s.burst.fresh));
+  s.advance(43); s.move('Item 1');
+  s.advance(REPEAT_INITIAL_MS); s.move('Item 2');
+  s.advance(15);
+  check('the repeat is not mistaken for a second press', s.spoken.length === 1, JSON.stringify(s.texts()));
+}
+
+// --- Scenario 11: a release that never arrived --------------------------------
+{
+  console.log('\nScenario 11: lost release');
+  const s = makeSim();
+  s.advance(1000);
+  s.input('focus_d', 1); s.advance(45); s.move('Item 1');
+  s.advance(3000);                      // release lost (focus went elsewhere)
+  const at = s.tap('focus_d', 'Item 2');
+  s.advance(1000);
+  const hit = s.spoken.find(x => x.txt === 'Item 2');
+  check('the next press still speaks at once', hit && hit.t - at <= s.K.DEBOUNCE_MS, JSON.stringify(s.spoken));
+}
+
+// --- Scenario 12: a press that moved nothing expires --------------------------
+{
+  console.log('\nScenario 12: stale press');
+  const s = makeSim();
+  s.advance(1000);
+  s.move('Item 1'); s.advance(100);
+  s.input('focus_d', 1); s.advance(50); s.input('focus_d', 0);   // end of list
+  s.advance(s.K.FRESH + 100);
+  for (let i = 2; i <= 4; i++) { s.move('Value ' + i); s.advance(100); }
+  s.advance(15);
+  check('later movement is not credited to it', s.spoken.length === 2 && s.texts().indexOf('Value 4') === -1,
+        JSON.stringify(s.texts()));
+  s.advance(1000);
+  check('and still coalesces on cadence', s.spoken.length === 3 && s.spoken[2].txt === 'Value 4',
+        JSON.stringify(s.texts()));
+}
+
+// --- Scenario 13: suppression disabled ----------------------------------------
+{
+  console.log('\nScenario 13: suppression disabled');
   const s = makeSim();
   s.setSuppression(false);
   s.advance(1000);
-  for (let i = 1; i <= 10; i++) { s.advance(110); s.scheduleSpeak('Item ' + i, s.P.CONTROLLER); }
+  s.input('focus_d', 1);
+  for (let i = 1; i <= 10; i++) { s.advance(110); s.move('Item ' + i); }
   s.advance(1000);
-  check('speaks more than the gated case', s.spoken.length > 2, String(s.spoken.length));
+  check('every item spoken', s.spoken.length === 10, String(s.spoken.length));
 }
 
-// --- Scenario 7: landing on the same item the leading edge announced --------
+// --- Scenario 14: screen change must not leak a pending announcement ----------
 {
-  console.log('\nScenario 7: sweep returns to the starting item');
+  console.log('\nScenario 14: back out mid-sweep');
   const s = makeSim();
   s.advance(1000);
-  s.press('down');
-  s.advance(110); s.scheduleSpeak('Item 1', s.P.CONTROLLER);
-  s.advance(110); s.scheduleSpeak('Item 2', s.P.CONTROLLER);
-  s.advance(110); s.scheduleSpeak('Item 1', s.P.CONTROLLER);
-  s.release('down');
-  s.advance(1000);
-  check('does not repeat the same text back-to-back', s.spoken.length === 1, JSON.stringify(s.spoken));
-}
-
-// --- Scenario 8: very long hold still gives periodic feedback ---------------
-{
-  console.log('\nScenario 8: 10-second continuous hold');
-  const s = makeSim();
-  s.advance(1000);
-  s.press('down');
-  for (let i = 1; i <= 100; i++) { s.advance(100); s.scheduleSpeak('Item ' + i, s.P.CONTROLLER); }
-  s.release('down');
-  s.advance(1000);
-  // Silence through a long hold is the requirement, not a defect: "subsequent
-  // changes should be ignored until the user stops adjusting".
-  check('stays silent through the hold', s.spoken.length === 2, JSON.stringify(s.spoken.map(x => x.txt)));
-  check('landing is Item 100', s.spoken[s.spoken.length - 1].txt === 'Item 100',
-        JSON.stringify(s.spoken.map(x => x.txt)));
-}
-
-// --- Scenario 9: screen change must not leak a pending announcement ---------
-{
-  console.log('\nScenario 9: back out mid-sweep');
-  const s = makeSim();
-  s.advance(1000);
-  s.press('down');
-  for (let i = 1; i <= 6; i++) { s.advance(110); s.scheduleSpeak('Old ' + i, s.P.CONTROLLER); }
+  s.input('focus_d', 1); s.advance(45); s.move('Old 1');
+  s.advance(REPEAT_INITIAL_MS);
+  for (let i = 2; i <= 6; i++) { s.move('Old ' + i); s.advance(REPEAT_MS); }
   s.navBurstReset();                 // what the screenKey-change branch does
+  s.input('focus_d', 0);
   s.advance(1000);
-  check('only the leading edge spoke', s.spoken.length === 1, JSON.stringify(s.spoken));
-  check('nothing from the old screen leaked', !s.spoken.some(x => x.txt === 'Old 6'));
+  check('only the leading edge spoke', s.spoken.length === 1, JSON.stringify(s.texts()));
+  check('nothing from the old screen leaked', s.texts().indexOf('Old 6') === -1);
 }
 
-// --- Scenario 10: hold at the engine's REAL repeat rate --------------------
-// Regression guard for the part-selector bug: with NAV_SETTLE_MAX_MS below the
-// repeat interval, the settle timer fired in the gap between two repeats, so
-// every row was announced AND every announcement paid the full settle delay.
-// The old 110ms scenarios could not catch this -- 110 is under any plausible
-// ceiling, so the timer never got a chance to fire early.
+// --- Scenario 15: system notifications are not navigation ---------------------
 {
-  console.log('\nScenario 10: hold 12 items at the observed 240ms repeat rate');
+  console.log('\nScenario 15: system message during a held sweep');
   const s = makeSim();
   s.advance(1000);
-  for (let i = 1; i <= 12; i++) { s.advance(OBSERVED_REPEAT_MS); s.scheduleSpeak('Item ' + i, s.P.CONTROLLER); }
-  const lastMove = s.now();
-  s.advance(2000);
-  check('coalesces instead of speaking all 12', s.spoken.length === 2,
-        JSON.stringify(s.spoken.map(x => x.txt)));
-  check('first spoken is Item 1', s.spoken[0] && s.spoken[0].txt === 'Item 1');
-  check('landing is Item 12', s.spoken[1] && s.spoken[1].txt === 'Item 12');
-  const lat = s.spoken[1] ? s.spoken[1].t - lastMove : -1;
-  check('landing within NAV_BURST_GAP_MS of last move', lat >= 0 && lat <= NAV_BURST_GAP_MS, lat + 'ms');
-}
-
-// --- Scenario 11: system notifications are not navigation ------------------
-// A toast, damage callout or camera change arriving mid-sweep must be spoken on
-// its own schedule. Previously P.SYSTEM passed the `src < P.KEYBOARD` gate, so
-// it was captured into the burst and then discarded when the next focus move
-// overwrote _navBurst.text.
-{
-  console.log('\nScenario 11: system message during a held sweep');
-  const s = makeSim();
-  s.advance(1000);
-  for (let i = 1; i <= 4; i++) { s.advance(OBSERVED_REPEAT_MS); s.scheduleSpeak('Item ' + i, s.P.CONTROLLER); }
-  s.advance(20);
+  s.input('focus_d', 1); s.advance(45); s.move('Item 1');
+  s.advance(REPEAT_INITIAL_MS);
+  for (let i = 2; i <= 4; i++) { s.move('Item ' + i); s.advance(REPEAT_MS); }
   s.scheduleSpeak('Camera: Driver', s.P.SYSTEM);
   s.advance(60);
-  for (let i = 5; i <= 8; i++) { s.advance(OBSERVED_REPEAT_MS); s.scheduleSpeak('Item ' + i, s.P.CONTROLLER); }
-  s.advance(2000);
-  const texts = s.spoken.map(x => x.txt);
+  for (let i = 5; i <= 8; i++) { s.move('Item ' + i); s.advance(REPEAT_MS); }
+  s.input('focus_d', 0);
+  s.advance(1000);
+  const texts = s.texts();
   check('system message was not swallowed', texts.indexOf('Camera: Driver') !== -1, JSON.stringify(texts));
   check('sweep still coalesced around it', s.spoken.length === 3, JSON.stringify(texts));
   check('landing is still Item 8', texts[texts.length - 1] === 'Item 8', JSON.stringify(texts));
+}
+
+// --- Scenario 16: cadence path at the engine's real repeat rate ---------------
+// Kept from the previous sim: with no key state, NAV_SETTLE_MAX_MS below the
+// repeat interval made the settle fire between two repeats.
+{
+  console.log('\nScenario 16: no key state, 240ms repeats');
+  const s = makeSim();
+  s.advance(1000);
+  for (let i = 1; i <= 12; i++) { s.advance(240); s.move('Item ' + i); }
+  const lastMove = s.now();
+  s.advance(2000);
+  check('coalesces instead of speaking all 12', s.spoken.length === 2, JSON.stringify(s.texts()));
+  check('landing is Item 12', s.spoken[1] && s.spoken[1].txt === 'Item 12');
+  const lat = s.spoken[1] ? s.spoken[1].t - lastMove : -1;
+  check('landing within NAV_BURST_GAP_MS of last move', lat >= 0 && lat <= s.K.GAP, lat + 'ms');
+}
+
+// ---------- tuning apply guard ----------
+// A stand-in for Tuning.vue + bngSlider + the pinia store, with the stock
+// timers: the slider commits `debounce` after its last nudge, and each commit
+// restarts a 1000ms apply timer. Nudging does NOT touch the apply timer, which
+// is the whole fault.
+function makeTuning(s, guarded) {
+  const applies = [];
+  const store = { value: 0, apply() { applies.push({ t: s.now(), value: store.value }); } };
+  s.fakeWindow.bngVue = { app: { config: { globalProperties: { $pinia: { _s: new Map([['tuning', store]]) } } } } };
+  if (guarded) s.hookTuningApply();
+  // The stock timers are stepped against the sim clock, so they interleave
+  // with the guard's own exactly as in the page.
+  let live = 0, commitAt = -1, applyAt = -1;
+  function tick() {
+    if (commitAt >= 0 && s.now() >= commitAt) { commitAt = -1; store.value = live; applyAt = s.now() + 1000; }
+    if (applyAt >= 0 && s.now() >= applyAt) { applyAt = -1; store.apply(); }
+  }
+  return {
+    applies, store,
+    nudge(dir, changes) {
+      s.input(dir > 0 ? 'focus_r' : 'focus_l', 1);
+      if (changes !== false) { live += dir; commitAt = s.now() + s.K.SLIDER; }
+      s.advance(1); tick();
+      s.input(dir > 0 ? 'focus_r' : 'focus_l', 0);
+    },
+    run(ms) { for (let i = 0; i < ms; i += 10) { s.advance(10); tick(); } },
+    live: () => live,
+  };
+}
+
+// --- Scenario 17: taps with one pause, the reported fault ---------------------
+{
+  console.log('\nScenario 17: tuning taps with a pause to listen');
+  const drive = t => {
+    for (let i = 0; i < 3; i++) { t.nudge(1); t.run(300); }
+    t.run(700);                                   // hear the value: slider commits
+    for (let i = 0; i < 5; i++) { t.nudge(1); t.run(400); }
+    const lastNudge = t.s.now() - 400;
+    t.run(4000);
+    return lastNudge;
+  };
+
+  const s0 = makeSim(); s0.advance(1000);
+  const stock = makeTuning(s0, false); stock.s = s0;
+  const stockLast = drive(stock);
+  check('unguarded, the car reloads in the middle of the taps',
+        stock.applies.length >= 1 && stock.applies[0].t < stockLast, JSON.stringify(stock.applies));
+  check('and applies a value the slider had already moved past',
+        stock.applies[0] && stock.applies[0].value < stock.live(), JSON.stringify(stock.applies[0]));
+
+  const s1 = makeSim(); s1.advance(1000);
+  const g = makeTuning(s1, true); g.s = s1;
+  const lastNudge = drive(g);
+  check('guarded, exactly one apply', g.applies.length === 1, JSON.stringify(g.applies));
+  check('after the last tap', g.applies[0] && g.applies[0].t > lastNudge, JSON.stringify(g.applies));
+  check('carrying the final value', g.applies[0] && g.applies[0].value === g.live(), JSON.stringify(g.applies));
+  check('at the stock moment (commit + 1000ms), not later',
+        g.applies[0] && Math.abs(g.applies[0].t - (lastNudge + s1.K.SLIDER + 1000)) <= 20,
+        g.applies[0] && String(g.applies[0].t - lastNudge));
+}
+
+// --- Scenario 18: a held apply with no commit behind it -----------------------
+// The taps after the pause change nothing (slider at its limit), so no commit
+// follows and the stock path never calls apply again.
+{
+  console.log('\nScenario 18: tuning taps against the limit');
+  const s = makeSim(); s.advance(1000);
+  const t = makeTuning(s, true);
+  t.nudge(1); t.run(900);                         // commits; apply due in 1000
+  for (let i = 0; i < 4; i++) { t.nudge(1, false); t.run(300); }
+  const lastNudge = s.now() - 300;
+  t.run(5000);
+  check('the held apply is not lost', t.applies.length === 1, JSON.stringify(t.applies));
+  check('released by the fallback, after the user stopped',
+        t.applies[0] && t.applies[0].t - lastNudge >= s.K.FALLBACK - 5, t.applies[0] && String(t.applies[0].t - lastNudge));
+}
+
+// --- Scenario 19: an apply with nobody adjusting is untouched -----------------
+{
+  console.log('\nScenario 19: tuning apply while idle');
+  const s = makeSim(); s.advance(5000);
+  const t = makeTuning(s, true);
+  t.store.apply();
+  check('passes straight through', t.applies.length === 1 && t.applies[0].t === s.now(), JSON.stringify(t.applies));
+  s.cleanups.forEach(fn => fn());
+  t.store.apply();
+  check('and the stock apply is restored on cleanup', t.applies.length === 2);
+}
+
+// --- Scenario 20: wiring ------------------------------------------------------
+// None of this is reachable through a fake clock, so it is asserted textually.
+{
+  console.log('\nScenario 20: wiring');
+  const code = source.split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+  check('the engine focus event runs the poll',
+        /listen\(document, 'uinav-focus', kickVuePoll, true\);/.test(code));
+  check('ui_nav feeds the key state',
+        /function handlePartsUiNavCapture[\s\S]{0,400}?trackNavigationInput\(action, value\);/.test(code));
+  check('an event-driven tick skips the focus debounce',
+        /processFocusChange\(focused, P\.CONTROLLER, kicked\);/.test(code));
+  check('the kick is deferred, never run inline',
+        /_vuePollKick = function \(\) \{ scheduleVuePoll\(0\); \};/.test(code));
+  check('the poll idles between events',
+        /nextDelay = nowTS\(\) < _vuePollActiveUntil \? NAV_POLL_FAST_MS : NAV_POLL_IDLE_MS;/.test(code));
+  check('the old hold tracker is gone', !/trackNavigationHold/.test(code));
+  check('the tuning guard is installed from the config screen',
+        /if \(onConfigScreen\) hookTuningApply\(\);/.test(code));
 }
 
 console.log(failures === 0 ? '\nAll scenarios passed.' : `\n${failures} check(s) FAILED.`);

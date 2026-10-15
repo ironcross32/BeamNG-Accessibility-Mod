@@ -5,7 +5,8 @@
 --  Description: Detects vehicle nodes under the mouse cursor (ray-sphere intersection)
 --               and sends node metadata to the Python backend via UDP.
 --               Supports SNAP command to warp cursor to the nearest node to camera center.
---               Receives ON/OFF/SCAN_ON/SCAN_OFF/SNAP commands from Python.
+--               UNPIN releases every pinned node on every vehicle.
+--               Receives ON/OFF/SCAN_ON/SCAN_OFF/SNAP/UNPIN commands from Python.
 --
 --  Loaded by: scripts/bng_screenreader_mod/modScript.lua
 --
@@ -336,6 +337,34 @@ local function handleSnap()
 end
 
 -- =================================================================================================
+--  UNPIN: release every pinned (fixed) node
+-- =================================================================================================
+
+-- A pinned node is invisible to the ray scan, so finding it again with the mouse is guesswork.
+-- This clears them all through the same call the game's own recovery uses
+-- (lua/vehicle/recovery.lua). It runs on every vehicle, not just the player's: a node pinned
+-- on a car you have since switched away from would otherwise stay fixed with no way back to it.
+local function handleUnpin()
+  local grabber = be and be.nodeGrabber
+  local cleared = 0
+  if grabber then
+    for i = 0, be:getObjectCount() - 1 do
+      local obj = be:getObject(i)
+      if obj then
+        local ok = pcall(function() grabber:clearVehicleFixedNodes(obj:getID()) end)
+        if ok then cleared = cleared + 1 end
+      end
+    end
+  else
+    ngLog('warn', "be.nodeGrabber unavailable; cannot unpin nodes.")
+  end
+  ngLog('info', "UNPIN cleared fixed nodes on " .. cleared .. " vehicle(s)")
+  if udpSend then
+    udpSend:send(grabber and ("UNPINNED:" .. cleared) or "UNPIN_FAILED")
+  end
+end
+
+-- =================================================================================================
 --  GE Extension Hooks
 -- =================================================================================================
 
@@ -479,6 +508,8 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
           lastHoveredCid = -1
         elseif cmd == "SNAP" and isActive then
           handleSnap()
+        elseif cmd == "UNPIN" and isActive then
+          handleUnpin()
         elseif cmd == "RECACHE" and isActive then
           nodeCacheVehID = nil
           pendingCacheVehID = nil

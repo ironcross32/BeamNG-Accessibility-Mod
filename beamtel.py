@@ -3169,6 +3169,13 @@ def nodegrab_listener(audio_controller, stop_event):
 
                 now = time.time()
 
+                if text.startswith("UNPINNED:"):
+                    say("All nodes unpinned", exclude_from_buffer=True)
+                    continue
+                if text == "UNPIN_FAILED":
+                    say("Unpin unavailable", exclude_from_buffer=True)
+                    continue
+
                 if text == "NODE_CLEAR":
                     if nodegrab_last_cid != -1:
                         audio_controller.trigger_node_hover_beep(0.5, reverse=True)
@@ -4400,6 +4407,7 @@ def _road_diagnostic_telemetry_snapshot():
             "slip_active": last_slip_active,
             "slip_kind": last_slip_kind,
             "slip_magnitude_mps": last_slip_mag,
+            "slip_ratio": last_slip_result.ratio,
             "slip_filtered_mps": last_slip_result.filtered_ms,
             "slip_legacy_rule": last_slip_result.legacy,
             # The fields wheel_slip.classify reads back out of a recording.
@@ -4498,6 +4506,8 @@ nodegrab_scanning = False
 nodegrab_last_cid = -1
 nodegrab_strength = 50  # tracked locally (0-100)
 _nodegrab_scroll_hook = None
+_nodegrab_space_hook = None
+_nodegrab_space_held = False
 
 # Clickspot Detection State
 clickspot_mode_active = False
@@ -6396,8 +6406,28 @@ def _send_nodegrab_cmd(command):
         logger.error(f"Failed to send node grabber command via UDP: {e}")
 
 
+def _nodegrab_on_space(event):
+    """Ctrl+Space while the node grabber is on releases every pinned node.
+
+    Runs inside the low-level hook (see the command dispatch note), so it only classifies
+    the key and queues the send. Plain Space passes through untouched, so the handbrake
+    still works. Auto-repeat is ignored until Space is released, or holding the chord would
+    send UNPIN thirty times a second.
+    """
+    global _nodegrab_space_held
+    if event.event_type == keyboard.KEY_UP:
+        _nodegrab_space_held = False
+        return True
+    if not nodegrab_mode_active or not keyboard.is_pressed("ctrl"):
+        return True
+    if not _nodegrab_space_held:
+        _nodegrab_space_held = True
+        _command_dispatch(_send_nodegrab_cmd, "UNPIN")
+    return False
+
+
 def _install_nodegrab_hooks():
-    global _nodegrab_scroll_hook
+    global _nodegrab_scroll_hook, _nodegrab_space_hook, _nodegrab_space_held
     try:
         import mouse
 
@@ -6406,6 +6436,19 @@ def _install_nodegrab_hooks():
         logger.warning(
             "mouse module unavailable — scroll/middle-click hooks disabled for node grabber"
         )
+    if _nodegrab_space_hook is None:
+        _nodegrab_space_held = False
+        try:
+            # Same record shape as _hook_suppressed, which can't be used directly because
+            # it never shows the handler KEY_UP and the repeat guard needs it.
+            remove = keyboard.hook_key("space", _nodegrab_on_space, suppress=True)
+            _nodegrab_space_hook = {
+                "key": "space",
+                "cb": _nodegrab_on_space,
+                "remove": remove,
+            }
+        except Exception:
+            logger.exception("Failed to install node grabber Ctrl+Space hook")
 
 
 def _nodegrab_on_mouse_event(event):
@@ -6434,8 +6477,11 @@ def _nodegrab_on_mouse_event(event):
 
 
 def _remove_nodegrab_hooks():
-    global _nodegrab_scroll_hook, nodegrab_scanning
+    global _nodegrab_scroll_hook, _nodegrab_space_hook, nodegrab_scanning
     nodegrab_scanning = False
+    if _nodegrab_space_hook is not None:
+        _unhook_suppressed([_nodegrab_space_hook])
+        _nodegrab_space_hook = None
     if _nodegrab_scroll_hook is not None:
         try:
             import mouse
@@ -10175,6 +10221,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     "slip_active": slip_active,
                     "slip_kind": slip_kind,
                     "slip_mag": slip_mag,
+                    "slip_ratio": last_slip_result.ratio,
                     "slide_active": last_slip_result.slide_active,
                     "slide_deg": last_slip_result.slide_deg,
                     "slip_azimuth_deg": last_slip_result.azimuth_deg,

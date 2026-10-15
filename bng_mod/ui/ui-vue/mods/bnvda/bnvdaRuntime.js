@@ -65,12 +65,16 @@ export function installBNVDA($rootScope, dependencies) {
           var sawLoadingStart = false;
 
           // ---------- CONFIG ----------
-          // The poll interval, FOCUS_DEBOUNCE_MS and DEBOUNCE_MS are serial and do
-          // not overlap, so they add up on every announcement. Keep them small.
-          var DEBOUNCE_MS = 25;
-          // Coalesces the three producers that fire for a single focus change --
-          // the MutationObserver, focusin, and the Vue poll. Those land within a
-          // few ms of each other, so this does not need to be large.
+          // Every millisecond here is heard as lag, so both of these are as small as
+          // their one job allows. DEBOUNCE_MS only has to let a second request made
+          // for the SAME change replace the first (two producers, or a category
+          // announcement superseding the item under it); those arrive in the same
+          // tick or the next, so it does not need to be a perceptible interval.
+          var DEBOUNCE_MS = 10;
+          // Coalesces the producers that fire for a single focus change when no
+          // engine event names it -- the MutationObserver, focusin, and an
+          // interval tick of the Vue poll. An event-driven tick skips it entirely
+          // (see processFocusChange), so on Vue screens it is rarely paid at all.
           var FOCUS_DEBOUNCE_MS = 30;
           var CONTROLLER_DOMINANCE_MS = 900;
           var MIN_CHARS = 2;
@@ -96,16 +100,31 @@ export function installBNVDA($rootScope, dependencies) {
           // run the gap logic still considers continuous.
           var NAV_SETTLE_MAX_MS = NAV_BURST_GAP_MS;
           var NAV_SETTLE_FACTOR = 1.5;   // settle = clamp(ema * FACTOR, MIN, MAX)
-          var NAV_POLL_FAST_MS = 60;     // Vue focus poll interval during a burst
-          // On release the last focus move is still in flight (the poll interval plus
-          // FOCUS_DEBOUNCE_MS), so drain before announcing rather than
-          // speaking the second-to-last item and then correcting it.
-          var NAV_RELEASE_DRAIN_MS = 140;
+          // The Vue poll is a FALLBACK, not the clock. Focus moves arrive as the
+          // game's own uinav-focus event and input arrives as ui_nav, and each of
+          // those runs the poll at once (kickVuePoll) -- so the interval only
+          // bounds how late a change with no event behind it is noticed. It runs
+          // at the fast rate for NAV_POLL_ACTIVE_MS after any input, which covers
+          // what an input sets in motion asynchronously (a dropdown loading, a
+          // vehicle reload refreshing a value), and idles after that.
+          var NAV_POLL_FAST_MS = 60;
+          var NAV_POLL_IDLE_MS = 150;
+          var NAV_POLL_ACTIVE_MS = 1500;
+          // On release nothing further can move, and the release itself kicks the
+          // poll, so the landing text is current within a few ms. This only has to
+          // outlast that one kicked tick. It was 140 when the last move was still
+          // a poll interval plus FOCUS_DEBOUNCE_MS away.
+          var NAV_RELEASE_DRAIN_MS = 40;
           // A key reported as held but with no movement for this long is treated as
           // stale, so a release event that never arrives (focus loss, alt-tab)
           // cannot strand the announcement. Comfortably longer than the worst
           // uneven-repeat gap, so it never cuts a real sweep short.
           var NAV_HOLD_STALE_MS = 500;
+          // How long a press stays "the reason" for the next announcement. The
+          // engine moves focus ~40-80ms after the press (measured on the part
+          // selector); this is that with room for a stalled frame. A press that
+          // moved nothing (end of a list) simply expires.
+          var NAV_PRESS_FRESH_MS = 400;
           // Mirrors beamtel's ui_nav_hold_suppression. Defaults to the config
           // default so behavior is right before the settings reply arrives.
           var navHoldSuppression = true;
@@ -331,11 +350,29 @@ export function installBNVDA($rootScope, dependencies) {
           }
 
           // ---------- HELD-NAVIGATION COALESCING ----------
-          // lastTs is the time of the most recent navigation-ish signal, from either
-          // a speech request or a UINavigation press. ema tracks the repeat cadence.
-          // held names the direction actions the engine currently reports as down,
-          // which lets a release flush the pending announcement with no wait at all.
-          var _navBurst = { lastTs: 0, ema: 0, active: false, text: '', src: 0, timer: null, held: Object.create(null) };
+          // A TAP and a HOLD are told apart by the key, not by the clock. The
+          // engine reports both edges of every direction (menu.json binds onDown
+          // AND onUp to the UINavigation hook), and a held direction repeats
+          // inside the UI with no further press. So an announcement that follows
+          // a press is a deliberate move and is spoken at once however fast the
+          // presses come; one that arrives under a held key with no press of its
+          // own is a repeat and is coalesced; and the release ends the run.
+          //
+          // It used to be decided on cadence alone -- any two moves inside
+          // NAV_BURST_GAP_MS were a sweep -- because the hold tracking never
+          // worked: it matched "up"/"down" against events named focus_u/focus_d.
+          // Measured on the part selector, seven taps 220ms apart spoke the first
+          // row, nothing for the next five, and the seventh 400ms after it landed.
+          // The cadence path is kept only for movement that arrives with no key
+          // state behind it at all.
+          //
+          // lastTs is the time of the most recent navigation speech request. ema
+          // tracks the repeat cadence for the cadence path. held maps each
+          // direction action the engine reports as down to its press time.
+          // fresh counts presses that have not yet been answered by an
+          // announcement, pressTs is the newest of them, releaseTs the last time
+          // the final held direction came up.
+          var _navBurst = { lastTs: 0, ema: 0, active: false, text: '', src: 0, timer: null, held: Object.create(null), fresh: 0, pressTs: 0, releaseTs: 0 };
 
           function navBurstReset() {
             if (_navBurst.timer) { try { clearTimeout(_navBurst.timer); } catch (e) {} }
@@ -345,6 +382,9 @@ export function installBNVDA($rootScope, dependencies) {
             _navBurst.text = '';
             _navBurst.src = 0;
             _navBurst.held = Object.create(null);
+            _navBurst.fresh = 0;
+            _navBurst.pressTs = 0;
+            _navBurst.releaseTs = 0;
           }
           onCleanup(navBurstReset);
 
@@ -448,9 +488,47 @@ export function installBNVDA($rootScope, dependencies) {
             if (!navBurstIsNavSource(src)) return false;
             var dt = t - _navBurst.lastTs;
             _navBurst.lastTs = t;
-            // Leading edge is decided purely on cadence, never on the held set: the
-            // first item of a hold must still speak, and a single tap must not be
-            // captured just because the key happened to still be down.
+            // A press came first: this is a move the user made on purpose. Speak
+            // it now, and drop whatever an earlier run still had pending -- it
+            // has been superseded, and announcing it afterwards would name a row
+            // the user has already left. One press answers one announcement, so
+            // a second utterance from the same press (a state change the poll
+            // notices a tick later) does not ride in on it.
+            if (_navBurst.fresh > 0 && (t - _navBurst.pressTs) <= NAV_PRESS_FRESH_MS) {
+              _navBurst.fresh--;
+              if (_navBurst.timer) { try { clearTimeout(_navBurst.timer); } catch (e) {} }
+              _navBurst.timer = null;
+              _navBurst.active = false;
+              _navBurst.ema = 0;
+              _navBurst.text = '';
+              _navBurst.src = 0;
+              return false;
+            }
+            _navBurst.fresh = 0;
+            // No press of its own, and a direction is down: a repeat. Nothing is
+            // estimated here -- the release flushes it. The timer is only the
+            // stale guard, which also announces the landing when a held sweep
+            // runs into the end of a list and stops moving.
+            if (navBurstHeldCount() > 0) {
+              _navBurst.active = true;
+              _navBurst.text = txt;
+              _navBurst.src = src;
+              navBurstArm(NAV_HOLD_STALE_MS);
+              if (isDebug()) log('info', '[NAVBURST] repeat "' + txt + '"');
+              return true;
+            }
+            // The run has just been released and its drain is already armed: this
+            // is the landing text catching up. Take it, and leave the timer be --
+            // re-arming here is what used to push the landing out by a whole
+            // settle delay after the key had already come up.
+            if (_navBurst.active && _navBurst.timer && _navBurst.releaseTs &&
+                (t - _navBurst.releaseTs) <= NAV_RELEASE_DRAIN_MS) {
+              _navBurst.text = txt;
+              _navBurst.src = src;
+              return true;
+            }
+            // Nothing is known about the key (a screen or build that reports no
+            // key state, or a change nothing was pressed for). Cadence decides.
             if (!_navBurst.active && dt > NAV_BURST_GAP_MS) {
               _navBurst.ema = 0;
               return false;
@@ -1695,13 +1773,45 @@ export function installBNVDA($rootScope, dependencies) {
           //
           // Everything outside the circle -- title, breadcrumbs, category tabs --
           // is still ordinary DOM and is read from there.
+          //
+          // Item names do NOT go through scheduleSpeak. The radial is a pointer,
+          // not a list: every wedge the stick crosses is a deliberate position,
+          // and the stick counts as a held direction (trackNavigationInput), so
+          // navBurstCapture took every wedge after the first for a key repeat and
+          // held it until release -- a slow rotation spoke three wedges out of
+          // eight. Its 400ms same-text dedup also swallowed a quick re-press of
+          // the item just released. Each wedge is spoken the moment it is
+          // focused, interrupting the last.
           var _radialMenuWasOpen = false;
           var _radialAnnouncedOpen = false;
+          // What the centre shows now ('' between wedges) and what was last said.
+          var _radialFocusedText = '';
           var _radialLastSpokenItem = '';
-          var _radialLastCategory = '';
-          var _radialLastHeading = '';
+          var _radialLastSegments = [];
           var _radialLastSig = '';
           var _radialPendingSig = null;
+          var _radialSettleQueued = false;
+          var _radialSawDefault = false;
+          var _radialReleaseTimer = null;
+          // Radial.vue makes a new RadialCenterCanvas per mount, so a new
+          // instance is a newly opened menu even when the 1s closed-menu poll
+          // never saw it close in between.
+          var _radialCanvas = null;
+          // The latest direction input per device, and whether its last change
+          // pulled the pointer back toward the centre.
+          var _radialStick = { x: 0, y: 0 };
+          var _radialDpad = { l: 0, r: 0, u: 0, d: 0 };
+          var _radialInputFalling = false;
+          // A release lets go of the two stick axes (or two D-pad buttons) one at
+          // a time, so for a frame or two the pointer rests on the remaining axis
+          // alone and lands on the wedge next door: let go of "Exit vehicle"
+          // up-right and "Boost", straight up, was the last thing said. A focus
+          // change made while the pointer is falling back is held this long; the
+          // other axis comes up within a frame or two and cancels it: two frames
+          // at 30fps with room for one stalled. Only those moves pay it --
+          // pressing out and rotating never do.
+          var RADIAL_RELEASE_SETTLE_MS = 80;
+          var RADIAL_FALL_EPSILON = 0.1;
 
           function radialCenterText(state) {
             if (!state) return '';
@@ -1727,20 +1837,130 @@ export function installBNVDA($rootScope, dependencies) {
             return parts.join(', ');
           }
 
-          function onRadialCenterState(state) {
-            if (!_radialMenuWasOpen) return;
-            if (!state || !state.focused) {
-              // Centre fell back to the "Select an option" placeholder, meaning
-              // the pointer sits in the dead zone between wedges. That happens
-              // every time the stick is released, so stay quiet -- but clear the
-              // de-dupe so returning to the same item speaks it again.
-              _radialLastSpokenItem = '';
+          // Called from trackNavigationInput for every direction event, open menu
+          // or not, so the values are current the moment the menu opens. Both the
+          // ui_nav DOM event and the AngularJS broadcast arrive; values are
+          // absolute, so an unchanged value is the echo and is ignored rather
+          // than overwriting the flag the first copy set.
+          function radialNoteInput(action, value) {
+            var name = String(action || '').toLowerCase();
+            var before, after;
+            if (name === 'focus_lr' || name === 'focus_ud') {
+              var axis = name === 'focus_lr' ? 'x' : 'y';
+              var v = Number(value) || 0;
+              if (_radialStick[axis] === v) return;
+              before = Math.sqrt(_radialStick.x * _radialStick.x + _radialStick.y * _radialStick.y);
+              _radialStick[axis] = v;
+              after = Math.sqrt(_radialStick.x * _radialStick.x + _radialStick.y * _radialStick.y);
+            } else if (/^focus_[lrud]$/.test(name)) {
+              var key = name.charAt(6);
+              var down = navigationValuePressed(value) ? 1 : 0;
+              if (_radialDpad[key] === down) return;
+              before = radialDpadMagnitude();
+              _radialDpad[key] = down;
+              after = radialDpadMagnitude();
+            } else {
               return;
             }
-            var text = radialCenterText(state);
-            if (!text || text === _radialLastSpokenItem) return;
-            _radialLastSpokenItem = text;
-            scheduleSpeak(text, P.CONTROLLER);
+            _radialInputFalling = after < before - RADIAL_FALL_EPSILON;
+          }
+
+          function radialDpadMagnitude() {
+            var x = _radialDpad.r - _radialDpad.l, y = _radialDpad.u - _radialDpad.d;
+            return Math.sqrt(x * x + y * y);
+          }
+
+          function radialCancelRelease() {
+            if (_radialReleaseTimer) { try { clearTimeout(_radialReleaseTimer); } catch (e) {} }
+            _radialReleaseTimer = null;
+          }
+
+          function radialSpeak(text) {
+            if (!text || loadingActive) return;
+            if (speakTimer) { try { clearTimeout(speakTimer); } catch (e) {} speakTimer = null; }
+            // Whatever a burst still had pending is a row the user has left.
+            if (_navBurst.timer) { try { clearTimeout(_navBurst.timer); } catch (e) {} }
+            _navBurst.timer = null;
+            _navBurst.active = false;
+            _navBurst.text = '';
+            _navBurst.src = 0;
+            _navBurst.fresh = 0;
+            _navBurst.ema = 0;
+            lastControllerTs = nowTS();
+            emitSpeak(text, P.CONTROLLER);
+          }
+
+          // Radial.vue changes the centre in synchronous pairs: pointToItem blurs
+          // the old wedge (back to the "Select an option" default) and focuses the
+          // new one, and requestData() resets to the default and re-focuses the
+          // item under the pointer. Deciding once per pair, in a microtask, tells
+          // them apart without a timer: a pair that ends on the item already
+          // spoken is a rebuild, not a move. A default that survives the pair
+          // means the pointer is in the dead zone, so returning to the same item
+          // speaks it again. Vue's own render flush was queued first (radialData
+          // changed before setCenterDefault ran), so the heading in the DOM is
+          // already the new one by the time this runs.
+          function onRadialCenterState(canvas, state) {
+            if (canvas !== _radialCanvas) {
+              if (_radialCanvas) radialMenuOnClose();
+              _radialCanvas = canvas;
+            }
+            if (!_radialMenuWasOpen) {
+              if (!document.querySelector('.radial-menu')) return;
+              _radialMenuWasOpen = true;
+            }
+            if (!state || !state.focused) {
+              _radialFocusedText = '';
+              _radialSawDefault = true;
+            } else {
+              _radialFocusedText = radialCenterText(state);
+            }
+            if (_radialSettleQueued) return;
+            _radialSettleQueued = true;
+            Promise.resolve().then(function () {
+              _radialSettleQueued = false;
+              try {
+                radialSettle();
+              } catch (e) {
+                log('error', '[bnvda] Radial settle failed: ' + e.message);
+              }
+            });
+          }
+
+          function radialSettle() {
+            if (!_radialMenuWasOpen) return;
+            vueHintNoteActivity();
+            // Every rebuild of the menu passes through the default state, so only
+            // then can the level have changed.
+            var level = _radialSawDefault ? radialLevelAnnouncement(true) : '';
+            _radialSawDefault = false;
+            var item = _radialFocusedText;
+            if (level) {
+              // A new level is a new menu: name the item under the pointer with
+              // it, in one utterance, rather than one cutting off the other.
+              radialCancelRelease();
+              _radialLastSpokenItem = item;
+              radialSpeak(item ? level + ', ' + item : level);
+              return;
+            }
+            if (!item) {
+              _radialLastSpokenItem = '';
+              radialCancelRelease();
+              return;
+            }
+            if (item === _radialLastSpokenItem) return;
+            radialCancelRelease();
+            if (_radialInputFalling) {
+              _radialReleaseTimer = trackedSetTimeout(function () {
+                _radialReleaseTimer = null;
+                if (_radialFocusedText !== item || item === _radialLastSpokenItem) return;
+                _radialLastSpokenItem = item;
+                radialSpeak(item);
+              }, RADIAL_RELEASE_SETTLE_MS);
+              return;
+            }
+            _radialLastSpokenItem = item;
+            radialSpeak(item);
           }
 
           function installRadialCenterHook() {
@@ -1757,7 +1977,7 @@ export function installBNVDA($rootScope, dependencies) {
               // filling in the defaults. Run after the original and inside a
               // try so a fault of ours can never stop the menu drawing.
               try {
-                onRadialCenterState(this.state || state);
+                onRadialCenterState(this, this.state || state);
               } catch (e) {
                 log('error', '[bnvda] Radial centre hook failed: ' + e.message);
               }
@@ -1769,60 +1989,81 @@ export function installBNVDA($rootScope, dependencies) {
             log('info', '[bnvda] Radial centre hook installed.');
           }
 
-          function radialHeadingText() {
+          // Where the menu is, as a path: the breadcrumb trail (whose first entry
+          // is the title), then the selected category tab unless the trail already
+          // ends on it. Reading title, trail and category as three separate
+          // strings said "Freeroam Actions, Freeroam Actions / Fun Stuff, Fun
+          // Stuff" on entering Fun Stuff.
+          function radialSegments() {
             var title = document.querySelector('.radial-menu .radial-title');
             var crumbs = document.querySelector('.radial-menu .radial-breadcrumbs');
+            var sel = document.querySelector('.radial-menu .radial-category.selected .radial-category-label');
             var heading = cleanText(title && title.textContent);
             var trail = cleanText(crumbs && crumbs.textContent);
-            // The breadcrumb trail starts with the title, so drop it when identical.
-            if (trail && trail !== heading) return heading ? heading + ', ' + trail : trail;
-            return heading;
-          }
-
-          function radialCategoryText() {
-            var sel = document.querySelector('.radial-menu .radial-category.selected .radial-category-label');
-            return cleanText(sel && sel.textContent);
+            var category = cleanText(sel && sel.textContent);
+            var segs = [];
+            var raw = trail ? trail.split(/\s+\/\s+/) : [heading];
+            for (var i = 0; i < raw.length; i++) if (raw[i]) segs.push(raw[i]);
+            if (category && segs[segs.length - 1] !== category) segs.push(category);
+            return segs;
           }
 
           // Opening the menu, descending a level and switching category all
-          // replace the whole menu, and all three are plain DOM. A two-selector
-          // read on the existing open/closed poll covers them without having to
-          // subscribe to the Lua event stream.
-          function radialMenuCheckLevel() {
-            var heading = radialHeadingText();
-            var category = radialCategoryText();
-            var sig = heading + '\u0001' + category;
-            if (sig === _radialLastSig) { _radialPendingSig = null; return; }
-            // Both flicker through placeholders ("No Actions Available") while
-            // Radial.vue's getUiData() round-trip to Lua is still in flight, so
-            // only announce a reading that survived a whole poll tick.
-            if (sig !== _radialPendingSig) { _radialPendingSig = sig; return; }
+          // replace the whole menu. Announces only the part of the path that is
+          // new: entering a submenu names it, switching category names the
+          // category, and going back up names where it landed.
+          //
+          // eventDriven: called from the centre hook after Radial.vue's
+          // requestData() has the new data, so it is read at once. The one
+          // default reset that comes before any data -- at mount, while the
+          // heading still says "No Actions Available" -- has no wedges drawn yet
+          // and is left to the poll. The poll is the fallback for a level with no
+          // items at all, and since the heading flickers through placeholders
+          // while getUiData() is in flight, it only takes a reading that survived
+          // a whole poll tick.
+          function radialLevelAnnouncement(eventDriven) {
+            var segs = radialSegments();
+            var sig = segs.join('\u0001');
+            if (sig === _radialLastSig) { _radialPendingSig = null; return ''; }
+            if (eventDriven) {
+              if (!document.querySelector('.radial-menu .radial-svg svg > g path')) return '';
+            } else if (sig !== _radialPendingSig) {
+              _radialPendingSig = sig;
+              return '';
+            }
             _radialPendingSig = null;
             _radialLastSig = sig;
-            _radialLastSpokenItem = '';
-
-            var parts = [];
-            if (heading && heading !== _radialLastHeading) parts.push(heading);
-            if (category && category !== _radialLastCategory) parts.push(category);
-            _radialLastHeading = heading;
-            _radialLastCategory = category;
-            if (!parts.length) return;
-
-            var text = parts.join(', ');
+            var prev = _radialLastSegments;
+            _radialLastSegments = segs;
+            var same = 0;
+            while (same < segs.length && same < prev.length && segs[same] === prev[same]) same++;
+            var fresh = segs.slice(same);
+            if (!fresh.length) fresh = segs.slice(-1);
+            var text = fresh.join(', ');
+            if (!text) return '';
             if (!_radialAnnouncedOpen) {
               _radialAnnouncedOpen = true;
               if (!/^radial menu/i.test(text)) text = 'Radial menu, ' + text;
             }
-            scheduleSpeak(text, P.CONTROLLER);
+            return text;
+          }
+
+          function radialMenuCheckLevel() {
+            var text = radialLevelAnnouncement(false);
+            if (!text) return;
+            _radialLastSpokenItem = _radialFocusedText;
+            radialSpeak(_radialFocusedText ? text + ', ' + _radialFocusedText : text);
           }
 
           function radialMenuOnClose() {
+            radialCancelRelease();
             _radialAnnouncedOpen = false;
+            _radialFocusedText = '';
             _radialLastSpokenItem = '';
-            _radialLastCategory = '';
-            _radialLastHeading = '';
+            _radialLastSegments = [];
             _radialLastSig = '';
             _radialPendingSig = null;
+            _radialSawDefault = false;
           }
 
           function startRadialMenuWatcher() {
@@ -2081,6 +2322,34 @@ export function installBNVDA($rootScope, dependencies) {
             return null;
           }
 
+          // DOM focus plus the game's own setCEFTyping(true) is NOT enough to
+          // type into a UI text field. The engine only routes keys to CEF while
+          // the `maincef` GuiControl is the canvas's first responder, and on a
+          // fresh launch it is not -- nothing but a mouse click on the UI ever
+          // makes it so. A controller-only player therefore got "Search, edit"
+          // announced with the input genuinely focused while every letter drove
+          // the game instead (F left the vehicle, H honked). Measured in 0.39.4:
+          // isFirstResponder() false, re-issuing setCEFTyping changed nothing,
+          // and setFirstResponder() alone made the next key land in the input.
+          var TEXT_ENTRY_INPUT_TYPES = { '': 1, text: 1, search: 1, number: 1, password: 1, email: 1, url: 1, tel: 1 };
+
+          function isTextEntryElement(el) {
+            if (!el || !el.tagName) return false;
+            var tag = String(el.tagName).toUpperCase();
+            if (tag === 'TEXTAREA') return true;
+            if (tag === 'INPUT') return !!TEXT_ENTRY_INPUT_TYPES[String(el.type || '').toLowerCase()];
+            return !!el.isContentEditable;
+          }
+
+          function claimEngineKeyboardFocus() {
+            try {
+              bngApi.engineLua(
+                'local c = scenetree.findObject("maincef") ' +
+                'if c and not c:isFirstResponder() then c:setFirstResponder() end'
+              );
+            } catch (e) {}
+          }
+
           function cancelPartsSearchFocus(restoreOrigin) {
             var request = _partsSearchFocus;
             _partsSearchFocus = null;
@@ -2154,6 +2423,9 @@ export function installBNVDA($rootScope, dependencies) {
               stableFrames: 0
             };
             _partsSearchFocus = request;
+            // The focusin hook only covers an input that GAINS focus; claim here
+            // too so a search that already holds DOM focus is still typeable.
+            claimEngineKeyboardFocus();
             // Take keyboard focus before the next key event, then keep checking
             // while BeamNG asynchronous scope activations finish.
             retryPartsSearchFocus(request);
@@ -2289,6 +2561,19 @@ export function installBNVDA($rootScope, dependencies) {
               return option;
             }
             return null;
+          }
+
+          // Any movement the user makes restarts the idle wait. The poll's own
+          // activityChanged only sees DOM focus moves, and the radial menu has
+          // none -- its items are painted on a canvas -- so stick movement there
+          // never counted, and the hint went out 3s after entering a menu however
+          // busy the stick was, only to be cut off by the next item. Cancelling
+          // is enough: the next poll tick re-arms it for a full VUE_HINT_IDLE_MS.
+          function vueHintNoteActivity() {
+            if (!_vueHintTimer) return;
+            clearTimeout(_vueHintTimer);
+            _vueHintTimer = null;
+            _vueHintGeneration++;
           }
 
           function resetVueHintLifecycle() {
@@ -2943,27 +3228,70 @@ export function installBNVDA($rootScope, dependencies) {
 
           // Direction-ish actions whose repeat can sweep a control. `ok`/`back` and
           // the like are one-shot and must never gate speech.
-          var NAV_ACTION_RE = /(^|_)(up|down|left|right|prev|previous|next|scroll|tab|change)(_|$)/;
+          //
+          // The second alternative is the one that matters: the engine's own names
+          // are focus_u/focus_d/focus_l/focus_r, tab_l/tab_r and the stick axes
+          // focus_ud/focus_lr (UINavEvents.js). The word forms alone matched none
+          // of the D-pad, so nothing was ever recorded as held and every sweep
+          // fell back to guessing from cadence.
+          var NAV_ACTION_RE = /(^|_)(up|down|left|right|prev|previous|next|scroll|tab|change)(_|$)|^(focus|tab|subtab|move)_(u|d|l|r|ud|lr)$/;
+          var NAV_AXIS_RE = /_(ud|lr)$/;
+          // Above this a stick counts as pressed, below NAV_AXIS_RELEASE as let go.
+          // The gap is hysteresis: an axis reports continuously, and one threshold
+          // would turn a stick resting near it into a stream of presses.
+          var NAV_AXIS_PRESS = 0.5;
+          var NAV_AXIS_RELEASE = 0.35;
+          // The same edge can arrive twice, once as the ui_nav DOM event and once
+          // as the AngularJS broadcast. Inside this window the second is the echo.
+          var NAV_EDGE_ECHO_MS = 50;
+          // Time of the last direction press. Unlike _navBurst.pressTs it survives
+          // navBurstReset, because the tuning apply guard asks "is the user still
+          // adjusting", which a screen-key change does not answer.
+          var _navLastPressTs = 0;
           function navActionName(action) {
             var name = String(action || '').toLowerCase().replace(/[-\s]+/g, '_');
             return NAV_ACTION_RE.test(name) ? name : '';
           }
 
-          // Track which navigation actions the engine reports as held. This is only
-          // used to end a burst early: when the last direction comes up we know the
-          // sweep is over and can announce the landing without waiting out the
-          // settle timer. Screens where the engine emits repeats but no release
-          // still settle correctly on the timer alone.
-          function trackNavigationHold(action, value) {
+          // Actions that are not directions but do change what is on screen. They
+          // run the poll at once so a toggled switch or an opened row is read on
+          // the event instead of on the next tick.
+          var NAV_KICK_ACTIONS = { ok: 1, back: 1, cancel: 1, context: 1, menu: 1, details: 1, action_2: 1, action_3: 1, action_4: 1 };
+
+          // Record both edges of every direction. A press marks the next
+          // announcement as deliberate (see navBurstCapture); the release of the
+          // last held direction ends the run and announces where it landed.
+          function trackNavigationInput(action, value) {
+            radialNoteInput(action, value);
             var name = navActionName(action);
-            if (!name) return;
-            if (navigationValuePressed(value)) {
-              _navBurst.held[name] = true;
+            if (!name) {
+              if (NAV_KICK_ACTIONS[String(action || '').toLowerCase()]) kickVuePoll();
+              return;
+            }
+            var t = nowTS();
+            var axis = NAV_AXIS_RE.test(name);
+            var magnitude = axis ? Math.abs(Number(value)) : 0;
+            var pressed = axis ? magnitude >= NAV_AXIS_PRESS : navigationValuePressed(value);
+            if (pressed) {
+              // An axis repeats its value for as long as it is deflected; only
+              // the crossing is a press. A button that is already down and
+              // presses again has lost its release somewhere, so that IS one.
+              if (_navBurst.held[name] && (axis || (t - _navBurst.held[name]) < NAV_EDGE_ECHO_MS)) return;
+              _navBurst.held[name] = t;
+              _navBurst.fresh++;
+              _navBurst.pressTs = t;
+              _navLastPressTs = t;
+              vueHintNoteActivity();
+              kickVuePoll();
               return;
             }
             if (!_navBurst.held[name]) return;
+            if (axis && !(magnitude < NAV_AXIS_RELEASE)) return;
             delete _navBurst.held[name];
-            if (navBurstHeldCount() === 0 && _navBurst.active) navBurstArm(NAV_RELEASE_DRAIN_MS);
+            if (navBurstHeldCount() !== 0) return;
+            _navBurst.releaseTs = t;
+            if (_navBurst.active) navBurstArm(NAV_RELEASE_DRAIN_MS);
+            kickVuePoll();
           }
 
           function handlePartsUiNavCapture(event) {
@@ -2971,6 +3299,7 @@ export function installBNVDA($rootScope, dependencies) {
             if (!detail) return;
             var action = String(detail.name || '').toLowerCase();
             var value = detail.value;
+            trackNavigationInput(action, value);
             if (action === 'ok') handleVueOptionsOk(value);
             if (action === 'context' && navigationValuePressed(value)) {
               var row = focusedVuePartsRow();
@@ -2981,7 +3310,7 @@ export function installBNVDA($rootScope, dependencies) {
           listen(document, 'ui_nav', handlePartsUiNavCapture, true);
 
           subscribe($rootScope, 'UINavigation', function (_event, action, value) {
-            trackNavigationHold(action, value);
+            trackNavigationInput(action, value);
             // Compatibility fallback for builds that do not emit ui_nav.
             if (action === 'ok') handleVueOptionsOk(value);
           });
@@ -3540,17 +3869,47 @@ export function installBNVDA($rootScope, dependencies) {
             return screenKind + '|' + label + '|' + vueControlState(el, row) + '|' + (el.className || '').toString() + '|' + chipSignature;
           }
 
+          // Run the poll now instead of on its interval. Called from the game's own
+          // events -- uinav-focus for a focus move, ui_nav for input -- so the poll
+          // body stays the ONE place that decides what a change means (tab before
+          // item, the category echo, the dropdown activation, the binding popup)
+          // while no longer being what decides WHEN. A second announcer hanging off
+          // the event directly would have to re-derive every one of those rules,
+          // and would speak the landing item ahead of the tab name it belongs to.
+          //
+          // Deferred by a zero timeout, not run inline: the listeners are capture
+          // phase, so they fire BEFORE the game's handler has changed anything and
+          // before Vue has flushed the result into the DOM.
+          var _vuePollKick = null;
+          var _vuePollKicked = false;
+          var _vuePollActiveUntil = 0;
+          function noteVueActivity() {
+            _vuePollActiveUntil = nowTS() + NAV_POLL_ACTIVE_MS;
+          }
+          function kickVuePoll() {
+            noteVueActivity();
+            if (!_vuePollKick) return;
+            _vuePollKicked = true;
+            _vuePollKick();
+          }
+
           function startVueFocusWatcher() {
             if (_vueWatchTimer) return;
             function scheduleVuePoll(delay) {
               if (_vueWatchTimer) clearTimeout(_vueWatchTimer);
               _vueWatchTimer = trackedSetTimeout(pollVueFocus, delay);
             }
+            _vuePollKick = function () { scheduleVuePoll(0); };
             function pollVueFocus() {
               // Keep a low-frequency fallback armed so one unexpected DOM shape
               // cannot permanently stop accessibility polling.
               scheduleVuePoll(1000);
               var nextDelay = 1000;
+              // An event-driven tick is already as late as it is going to be, so
+              // it skips FOCUS_DEBOUNCE_MS; an interval tick still pays it, since
+              // there the observer and focusin may be reporting the same move.
+              var kicked = _vuePollKicked;
+              _vuePollKicked = false;
               var root = vueScreenRoot();
               updateTuningSliderDebounce(root);
               if (!root) {
@@ -3572,10 +3931,10 @@ export function installBNVDA($rootScope, dependencies) {
                 scheduleVuePoll(nextDelay);
                 return;
               }
-              // Matches NAV_POLL_FAST_MS: a slower base rate added up to 120ms of
-              // pure sampling jitter to every focus move, and quantized the
-              // nav-burst interval measurements on the first item of a sweep.
-              nextDelay = NAV_POLL_FAST_MS;
+              // Fast only while something is going on. The sampling jitter a slow
+              // rate used to add to every focus move is gone, because moves no
+              // longer wait for a tick at all.
+              nextDelay = nowTS() < _vuePollActiveUntil ? NAV_POLL_FAST_MS : NAV_POLL_IDLE_MS;
               var activityText = activityStartText(root);
               if (activityText) {
                 if (activityText !== _activityStartSignature) {
@@ -3661,11 +4020,6 @@ export function installBNVDA($rootScope, dependencies) {
                 scheduleVuePoll(nextDelay);
                 return;
               }
-              // The base rate is already NAV_POLL_FAST_MS, so a held sweep needs no
-              // separate step-up here. It used to: at the old 120ms base, every
-              // measured repeat interval quantized to ~120ms regardless of the real
-              // rate, which both inflated the settle delay and left the landing
-              // signature stale.
               _vueConfigFocusEntry = focused !== _vueWatchElement;
               var signature = vueFocusSignature(focused, root);
               var focusChanged = !!(signature && signature !== _vueWatchSignature);
@@ -3673,7 +4027,11 @@ export function installBNVDA($rootScope, dependencies) {
                 _vueWatchSignature = signature;
                 _vueWatchElement = focused;
                 lastFocusedElement = null;
-                processFocusChange(focused, P.CONTROLLER);
+                // A change found between events keeps the poll fast for a while:
+                // whatever caused it (a reload, a list filling in) rarely stops
+                // at one.
+                noteVueActivity();
+                processFocusChange(focused, P.CONTROLLER, kicked);
               }
               updateVuePauseHints(root, focusChanged);
               scheduleVuePoll(nextDelay);
@@ -3882,7 +4240,13 @@ export function installBNVDA($rootScope, dependencies) {
           var lastFocusedElement = null;
           var focusDebounceTimer = null;   // controller path
           var kbFocusDebounceTimer = null; // keyboard path
-          function processFocusChange(element, src) {
+          // `immediate` is for a caller that already knows this is THE change --
+          // the poll on an event-driven tick. FOCUS_DEBOUNCE_MS exists to fold the
+          // observer, focusin and an interval tick into one announcement; with
+          // the event in hand there is nothing left to wait for, and the wait was
+          // 30ms on every move, restarted whenever a tick landed inside it (81 to
+          // 135ms from the engine's focus event to speech, measured).
+          function processFocusChange(element, src, immediate) {
             src = (src !== undefined) ? src : P.CONTROLLER;
             if (!ensurePartsSearchRealFocus(element)) return;
 
@@ -3890,7 +4254,7 @@ export function installBNVDA($rootScope, dependencies) {
               // Controller wins: cancel any pending keyboard debounce as well.
               clearTimeout(focusDebounceTimer);
               clearTimeout(kbFocusDebounceTimer);
-              focusDebounceTimer = trackedSetTimeout(function() {
+              var announce = function() {
                 if (isVueOptionsCategoryEcho(element)) return;
                 if (!element || element === lastFocusedElement) return;
                 lastFocusedElement = element;
@@ -3900,7 +4264,9 @@ export function installBNVDA($rootScope, dependencies) {
                 if (speakSliderRow(element, src)) return;
                 if (speakMenuAccordionItem(element, src)) return;
                 scheduleSpeak(extractText(element), src);
-              }, FOCUS_DEBOUNCE_MS);
+              };
+              if (immediate) { announce(); return; }
+              focusDebounceTimer = trackedSetTimeout(announce, FOCUS_DEBOUNCE_MS);
             } else {
               // Keyboard path: separate timer, does not cancel controller timer.
               clearTimeout(kbFocusDebounceTimer);
@@ -4432,9 +4798,92 @@ export function installBNVDA($rootScope, dependencies) {
           // The DOM resolve is still only a fallback -- by the time a tuning
           // slider exists it was already built at the stock 500ms -- so it fixes
           // the NEXT rebuild. The cache hook is what makes the first visit right.
+          // ---------- TUNING APPLY GUARD ----------
+          // The slider debounce above stops a HELD sweep reloading the car. Taps
+          // get through it by a different door. Tuning.vue restarts its 1000ms
+          // apply timer only when a slider COMMITS, never when one is nudged, so
+          // a single pause between taps long enough for the slider to commit --
+          // the length of hearing the new value read back -- starts a reload
+          // that nothing afterwards can postpone. It lands a second later, in the
+          // middle of the taps that followed. Worse, the store applies its own
+          // copy of the values, which only moves on a commit: the taps made since
+          // are not in it, and the reload's data refresh then writes the older
+          // value back over the slider.
+          //
+          // So an apply that arrives while a direction is down, or within the
+          // slider's own commit window of the last press, is held. Normally
+          // nothing more is needed: that same press has a commit of its own
+          // coming, which starts the stock apply timer again, and by the time
+          // THAT fires the user has stopped and it passes straight through with
+          // everything in it -- one reload, at the stock moment. The timer below
+          // is only for a press that changed nothing (a slider already at its
+          // limit), which schedules no commit and so would leave the held apply
+          // without a successor.
+          var TUNING_APPLY_QUIET_MS = TUNING_SLIDER_DEBOUNCE_MS + 100;
+          // Past the stock 1000ms apply delay on top of the commit, so the game's
+          // own follow-up always gets there first when there is one.
+          var TUNING_APPLY_FALLBACK_MS = TUNING_SLIDER_DEBOUNCE_MS + 1200;
+          // A release that never arrives must not hold an apply back forever.
+          var TUNING_HOLD_STALE_MS = 15000;
+          var _tuningStore = null;
+          var _tuningStockApply = null;
+          var _tuningApplyHeld = false;
+          var _tuningApplyTimer = null;
+
+          function tuningAdjusting() {
+            var t = nowTS();
+            if ((t - _navLastPressTs) < TUNING_APPLY_QUIET_MS) return true;
+            for (var k in _navBurst.held) {
+              if (_navBurst.held[k] && (t - _navBurst.held[k]) < TUNING_HOLD_STALE_MS) return true;
+            }
+            return false;
+          }
+
+          function releaseHeldTuningApply() {
+            _tuningApplyTimer = null;
+            if (!_tuningApplyHeld) return;
+            if (tuningAdjusting() || (nowTS() - _navLastPressTs) < TUNING_APPLY_FALLBACK_MS) {
+              _tuningApplyTimer = trackedSetTimeout(releaseHeldTuningApply, 250);
+              return;
+            }
+            _tuningApplyHeld = false;
+            log('info', '[bnvda] Tuning apply released by fallback (no commit followed).');
+            try { _tuningStockApply.call(_tuningStore); } catch (e) {}
+          }
+
+          // The store is reached through pinia's own registry (`_s`, the id -> store
+          // map every useStore() call reads), the same class of internal as the
+          // propsCache above. Tuning.vue calls tuningStore.apply() by property
+          // lookup at call time, so replacing the property is enough; it is put
+          // back on cleanup.
+          function hookTuningApply() {
+            if (_tuningStore) return;
+            var app = window.bngVue && window.bngVue.app;
+            var pinia = app && app.config && app.config.globalProperties && app.config.globalProperties.$pinia;
+            var store = pinia && pinia._s && typeof pinia._s.get === 'function' ? pinia._s.get('tuning') : null;
+            if (!store || typeof store.apply !== 'function') return;
+            _tuningStore = store;
+            _tuningStockApply = store.apply;
+            var guarded = function () {
+              if (tuningAdjusting()) {
+                _tuningApplyHeld = true;
+                if (!_tuningApplyTimer) _tuningApplyTimer = trackedSetTimeout(releaseHeldTuningApply, 250);
+                if (isDebug()) log('info', '[bnvda] Tuning apply held: still adjusting.');
+                return;
+              }
+              _tuningApplyHeld = false;
+              if (_tuningApplyTimer) { clearTimeout(_tuningApplyTimer); _tuningApplyTimer = null; }
+              return _tuningStockApply.apply(this, arguments);
+            };
+            store.apply = guarded;
+            onCleanup(function () { if (store.apply === guarded) store.apply = _tuningStockApply; });
+            log('info', '[bnvda] Tuning apply guard installed.');
+          }
+
           function updateTuningSliderDebounce(root) {
             if (!_sliderCacheHooked && root) hookSliderPropsCache(vueAppContext(root));
             var onConfigScreen = !!(root && vehicleConfigRoot(root));
+            if (onConfigScreen) hookTuningApply();
             if (onConfigScreen) {
               if (!_sliderPatched) _sliderPatched = true;
               if (!_sliderComp) _sliderComp = findTuningSliderComponent();
@@ -4543,8 +4992,30 @@ export function installBNVDA($rootScope, dependencies) {
           }
 
           listen(window, "focusin", function (e) {
+            if (isTextEntryElement(e.target)) claimEngineKeyboardFocus();
             processFocusChange(e.target, P.KEYBOARD);
           }, true);
+
+          // The engine announces every focus move itself: uiNavFocus.js dispatches
+          // uinav-focus on document once the target holds focus AND carries the
+          // focus-visible class. That is the moment to look, so look -- the poll
+          // body does the reading. It fires twice per move a few ms apart (once
+          // from the patched focus(), once from focusin); the second tick finds
+          // the signature unchanged and says nothing.
+          listen(document, 'uinav-focus', kickVuePoll, true);
+          // No engine event stands behind a mouse click or a typed key, but both
+          // change what is on screen. A click is read at once; typing only keeps
+          // the poll at its fast rate, since a tick per keystroke buys nothing.
+          listen(window, 'click', kickVuePoll, true);
+          listen(window, 'keydown', noteVueActivity, true);
+          // A direction still down when the window loses focus never reports its
+          // release, and a key held forever would coalesce everything after it.
+          listen(window, 'blur', function () {
+            if (navBurstHeldCount() === 0) return;
+            _navBurst.held = Object.create(null);
+            _navBurst.releaseTs = nowTS();
+            if (_navBurst.active) navBurstArm(NAV_RELEASE_DRAIN_MS);
+          });
 
           listen(window, "mouseover", throttle(function (e) {
             if ((nowTS() - lastControllerTs) < CONTROLLER_DOMINANCE_MS) return;

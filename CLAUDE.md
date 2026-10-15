@@ -42,90 +42,61 @@ The project has two halves that communicate via UDP:
 1. **Python side** (this repo root) — Receives telemetry, generates audio, handles speech output
 2. **Lua mod** (`bng_mod/`) — A directory junction to `%LOCALAPPDATA%/BeamNG/BeamNG.drive/current/mods/unpacked/bng_screenreader_mod/`. Edits to `bng_mod/` are live in the game.
 
-### Python Components
+### Component Docs (read on demand)
 
-The per-module detail — what each file owns, and the reasoning behind the decisions that are not obvious from the code — lives in @docs/python-components.md.
+The per-file detail, and the reasoning behind every decision that is not obvious from the code, lives in `docs/`. These files are deliberately **not** imported into this one: together they are several times the instruction budget. **Before editing a file in the table, Read its doc first** -- most of what they record is a trap that is invisible in the source and was found from the driver's seat. Keep them out of `@` imports, and when a doc grows past roughly 25k characters, split it by file rather than trimming the reasoning.
 
-Summary: **beamtel.py** (main entry point; UDP telemetry listener, F9 keyboard command system, drives audio and speech), **audio.py** (procedural audio synthesis engine — compass clicks, articulation/implement/docking tones, terrain sonification), **hrtf.py** (MIT KEMAR binaural panning), **wheel_slip.py** (spin/lockup/side-slide detection and the direction-of-travel placement of its voices, shared by the live tone and the report analysers), **configurator.py** (wxPython config GUI), **speech.py** (Prism-backed speech output), **ai_describer.py** (vision-model screen description), **nvda_ws_speaker.py** (WebSocket bridge on 8765), **mcp_server.py** (loopback MCP automation server, off by default; includes `camera_control` and `screenshot`, which let an agent place the eye and write a PNG to disk for itself), **updater.py** (GitHub-only auto-updater: startup release check, self-replacement via a detached helper, and the pending-update flag that carries the mod install across the restart), **secretstore.py** (DPAPI at-rest protection for the config's API keys), **bnh_logger.py** (rotating file logger), **diagnostic/** (standalone UDP listeners and state-machine simulators).
+| Doc | Covers |
+|---|---|
+| `docs/python-components.md` | Every Python module: `beamtel.py`, `audio.py`, `wheel_slip.py`, `hrtf.py`, `configurator.py`, `speech.py`, `ai_describer.py`, `secretstore.py`, `nvda_ws_speaker.py`, `mcp_server.py`, `updater.py`, `bnh_logger.py`, `diagnostic/` |
+| `docs/lua-telemetry-protocol.md` | `lua/vehicle/protocols/796F6C6F313035.lua`: the 60 Hz extended struct on 4444, `actualSteering`, the ramp hydraulics push, the loader implement block, and the no-reset teleport rule |
+| `docs/lua-vehicle-geometry.md` | `vehicleGeometry.lua`: per-vehicle extents, hull cids, contact bands, occupancy histogram |
+| `docs/lua-ramp-geometry.md` | `rampGeometry.lua`: the drive-in mouth of a ramp-equipped machine, declared mouths, `floorTrusted` |
+| `docs/lua-vehicle-scanner.md` | `vehicleScanner.lua`: nearest vehicle, target cycling, coupler matching, the align teleport. Ports 4445/4448 |
+| `docs/lua-implement-proximity.md` | `implementProximity.lua`: proximity, docking readout, slam gate, ramp mode, `RAMPALIGN`, `RAMPSELF:`. Ports 4469/4470 |
+| `docs/lua-binding-learn.md` | `bindingLearn.lua`: Learn Bindings Mode and its keepalive watchdog. Ports 4479/4480 |
+| `docs/lua-ui-runtime.md` | `bnvdaAutoSpawner.lua` and `ui/ui-vue/mods/bnvda/bnvdaRuntime.js`, the whole UI accessibility layer: overview, poll/event model, translation, `cleanText`, text-input focus |
+| `docs/lua-ui-runtime-navigation.md` | `bnvdaRuntime.js`: held-navigation coalescing (tap vs hold, the nav burst) |
+| `docs/lua-ui-runtime-radial.md` | `bnvdaRuntime.js`: radial menu speech (stick as pointer, release handling, submenu path) |
+| `docs/lua-ui-runtime-bindings.md` | `bnvdaRuntime.js`: binding readouts, hints, the edit-binding popup |
+| `docs/lua-ui-runtime-tabs.md` | `bnvdaRuntime.js`: tab, sub-tab and breadcrumb announcements |
+| `docs/lua-ui-runtime-mod-details.md` | `bnvdaRuntime.js`: `page_text` for the mod repository / automation details pages |
+| `docs/lua-ui-runtime-tuning.md` | `bnvdaRuntime.js`: tuning slider debounce and the apply guard |
+| `docs/lua-terrain-scanner.md` | `terrainScanner.lua`: the terrain scan and nearest-POI lookup. Ports 4471/4472 |
+| `docs/lua-cannon-shot.md` | `cannonShot.lua`: shot outcomes. Port 4473 |
+| `docs/lua-environment.md` | `environmentAccessible.lua`: ambient temperature browser. Ports 4474/4475 |
+| `docs/lua-trailer-angle.md` | `trailerAngle.lua`: trailer articulation tone. Port 4476 |
+| `docs/lua-route-beacon.md` | `routeBeacon.lua` and `route_beacon.relative_bearing`. Port 4482 |
+| `docs/lua-vehicle-info.md` | `vehicleInfo.lua`: vehicle selector specifications. Ports 4477/4478 |
+| `docs/lua-extensions.md` | Everything smaller: `accessibilityInput.lua`, `beamtelAI.lua`, `obstacleDetector.lua`, `roadDetector.lua`, `hillClimbChallenge.lua`, `cameraInfo.lua`, `nodeGrabberAccessible.lua`, `clickspotAccessible.lua`, `uiToggle.lua`, `consoleAccessible.lua`, `vehicleBindings.lua` |
+| `docs/level-generation.md` | `tools/mapgen/`: the `.ter` format, ground models and which make sound, spawn/POI conventions, level discovery and reload, node-vs-cell grids, `WaterBlock` |
+| `docs/level-proving-grounds.md` | The Proving Grounds layout (`mapdef.py`): surfaces, climb, tunnel, sound stage, suspension straights |
+| `docs/level-ice-pool.md` | The Ice Pool level (`icepool.py`) |
 
-### Lua Mod Components (`bng_mod/`)
+The Lua mod's entry point is `scripts/bng_screenreader_mod/modScript.lua`, which loads all GE extensions.
 
-Entry point: `scripts/bng_screenreader_mod/modScript.lua` — loads all GE extensions.
+### Rules that apply everywhere
 
-Grouped by function; each file below carries the full reasoning for its area.
+These cut across files, so they are stated here rather than left to a doc that may not have been opened.
 
-- @docs/lua-telemetry-protocol.md — `lua/vehicle/protocols/796F6C6F313035.lua`, the custom 60 Hz extended telemetry struct on port 4444: `actualSteering`, the ramp hydraulics push, and the loader implement block (`implementFlags` and friends).
-- @docs/lua-geometry.md — `vehicleGeometry.lua` (per-vehicle derived node geometry: extents, hull cids, contact bands, vertical occupancy histogram) and `rampGeometry.lua` (the drive-in mouth of a ramp-equipped machine). Both are libraries with no ports of their own. Note **`nd.group` does not exist at runtime** (it is `nd.firstGroup`, an index into `v.data.groups`), which made rampGeometry's group tier dead code on every vehicle in the game; that a machine whose mouth cannot be INFERRED gets a **declared** one — five node names per mouth, and the hamster wheel has **two**, chosen per query by which is nearer the driver; and that a floor fitted through **non-collision** nodes is not a floor, so the pitch and lip height are **withheld** rather than published (the tilt ramp announced “ramp down 33 degrees” while sitting dead level).
-- @docs/lua-vehicle-scanner.md — `vehicleScanner.lua`: nearest vehicle detection, target cycling, coupler compatibility matching, alignment teleport. Ports 4445/4448.
-- @docs/lua-extensions.md — `beamtelAI.lua`, `obstacleDetector.lua`, `cameraInfo.lua`, `terrainScanner.lua`, `cannonShot.lua`, `trailerAngle.lua`, `nodeGrabberAccessible.lua`, `clickspotAccessible.lua`, `uiToggle.lua`, `consoleAccessible.lua`, `vehicleBindings.lua`, `environmentAccessible.lua`, `routeBeacon.lua`.
-- `vehicleInfo.lua` (see @docs/lua-extensions.md) — the stock vehicle selector's details-page specifications, answered on request. Ports 4477/4478.
-- `routeBeacon.lua` (see @docs/lua-extensions.md) — the big map's navigation route destination, sent as a POSITION (port 4482, send-only) so Python derives a crow-flies bearing and pulses an HRTF-panned beacon at it (`F9` `Ctrl+W`). **The destination is `routePlanner.path[#path].pos`, never `endWP[1]`**, which is a waypoint-name string as often as a position. The bearing lives in one shared helper (`route_beacon.relative_bearing`, used by the beacon, `F9` `W` and `Ctrl+G` alike) because BeamTel's heading is **180° off a true compass heading** while the bearing's `atan2(-dx, -dy)` carries the cancelling `+180` — correcting either alone mirrors every waypoint and beacon reading front to back.
-- @docs/lua-implement-proximity.md — `implementProximity.lua`: what the loader's bucket or forks are about to run into, plus the docking readout, the slam gate, ramp mode, the ramp align teleport and the `RAMPSELF:` line. Ports 4469/4470.
-- @docs/lua-binding-learn.md — `bindingLearn.lua`: Learn Bindings Mode. Wraps `core_input_actions.actionToCommands` so a press is announced instead of firing, with the pause/menu category deliberately exempt and a keepalive watchdog that restores the game if beamtel dies. Ports 4479/4480.
-- @docs/lua-ui-runtime.md — `bnvdaAutoSpawner.lua` and `ui/ui-vue/mods/bnvda/bnvdaRuntime.js`, the whole UI accessibility layer.
-
-**No teleport in this mod may reset the vehicle.** See @docs/lua-telemetry-protocol.md — `spawn.safeTeleport`'s 8th argument is `resetVehicle` and it **defaults to true**; every call site must pass `nil, nil, nil, false, false`.
+- **No teleport in this mod may reset the vehicle.** `spawn.safeTeleport`'s 8th argument is `resetVehicle` and it **defaults to true**; every call site must pass `nil, nil, nil, false, false`. See `docs/lua-telemetry-protocol.md`.
+- **Positive is LEFT, and the lateral vector is `up:cross(fwd)`** in every file that builds one. It must be built from the un-negated forward, including in reverse. Sims grep for it.
+- **BeamTel's heading is 180 degrees off a true compass heading**, and `route_beacon.relative_bearing`'s `atan2(-dx, -dy)` carries the cancelling offset. Use that helper; correcting either half alone mirrors every bearing front to back.
+- **A cross-VM chunk (`queueLuaCommand` long string) may contain no percent sign and no doubled close-square-bracket**, in code or comments. A syntax error there fails silently in another VM.
+- **Every listening extension checks `setsockname`'s return, has `M.onExtensionUnloaded`, and calls `retryCmdBind(dtReal)` first in `onUpdate`.** `vehicle_geometry_sim.lua` scenario 12 enforces it.
+- **Wire tails are optional and appended, never inserted.** `bng_mod/` is a live junction, so the two halves genuinely go out of step.
+- **"Unknown" is never sent as `0`** where zero is a real reading (level ramp, level ground, touching both walls). Use the documented sentinel.
+- **Run the matching `diagnostic/*_sim.*` after touching an area**; each doc names its sim.
 
 ### Generated Levels
 
-The Track Builder makes spline ribbons, not worlds. Terrain, water and ground
-materials are a **level**, and the World Editor that authors one is ImGui with no
-accessibility tree -- so `tools/mapgen/` writes the level from Python instead:
-the `.ter` binary directly (the format is decoded and round-trips three shipped
-game terrains byte-for-byte), the scene as newline-delimited JSON, the POIs as
-the level's own `mainLevel.lua`. See @docs/level-generation.md -- including the
-**sound stage**, where the reason a rolling road cannot be terrain is that
-`groundmodelName` picks friction, roughness and tyre sound and **never motion**,
-so the three rigs are shipped `Type: "Prop"` vehicles SPAWNED by `mainLevel.lua`
-(a level scene cannot hold a vehicle at all -- `gridmap_v2` is 7167 `TSStatic` and
-zero `BeamNGVehicle`); that the Wheel Roller's rollers are **frictionless troughs**
-rather than drums, so it applies essentially **no load** and only the hamster wheel
-makes an engine pull; and that all three prop facings differ because every rig is
-entered heading north and a prop's `+Y` is not the direction you drive into it --
-the tilt ramp's `onramp_*` groups sit at local `+Y`, and the hamster wheel's ramps
-are at the ends of its **axle**, so you enter across the drum and turn 90 degrees
-inside it; and that **rebuilding the level while the game is running deletes it from the
-level list** (`build.py` rmtree's the mod folder, and `core_modmanager.initDB()` plus
-`core_levels.onFilesChanged` puts it back without a restart). Also the
-three conventions the files cannot reveal -- a SpawnSphere is written facing
-**backwards** (`spawn.lua:974` applies a 180 degree flip), scene spawn spheres
-are **not** what the UI offers (that list is `info.json`'s `spawnPoints`, and
-without it the game silently substitutes one entry called "Default"), and a
-terrain berm's steepness is bought with **height**, since the steepest face a
-heightmap can express is `height / metres_per_cell` -- and that a lateral
-threshold falling mid-cell is resolved by a node on **neither** side of it, which
-is how a "one cell" berm ramp came out spanning two nodes and left a climbable
-84% outer face behind a wall that looked right in the source. A `WaterBlock` is
-likewise a box **centred** on `position` with `scale` as its full extent (so the
-surface is `position.z + scale.z / 2`, settled by `getObjBox`/`getWorldBox`
-rather than by reading the shipped data, which does not distinguish the cases),
-and it renders **nothing** without `rippleTex`/`foamTex`/`depthGradientTex` --
-and that a `WaterBlock`'s **waterline is `position.z`**, not the top of
-`getWorldBox` (that box is the collision volume and straddles the surface), which
-only `obj:inWater` on a parked car can settle. Surfaces follow one rule:
-**asphalt is the driving surface and gravel is a margin** laid around what you
-should stay inside, so a rumble always means the same thing; the road verge is
-computed against the union of the network, or every junction gets a gravel bar
-across it. Also the reason
-`extensions.reload("core_levels")` must never be used to refresh the level list
-(`core_levels.onFilesChanged` is the safe one), and that an in-place
-`startFreeroam` reload **does** work (13-16 s, queued behind the unload) -- what
-fails is checking whether it did, since a scene probe placed where a periodic
-profile is mathematically zero reads identically on both builds and a log tail
-from an offset captured after the event reports nothing at all. Also that the two layers of a
-`.ter` are **different kinds of grid** -- heights are NODES (inclusive masks),
-materials are one byte per CELL (half-open masks) -- so a mask written for one
-silently mis-sizes the other, which is how the lane dividers in the suspension
-straights came out 2.5 m wide in the middle of the section and 5 m at its edges;
-that only **14 of the game's 32 ground models make any tire sound at all**
-(`collisiontype` selects it, and SNOW, FOLIAGE and PLASTIC have no branch in
-`sounds.lua` -- a surface that drives convincingly and is silent); that
-`RUMBLE_STRIP` is a **synthesised** effect rather than geometry, which is the
-only reason a flat terrain cell can carry it; and that a heightmap at 2.5 m/cell
-**cannot express a washboard at all** (Nyquist is 5 m, four samples per cycle is
-10 m), so a wavelength must be an exact multiple of the cell size or it beats
-against the node grid, and must not be an integer multiple of the ripple it is
-summed with or the two phase-lock and cancel.
+The World Editor is ImGui with no accessibility tree, so `tools/mapgen/` writes levels from Python: the `.ter` binary directly, the scene as newline-delimited JSON, the POIs as the level's own `mainLevel.lua`. Read `docs/level-generation.md` before touching it. The traps most likely to bite without warning:
+
+- Rebuilding while the game is running **removes the level from the list**; `core_modmanager.initDB()` plus `core_levels.onFilesChanged` restores it. Never `extensions.reload("core_levels")` or `extensions.reload("mainLevel")`.
+- Heights are a **node** grid (inclusive masks); materials are one byte per **cell** (half-open masks).
+- A SpawnSphere is written facing **backwards**, and the UI's spawn list is `info.json`'s `spawnPoints`, not the scene.
+- A `WaterBlock`'s waterline is `position.z`, and it renders nothing without its three textures.
+- A level scene cannot hold a vehicle; the sound-stage rigs are props spawned by `mainLevel.lua`.
 
 ### UDP Port Map
 
@@ -217,7 +188,7 @@ Most settings are consumed on the Python side. `ui_nav_hold_suppression` is the 
 
 - **Audio callback pattern**: Check triggered events → read state under lock → generate samples → mix all sources → clip to [-0.999, 0.999] → write stereo interleaved output.
 - **Virtual browser ownership**: `open_virtual_browser` hooks the keyboard arrows exclusively, and while one is open it also takes the six controller accessibility actions -- `navigate_accessibility_menu` hands them to `_drive_virtual_browser` instead of the Status/Functions/Click spots screens, with next/previous-menu as the way out. Without that a pad could open a browser from the Functions menu and have no way to move through it. It is the rule `on_status_arrow_press` already applies on the keyboard, extended to the pad.
-- **UI page text**: `bnvdaRuntime.js` answers a `page_text` request with the current readable screen as lines (today the AngularJS mod repository / automation details pages, whose spec table and description body carry nothing focusable), and pushes a `screen_context` latch so the controller Functions menu can hide the entry elsewhere. See @docs/lua-ui-runtime.md -- nothing is read automatically, and `cleanText` must never touch body text.
+- **UI page text**: `bnvdaRuntime.js` answers a `page_text` request with the current readable screen as lines (today the AngularJS mod repository / automation details pages, whose spec table and description body carry nothing focusable), and pushes a `screen_context` latch so the controller Functions menu can hide the entry elsewhere. See `docs/lua-ui-runtime-mod-details.md` -- nothing is read automatically, and `cleanText` must never touch body text.
 - **Keyboard command lifecycle**: F9 → install hooks + 4-second timeout → process key → unhook. Modifier tracking (Ctrl/Shift/Alt) handled in `_on_next_key_press`.
 - **Fallback strategy**: configured speech backend → Prism's highest-priority available one, re-acquired on failure; preferred audio device → system default; air pressure controller → electrics scan for vehicles without dedicated tanks.
 - **Nuitka build config**: Embedded as `# nuitka-project:` pragmas at the top of `beamtel.py` and `configurator.py`. Both build as `--onefile`. beamtel requires admin (`--windows-uac-admin`) and, like configurator, has **no console** (`--windows-console-mode=disable`) -- so it has no usable standard handles either, which is why `updater.apply_and_restart` hands its detached helper explicit DEVNULL handles rather than letting cmd allocate a console of its own.

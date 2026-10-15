@@ -224,6 +224,33 @@ def scenario_classify():
     check("old sample (no wheel fields) uses legacy rule", old["kind"] == "lockup", f"{old}")
 
 
+def scenario_ratio():
+    print("6b. Slip ratio is measured against MotionSim ground speed")
+    det = ws.SlipDetector()
+    res = None
+    # Standstill, wheels at 22 m/s (the "50 mph on the speedo while parked" case).
+    for i in range(12):
+        res = det.step(1.0 + i / 60.0, 0.05, None, 22.0, 0.05, 22.0, False)
+    check("spin in place is ratio ~1", res.active and res.ratio > 0.99, f"{res.ratio}")
+    det = ws.SlipDetector()
+    for i in range(12):  # 27 m/s (60 mph) with 10 m/s of spin
+        res = det.step(1.0 + i / 60.0, 27.0, 0.0, 37.0, 27.0, 37.0, False)
+    check("10 m/s spin at 60 mph is a modest ratio", res.active and 0.2 < res.ratio < 0.35, f"{res.ratio}")
+    naive = min(1.0, res.magnitude_ms / audio_mag_full())
+    check("absolute magnitude would have pinned it at the top", naive >= 1.0, f"{naive}")
+    det = ws.SlipDetector()
+    for i in range(12):  # fully locked at 10 m/s
+        res = det.step(1.0 + i / 60.0, 10.0, 0.0, 0.0, 0.0, 0.0, False)
+    check("full lockup is ratio 1", res.active and res.kind == ws.KIND_LOCK and res.ratio > 0.99, f"{res}")
+    check("inactive ratio is 0", ws.INACTIVE.ratio == 0.0)
+    c = ws.classify({"ground_speed_ms": 0.2, "wheel_max_driven_ms": 9.0, "wheel_min_ms": 0.2})
+    check("classify carries the ratio", c["ratio"] > 0.95, f"{c}")
+
+
+def audio_mag_full():
+    return 5.0  # audio.SLIP_MAG_FOR_FULL, without importing audio here
+
+
 class _FakeHRTF:
     """Records the azimuths asked for; left ear louder for 0 < az < 180 (+LEFT)."""
 
@@ -296,6 +323,31 @@ def scenario_audio():
     check("both voices fade to silence", l < 1e-5 and r < 1e-5, f"{l} {r}")
     check("overlap tail released when silent", ctrl._slip_overlap_L is None)
 
+    # Pitch follows the slip ratio: measure the fundamental on the stereo path.
+    ctrl._hrtf = None
+    ctrl._hrtf_user_enabled = False
+
+    def _pitch(ratio):
+        frames = 4800
+        ctrl.update_telemetry_state(dict(base, slip_ratio=ratio, slip_azimuth_deg=0.0))
+        out = np.zeros((frames, 2), dtype=np.float32)
+        for _ in range(20):
+            out.fill(0)
+            ctrl._audio_callback(out, frames, None, None)
+        sig = out[:, 0] * np.hanning(frames)
+        spec = np.abs(np.fft.rfft(sig))
+        freqs = np.fft.rfftfreq(frames, 1.0 / ctrl.samplerate)
+        band = (freqs > 150.0) & (freqs < 600.0)
+        return float(freqs[band][np.argmax(spec[band])])
+
+    lo, hi = _pitch(0.0), _pitch(1.0)
+    check("ratio 0 plays the base spin pitch", abs(lo - audio.SLIP_SPIN_HZ) < 15.0, f"{lo}")
+    check(
+        "ratio 1 plays the top of the range",
+        abs(hi - audio.SLIP_SPIN_HZ * 2 ** audio.SLIP_PITCH_RISE_OCT) < 15.0,
+        f"{hi}",
+    )
+
     # Stereo fallback keeps the side.
     ctrl._hrtf = None
     ctrl._hrtf_user_enabled = False
@@ -310,6 +362,7 @@ def main():
     scenario_travel_bearing()
     scenario_standstill_and_legacy()
     scenario_classify()
+    scenario_ratio()
     scenario_audio()
     print(f"\nall {PASSED} checks passed")
 

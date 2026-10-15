@@ -349,7 +349,7 @@ def build_parts(fixed_axle=True):
     drums = Part()
 
     # Reference nodes.  `back:` at +Y and `left:` at +X is the mod-wide reading
-    # of BeamNG's axes (docs/lua-geometry.md), which makes the prop's forward -Y,
+    # of BeamNG's axes (docs/lua-ramp-geometry.md), which makes the prop's forward -Y,
     # so a car driving on from the +Y ramp travels the prop's own forward.
     frame.node("ref", 0.0, 0.0, DECK_Z + 0.60, {"collision": False})
     frame.node("refB", 0.0, 0.20, DECK_Z + 0.60, {"collision": False})

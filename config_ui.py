@@ -884,17 +884,18 @@ class ConfigPanel(wx.ScrolledWindow):
         compass_grid.Add(self.spin_lowspeed_stop_level, 0, wx.EXPAND)
 
         lbl_slip_tone_level = wx.StaticText(
-            sb_compass, label="Wheel Slip Tone Volume (dBFS):"
+            sb_compass, label="Wheel Slip Tone Max Volume (dBFS):"
         )
         self.spin_slip_tone_level = wx.SpinCtrlDouble(
             sb_compass, min=-120.0, max=0.0, inc=1.0
         )
         self.spin_slip_tone_level.SetDigits(1)
         self.spin_slip_tone_level.SetToolTip(
-            "Volume level for the wheel lockup and wheelspin tone."
+            "Loudest the wheel lockup, wheelspin and side-slide tones will play. "
+            "They start quieter than this and reach it as the slip grows."
         )
-        self.spin_slip_tone_level.SetName("Wheel Slip Tone Volume")
-        _label_spin(self.spin_slip_tone_level, "Wheel Slip Tone Volume")
+        self.spin_slip_tone_level.SetName("Wheel Slip Tone Max Volume")
+        _label_spin(self.spin_slip_tone_level, "Wheel Slip Tone Max Volume")
         compass_grid.Add(lbl_slip_tone_level, 0, wx.ALIGN_CENTER_VERTICAL)
         compass_grid.Add(self.spin_slip_tone_level, 0, wx.EXPAND)
 

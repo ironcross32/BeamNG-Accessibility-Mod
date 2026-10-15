@@ -19,6 +19,14 @@ Three things this module exists to get right, each measured on the Ice Pool:
   see. Sideways travel is its own voice (the slide), measured as the angle between
   the direction of travel and the car's own axis.
 
+The voice's PITCH follows the **slip ratio**, never the wheel speed. The game's own speed
+readout is wheel-derived, so a car sitting still with its wheels spinning reads 50 mph;
+the ground truth is MotionSim. The ratio is the divergence over the faster of the two
+speeds, so it is bounded 0..1 without a division by a standstill: 1.0 is spinning in
+place or fully locked while moving, 0.0 is rolling true. A 3 m/s divergence at 60 mph is
+a small ratio and a low pitch; the same 3 m/s from a standstill is 1.0 and the top of the
+range, which is what the absolute magnitude could never say.
+
 Bearings follow the mod-wide convention: **positive is the driver's LEFT**.
 """
 
@@ -73,9 +81,29 @@ class SlipResult(NamedTuple):
     v_long_ms: float
     filtered_ms: float  # signed: + means ground faster than wheels (lockup side)
     legacy: bool
+    ratio: float = 0.0  # slip ratio 0..1, see slip_ratio()
 
 
-INACTIVE = SlipResult(False, KIND_NONE, 0.0, False, 0.0, 0.0, 0.0, 0.0, False)
+INACTIVE = SlipResult(False, KIND_NONE, 0.0, False, 0.0, 0.0, 0.0, 0.0, False, 0.0)
+
+
+def slip_ratio(kind, magnitude_ms, v_long_ms):
+    """Divergence as a share of the faster speed, 0..1 (see module docstring).
+
+    ``v_long_ms`` is the MotionSim ground speed along the car's axis. For spin the
+    wheel is the faster (``v_long + magnitude``); for lockup the ground is.
+    """
+    mag = max(0.0, float(magnitude_ms))
+    v = max(0.0, float(v_long_ms))
+    if kind == KIND_SPIN:
+        denom = v + mag
+    elif kind == KIND_LOCK:
+        denom = max(v, mag)
+    else:
+        return 0.0
+    if denom <= 1e-6:
+        return 0.0
+    return max(0.0, min(1.0, mag / denom))
 
 
 def travel_bearing(vel_x, vel_y, heading_deg):
@@ -181,8 +209,10 @@ class SlipDetector:
 
         slide_active, slide_deg = self._step_slide(now, ground_ms, bearing_deg)
         azimuth = voice_azimuth(bearing_deg, ground_ms, reverse)
+        ratio = slip_ratio(kind, mag, ground_ms if legacy else v_long) if active else 0.0
         return SlipResult(
-            active, kind, mag, slide_active, slide_deg, azimuth, v_long, filtered, legacy
+            active, kind, mag, slide_active, slide_deg, azimuth, v_long, filtered, legacy,
+            ratio,
         )
 
     # -- spin / lockup from the raw wheel extremes --------------------------------------
@@ -279,7 +309,8 @@ def classify(sample):
     samples rather than a live stream. Uses the raw wheel extremes and the travel
     bearing when the sample carries them, and the legacy total-speed rule otherwise, so
     recordings made before those fields existed still analyse the same way they did.
-    Returns ``{"active", "kind", "magnitude_mps", "raw_mps", "slide", "slide_deg"}``;
+    Returns ``{"active", "kind", "magnitude_mps", "raw_mps", "ratio", "slide",
+    "slide_deg"}``;
     ``kind`` is ``"wheelspin"``, ``"lockup"`` or ``"none"``, and ``raw_mps`` is signed
     with positive meaning the ground is faster than the wheels.
     """
@@ -293,6 +324,7 @@ def classify(sample):
         bearing is not None and ground > SLIDE_MIN_GROUND_MS and slide_deg > SLIDE_ENTER_DEG
     )
 
+    v_ref = ground
     if _has_wheels(wmax, wmin):
         v_long = abs(ground * math.cos(math.radians(bearing))) if bearing is not None else ground
         spin = wmax - v_long
@@ -300,6 +332,7 @@ def classify(sample):
         thr = _threshold(v_long)
         spin_on = spin > thr
         lock_on = v_long > SLIP_MIN_GROUND_MS and lock > thr
+        v_ref = v_long
         if spin_on and (not lock_on or spin >= lock):
             kind, mag, raw = "wheelspin", spin, -spin
         elif lock_on:
@@ -315,11 +348,13 @@ def classify(sample):
         kind = ("lockup" if raw > 0 else "wheelspin") if active else "none"
         mag = abs(raw)
 
+    kind_id = {"wheelspin": KIND_SPIN, "lockup": KIND_LOCK}.get(kind, KIND_NONE)
     return {
         "active": kind != "none",
         "kind": kind,
         "magnitude_mps": round(mag, 4),
         "raw_mps": round(raw, 4),
+        "ratio": round(slip_ratio(kind_id, mag, v_ref), 4),
         "slide": slide,
         "slide_deg": round(slide_deg if slide else 0.0, 2),
     }
