@@ -7,11 +7,14 @@
 --               Supports SNAP command to warp cursor to the nearest node to camera center.
 --               UNPIN releases every pinned node on every vehicle.
 --               Receives ON/OFF/SCAN_ON/SCAN_OFF/SNAP/UNPIN commands from Python.
+--               Always reports the game's controller node grabber mode (PADMODE:1/0); while
+--               the accessible grabber is on and controller mode is active, scans the screen
+--               centre instead of the cursor and reports GRAB:1/0 and PINNED.
 --
 --  Loaded by: scripts/bng_screenreader_mod/modScript.lua
 --
---  Version:     1.0
---  Target Game: BeamNG.drive 0.37+
+--  Version:     1.1
+--  Target Game: BeamNG.drive 0.39+ (controller mode); 0.37+ otherwise
 --
 -- =================================================================================================
 
@@ -39,6 +42,13 @@ local CACHE_RETRY_INTERVAL = 0.5
 local MAX_CACHE_RETRIES = 10
 local lastHoveredCid    = -1      -- avoid re-sending same node
 local scanTimer         = 0
+
+-- The game's controller node grabber (core_nodegrabberGamepad, 0.39+). It aims at the centre of
+-- the screen rather than the mouse, so while it is on the scan follows the camera instead.
+local PAD_PICK_TAN      = 0.08    -- how far off the centre ray a node may sit (tangent, ~4.6 deg)
+local lastPadActive     = false
+local lastPadGrabbing   = false
+local wrappedPad        = nil     -- the gamepad module table whose fixCurrentNode we wrapped
 
 -- Logging helper
 local function ngLog(level, msg)
@@ -246,6 +256,103 @@ local function findHoveredNode()
   return bestNode
 end
 
+-- Controller mode has no cursor: the target is whatever sits nearest the centre of the screen.
+-- A blind player aims by ear, so a crosshair that must land inside a node's tiny hit sphere
+-- would almost never report anything; instead take the node closest to the centre ray within
+-- a narrow cone, preferring nearer nodes when several line up.
+local function findCenterNode()
+  if not nodeCache or #nodeCache == 0 then return nil end
+
+  local player = be:getPlayerVehicle(0)
+  if not player then return nil end
+
+  local camPos = core_camera.getPosition()
+  local camFwd = core_camera.getForward()
+  if not camPos or not camFwd then return nil end
+  local camPosV = vec3(camPos.x, camPos.y, camPos.z)
+  local camFwdN = vec3(camFwd.x, camFwd.y, camFwd.z):normalized()
+
+  local objPos = player:getPosition()
+  local bestScore = math.huge
+  local bestNode = nil
+
+  for _, nd in ipairs(nodeCache) do
+    local toNode = objPos + vec3(player:getNodePosition(nd.cid)) - camPosV
+    local along = toNode:dot(camFwdN)
+    if along > 0.05 and along < CULL_DISTANCE then
+      local off = toNode:cross(camFwdN):length() / along
+      if off <= PAD_PICK_TAN then
+        local score = off + along * 0.001
+        if score < bestScore then
+          bestScore = score
+          bestNode = nd
+        end
+      end
+    end
+  end
+
+  return bestNode
+end
+
+-- =================================================================================================
+--  Controller node grabber (core_nodegrabberGamepad)
+-- =================================================================================================
+
+-- rawget, never the plain global: extensions.lua loads a module on first access, and reading
+-- this every frame must not load the game's grabber into a session that never asked for it.
+local function getPad()
+  local pad = rawget(_G, "core_nodegrabberGamepad")
+  if type(pad) ~= "table" or type(pad.state) ~= "table" then return nil end
+  return pad
+end
+
+-- The pin button (nodegrabberAction: middle mouse, or the pad's action button) goes through
+-- core_nodegrabberGamepad.fixCurrentNode in both modes, and the action map resolves that field
+-- at press time -- so wrapping it is the one place a pin is seen rather than guessed from a
+-- mouse click. Re-wrapped whenever the module table changes (it is rebuilt on a Lua reload).
+local pinOriginal, pinWrapper = nil, nil
+
+local function ensurePinWrapped(pad)
+  if not pad or wrappedPad == pad then return end
+  local original = pad.fixCurrentNode
+  if type(original) ~= "function" then return end
+  pinOriginal = original
+  pinWrapper = function(...)
+    if isActive and udpSend then udpSend:send("PINNED") end
+    return original(...)
+  end
+  pad.fixCurrentNode = pinWrapper
+  wrappedPad = pad
+end
+
+-- Put the game's function back, or a reload of this extension would wrap the old wrapper and
+-- every pin would be reported twice.
+local function restorePinWrap()
+  if wrappedPad and wrappedPad.fixCurrentNode == pinWrapper then
+    wrappedPad.fixCurrentNode = pinOriginal
+  end
+  wrappedPad, pinOriginal, pinWrapper = nil, nil, nil
+end
+
+-- Sent whether or not the accessible grabber is on: the game toggles controller mode silently,
+-- and also drops out of it on its own (a camera change, opening a menu, resetting the car).
+local function pollPad()
+  local pad = getPad()
+  local active = pad and pad.state.active and true or false
+  local grabbing = pad and pad.state.grabbing and true or false
+  if pad then ensurePinWrapped(pad) end
+
+  if active ~= lastPadActive then
+    lastPadActive = active
+    lastHoveredCid = -1
+    if udpSend then udpSend:send(active and "PADMODE:1" or "PADMODE:0") end
+  end
+  if grabbing ~= lastPadGrabbing then
+    lastPadGrabbing = grabbing
+    if isActive and udpSend then udpSend:send(grabbing and "GRAB:1" or "GRAB:0") end
+  end
+end
+
 -- =================================================================================================
 --  SNAP: Find closest node to camera center and project to screen coords
 -- =================================================================================================
@@ -435,6 +542,7 @@ end
 -- fresh instance whose locals are nil -- so it closes nothing and the outgoing instance keeps
 -- the port, leaving the reloaded copy permanently deaf. Hence this hook.
 function M.onExtensionUnloaded()
+  restorePinWrap()
   if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
   if udpCmd  then pcall(function() udpCmd:close()  end); udpCmd  = nil end
 end
@@ -481,6 +589,7 @@ end
 
 function M.onUpdate(dtReal, dtSim, dtRaw)
   retryCmdBind(dtReal)
+  pollPad()
   -- 1. Poll for commands from Python (drain all queued packets)
   if udpCmd then
     repeat
@@ -495,6 +604,8 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
           cacheRetryTimer = 0
           ngLog('info', "Accessible node grabber activated.")
           buildNodeCache()
+          -- Quiet resync: Python may have started after the last PADMODE change.
+          if udpSend then udpSend:send(lastPadActive and "PADSYNC:1" or "PADSYNC:0") end
         elseif cmd == "OFF" and isActive then
           isActive = false
           isScanning = false
@@ -552,11 +663,15 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
     end
   end
 
-  if not isScanning then return end
+  if not (isScanning or lastPadActive) then return end
   if not udpSend then return end
 
-  -- 4. Detect hovered node
-  local hovered = findHoveredNode()
+  -- While a node is held its neighbours swing past the aim point; keep reporting the held one.
+  if lastPadGrabbing then return end
+
+  -- 4. Detect hovered node (screen centre in controller mode, mouse cursor otherwise)
+  local hovered
+  if lastPadActive then hovered = findCenterNode() else hovered = findHoveredNode() end
 
   if hovered then
     if hovered.cid ~= lastHoveredCid then

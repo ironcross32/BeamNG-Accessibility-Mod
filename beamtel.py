@@ -3120,7 +3120,7 @@ def camera_listener(audio_controller, stop_event):
 
 def nodegrab_listener(audio_controller, stop_event):
     """Listens for UDP packets from nodeGrabberAccessible.lua — node hover data and snap coords."""
-    global nodegrab_last_cid, nodegrab_scanning
+    global nodegrab_last_cid, nodegrab_scanning, nodegrab_pad_active
     import ctypes
 
     VK_CONTROL = 0x11
@@ -3169,6 +3169,30 @@ def nodegrab_listener(audio_controller, stop_event):
 
                 now = time.time()
 
+                # The game's controller node grabber (0.39+) toggles with no message of its
+                # own and also drops out by itself, so this is spoken whether or not the
+                # accessible grabber is on.
+                if text.startswith("PADMODE:") or text.startswith("PADSYNC:"):
+                    pad_on = text.endswith(":1")
+                    if text.startswith("PADMODE:"):
+                        say(
+                            f"Controller node grabber {'on' if pad_on else 'off'}",
+                            exclude_from_buffer=True,
+                        )
+                    nodegrab_pad_active = pad_on
+                    if not pad_on and not nodegrab_scanning:
+                        nodegrab_last_cid = -1
+                    continue
+                if text.startswith("GRAB:"):
+                    say(
+                        "Grabbed" if text.endswith(":1") else "Released",
+                        exclude_from_buffer=True,
+                    )
+                    continue
+                if text == "PINNED":
+                    say("Node pinned", exclude_from_buffer=True)
+                    continue
+
                 if text.startswith("UNPINNED:"):
                     say("All nodes unpinned", exclude_from_buffer=True)
                     continue
@@ -3182,8 +3206,13 @@ def nodegrab_listener(audio_controller, stop_event):
                         nodegrab_last_cid = -1
                     continue
 
-                # Ignore node hover data if Python knows CTRL isn't held (stale Lua scan)
-                if not nodegrab_scanning and text.startswith("NODE:"):
+                # Ignore node hover data if Python knows CTRL isn't held (stale Lua scan).
+                # Controller mode scans the screen centre with no key held at all.
+                if (
+                    not nodegrab_scanning
+                    and not nodegrab_pad_active
+                    and text.startswith("NODE:")
+                ):
                     continue
 
                 if text.startswith("SNAP:"):
@@ -4503,9 +4532,8 @@ cam_last_compass_ts = 0.0
 # Node Grabber State
 nodegrab_mode_active = False
 nodegrab_scanning = False
+nodegrab_pad_active = False  # the game's controller node grabber mode, reported by Lua
 nodegrab_last_cid = -1
-nodegrab_strength = 50  # tracked locally (0-100)
-_nodegrab_scroll_hook = None
 _nodegrab_space_hook = None
 _nodegrab_space_held = False
 
@@ -6427,15 +6455,9 @@ def _nodegrab_on_space(event):
 
 
 def _install_nodegrab_hooks():
-    global _nodegrab_scroll_hook, _nodegrab_space_hook, _nodegrab_space_held
-    try:
-        import mouse
-
-        _nodegrab_scroll_hook = mouse.hook(_nodegrab_on_mouse_event)
-    except ImportError:
-        logger.warning(
-            "mouse module unavailable — scroll/middle-click hooks disabled for node grabber"
-        )
+    # No mouse hook: the game's own strength toast already speaks the wheel, and a pin
+    # is announced from the Lua side's PINNED.
+    global _nodegrab_space_hook, _nodegrab_space_held
     if _nodegrab_space_hook is None:
         _nodegrab_space_held = False
         try:
@@ -6451,52 +6473,18 @@ def _install_nodegrab_hooks():
             logger.exception("Failed to install node grabber Ctrl+Space hook")
 
 
-def _nodegrab_on_mouse_event(event):
-    """Hook for mouse wheel events while node grabber is active."""
-    try:
-        import mouse
-
-        if isinstance(event, mouse.WheelEvent):
-            if not nodegrab_mode_active:
-                return
-            global nodegrab_strength
-            if event.delta > 0:
-                nodegrab_strength = min(100, nodegrab_strength + 5)
-            else:
-                nodegrab_strength = max(0, nodegrab_strength - 5)
-            say(f"Strength {nodegrab_strength} percent", exclude_from_buffer=True)
-        elif (
-            isinstance(event, mouse.ButtonEvent)
-            and event.button == "middle"
-            and event.event_type == "up"
-        ):
-            if nodegrab_mode_active and nodegrab_scanning:
-                say("Node pinned", exclude_from_buffer=True)
-    except Exception as e:
-        logger.error(f"Node grabber mouse event error: {e}")
-
-
 def _remove_nodegrab_hooks():
-    global _nodegrab_scroll_hook, _nodegrab_space_hook, nodegrab_scanning
+    global _nodegrab_space_hook, nodegrab_scanning
     nodegrab_scanning = False
     if _nodegrab_space_hook is not None:
         _unhook_suppressed([_nodegrab_space_hook])
         _nodegrab_space_hook = None
-    if _nodegrab_scroll_hook is not None:
-        try:
-            import mouse
-
-            mouse.unhook(_nodegrab_scroll_hook)
-        except Exception:
-            pass
-        _nodegrab_scroll_hook = None
 
 
 def toggle_nodegrab_mode(audio_controller):
-    global nodegrab_mode_active, nodegrab_last_cid, nodegrab_strength
+    global nodegrab_mode_active, nodegrab_last_cid
     nodegrab_mode_active = not nodegrab_mode_active
     nodegrab_last_cid = -1
-    nodegrab_strength = 50
 
     command = "ON" if nodegrab_mode_active else "OFF"
     _send_nodegrab_cmd(command)
