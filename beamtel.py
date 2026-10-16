@@ -49,6 +49,7 @@ from route_beacon import (
 )
 from poi_guidance import parse_poi_packet, poi_phrase
 import wheel_slip
+import audio_debug
 
 logger = get_logger()
 
@@ -3637,6 +3638,67 @@ def environment_listener(stop_event):
         logger.info("Environment listener stopped.")
 
 
+def audio_debug_listener(stop_event):
+    """Listens for rows from audioDebugAccessible.lua (F9 then J).
+
+    Both row sets are swapped in whole on their END line, then handed to the command
+    worker, which is the only thread that opens or rewrites the browser.
+    """
+    global _aud_rows, _aud_building, _aud_sfx_rows, _aud_sfx_building, _aud_sfx_head
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", AUDIO_DEBUG_LISTEN_PORT))
+        sock.settimeout(0.2)
+        logger.info(f"Audio debug listener started on port {AUDIO_DEBUG_LISTEN_PORT}")
+
+        while not stop_event.is_set():
+            try:
+                data, _addr = sock.recvfrom(4096)
+                text = data.decode("utf-8", errors="ignore").strip()
+                if not text:
+                    continue
+
+                if text.startswith("AUD_BEGIN:"):
+                    _aud_building = []
+                elif text.startswith("AUD:"):
+                    if _aud_building is not None:
+                        _aud_building.append(audio_debug.parse_fields(text[4:]))
+                elif text == "AUD_END":
+                    if _aud_building is not None:
+                        _aud_rows = _aud_building
+                        _aud_building = None
+                        _command_dispatch(_aud_on_rows)
+                elif text.startswith("AUD_SFX_BEGIN:"):
+                    _aud_sfx_building = []
+                    _aud_sfx_head = audio_debug.parse_fields(text[len("AUD_SFX_BEGIN:") :])
+                elif text.startswith("AUD_SFX:"):
+                    if _aud_sfx_building is not None:
+                        _aud_sfx_building.append(audio_debug.parse_fields(text[8:]))
+                elif text == "AUD_SFX_END":
+                    if _aud_sfx_building is not None:
+                        _aud_sfx_rows = _aud_sfx_building
+                        _aud_sfx_building = None
+                        _command_dispatch(_aud_on_sfx_rows)
+                elif text.startswith("AUD_ERROR:"):
+                    _command_dispatch(_aud_on_message, text[len("AUD_ERROR:") :].strip(), True)
+                elif text.startswith("AUD_DONE:"):
+                    _command_dispatch(_aud_on_message, text[len("AUD_DONE:") :].strip(), False)
+
+            except socket.timeout:
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Audio debug listener socket error.")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+        logger.info("Audio debug listener stopped.")
+
+
 def vehicle_info_listener(stop_event):
     """Listens for vehicle specification rows from vehicleInfo.lua.
 
@@ -4856,6 +4918,7 @@ _F9_HELP = {
     ("s", True, False, False): "Toggle status mode",
     ("b", False, False, False): "Browse vehicle bindings",
     ("n", False, False, False): "Browse environment settings",
+    ("j", False, False, False): "Audio debug: engine sounds and sound library",
     ("b", True, False, False): "Toggle buffer mode",
     ("c", True, False, False): "Toggle pedal tones",
     ("v", True, False, False): "Toggle vehicle scanner",
@@ -5840,8 +5903,9 @@ def close_virtual_browser(speak_exit=True):
     global _vbrowser_lines, _vbrowser_index, _vbrowser_active
     global _vbrowser_on_enter, _vbrowser_entry_data, _vbrowser_on_adjust
     global _vbrowser_on_escape
-    global _env_browser_open
+    global _env_browser_open, _aud_browser
     _env_browser_open = False
+    _aud_browser = None
     _vbrowser_active = False
     _vbrowser_on_enter = None
     _vbrowser_on_adjust = None
@@ -5966,6 +6030,8 @@ BINDING_LEARN_CMD_PORT = 4480  # UDP port to send LEARN_ON/LEARN_OFF/KEEPALIVE/D
 BINDING_LEARN_KEEPALIVE_S = 1.0
 ENV_LISTEN_PORT = 4474  # UDP port to receive environment rows from environmentAccessible.lua
 ENV_CMD_PORT = 4475  # UDP port to send commands to environmentAccessible.lua
+AUDIO_DEBUG_LISTEN_PORT = 4483  # UDP port to receive rows from audioDebugAccessible.lua
+AUDIO_DEBUG_CMD_PORT = 4484  # UDP port to send commands to audioDebugAccessible.lua
 VEHICLE_INFO_LISTEN_PORT = 4477  # UDP port to receive vehicle info rows from vehicleInfo.lua
 VEHICLE_INFO_CMD_PORT = 4478  # UDP port to send INFO_SELECTOR/INFO: to vehicleInfo.lua
 IMPLEMENT_LISTEN_PORT = (
@@ -7140,6 +7206,241 @@ def open_environment_browser():
     _env_browser_open = _vbrowser_active
 
 
+# Audio debug browser state (audioDebugAccessible.lua, F9 then J). The World Editor's
+# Window > Audio tools: the player vehicle's engine sound parameters, and the game's sound
+# library. Written by the listener thread, read on the command worker; every browser change
+# happens on the worker because the listener only ever dispatches. See docs/lua-audio-debug.md.
+_aud_rows = []
+_aud_building = None
+_aud_sfx_rows = []
+_aud_sfx_building = None
+_aud_sfx_head = {}
+_aud_sfx_stack = []  # 0-based child indices from the library root to the open folder
+_aud_pending = None  # "engine" or "sfx": which browser the next reply opens
+_aud_pending_start = 0
+_aud_awaiting = False  # a change was sent; speak the current line when its reply lands
+_aud_timer = None
+_aud_browser = None  # "engine" or "sfx" while one of ours is the open browser
+
+
+def _send_aud_cmd(command):
+    try:
+        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        cmd_sock.sendto(command.encode("utf-8"), ("127.0.0.1", AUDIO_DEBUG_CMD_PORT))
+        cmd_sock.close()
+    except Exception as e:
+        logger.error(f"Failed to send audio debug command via UDP: {e}")
+
+
+def _aud_cancel_timer():
+    global _aud_timer
+    if _aud_timer is not None:
+        try:
+            _aud_timer.cancel()
+        except Exception:
+            pass
+        _aud_timer = None
+
+
+def _aud_timed_out():
+    global _aud_pending, _aud_awaiting
+    if _aud_pending is None and not _aud_awaiting:
+        return
+    _aud_pending = None
+    _aud_awaiting = False
+    # Same reasoning as the environment browser: silence would read as a dead key.
+    say("No response from the game", exclude_from_buffer=True)
+
+
+def _aud_send(command, pending=None, start=0, awaiting=False):
+    """Send a command that the game answers, with the one-shot no-answer fallback."""
+    global _aud_pending, _aud_pending_start, _aud_awaiting, _aud_timer
+    _aud_cancel_timer()
+    _aud_pending = pending
+    _aud_pending_start = start
+    _aud_awaiting = awaiting
+    # Longer than the GE side's own 1 s vehicle timeout, so a vehicle that does not answer is
+    # reported by the game ("The vehicle did not answer") rather than as a dead game.
+    _aud_timer = threading.Timer(1.5, _aud_timed_out)
+    _aud_timer.daemon = True
+    _aud_timer.start()
+    _send_aud_cmd(command)
+
+
+def _aud_on_message(text, is_error):
+    """AUD_ERROR / AUD_DONE: always the direct answer to a key the user just pressed."""
+    global _aud_awaiting
+    _aud_cancel_timer()
+    # An error is followed by a fresh row set; reading the current line on top of it would
+    # cut the reason off mid-word.
+    _aud_awaiting = False
+    if is_error:
+        logger.warning(f"Audio debug: {text}")
+    say(text or ("Audio debug command failed" if is_error else "Done"), exclude_from_buffer=True)
+
+
+def _aud_engine_lines():
+    return [audio_debug.row_line(r) for r in _aud_rows]
+
+
+def _aud_open_engine_browser(start_index=0, title=True):
+    global _aud_browser
+    lines = _aud_engine_lines()
+    open_virtual_browser(
+        lines,
+        title="Audio debug" if title else None,
+        on_enter=_aud_engine_enter,
+        on_adjust=_aud_engine_adjust,
+        entry_data=list(range(len(lines))),
+        start_index=start_index,
+    )
+    # After the open, never before: open_virtual_browser closes whatever was up, and
+    # close_virtual_browser clears this.
+    _aud_browser = "engine" if _vbrowser_active else None
+
+
+def _aud_on_rows():
+    """A fresh engine-sound row set has landed (command worker)."""
+    global _aud_pending, _aud_awaiting
+    if _aud_pending == "engine":
+        _aud_cancel_timer()
+        _aud_pending = None
+        _aud_awaiting = False
+        _aud_open_engine_browser(start_index=_aud_pending_start)
+        return
+    if _aud_browser != "engine" or not _vbrowser_active:
+        return
+    speak = _aud_awaiting
+    if speak:
+        _aud_cancel_timer()
+        _aud_awaiting = False
+    lines = _aud_engine_lines()
+    if len(lines) == len(_vbrowser_lines):
+        # In place, so the cursor stays on the setting the user last heard.
+        _vbrowser_lines[:] = lines
+        if speak:
+            say(_vbrowser_lines[_vbrowser_index], exclude_from_buffer=True)
+    else:
+        # A different sound with a different set of controls (an EV motor has fewer).
+        _aud_open_engine_browser(start_index=_vbrowser_index, title=False)
+
+
+def _aud_engine_adjust(idx, line, data, delta):
+    if data is None or data >= len(_aud_rows):
+        return
+    row = _aud_rows[data]
+    kind = row.get("kind")
+    if kind == "select":
+        target = audio_debug.select_target(row, delta)
+        if target is None:
+            say("Only one sound", exclude_from_buffer=True)
+            return
+        _aud_send(f"SELECT:{target}", awaiting=True)
+        return
+    if kind != "number":
+        return
+    target = audio_debug.stepped_value(row, delta)
+    if target is None:
+        # Already at the end of the range: re-read it rather than stay silent.
+        say(line, exclude_from_buffer=True)
+        return
+    _aud_send(f"SET:{row.get('key')}={audio_debug.wire_number(target)}", awaiting=True)
+
+
+def _aud_engine_enter(idx, line, data):
+    global _aud_sfx_stack
+    if data is None or data >= len(_aud_rows):
+        return
+    row = _aud_rows[data]
+    kind = row.get("kind")
+    key = row.get("key")
+    if kind == "number":
+        say(
+            "Use left and right to adjust, hold shift for ten at a time",
+            exclude_from_buffer=True,
+        )
+    elif kind == "select":
+        say("Use left and right to choose a sound", exclude_from_buffer=True)
+    elif key == "copy":
+        _aud_send("COPY")
+    elif key == "restore":
+        if row.get("editable") == "0":
+            say("Nothing to restore", exclude_from_buffer=True)
+            return
+        _aud_send("RESTORE", awaiting=True)
+    elif key == "library":
+        _aud_sfx_stack = []
+        _aud_open_sfx()
+    else:
+        say(line, exclude_from_buffer=True)
+
+
+def _aud_open_sfx(start_index=0):
+    path = ">".join(str(i) for i in _aud_sfx_stack)
+    _aud_send(f"SFX_LIST:{path}", pending="sfx", start=start_index)
+
+
+def _aud_on_sfx_rows():
+    """A sound-library folder listing has landed (command worker)."""
+    global _aud_pending, _aud_browser
+    if _aud_pending != "sfx":
+        return
+    _aud_cancel_timer()
+    _aud_pending = None
+    rows = list(_aud_sfx_rows)
+    # "Stop sound" leads every folder: playOnce of a looping event plays until stopped, and
+    # the row has to be reachable from wherever the user is when they want silence.
+    lines = ["Stop sound"] + [audio_debug.sfx_line(r) for r in rows]
+    entry_data = [None] + rows
+    path = _aud_sfx_head.get("path", "")
+    title = f"{path or 'Sound library'}, {len(rows)} item{'s' if len(rows) != 1 else ''}"
+    open_virtual_browser(
+        lines,
+        title=title,
+        on_enter=_aud_sfx_enter,
+        on_escape=_aud_sfx_escape,
+        entry_data=entry_data,
+        # +1 for the Stop row: a fresh folder opens on its first item, and returning from a
+        # sub-folder lands on that sub-folder.
+        start_index=_aud_pending_start + 1,
+    )
+    _aud_browser = "sfx" if _vbrowser_active else None
+
+
+def _aud_sfx_enter(idx, line, data):
+    if data is None:
+        _send_aud_cmd("SFX_STOP")
+        say("Stopped", exclude_from_buffer=True)
+        return
+    if data.get("kind") == "dir":
+        _aud_sfx_stack.append(idx - 1)
+        _aud_open_sfx()
+        return
+    sound_id = data.get("id")
+    if sound_id:
+        # No speech: the sound itself is the answer, and speech would talk over it.
+        _send_aud_cmd(f"SFX_PLAY:{sound_id}")
+
+
+def _aud_sfx_escape():
+    if _aud_sfx_stack:
+        child = _aud_sfx_stack.pop()
+        _aud_open_sfx(start_index=child)
+        return
+    _send_aud_cmd("SFX_STOP")
+    # Back to the engine list, on its Sound library row, from the rows already held: they
+    # were current when the library was opened from them.
+    if _aud_rows:
+        _aud_open_engine_browser(start_index=len(_aud_rows) - 1, title=False)
+    else:
+        close_virtual_browser(speak_exit=True)
+
+
+def open_audio_debug_browser():
+    """F9 then J: the World Editor's audio tools, which are ImGui and unreadable."""
+    _aud_send("REQUEST", pending="engine")
+
+
 def open_clickspot_browser():
     """Open a virtual browser listing all detected clickspots."""
     if not clickspot_mode_active:
@@ -8099,6 +8400,14 @@ def _on_next_key_press(event, audio_controller):
         # its branch sits earlier in this chain, so an E binding here would have
         # been unreachable -- dead code that reads as a working feature.
         open_environment_browser()
+    elif (
+        name == "j"
+        and not _capture_mods["ctrl"]
+        and not _capture_mods["shift"]
+        and not _capture_mods["alt"]
+    ):
+        # The World Editor's Window > Audio tools, which are ImGui and so unreadable.
+        open_audio_debug_browser()
     elif (
         name == "c"
         and _capture_mods["ctrl"]
@@ -11239,6 +11548,12 @@ def _run_engine():
         target=environment_listener, args=(STOP,), daemon=True
     )
     environment_thread.start()
+
+    # No startup request: the rows are per vehicle and only fetched when F9 J asks.
+    audio_debug_thread = threading.Thread(
+        target=audio_debug_listener, args=(STOP,), daemon=True
+    )
+    audio_debug_thread.start()
 
     # No startup request to match: this one only ever answers a key press, so
     # there is nothing to pre-fetch and nothing to go stale.

@@ -67,6 +67,7 @@ The per-file detail, and the reasoning behind every decision that is not obvious
 | `docs/lua-environment.md` | `environmentAccessible.lua`: ambient temperature browser. Ports 4474/4475 |
 | `docs/lua-trailer-angle.md` | `trailerAngle.lua`: trailer articulation tone. Port 4476 |
 | `docs/lua-route-beacon.md` | `routeBeacon.lua` and `route_beacon.relative_bearing`. Port 4482 |
+| `docs/lua-audio-debug.md` | `audioDebugAccessible.lua` + vehicle `beamtelAudioDebug.lua`: the editor's Window > Audio tools (engine sound parameters, sound library). Ports 4483/4484 |
 | `docs/lua-vehicle-info.md` | `vehicleInfo.lua`: vehicle selector specifications. Ports 4477/4478 |
 | `docs/lua-extensions.md` | Everything smaller: `accessibilityInput.lua`, `beamtelAI.lua`, `obstacleDetector.lua`, `roadDetector.lua`, `hillClimbChallenge.lua`, `cameraInfo.lua`, `nodeGrabberAccessible.lua`, `clickspotAccessible.lua`, `uiToggle.lua`, `consoleAccessible.lua`, `vehicleBindings.lua` |
 | `docs/level-generation.md` | `tools/mapgen/`: the `.ter` format, ground models and which make sound, spawn/POI conventions, level discovery and reload, node-vs-cell grids, `WaterBlock` |
@@ -141,6 +142,8 @@ The World Editor is ImGui with no accessibility tree, so `tools/mapgen/` writes 
 | 4480 | Python→Game | Learn-mode commands (LEARN_ON/LEARN_OFF/KEEPALIVE/DIAG) |
 | 4481 | Agent→Python | MCP automation server (HTTP, loopback, off by default) |
 | 4482 | Game→Python | Navigation route destination (routeBeacon.lua) |
+| 4483 | Game→Python | Audio debug rows: engine sounds, sound library (audioDebugAccessible.lua) |
+| 4484 | Python→Game | Audio debug commands (REQUEST/SELECT/SET/RESTORE/COPY/SFX_*) |
 | 4579 | Game→Python | UI toast messages |
 | 8765 | WebSocket | NVDA/UI bridge |
 

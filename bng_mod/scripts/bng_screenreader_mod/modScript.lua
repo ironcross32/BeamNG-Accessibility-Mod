@@ -73,6 +73,14 @@ extensions.load("consoleAccessible")
 -- The environment values the stock pause UI does not expose at all (temperature). Passive:
 -- its onUpdate drains a socket and does nothing else until Python asks.
 extensions.load("environmentAccessible")
+-- The World Editor's Window > Audio tools (engine sound parameters, sound library), which are
+-- ImGui. Passive: its onUpdate drains a socket until Python asks. Manual, so reloaded explicitly
+-- for the reason obstacleDetector is.
+if extensions.isExtensionLoaded("audioDebugAccessible") then
+  extensions.reload("audioDebugAccessible")
+else
+  extensions.load("audioDebugAccessible")
+end
 -- The stock vehicle selector's details-page specifications, answered on request (F9 then
 -- SPACE there, `i` in the mod's own spawner). Passive: its onUpdate drains a socket and
 -- re-checks one table field, and it never speaks on its own.
