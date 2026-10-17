@@ -641,7 +641,12 @@ EXT_SIZE_V4 = struct.calcsize(EXT_FORMAT_V4)
 
 # v5 appends electric drive power (kW), torque (Nm) and remaining range (m), and the
 # presence mask gains the engine-temperature and electric-drive bits.
-EXT_FORMAT = "<H4sBx9fII42fI5f"
+EXT_FORMAT_V5 = "<H4sBx9fII42fI5f"
+EXT_SIZE_V5 = struct.calcsize(EXT_FORMAT_V5)
+
+# v6 appends the game's trip distance, odometer and lifetime distance in this model (m, -1
+# unknown), and the presence mask gains the air-system bit.
+EXT_FORMAT = "<H4sBx9fII42fI8f"
 EXT_SIZE = struct.calcsize(EXT_FORMAT)
 
 # What a pre-v4 packet implies for the two wheel-extreme floats: -1 = not sent, which
@@ -651,6 +656,9 @@ EXT_V3_SLIP_DEFAULTS = (-1.0, -1.0)
 # What a pre-v5 packet implies for the electric drive floats. The presence bit, not these
 # values, is what hides the rows; -1 range is "unknown" for anything that reads it raw.
 EXT_V4_ELECTRIC_DEFAULTS = (0.0, 0.0, -1.0)
+
+# What a pre-v6 packet implies for trip, odometer and lifetime: unknown, which hides the rows.
+EXT_V5_DISTANCE_DEFAULTS = (-1.0, -1.0, -1.0)
 
 # Values a v1 packet implies for the eight implement floats. Mirrors the sentinels in
 # 796F6C6F313035.lua: flags 0 = nothing valid, -1 = no ground reading.
@@ -668,6 +676,10 @@ TELEMETRY_HAS_CLUTCH = 1 << 6
 # it for those packets and they keep their old always-present behaviour.
 TELEMETRY_HAS_ENGINE_TEMP = 1 << 7
 TELEMETRY_HAS_ELECTRIC = 1 << 8
+# The vehicle has an air tank, whatever it currently holds, so an empty system still reads
+# 0 rather than vanishing. A pre-v6 mod never sets it; the decoder infers it from the
+# reading for those packets.
+TELEMETRY_HAS_AIR = 1 << 9
 WHEEL_POS_CORNERS = WHEEL_POS_FL | WHEEL_POS_FR | WHEEL_POS_RL | WHEEL_POS_RR
 
 # A v2 mod cannot tell Python which wheel names were present. Preserve its historical
@@ -3940,6 +3952,42 @@ def fmt_range(metres: float):
     return int(round(metres * MILES_PER_M)), "miles"
 
 
+def fmt_trip(metres: float):
+    """Trip distance: tenths of a mile or kilometre, short distances in feet or meters."""
+    if UNITS_MODE == "metric":
+        if metres < 100.0:
+            return int(round(metres)), "meters"
+        return f"{metres / 1000.0:.1f}", "kilometers"
+    miles = metres * MILES_PER_M
+    if miles < 0.1:
+        return int(round(metres * FEET_PER_M)), "feet"
+    return f"{miles:.1f}", "miles"
+
+
+def fmt_odometer(metres: float):
+    """Whole miles or kilometres, with tenths below ten."""
+    dist = metres / 1000.0 if UNITS_MODE == "metric" else metres * MILES_PER_M
+    unit = "kilometers" if UNITS_MODE == "metric" else "miles"
+    if dist < 10.0:
+        return f"{dist:.1f}", unit
+    return f"{int(round(dist)):,}", unit
+
+
+def has_air_system() -> bool:
+    return protocol_mode == "extended" and bool(
+        int(last_telemetry_presence) & TELEMETRY_HAS_AIR
+    )
+
+
+def has_stored_mileage() -> bool:
+    """The odometer exceeds the trip only on a vehicle carrying mileage of its own (career).
+
+    Elsewhere the two are the same number, and a second row repeating it is noise. The gap
+    is fixed per vehicle, so the row does not appear and vanish under the cursor.
+    """
+    return last_trip_m >= 0 and last_odometer_m - last_trip_m > 100.0
+
+
 def has_engine_temp() -> bool:
     """OutGauge has no presence mask, so it keeps reading the temperatures as before."""
     return protocol_mode != "extended" or bool(
@@ -4079,6 +4127,9 @@ last_oiltemp = 0.0
 last_motor_power_kw = 0.0
 last_motor_torque_nm = 0.0
 last_ev_range_m = -1.0
+last_trip_m = -1.0
+last_odometer_m = -1.0
+last_lifetime_m = -1.0
 last_throttle = 0.0
 last_brake = 0.0
 last_clutch = 0.0
@@ -4409,6 +4460,12 @@ def _mcp_snapshot_state(sections=None):
                 "turbo": last_turbo,
                 "engine_temp": last_engtemp if has_engine_temp() else None,
                 "oil_temp": last_oiltemp if has_engine_temp() else None,
+                "air_pressure_psi": last_air_pressure,
+                "air_pressure_max_psi": last_air_pressure_max,
+                "trip_m": last_trip_m if last_trip_m >= 0 else None,
+                "odometer_m": last_odometer_m if last_odometer_m >= 0 else None,
+                "lifetime_m": last_lifetime_m if last_lifetime_m >= 0 else None,
+                "has_air_system": has_air_system(),
                 "electric": (
                     {
                         "motor_power_kw": last_motor_power_kw,
@@ -5102,6 +5159,14 @@ def _wheel_status_metric(label, category, value_getter, position_flag):
     }
 
 
+def _air_pressure_status():
+    val, unit = fmt_pressure(last_air_pressure)
+    if last_air_pressure_max > 1:
+        max_val, _ = fmt_pressure(last_air_pressure_max)
+        return f"{val} of {max_val}", unit
+    return val, unit
+
+
 STATUS_METRICS = [
     {
         "label": "Heading",
@@ -5182,7 +5247,29 @@ STATUS_METRICS = [
         "isAvailable": lambda: bool(int(last_protocol_flags) & OG_TURBO),
     },
     # {'label': 'Oil Pressure', 'getValue': lambda: fmt_turbo(last_oil_pressure), 'isAvailable': lambda: protocol_mode == 'extended'},
-    # {'label': 'Air System Pressure', 'getValue': lambda: fmt_pressure(last_air_pressure), 'isAvailable': lambda: protocol_mode == 'extended' and last_air_pressure_max > 0},
+    # The same reading as F9 P, gated on the tank existing rather than on what it holds.
+    {
+        "label": "Air Pressure",
+        "getValue": _air_pressure_status,
+        "isAvailable": has_air_system,
+    },
+    {
+        "label": "Trip",
+        "getValue": lambda: fmt_trip(last_trip_m),
+        "isAvailable": lambda: protocol_mode == "extended" and last_trip_m >= 0,
+    },
+    {
+        "label": "Odometer",
+        "getValue": lambda: fmt_odometer(last_odometer_m),
+        "isAvailable": lambda: protocol_mode == "extended" and has_stored_mileage(),
+    },
+    # The game's own statistic, kept per vehicle MODEL across sessions and counting only
+    # player driving -- hence the label: two Pickups share one figure.
+    {
+        "label": "Model lifetime",
+        "getValue": lambda: fmt_odometer(last_lifetime_m),
+        "isAvailable": lambda: protocol_mode == "extended" and last_lifetime_m >= 0,
+    },
     # {'label': 'Lateral G-Force', 'getValue': lambda: (f"{last_g_lat:.2f}", "G"), 'isAvailable': lambda: protocol_mode == 'extended'},
     # {'label': 'Longitudinal G-Force', 'getValue': lambda: (f"{last_g_lon:.2f}", "G"), 'isAvailable': lambda: protocol_mode == 'extended'},
     _wheel_status_metric(
@@ -5456,8 +5543,7 @@ FUNCTION_ITEMS = [
         "Air pressure",
         "Vehicle information",
         "p",
-        is_available=lambda: protocol_mode == "extended"
-        and last_air_pressure_max > 0,
+        is_available=has_air_system,
     ),
     _function_item("Attitude", "Vehicle information", "a"),
     _function_item("Coordinates", "Vehicle information", "c"),
@@ -8305,7 +8391,7 @@ def _on_next_key_press(event, audio_controller):
         threading.Thread(target=_do_pdump, daemon=True).start()
     elif name == "p" and not _capture_mods["shift"]:
         if protocol_mode == "extended":
-            if air_pressure_snap > 0:
+            if has_air_system() or air_pressure_snap > 0:
                 val, unit = fmt_pressure(air_pressure_snap)
                 if air_pressure_max_snap > 1:
                     max_val, _ = fmt_pressure(air_pressure_max_snap)
@@ -9816,6 +9902,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
     global last_tire_temp_f, last_tire_temp_r
     global last_brake_temp_f, last_brake_temp_r, last_telemetry_presence
     global last_motor_power_kw, last_motor_torque_nm, last_ev_range_m
+    global last_trip_m, last_odometer_m, last_lifetime_m
     global \
         last_signal_left_input, \
         last_signal_right_input, \
@@ -10069,15 +10156,31 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
             unpacked = None
             # Every pre-v5 layout predates the engine-temperature presence bit; see
             # TELEMETRY_HAS_ENGINE_TEMP.
-            ext_pre_v5 = len(data) != EXT_SIZE
+            ext_pre_v5 = len(data) not in (EXT_SIZE, EXT_SIZE_V5)
             if protocol_mode == "extended" and len(data) == EXT_SIZE:
                 try:
                     unpacked = struct.unpack(EXT_FORMAT, data)
                 except Exception:
                     continue
+            elif protocol_mode == "extended" and len(data) == EXT_SIZE_V5:
+                try:
+                    unpacked = struct.unpack(EXT_FORMAT_V5, data) + EXT_V5_DISTANCE_DEFAULTS
+                except Exception:
+                    continue
+                if not _ext_version_warned:
+                    _ext_version_warned = True
+                    logger.warning(
+                        f"Extended telemetry packet is {EXT_SIZE_V5} bytes, expected "
+                        f"{EXT_SIZE}. The Lua mod in bng_mod/ is older than this build; "
+                        "trip distance and odometer will be unavailable."
+                    )
             elif protocol_mode == "extended" and len(data) == EXT_SIZE_V4:
                 try:
-                    unpacked = struct.unpack(EXT_FORMAT_V4, data) + EXT_V4_ELECTRIC_DEFAULTS
+                    unpacked = (
+                        struct.unpack(EXT_FORMAT_V4, data)
+                        + EXT_V4_ELECTRIC_DEFAULTS
+                        + EXT_V5_DISTANCE_DEFAULTS
+                    )
                 except Exception:
                     continue
                 if not _ext_version_warned:
@@ -10093,6 +10196,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         struct.unpack(EXT_FORMAT_V3, data)
                         + EXT_V3_SLIP_DEFAULTS
                         + EXT_V4_ELECTRIC_DEFAULTS
+                        + EXT_V5_DISTANCE_DEFAULTS
                     )
                 except Exception:
                     continue
@@ -10110,6 +10214,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         + EXT_V2_WHEEL_DEFAULTS
                         + EXT_V3_SLIP_DEFAULTS
                         + EXT_V4_ELECTRIC_DEFAULTS
+                        + EXT_V5_DISTANCE_DEFAULTS
                     )
                 except Exception:
                     continue
@@ -10129,6 +10234,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         + EXT_V2_WHEEL_DEFAULTS
                         + EXT_V3_SLIP_DEFAULTS
                         + EXT_V4_ELECTRIC_DEFAULTS
+                        + EXT_V5_DISTANCE_DEFAULTS
                     )
                 except Exception:
                     continue
@@ -10219,10 +10325,13 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                     last_motor_power_kw, last_motor_torque_nm, last_ev_range_m = (
                         unpacked[59:62]
                     )
+                    last_trip_m, last_odometer_m, last_lifetime_m = unpacked[62:65]
                     if ext_pre_v5:
                         telemetry_presence = (
                             int(telemetry_presence) | TELEMETRY_HAS_ENGINE_TEMP
                         )
+                    if len(data) != EXT_SIZE and (air_pressure_max > 0 or air_pressure > 0):
+                        telemetry_presence = int(telemetry_presence) | TELEMETRY_HAS_AIR
                     last_oil_pressure, last_air_pressure, last_air_pressure_max = (
                         oil_pressure,
                         air_pressure,

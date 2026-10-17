@@ -403,7 +403,11 @@ try:
     beamtel.marked_coord_x = 1.0
     beamtel.protocol_mode = "extended"
     beamtel.last_protocol_flags = beamtel.OG_TURBO
-    beamtel.last_air_pressure_max = 10.0
+    # The air system is gated on the tank existing, so an EMPTY tank must still show it.
+    beamtel.last_air_pressure = 0.0
+    beamtel.last_telemetry_presence = (
+        int(beamtel.last_telemetry_presence) | beamtel.TELEMETRY_HAS_AIR
+    )
     beamtel._last_telemetry_ts = time.time()
     shown = {row["label"] for row in real_functions if row["isAvailable"]()}
     check(

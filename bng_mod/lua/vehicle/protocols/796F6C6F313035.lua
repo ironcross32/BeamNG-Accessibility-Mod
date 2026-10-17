@@ -1047,6 +1047,30 @@ end
 local PRESENCE_CLUTCH_TEMP = 64
 local PRESENCE_ENGINE_TEMP = 128
 local PRESENCE_ELECTRIC    = 256
+local PRESENCE_AIR         = 512
+
+-- The vehicle's air tank: the primary-supply pressureTank storage, else the first one.
+-- Cached once energyStorage has anything in it (until then it is asked again next tick),
+-- and cleared by reset() with the other per-part caches.
+local _airTank = nil
+local _airTankResolved = false
+local function findAirTank()
+  if _airTankResolved then return _airTank end
+  local storages = energyStorage and energyStorage.getStorages and energyStorage.getStorages()
+  if not storages or not next(storages) then return nil end
+  _airTankResolved = true
+  for _, s in pairs(storages) do
+    if s.type == "pressureTank" and s.pressureElectricName then
+      if s.isPrimarySupply then
+        _airTank = s
+        break
+      elseif not _airTank then
+        _airTank = s
+      end
+    end
+  end
+  return _airTank
+end
 
 -- Electric drive. BeamNG has no thermal model for an electric drivetrain: watertemp and
 -- oiltemp sit at 0 on an EV (which reads as 32 F), the motors carry no temperature, and
@@ -1075,6 +1099,51 @@ local _evPowerW = 0.0
 local _evTorque = 0.0
 local _evEnergyJ = 0.0      -- distance-decayed energy drawn (regen subtracts)
 local _evDistM = 0.0        -- distance-decayed distance covered
+
+-- Lifetime distance in this vehicle model: the game's own statistic
+-- "vehicle/odometer/<model>.length", which lives in the GE VM (gameplay_statistic) and
+-- persists across sessions. The vehicle VM feeds it from extensions/odometer.lua, but only
+-- every 30 s and only while the player drives (ai.mode "disabled").
+--
+-- Each refresh flushes that pending distance with submitStatistic() -- its metricAdd is a
+-- queueGameEngineLua -- and then queues the read, which the FIFO runs after the add. The
+-- reply carries back the relative odometer at the moment of the request, so between replies
+-- the figure is that stat plus what has been driven since: live, with no double count.
+-- If AI drives, submitStatistic skips and the next refresh drops back by at most one
+-- interval of AI driving, which the game itself never counts.
+--
+-- The reply lands in the global beamtelLifetimeOdo = {stat, rel0}; this is not an
+-- extension, so a global is the only name the GE VM can address.
+local LIFETIME_REFRESH_S = 10.0
+local _lifeClock = LIFETIME_REFRESH_S  -- first request on the first tick
+local _lifeModel = nil
+
+local function updateLifetimeDistance(dt)
+  local odo = extensions.odometer
+  if not odo or not odo.getRelativeRecording then return -1 end
+  local rel = odo.getRelativeRecording() or 0
+  _lifeClock = _lifeClock + (dt or 0)
+  if _lifeClock >= LIFETIME_REFRESH_S then
+    _lifeClock = 0
+    if not _lifeModel then
+      _lifeModel = (v and v.vehicleDirectory or ""):match("/vehicles/([^/]+)") or ""
+    end
+    -- A model name is a directory name; anything that could break the chunk is skipped.
+    if _lifeModel ~= "" and not _lifeModel:find("[^%w_%-]") then
+      odo.submitStatistic()
+      obj:queueGameEngineLua(
+        "local s = gameplay_statistic "
+        .. "local e = s and s.metricGet('vehicle/odometer/" .. _lifeModel .. ".length') "
+        .. "local veh = be:getObjectByID(" .. tostring(obj:getID()) .. ") "
+        .. "if veh then veh:queueLuaCommand('beamtelLifetimeOdo = {' .. "
+        .. "(s and tostring(e and e.value or 0) or '-1') .. ',' .. '" .. tostring(rel) .. "' .. '}') end"
+      )
+    end
+  end
+  local reply = rawget(_G, "beamtelLifetimeOdo")
+  if type(reply) ~= "table" or type(reply[1]) ~= "number" or reply[1] < 0 then return -1 end
+  return reply[1] + math.max(0, rel - (reply[2] or rel))
+end
 
 local function scanElectricDrive()
   _evScanned = true
@@ -1184,6 +1253,11 @@ local function reset()
   _implLift = 0.0
   _implActivity = 0.0
   _implArticDeg = 0.0
+  -- ...or an air tank.
+  _airTank = nil
+  _airTankResolved = false
+  _airPressureKey = nil
+  _airKeySearched = false
   -- A part swap can add or remove a motor or the engine itself.
   _evScanned = false
   _evPowerW = 0.0
@@ -1284,7 +1358,8 @@ local function getStructDefinition()
     unsigned       telemetryPresence;     // FL=1, FR=2, RL=4, RR=8, F=16, R=32,
                                           // clutch temperature valid=64,
                                           // engine/oil temperature valid=128,
-                                          // electric drive fields valid=256
+                                          // electric drive fields valid=256,
+                                          // air system present=512
 
     // --- Raw wheel extremes for slip detection (appended; -1 = no wheels) ---
     float          wheelSpeedMaxDriven;   // m/s, fastest PROPULSED wheel, unfiltered
@@ -1294,6 +1369,11 @@ local function getStructDefinition()
     float          motorPower;            // kW summed over electric motors, - = regen
     float          motorTorque;           // Nm summed over electric motors, - = regen
     float          remainingRange;        // m at the recent average consumption (-1 unknown)
+
+    // --- Distance (appended; -1 = unknown) ---
+    float          tripDistance;          // m since this vehicle spawned (electrics.values.trip)
+    float          odometer;              // m including the vehicle's stored mileage
+    float          lifetimeDistance;      // m driven in this MODEL across sessions (game stat)
   ]]
 end
 
@@ -1403,32 +1483,28 @@ local function fillStruct(o, dtSim)
       o.actualSteering = 0
   end
   
+  -- Air system. A pressure tank is an ENERGY STORAGE (energyStorage/pressureTank.lua), not a
+  -- controller: controller.getControllersByType("pressureTank") is empty on every vehicle,
+  -- which is why the maximum used to read 0 on the T-Series and only the electrics scan
+  -- below ever found a pressure.
   local currentPa = 0
   local maxPa = 0
-  local primaryTankName = nil
-  local tanks = controller.getControllersByType("pressureTank")
-  if tanks then
-    for _, tank in pairs(tanks) do
-      if tank.storage and tank.storage.isPrimarySupply then
-        primaryTankName = tank.storage.name
-        maxPa = tank.storage.maxWorkingPressure or 0
-        break
-      end
-    end
-    if primaryTankName then
-      local electrics_key = primaryTankName .. "_pressureRelative"
-      currentPa = electrics.values[electrics_key] or 0
-    end
+  local airTank = findAirTank()
+  if airTank then
+    currentPa = electrics.values[airTank.pressureElectricName] or 0
+    -- maxWorkingPressure is absolute and the electric is relative to the atmosphere.
+    maxPa = math.max(0, (airTank.maxWorkingPressure or 0) - (powertrain.currentEnvPressure or 101325))
   end
 
-  -- Fallback for vehicles without a pressureTank controller (e.g. T-Series):
-  -- scan electrics.values once, prefer keys that contain "tank", cache the result.
-  if currentPa == 0 and not _airKeySearched then
+  -- Fallback for a vehicle whose electrics carry a tank pressure with no storage behind it:
+  -- scan electrics.values once, prefer keys that contain "tank", cache the result. The value
+  -- is not required to be above zero, or a system spawned drained would never be found.
+  if not airTank and not _airKeySearched then
     if next(electrics.values) then          -- wait until electrics is populated
       _airKeySearched = true
       for k, v in pairs(electrics.values) do
         if type(k) == "string" and k:match("_pressureRelative$")
-            and type(v) == "number" and v > 0 then
+            and type(v) == "number" then
           if k:lower():find("tank") then
             _airPressureKey = k
             break                           -- "tank" key is best, stop immediately
@@ -1439,9 +1515,12 @@ local function fillStruct(o, dtSim)
       end
     end
   end
-  if currentPa == 0 and _airPressureKey then
+  if not airTank and _airPressureKey then
     currentPa = electrics.values[_airPressureKey] or 0
   end
+  -- Whether the vehicle HAS an air system, independent of the reading: Python gates the
+  -- status row on this so an empty tank still reads "0 psi" instead of vanishing.
+  local hasAirSystem = airTank ~= nil or _airPressureKey ~= nil
 
   o.airPressure    = math.max(0, currentPa / 6894.76)  -- PSI, non-negative
   o.airPressureMax = maxPa / 6894.76                    -- PSI (0 = unknown)
@@ -1480,6 +1559,9 @@ local function fillStruct(o, dtSim)
   end
   if _hasCombustion then
     telemetryPresence = bit.bor(telemetryPresence, PRESENCE_ENGINE_TEMP)
+  end
+  if hasAirSystem then
+    telemetryPresence = bit.bor(telemetryPresence, PRESENCE_AIR)
   end
   if wheels and wheels.wheels then
     for _, wd in pairs(wheels.wheels) do
@@ -1537,6 +1619,14 @@ local function fillStruct(o, dtSim)
   -- A machine with no propulsed wheel (pushed, towed) still gets a spin figure.
   o.wheelSpeedMaxDriven = maxDriven >= 0 and maxDriven or maxAny
   o.wheelSpeedMin = minAny
+
+  -- The game's own trip meter (partCondition, fed by extensions/odometer.lua): wheelspeed
+  -- integrated since the vehicle spawned, kept across resets. odometer adds the root part's
+  -- stored mileage, which is nonzero only on a vehicle that carries one (career).
+  o.tripDistance = tonumber(electrics.values.trip) or -1
+  o.odometer     = tonumber(electrics.values.odometer) or -1
+  local lifeOk, life = pcall(updateLifetimeDistance, dtSim)
+  o.lifetimeDistance = (lifeOk and life) or -1
 
   o.signal_left_input  = electrics.values.signal_left_input or 0
   o.signal_right_input = electrics.values.signal_right_input or 0
