@@ -41,3 +41,6 @@ configurator.onefile-build/
 # Third-party BeamNG mods (not part of this project)
 boxutility/
 log_trailer/
+
+# Claude Code local settings and permissions
+.claude/
