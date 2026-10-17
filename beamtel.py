@@ -636,12 +636,21 @@ EXT_FORMAT_V3 = "<H4sBx9fII42fI"
 EXT_SIZE_V3 = struct.calcsize(EXT_FORMAT_V3)
 
 # v4 appends the raw fastest-driven and slowest wheel speeds for the slip detector.
-EXT_FORMAT = "<H4sBx9fII42fI2f"
+EXT_FORMAT_V4 = "<H4sBx9fII42fI2f"
+EXT_SIZE_V4 = struct.calcsize(EXT_FORMAT_V4)
+
+# v5 appends electric drive power (kW), torque (Nm) and remaining range (m), and the
+# presence mask gains the engine-temperature and electric-drive bits.
+EXT_FORMAT = "<H4sBx9fII42fI5f"
 EXT_SIZE = struct.calcsize(EXT_FORMAT)
 
 # What a pre-v4 packet implies for the two wheel-extreme floats: -1 = not sent, which
 # drops the slip detector onto its legacy rule (see wheel_slip.py).
 EXT_V3_SLIP_DEFAULTS = (-1.0, -1.0)
+
+# What a pre-v5 packet implies for the electric drive floats. The presence bit, not these
+# values, is what hides the rows; -1 range is "unknown" for anything that reads it raw.
+EXT_V4_ELECTRIC_DEFAULTS = (0.0, 0.0, -1.0)
 
 # Values a v1 packet implies for the eight implement floats. Mirrors the sentinels in
 # 796F6C6F313035.lua: flags 0 = nothing valid, -1 = no ground reading.
@@ -654,6 +663,11 @@ WHEEL_POS_RR = 1 << 3
 WHEEL_POS_F = 1 << 4
 WHEEL_POS_R = 1 << 5
 TELEMETRY_HAS_CLUTCH = 1 << 6
+# Engine/oil temperature is real only with a combustion engine: an EV reports 0 C for both,
+# which used to be read out as 32 F. A pre-v5 mod never sets this bit, so the decoder sets
+# it for those packets and they keep their old always-present behaviour.
+TELEMETRY_HAS_ENGINE_TEMP = 1 << 7
+TELEMETRY_HAS_ELECTRIC = 1 << 8
 WHEEL_POS_CORNERS = WHEEL_POS_FL | WHEEL_POS_FR | WHEEL_POS_RL | WHEEL_POS_RR
 
 # A v2 mod cannot tell Python which wheel names were present. Preserve its historical
@@ -3903,6 +3917,42 @@ def fmt_distance(metres: float):
     return round(float(metres) * FEET_PER_M, 1), "feet"
 
 
+HP_PER_KW = 1.341022090
+LBFT_PER_NM = 0.737562149
+MILES_PER_M = 0.000621371192
+
+
+def fmt_power_kw(kw: float):
+    if UNITS_MODE == "metric":
+        return int(round(kw)), "kilowatts"
+    return int(round(kw * HP_PER_KW)), "horsepower"
+
+
+def fmt_torque_nm(nm: float):
+    if UNITS_MODE == "metric":
+        return int(round(nm)), "newton meters"
+    return int(round(nm * LBFT_PER_NM)), "pound feet"
+
+
+def fmt_range(metres: float):
+    if UNITS_MODE == "metric":
+        return int(round(metres / 1000.0)), "kilometers"
+    return int(round(metres * MILES_PER_M)), "miles"
+
+
+def has_engine_temp() -> bool:
+    """OutGauge has no presence mask, so it keeps reading the temperatures as before."""
+    return protocol_mode != "extended" or bool(
+        int(last_telemetry_presence) & TELEMETRY_HAS_ENGINE_TEMP
+    )
+
+
+def has_electric_drive() -> bool:
+    return protocol_mode == "extended" and bool(
+        int(last_telemetry_presence) & TELEMETRY_HAS_ELECTRIC
+    )
+
+
 def fmt_heading():
     return f"{last_heading:.1f} degrees"
 
@@ -4026,6 +4076,9 @@ last_turbo = 0.0
 last_protocol_flags = 0
 last_engtemp = 0.0
 last_oiltemp = 0.0
+last_motor_power_kw = 0.0
+last_motor_torque_nm = 0.0
+last_ev_range_m = -1.0
 last_throttle = 0.0
 last_brake = 0.0
 last_clutch = 0.0
@@ -4354,8 +4407,17 @@ def _mcp_snapshot_state(sections=None):
                 "gear": last_gear_str,
                 "fuel": last_fuel,
                 "turbo": last_turbo,
-                "engine_temp": last_engtemp,
-                "oil_temp": last_oiltemp,
+                "engine_temp": last_engtemp if has_engine_temp() else None,
+                "oil_temp": last_oiltemp if has_engine_temp() else None,
+                "electric": (
+                    {
+                        "motor_power_kw": last_motor_power_kw,
+                        "motor_torque_nm": last_motor_torque_nm,
+                        "range_m": last_ev_range_m if last_ev_range_m >= 0 else None,
+                    }
+                    if has_electric_drive()
+                    else None
+                ),
                 "oil_pressure": last_oil_pressure,
                 "throttle": last_throttle,
                 "brake": last_brake,
@@ -5066,20 +5128,47 @@ STATUS_METRICS = [
         ),
         "isAvailable": lambda: True,
     },
+    # electrics.values.fuel is every energy storage combined, so on a pure EV it is the
+    # battery charge. A hybrid keeps "Fuel", since there it mixes tank and battery.
     {
         "label": "Fuel",
         "getValue": lambda: (f"{int(round(last_fuel * 100))}", "percent"),
-        "isAvailable": lambda: True,
+        "isAvailable": lambda: has_engine_temp() or not has_electric_drive(),
+    },
+    {
+        "label": "Battery",
+        "getValue": lambda: (f"{int(round(last_fuel * 100))}", "percent"),
+        "isAvailable": lambda: has_electric_drive() and not has_engine_temp(),
+    },
+    # Availability must not follow the reading: rows are addressed by index, so a row that
+    # vanished whenever the car stopped would shift every row below it under the cursor,
+    # and the repeat button would read a different metric. Unknown is spoken instead.
+    {
+        "label": "Range",
+        "getValue": lambda: (
+            fmt_range(last_ev_range_m) if last_ev_range_m >= 0 else ("unknown", "")
+        ),
+        "isAvailable": has_electric_drive,
+    },
+    {
+        "label": "Motor Power",
+        "getValue": lambda: fmt_power_kw(last_motor_power_kw),
+        "isAvailable": has_electric_drive,
+    },
+    {
+        "label": "Motor Torque",
+        "getValue": lambda: fmt_torque_nm(last_motor_torque_nm),
+        "isAvailable": has_electric_drive,
     },
     {
         "label": "Engine Temperature",
         "getValue": lambda: fmt_temp_c_or_f(last_engtemp),
-        "isAvailable": lambda: True,
+        "isAvailable": has_engine_temp,
     },
     {
         "label": "Oil Temperature",
         "getValue": lambda: fmt_temp_c_or_f(last_oiltemp),
-        "isAvailable": lambda: True,
+        "isAvailable": has_engine_temp,
     },
     {
         "label": "Clutch Temperature",
@@ -7571,6 +7660,7 @@ def _on_next_key_press(event, audio_controller):
         turbo_val, turbo_unit = fmt_turbo(last_turbo)
         etemp_val, etemp_unit = fmt_temp_c_or_f(last_engtemp)
         otemp_val, otemp_unit = fmt_temp_c_or_f(last_oiltemp)
+        engine_temp_snap = has_engine_temp()
         gear_phrase = (
             gear_to_phrase(last_gear_byte if last_gear_byte is not None else 1)
             if protocol_mode == "outgauge"
@@ -8275,7 +8365,10 @@ def _on_next_key_press(event, audio_controller):
 
         threading.Thread(target=_do_dump, daemon=True).start()
     elif name in ("e", "engtemp") and not _capture_mods["shift"]:
-        say(f"Engine temperature {etemp_val} {etemp_unit}")
+        if engine_temp_snap:
+            say(f"Engine temperature {etemp_val} {etemp_unit}")
+        else:
+            say("No engine temperature")
     elif name == "m" and not (
         _capture_mods["ctrl"] or _capture_mods["shift"] or _capture_mods["alt"]
     ):
@@ -9722,6 +9815,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
     global last_tire_pressure_f, last_tire_pressure_r
     global last_tire_temp_f, last_tire_temp_r
     global last_brake_temp_f, last_brake_temp_r, last_telemetry_presence
+    global last_motor_power_kw, last_motor_torque_nm, last_ev_range_m
     global \
         last_signal_left_input, \
         last_signal_right_input, \
@@ -9973,14 +10067,33 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                 continue
 
             unpacked = None
+            # Every pre-v5 layout predates the engine-temperature presence bit; see
+            # TELEMETRY_HAS_ENGINE_TEMP.
+            ext_pre_v5 = len(data) != EXT_SIZE
             if protocol_mode == "extended" and len(data) == EXT_SIZE:
                 try:
                     unpacked = struct.unpack(EXT_FORMAT, data)
                 except Exception:
                     continue
+            elif protocol_mode == "extended" and len(data) == EXT_SIZE_V4:
+                try:
+                    unpacked = struct.unpack(EXT_FORMAT_V4, data) + EXT_V4_ELECTRIC_DEFAULTS
+                except Exception:
+                    continue
+                if not _ext_version_warned:
+                    _ext_version_warned = True
+                    logger.warning(
+                        f"Extended telemetry packet is {EXT_SIZE_V4} bytes, expected "
+                        f"{EXT_SIZE}. The Lua mod in bng_mod/ is older than this build; "
+                        "electric vehicle readouts will be unavailable."
+                    )
             elif protocol_mode == "extended" and len(data) == EXT_SIZE_V3:
                 try:
-                    unpacked = struct.unpack(EXT_FORMAT_V3, data) + EXT_V3_SLIP_DEFAULTS
+                    unpacked = (
+                        struct.unpack(EXT_FORMAT_V3, data)
+                        + EXT_V3_SLIP_DEFAULTS
+                        + EXT_V4_ELECTRIC_DEFAULTS
+                    )
                 except Exception:
                     continue
                 if not _ext_version_warned:
@@ -9996,6 +10109,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         struct.unpack(EXT_FORMAT_V2, data)
                         + EXT_V2_WHEEL_DEFAULTS
                         + EXT_V3_SLIP_DEFAULTS
+                        + EXT_V4_ELECTRIC_DEFAULTS
                     )
                 except Exception:
                     continue
@@ -10014,6 +10128,7 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         EXT_V1_IMPLEMENT_DEFAULTS
                         + EXT_V2_WHEEL_DEFAULTS
                         + EXT_V3_SLIP_DEFAULTS
+                        + EXT_V4_ELECTRIC_DEFAULTS
                     )
                 except Exception:
                     continue
@@ -10101,6 +10216,13 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         telemetry_presence,
                     ) = unpacked[50:57]
                     last_wheel_max_driven, last_wheel_min = unpacked[57:59]
+                    last_motor_power_kw, last_motor_torque_nm, last_ev_range_m = (
+                        unpacked[59:62]
+                    )
+                    if ext_pre_v5:
+                        telemetry_presence = (
+                            int(telemetry_presence) | TELEMETRY_HAS_ENGINE_TEMP
+                        )
                     last_oil_pressure, last_air_pressure, last_air_pressure_max = (
                         oil_pressure,
                         air_pressure,

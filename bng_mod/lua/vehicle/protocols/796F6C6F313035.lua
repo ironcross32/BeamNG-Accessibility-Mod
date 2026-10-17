@@ -1044,6 +1044,94 @@ local function tryCouplerHookWrap()
   _couplerHooksWrapped = true
 end
 
+local PRESENCE_CLUTCH_TEMP = 64
+local PRESENCE_ENGINE_TEMP = 128
+local PRESENCE_ELECTRIC    = 256
+
+-- Electric drive. BeamNG has no thermal model for an electric drivetrain: watertemp and
+-- oiltemp sit at 0 on an EV (which reads as 32 F), the motors carry no temperature, and
+-- the battery has only charge. So the engine temperature rows are gated on a combustion
+-- engine existing, and an EV gets the figures the stock electricMotorData gauge derives:
+-- motor power and torque (negative under regen) and range at the recent consumption.
+-- Power is smoothed with a time constant rather than a per-call window, so it does not
+-- depend on the protocol's update rate.
+--
+-- Range is NOT the stock gauge's formula. That one time-averages power / speed, and under
+-- regen braking the speed in the denominator falls toward zero while the power is large and
+-- negative: each sample becomes a huge negative number, the average is dragged through
+-- zero, and energy / average read 25903 miles from the seat. Here consumption is a ratio of
+-- integrals instead -- energy spent over distance covered -- both decayed by distance
+-- travelled, so the window is the last few kilometres of driving and a hard stop (little
+-- distance) moves it very little. Below EV_RANGE_MIN_DIST_M of history, or with net regen
+-- over the window (a long descent), the range is unknown (-1) rather than invented.
+local EV_POWER_TAU_S       = 0.5
+local EV_RANGE_HORIZON_M   = 5000
+local EV_RANGE_MIN_DIST_M  = 200
+local _evScanned = false
+local _evMotors = nil       -- electricMotor devices, nil when there are none
+local _evStorages = nil     -- unique energy storage names those motors draw from
+local _hasCombustion = false
+local _evPowerW = 0.0
+local _evTorque = 0.0
+local _evEnergyJ = 0.0      -- distance-decayed energy drawn (regen subtracts)
+local _evDistM = 0.0        -- distance-decayed distance covered
+
+local function scanElectricDrive()
+  _evScanned = true
+  _evMotors, _evStorages = nil, nil
+  _hasCombustion = #powertrain.getDevicesByType("combustionEngine") > 0
+  local motors = powertrain.getDevicesByType("electricMotor")
+  if #motors == 0 then return end
+  _evMotors = motors
+  local seen, names = {}, {}
+  for _, m in ipairs(motors) do
+    for _, name in pairs(m.registeredEnergyStorages or {}) do
+      if not seen[name] then
+        seen[name] = true
+        names[#names + 1] = name
+      end
+    end
+  end
+  _evStorages = names
+end
+
+local function updateElectricDrive(o, dt)
+  if not _evScanned then scanElectricDrive() end
+  if not _evMotors then
+    o.motorPower, o.motorTorque, o.remainingRange = 0, 0, -1
+    return false
+  end
+  local power, torque = 0, 0
+  for _, m in ipairs(_evMotors) do
+    local t = m.outputTorque1 or 0
+    power = power + t * (m.outputAV1 or 0)
+    torque = torque + t
+  end
+  dt = (dt and dt > 0) and dt or (1 / 60)
+  local a = math.min(1, dt / EV_POWER_TAU_S)
+  _evPowerW = _evPowerW + (power - _evPowerW) * a
+  _evTorque = _evTorque + (torque - _evTorque) * a
+
+  -- Raw power, not the smoothed figure: the integral is its own smoothing.
+  local ds = math.abs(electrics.values.wheelspeed or 0) * dt
+  local keep = 1 - math.min(1, ds / EV_RANGE_HORIZON_M)
+  _evEnergyJ = _evEnergyJ * keep + power * dt
+  _evDistM = _evDistM * keep + ds
+  local range = -1
+  if _evDistM >= EV_RANGE_MIN_DIST_M and _evEnergyJ > 0 and _evStorages then
+    local energy = 0
+    for _, name in ipairs(_evStorages) do
+      local s = energyStorage.getStorage(name)
+      energy = energy + ((s and s.storedEnergy) or 0)
+    end
+    range = energy * _evDistM / _evEnergyJ
+  end
+  o.motorPower = _evPowerW * 0.001
+  o.motorTorque = _evTorque
+  o.remainingRange = range
+  return true
+end
+
 local function init()
   local shiftLightControllers = controller.getControllersByType("shiftLights")
   hasShiftLights = shiftLightControllers and #shiftLightControllers > 0
@@ -1096,6 +1184,12 @@ local function reset()
   _implLift = 0.0
   _implActivity = 0.0
   _implArticDeg = 0.0
+  -- A part swap can add or remove a motor or the engine itself.
+  _evScanned = false
+  _evPowerW = 0.0
+  _evTorque = 0.0
+  _evEnergyJ = 0.0
+  _evDistM = 0.0
 end
 local function getAddress()        return "127.0.0.1" end
 local function getPort()           return "4444" end
@@ -1188,11 +1282,18 @@ local function getStructDefinition()
     float          braketemp_F;
     float          braketemp_R;
     unsigned       telemetryPresence;     // FL=1, FR=2, RL=4, RR=8, F=16, R=32,
-                                          // clutch temperature valid=64
+                                          // clutch temperature valid=64,
+                                          // engine/oil temperature valid=128,
+                                          // electric drive fields valid=256
 
     // --- Raw wheel extremes for slip detection (appended; -1 = no wheels) ---
     float          wheelSpeedMaxDriven;   // m/s, fastest PROPULSED wheel, unfiltered
     float          wheelSpeedMin;         // m/s, slowest wheel of any kind, unfiltered
+
+    // --- Electric drive (appended; meaningful only with presence bit 256) ---
+    float          motorPower;            // kW summed over electric motors, - = regen
+    float          motorTorque;           // Nm summed over electric motors, - = regen
+    float          remainingRange;        // m at the recent average consumption (-1 unknown)
   ]]
 end
 
@@ -1368,7 +1469,18 @@ local function fillStruct(o, dtSim)
   local pressures = {}
   local tireTemps = {}
   local brakeTemps = {}
-  local telemetryPresence = clutchTemperature ~= nil and 64 or 0
+  local telemetryPresence = clutchTemperature ~= nil and PRESENCE_CLUTCH_TEMP or 0
+  -- pcall for the same reason as the implement block: a throw here is on the physics
+  -- thread and would take the whole protocol down rather than just the EV rows.
+  local evOk, evValid = pcall(updateElectricDrive, o, dtSim)
+  if evOk and evValid then
+    telemetryPresence = bit.bor(telemetryPresence, PRESENCE_ELECTRIC)
+  elseif not evOk then
+    o.motorPower, o.motorTorque, o.remainingRange = 0, 0, -1
+  end
+  if _hasCombustion then
+    telemetryPresence = bit.bor(telemetryPresence, PRESENCE_ENGINE_TEMP)
+  end
   if wheels and wheels.wheels then
     for _, wd in pairs(wheels.wheels) do
       local pressurePa = 0
