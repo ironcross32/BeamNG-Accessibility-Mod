@@ -63,6 +63,13 @@ local MIN_NODES   = 4      -- below this a vehicle has no meaningful shape
 -- pallet) from being whittled away by its own legitimate spacing.
 local OUTLIER_GAP_M  = 0.5   -- empty span along an axis that marks separated geometry
 local TRIM_MAX_FRAC  = 0.15  -- most of the nodes that may be cut from either end
+-- Detached parts are dropped before any of the above runs: a node counts as part of the
+-- vehicle only while unbroken beams still connect it to the reference node. The gap trim alone
+-- could not do this -- it cuts at the FIRST gap from each end, so debris in several pieces
+-- lost only its outermost piece. If the piece still holding the reference node is smaller than
+-- this share of the whole, it is the reference node that has come off, not the body, and the
+-- filter stands down rather than describe the vehicle as that fragment.
+local MIN_ATTACHED_FRAC = 0.5
 
 -- Beyond this the oriented box is used (one closed-form point, no node queries); inside it
 -- the hull cids are queried live. Same box/cloud split implementProximity.lua already argues
@@ -108,29 +115,96 @@ local function vgLog(level, msg) log(level, 'vehicleGeometry', msg) end
 local VEH_SCRIPT = [[
 local ok, err = pcall(function()
   if not (v.data and v.data.nodes) then return end
+  -- The break watcher asks GE for a fresh resolve after a crash. See beamtelGeometryWatch.lua.
+  if not extensions.isExtensionLoaded("beamtelGeometryWatch") then
+    extensions.load("beamtelGeometryWatch")
+  end
   local fwd = vec3(obj:getDirectionVector())
   local up  = vec3(obj:getDirectionVectorUp())
   local rgt = up:cross(fwd)
 
+  -- Which nodes are still part of the vehicle. A part that breaks off stays in the same object,
+  -- and the only thing that says it has come off is that every beam holding it on is broken.
+  -- So walk the unbroken beams out from the reference node: what that reaches is the vehicle,
+  -- dangling-but-attached parts included, and what it does not reach is debris.
+  --
+  -- Two rules keep an intact vehicle byte-identical to the unfiltered result:
+  --   * nothing is computed at all unless some beam is broken, and
+  --   * a node is dropped only if the INTACT beam graph reaches it and the live one no longer
+  --     does. Anything held on by something other than a beam (a slidenode on its rail) is
+  --     unreachable either way and is always kept.
+  local dropped, nDropped = nil, 0
+  local refs = v.data.refNodes and v.data.refNodes[0]
+  local refCid = refs and refs.ref
+  if refCid and v.data.beams then
+    local anyBroken = false
+    for _, b in pairs(v.data.beams) do
+      if b.cid and obj:beamIsBroken(b.cid) then anyBroken = true; break end
+    end
+    if anyBroken then
+      local adjAll, adjLive = {}, {}
+      local function link(adj, a, c)
+        local la = adj[a]
+        if not la then la = {}; adj[a] = la end
+        la[#la + 1] = c
+        local lc = adj[c]
+        if not lc then lc = {}; adj[c] = lc end
+        lc[#lc + 1] = a
+      end
+      for _, b in pairs(v.data.beams) do
+        if b.cid and b.id1 and b.id2 then
+          link(adjAll, b.id1, b.id2)
+          if not obj:beamIsBroken(b.cid) then link(adjLive, b.id1, b.id2) end
+        end
+      end
+      local function reach(adj)
+        local seen, queue, head = {}, {refCid}, 1
+        seen[refCid] = true
+        while head <= #queue do
+          local here = queue[head]
+          head = head + 1
+          local nbrs = adj[here]
+          if nbrs then
+            for i = 1, #nbrs do
+              local m = nbrs[i]
+              if not seen[m] then seen[m] = true; queue[#queue + 1] = m end
+            end
+          end
+        end
+        return seen, #queue
+      end
+      local all, nAll = reach(adjAll)
+      local live, nLive = reach(adjLive)
+      if nLive >= nAll * ]] .. MIN_ATTACHED_FRAC .. [[ then
+        dropped = {}
+        for cid in pairs(all) do
+          if not live[cid] then dropped[cid] = true; nDropped = nDropped + 1 end
+        end
+      end
+    end
+  end
+
   local cids, fs, rs, us = {}, {}, {}, {}
   local n = 0
   for _, nd in pairs(v.data.nodes) do
-    local lp = vec3(obj:getNodePosition(nd.cid))
-    n = n + 1
-    cids[n], fs[n], rs[n], us[n] = nd.cid, fwd:dot(lp), rgt:dot(lp), up:dot(lp)
+    if not (dropped and dropped[nd.cid]) then
+      local lp = vec3(obj:getNodePosition(nd.cid))
+      n = n + 1
+      cids[n], fs[n], rs[n], us[n] = nd.cid, fwd:dot(lp), rgt:dot(lp), up:dot(lp)
+    end
   end
   if n < ]] .. MIN_NODES .. [[ then return end
 
-  -- Extents are a trimmed range, not the absolute min and max, and that matters more than
-  -- it looks. When a part breaks off a vehicle its nodes stay in the SAME object, so a
-  -- bumper lying three metres away would stretch the raw min/max across both -- giving a box
-  -- that spans the empty air between them and reports solid surface where there is none.
-  -- It also wrecks the normalisation below: with one node at 3.4 m and the body inside
-  -- 0.9 m, every real body node collapses into a narrow slice of the 0-1 range and the hull
-  -- and band classification stops distinguishing anything. Trimming the tails describes the
-  -- BODY; the debris is still picked up as a hull node (it normalises outside 0-1, so it
-  -- trips the face test) and remains visible to the node tier, which is the tier that exists
-  -- to see it.
+  -- Extents are a trimmed range, not the absolute min and max. Detached parts are already
+  -- gone by this point (see above), so what this still guards against is ATTACHED geometry
+  -- standing well clear of the body -- a part hanging off by its last beam, a raised boom --
+  -- which would otherwise stretch the box across empty air and report solid surface where
+  -- there is none. It would also wreck the normalisation below: with one node at 3.4 m and
+  -- the body inside 0.9 m, every real body node collapses into a narrow slice of the 0-1 range
+  -- and the hull and band classification stops distinguishing anything. Trimming the tails
+  -- describes the BODY; the outlier is still picked up as a hull node (it normalises outside
+  -- 0-1, so it trips the face test) and remains visible to the node tier, which is the tier
+  -- that exists to see it.
   local function trimmed(t)
     local s = {}
     for i = 1, n do s[i] = t[i] end
@@ -197,7 +271,7 @@ local ok, err = pcall(function()
     .. obj:getID() .. "," .. %d
     .. ",'" .. ext .. "','" .. table.concat(hull, ",") .. "','"
     .. table.concat(front, ",") .. "','" .. table.concat(rear, ",") .. "','"
-    .. table.concat(hist, ",") .. "') end")
+    .. table.concat(hist, ",") .. "'," .. nDropped .. ") end")
 end)
 if not ok then
   obj:queueGameEngineLua("log('E','vehicleGeometry','vehicle-side resolve failed: "
@@ -217,7 +291,8 @@ end
 -- Called back from the vehicle VM. Stale replies are dropped on the epoch, not on the id:
 -- the id is the same across a reset, so an id check alone would happily install pre-reset
 -- cids for a part configuration that has since changed.
-function M.onVehicleGeometry(vehID, epoch, extCsv, hullCsv, frontCsv, rearCsv, histCsv)
+-- `detached` is an optional tail (nodes dropped as broken off), used only for the log line.
+function M.onVehicleGeometry(vehID, epoch, extCsv, hullCsv, frontCsv, rearCsv, histCsv, detached)
   local p = pending[vehID]
   if not p or p.epoch ~= epoch then
     vgLog('D', string.format("stale geometry reply for %s (epoch %s)",
@@ -247,20 +322,36 @@ function M.onVehicleGeometry(vehID, epoch, extCsv, hullCsv, frontCsv, rearCsv, h
     histHi = ext[6],
   }
   vgLog('I', string.format(
-    "vehicle %d geometry: %d hull, %d front, %d rear, span %.2f x %.2f x %.2f m",
+    "vehicle %d geometry: %d hull, %d front, %d rear, span %.2f x %.2f x %.2f m, %d detached nodes ignored",
     vehID, #hull, #cache[vehID].front, #cache[vehID].rear,
-    ext[2] - ext[1], ext[4] - ext[3], ext[6] - ext[5]))
+    ext[2] - ext[1], ext[4] - ext[3], ext[6] - ext[5], tonumber(detached) or 0))
+end
+
+local function dispatch(vehID)
+  local veh = scenetree.findObjectById(vehID)
+  if not veh then return end
+  epochCounter = epochCounter + 1
+  pending[vehID] = {epoch = epochCounter, timer = 0, tries = 1}
+  pcall(function() veh:queueLuaCommand(string.format(VEH_SCRIPT, epochCounter)) end)
 end
 
 -- Fire a resolve for this vehicle unless one is already cached or in flight. Cheap to call
 -- every tick; callers are not expected to track state.
 function M.request(vehID)
   if not vehID or cache[vehID] or pending[vehID] or failed[vehID] then return end
-  local veh = scenetree.findObjectById(vehID)
-  if not veh then return end
-  epochCounter = epochCounter + 1
-  pending[vehID] = {epoch = epochCounter, timer = 0, tries = 1}
-  pcall(function() veh:queueLuaCommand(string.format(VEH_SCRIPT, epochCounter)) end)
+  dispatch(vehID)
+end
+
+-- From beamtelGeometryWatch.lua in the vehicle VM, once a burst of breaking has settled.
+-- The old entry is KEPT until the new reply lands: dropping it would put every caller on the
+-- centre-to-centre fallback for the round trip, which is a jump in the reading right after a
+-- crash, exactly when the driver is listening hardest. A resolve already in flight is
+-- superseded, since it may have run before the break; its reply is then dropped on the epoch.
+-- Nothing cached and nothing in flight means nobody is asking, and the next request will
+-- resolve the current state anyway.
+function M.onVehicleBroke(vehID)
+  if not (cache[vehID] or pending[vehID]) then return end
+  dispatch(vehID)
 end
 
 function M.get(vehID)
@@ -350,7 +441,7 @@ end
 -- today's behaviour: a vehicle whose resolve never lands still answers, it just answers less
 -- precisely. Nothing downstream needs to handle a nil.
 --
---   hull cids cached and close  -> nearest hull node   (sees detached parts, true surface)
+--   hull cids cached and close  -> nearest hull node   (sees protruding parts, true surface)
 --   extents cached              -> closest point on the oriented box
 --   neither                     -> getPosition()       (centre-to-centre, the old behaviour)
 local function nearestOnContext(ctx, worldPos)
@@ -388,9 +479,9 @@ local function nearestOnContext(ctx, worldPos)
   -- precision matters. The node sweep is a sparse sample of that surface (HULL_MAX cids on a
   -- car with hundreds of nodes), so near contact it OVER-reads by up to half the node
   -- spacing -- 0.19 m on a test car, i.e. reporting clear air when the tines are touching.
-  -- What the node sweep uniquely sees is geometry OUTSIDE the box: a bumper that has broken
-  -- off still belongs to the same object, and there the node distance is the smaller one and
-  -- wins on its own merits.
+  -- What the node sweep uniquely sees is geometry OUTSIDE the box: a part hanging off by its
+  -- last beam lies beyond the trimmed extents, and there the node distance is the smaller one
+  -- and wins on its own merits. A part that has come off entirely is in neither tier.
   if boxD < bestD then return boxPt, boxD end
   return best, bestD
 end

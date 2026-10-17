@@ -7,13 +7,16 @@
 -- both obj:getSurfaceHeightBelow and obj:castRayStatic. This extension covers only the
 -- things the vehicle VM cannot see: other spawned objects.
 --
--- Why node-level and not just bounding boxes: when a part breaks off a vehicle in BeamNG,
--- its nodes stay part of the SAME object. A detached bumper lying in the dirt is therefore
--- invisible to that vehicle's oriented bounding box but perfectly visible in its node
--- cloud. Requirement "don't let the forks hit a piece that fell off" only works node-side.
--- The bounding box is still used, but for the opposite question: is the implement INSIDE
--- the vehicle's volume without touching it, i.e. are the tines under the frame ready to
--- lift.
+-- Why node-level and not just bounding boxes: a box encloses the body, so it reports solid
+-- surface in the air beside a low car's wheels and misses anything hanging out of it. The node
+-- cloud is the true surface. The bounding box is still used, but for the opposite question: is
+-- the implement INSIDE the vehicle's volume without touching it, i.e. are the tines under the
+-- frame ready to lift.
+--
+-- A part that has broken off entirely is NOT in the cached cloud. When a part breaks off a
+-- vehicle in BeamNG its nodes stay part of the SAME object, and vehicleGeometry drops the ones
+-- no unbroken beam still connects to the reference node -- otherwise a wreck's debris, possibly
+-- tens of metres away, is described as that vehicle's surface. See docs/lua-vehicle-geometry.md.
 --
 -- Note that in BeamNG most "props" -- cones, barriers, haybales, pallets -- are spawned
 -- vehicle objects, so be:getObject covers them. Map-placed static clutter (TSStatic) is
@@ -428,7 +431,7 @@ local function boxFrame(veh)
 end
 
 -- Half-extents and the vertical span, measured from the node cloud rather than taken from
--- the engine, so a deformed or partly-detached vehicle still reports its real footprint.
+-- the engine, so a deformed vehicle still reports its real footprint.
 --
 -- Preferred source is vehicleGeometry's cache, for two reasons that are about accuracy
 -- rather than speed. Its extents are measured over EVERY node once, where the strided
@@ -1965,7 +1968,7 @@ local function scan()
   -- a single corner grazing the target, and since losing the footprint takes ALL the points,
   -- the state then cannot be dropped again. COMMITTED ended up firing beside the target rather
   -- than over it. The nearest-approach sweep further down keeps the full cloud on purpose --
-  -- that is the tier that sees a part that has broken off.
+  -- that is the tier that sees the true surface, protruding parts included.
   --
   -- The fallback is the pre-fix behaviour, for a push that arrived without a sample set: less
   -- precise, but it still answers rather than going silent.
@@ -2006,7 +2009,7 @@ local function scan()
     local box = frame and measureTarget(veh, frame)
     if box then
       -- Narrow phase: nearest approach between the implement's sample points and the
-      -- target's node cloud. This is the test that sees detached parts.
+      -- target's node cloud. This is the test that sees parts outside the box.
       local minD = math.huge
       for _, ip in ipairs(pts) do
         for _, tp in ipairs(box.pts) do

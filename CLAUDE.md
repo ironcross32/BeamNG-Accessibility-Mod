@@ -50,7 +50,7 @@ The per-file detail, and the reasoning behind every decision that is not obvious
 |---|---|
 | `docs/python-components.md` | Every Python module: `beamtel.py`, `audio.py`, `wheel_slip.py`, `hrtf.py`, `configurator.py`, `speech.py`, `ai_describer.py`, `secretstore.py`, `nvda_ws_speaker.py`, `mcp_server.py`, `updater.py`, `bnh_logger.py`, `diagnostic/` |
 | `docs/lua-telemetry-protocol.md` | `lua/vehicle/protocols/796F6C6F313035.lua`: the 60 Hz extended struct on 4444, `actualSteering`, the ramp hydraulics push, the loader implement block, and the no-reset teleport rule |
-| `docs/lua-vehicle-geometry.md` | `vehicleGeometry.lua`: per-vehicle extents, hull cids, contact bands, occupancy histogram |
+| `docs/lua-vehicle-geometry.md` | `vehicleGeometry.lua` + vehicle `beamtelGeometryWatch.lua`: per-vehicle extents, hull cids, contact bands, occupancy histogram, dropping broken-off parts |
 | `docs/lua-ramp-geometry.md` | `rampGeometry.lua`: the drive-in mouth of a ramp-equipped machine, declared mouths, `floorTrusted` |
 | `docs/lua-vehicle-scanner.md` | `vehicleScanner.lua`: nearest vehicle, target cycling, coupler matching, the align teleport. Ports 4445/4448 |
 | `docs/lua-implement-proximity.md` | `implementProximity.lua`: proximity, docking readout, slam gate, ramp mode, `RAMPALIGN`, `RAMPSELF:`. Ports 4469/4470 |

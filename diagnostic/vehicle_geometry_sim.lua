@@ -38,6 +38,7 @@ local HIST_BINS   = readConst("HIST_BINS")
 local NEAR_NODE_M = readConst("NEAR_NODE_M")
 local OUTLIER_GAP_M = readConst("OUTLIER_GAP_M")
 local TRIM_MAX_FRAC = readConst("TRIM_MAX_FRAC")
+local MIN_ATTACHED_FRAC = readConst("MIN_ATTACHED_FRAC")
 
 -- =================================================================================================
 --  Minimal vec3, matching the operations the extension uses
@@ -125,6 +126,43 @@ local function classify(nodes)
     rear  = thin(rear, BAND_MAX),
     hist  = hist,
   }
+end
+
+-- Mirrors VEH_SCRIPT's attachment filter, which runs before classify. beams is a list of
+-- {id1 = cid, id2 = cid, broken = bool}. Returns the nodes still attached and how many were
+-- dropped. Same two rules: nothing happens unless a beam is broken, and only nodes the INTACT
+-- graph reaches but the live one does not are dropped.
+local function attachedOnly(nodes, beams, refCid)
+  local anyBroken = false
+  for _, b in ipairs(beams) do if b.broken then anyBroken = true; break end end
+  if not anyBroken then return nodes, 0 end
+  local adjAll, adjLive = {}, {}
+  local function link(adj, a, c)
+    adj[a] = adj[a] or {}; adj[a][#adj[a] + 1] = c
+    adj[c] = adj[c] or {}; adj[c][#adj[c] + 1] = a
+  end
+  for _, b in ipairs(beams) do
+    link(adjAll, b.id1, b.id2)
+    if not b.broken then link(adjLive, b.id1, b.id2) end
+  end
+  local function reach(adj)
+    local seen, queue, head = {[refCid] = true}, {refCid}, 1
+    while head <= #queue do
+      local here = queue[head]; head = head + 1
+      for _, m in ipairs(adj[here] or {}) do
+        if not seen[m] then seen[m] = true; queue[#queue + 1] = m end
+      end
+    end
+    return seen, #queue
+  end
+  local all, nAll = reach(adjAll)
+  local live, nLive = reach(adjLive)
+  if nLive < nAll * MIN_ATTACHED_FRAC then return nodes, 0 end
+  local out, dropped = {}, 0
+  for _, nd in ipairs(nodes) do
+    if all[nd.cid] and not live[nd.cid] then dropped = dropped + 1 else out[#out + 1] = nd end
+  end
+  return out, dropped
 end
 
 local function clamp(v, lo, hi)
@@ -378,10 +416,12 @@ do
 end
 print()
 
-print("6. a detached part is seen, and does not drag the box out over the empty air")
+print("6. a part standing clear of the body is seen, and does not drag the box out over the empty air")
 do
-  -- A bumper that has broken off stays part of the SAME object in BeamNG, so nothing that
-  -- only knows where the parent vehicle is can see it. Put one 3 m off the car's flank.
+  -- Geometry well outside the body that is still part of the vehicle -- a part hanging off by
+  -- its last beam, a raised boom. Put one 3 m off the car's flank. (A part that has come off
+  -- ENTIRELY is dropped before this point; scenario 14 covers that. These nodes have no beams,
+  -- and a node the intact beam graph never reached is always kept.)
   local nodes = {}
   for _, nd in ipairs(carNodes) do nodes[#nodes + 1] = {cid = nd.cid, pos = nd.pos} end
   for i = 0, 8 do
@@ -950,6 +990,177 @@ do
     #bad == 0, table.concat(bad, " | "))
   check("...and nothing reaches the same respawn by another route",
     #resets == 0, table.concat(resets, ", "))
+end
+print()
+
+-- ==================================================================================================
+--  14. a part that has broken off is not part of the vehicle
+-- ==================================================================================================
+-- Found from the driver's seat on a wrecked Vivace: in D the scanner read 0 ft to a car 400 ft
+-- away, and in R it read 477 ft. Its debris lay in five pieces -- 23, 66 and 22 nodes at 60, 80
+-- and 114 m ahead (on top of the car it had hit), one node each at 16 and 46 m behind -- and the
+-- gap trim cuts only at the FIRST gap from each end, so it removed the outermost piece at each
+-- end and called the rest the car: a 97 m body whose front band was the 80 m cluster and whose
+-- rear band was two lone nodes. The game knows which nodes have come off: nothing unbroken
+-- connects them to the reference node. This rebuilds that wreck.
+print("14. a part that has broken off is not part of the vehicle")
+do
+  -- Beams between grid neighbours, the way a jbeam body is a connected mesh.
+  local function meshBeams(nodes, first, last, maxLen, beams)
+    for i = first, last do
+      for j = i + 1, last do
+        if nodes[i].pos:distance(nodes[j].pos) <= maxLen then
+          beams[#beams + 1] = {id1 = nodes[i].cid, id2 = nodes[j].cid, broken = false}
+        end
+      end
+    end
+  end
+
+  local function wreck()
+    local nodes, beams = {}, {}
+    for _, nd in ipairs(carNodes) do nodes[#nodes + 1] = {cid = #nodes, pos = nd.pos} end
+    meshBeams(nodes, 1, #nodes, 0.29, beams)
+    local refCid, refD = nil, math.huge
+    for _, nd in ipairs(nodes) do
+      local d = nd.pos:length()
+      if d < refD then refCid, refD = nd.cid, d end
+    end
+    local bodyCount = #nodes
+    -- Three debris pieces ahead, each a connected lump whose beams to the car are all broken.
+    local piece = boxCloud(0.6, 0.6, 0.3, 0.15)
+    for _, ahead in ipairs({60, 80, 114}) do
+      local first = #nodes + 1
+      for _, nd in ipairs(piece) do
+        nodes[#nodes + 1] = {cid = #nodes, pos = nd.pos + v3(0, ahead, -0.5)}
+      end
+      meshBeams(nodes, first, #nodes, 0.16, beams)
+      beams[#beams + 1] = {id1 = refCid, id2 = nodes[first].cid, broken = true}
+    end
+    -- And two lone nodes behind.
+    for _, behind in ipairs({-15.8, -46}) do
+      nodes[#nodes + 1] = {cid = #nodes, pos = v3(0, behind, -0.5)}
+      beams[#beams + 1] = {id1 = refCid, id2 = nodes[#nodes].cid, broken = true}
+    end
+    return nodes, beams, refCid, bodyCount
+  end
+
+  local nodes, beams, refCid, bodyCount = wreck()
+  local function bandSpan(band)
+    local lo, hi = math.huge, -math.huge
+    for _, nd in ipairs(band) do
+      if nd.pos.y < lo then lo = nd.pos.y end
+      if nd.pos.y > hi then hi = nd.pos.y end
+    end
+    return lo, hi
+  end
+
+  -- The old behaviour, to prove the scenario reproduces the bug rather than passing for free.
+  local old = classify(nodes)
+  local oldLo = bandSpan(old.front)
+  check("unfiltered, the front band is out among the debris", oldLo > CAR_LEN,
+    string.format("front band starts %.1f m ahead of the reference node", oldLo))
+
+  local kept, dropped = attachedOnly(nodes, beams, refCid)
+  check("every broken-off node is dropped and no body node is",
+    dropped == #nodes - bodyCount and #kept == bodyCount,
+    string.format("%d dropped of %d debris, %d kept of %d body", dropped, #nodes - bodyCount,
+      #kept, bodyCount))
+  local g = classify(kept)
+  check("filtered extents are the real body length", approx(g.ext.maxF - g.ext.minF, CAR_LEN, 0.01),
+    string.format("%.2f m long", g.ext.maxF - g.ext.minF))
+  local fLo, fHi = bandSpan(g.front)
+  local rLo, rHi = bandSpan(g.rear)
+  check("front band is the car's own nose", fLo > 0 and fHi <= CAR_LEN / 2 + 1e-6,
+    string.format("%.2f..%.2f m", fLo, fHi))
+  check("rear band is the car's own tail", rHi < 0 and rLo >= -CAR_LEN / 2 - 1e-6,
+    string.format("%.2f..%.2f m", rLo, rHi))
+
+  -- The reading itself: a car sitting just past the 80 m piece. The wreck faces +y, so node
+  -- pos.y is world y, and this is the scanner's forward gap.
+  local player = {geo = g, frame = {c = v3(0, 0, 0), f = v3(0, 1, 0), u = v3(0, 0, 1),
+                                    r = v3(0, 0, 1):cross(v3(0, 1, 0))}}
+  local function worldPts(geo, band)
+    local pts = {}
+    for _, nd in ipairs(band) do
+      pts[#pts + 1] = player.frame.c + player.frame.f * nd.pos.y + player.frame.r * nd.pos.x
+                    + player.frame.u * nd.pos.z
+    end
+    return pts
+  end
+  local target = body(carNodes, v3(0, 80 + 0.3 + CAR_LEN / 2, 0), 0)
+  local truth = 80 + 0.3 - CAR_LEN / 2
+  local oldGap = nearestApproach(worldPts(old, old.front), target)
+  local newGap = nearestApproach(worldPts(g, g.front), target)
+  check("unfiltered, the gap reads as touching", oldGap < 1.0,
+    string.format("%.2f m reported, truth %.1f m", oldGap, truth))
+  check("filtered, the gap is the real one", approx(newGap, truth, 0.3),
+    string.format("%.2f m reported, truth %.1f m", newGap, truth))
+
+  -- Intact: a broken beam that detaches nothing (a pane of glass) must leave the result
+  -- byte-identical -- the guarantee the whole change rests on.
+  local intactNodes, intactBeams = {}, {}
+  for i = 1, bodyCount do intactNodes[i] = nodes[i] end
+  for _, b in ipairs(beams) do
+    if b.id1 < bodyCount and b.id2 < bodyCount then
+      intactBeams[#intactBeams + 1] = {id1 = b.id1, id2 = b.id2, broken = false}
+    end
+  end
+  local untouched, d0 = attachedOnly(intactNodes, intactBeams, refCid)
+  check("no broken beams: the node list is returned untouched", untouched == intactNodes and d0 == 0)
+  intactBeams[1].broken = true
+  local stillAll, d1 = attachedOnly(intactNodes, intactBeams, refCid)
+  local a, b = classify(intactNodes), classify(stillAll)
+  local same = d1 == 0 and #stillAll == #intactNodes
+  for _, k in ipairs({"minF", "maxF", "minR", "maxR", "minU", "maxU"}) do
+    if a.ext[k] ~= b.ext[k] then same = false end
+  end
+  for _, list in ipairs({"hull", "front", "rear"}) do
+    if #a[list] ~= #b[list] then same = false else
+      for i = 1, #a[list] do if a[list][i].cid ~= b[list][i].cid then same = false end end
+    end
+  end
+  for i = 1, HIST_BINS do if a.hist[i] ~= b.hist[i] then same = false end end
+  check("a broken beam that detaches nothing changes nothing", same,
+    string.format("%d dropped, %d of %d kept", d1, #stillAll, #intactNodes))
+
+  -- A node held on by something other than a beam -- a slidenode on its rail -- is beyond the
+  -- intact graph too, and must be kept even while the filter is dropping debris.
+  local railNodes = {}
+  for i, nd in ipairs(nodes) do railNodes[i] = nd end
+  railNodes[#railNodes + 1] = {cid = #railNodes, pos = v3(0, 1.0, 0.9)}
+  local railCid = railNodes[#railNodes].cid
+  local keptR = attachedOnly(railNodes, beams, refCid)
+  local railKept = false
+  for _, nd in ipairs(keptR) do if nd.cid == railCid then railKept = true end end
+  check("a node no beam ever held is kept", railKept)
+
+  -- If the reference node is what came off, the "vehicle" would be that fragment. Stand down.
+  local cutBeams = {}
+  for _, bm in ipairs(beams) do
+    local touchesRef = bm.id1 == refCid or bm.id2 == refCid
+    cutBeams[#cutBeams + 1] = {id1 = bm.id1, id2 = bm.id2, broken = bm.broken or touchesRef}
+  end
+  local keptC, dC = attachedOnly(nodes, cutBeams, refCid)
+  check("a reference node that broke off on its own does not shrink the vehicle to it",
+    dC == 0 and #keptC == #nodes, string.format("%d dropped", dC))
+
+  -- The shipped sources must actually carry the mechanism the mirror above tests.
+  local function readAll(path)
+    local fh = io.open(path, "r")
+    if not fh then return nil end
+    local s = fh:read("*a"); fh:close(); return s
+  end
+  local geoSrc = readAll(SRC) or ""
+  local watchSrc = readAll("bng_mod/lua/vehicle/extensions/beamtelGeometryWatch.lua")
+  check("VEH_SCRIPT filters on beamIsBroken", geoSrc:find("obj:beamIsBroken(b.cid)", 1, true) ~= nil)
+  check("...and loads the break watcher", geoSrc:find('extensions.load("beamtelGeometryWatch")', 1, true) ~= nil)
+  check("the break watcher exists and listens for both kinds of detachment",
+    watchSrc ~= nil and watchSrc:find("function M.onBeamBroke", 1, true) ~= nil
+      and watchSrc:find("function M.onSlidenodeDetached", 1, true) ~= nil)
+  check("...and calls back the GE handler that exists",
+    watchSrc ~= nil and watchSrc:find("extensions.vehicleGeometry.onVehicleBroke(", 1, true) ~= nil
+      and geoSrc:find("function M.onVehicleBroke(vehID)", 1, true) ~= nil)
+  check("the break watcher compiles", watchSrc ~= nil and load(watchSrc, "watch") ~= nil)
 end
 print()
 
