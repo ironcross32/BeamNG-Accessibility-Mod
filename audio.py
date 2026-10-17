@@ -123,6 +123,10 @@ SCANNER_CLOSING_MAX_MS = (
 # are slow (far away). Returns to normal beeps as steering re-centers.
 SCANNER_STEER_TONE_DEADZONE = 0.04  # |steer| below this => pure beeps
 SCANNER_STEER_TONE_FULL = 0.45  # |steer| at/above this => fully steady tone
+# Exponent on the normalised steer above the deadzone. Below 1 front-loads the morph: a linear
+# ramp left the tone near-silent for the minute corrections that hold a collision course
+# (6% steer was 5% level); at 0.5 that is 22%, and 10% steer is 38%.
+SCANNER_STEER_TONE_CURVE = 0.5
 SCANNER_TONE_LEVEL_SMOOTH = (
     0.12  # per-block one-pole smoothing of the morph level (click-free)
 )
@@ -4678,7 +4682,7 @@ class AudioController:
             tone_target = (steer_mag - SCANNER_STEER_TONE_DEADZONE) / max(
                 1e-6, SCANNER_STEER_TONE_FULL - SCANNER_STEER_TONE_DEADZONE
             )
-            tone_target = min(1.0, max(0.0, tone_target))
+            tone_target = min(1.0, max(0.0, tone_target)) ** SCANNER_STEER_TONE_CURVE
             self._scan_tone_level += SCANNER_TONE_LEVEL_SMOOTH * (
                 tone_target - self._scan_tone_level
             )
