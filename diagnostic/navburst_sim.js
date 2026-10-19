@@ -1,6 +1,7 @@
-// Simulation of the held-navigation coalescing gate and the tuning apply guard
-// from bnvdaRuntime.js, replayed against a fake clock so the scenarios can be
-// checked without the game.
+// Simulation of the held-navigation coalescing gate from bnvdaRuntime.js,
+// replayed against a fake clock so the scenarios can be checked without the
+// game. (The tuning apply guard's scenarios are parked with it in
+// parked_tuning_hold_workaround.js.)
 //
 // The functions are LIFTED out of the source by name rather than copied. This
 // file used to carry its own copy of the state machine, and that is how it kept
@@ -58,15 +59,12 @@ const LINES = [
   'NAV_ACTION_RE', 'NAV_AXIS_RE', 'NAV_AXIS_PRESS', 'NAV_AXIS_RELEASE', 'NAV_EDGE_ECHO_MS',
   'NAV_KICK_ACTIONS', '_navLastPressTs',
   'VUE_TAB_QUEUE_MS', 'VUE_CONFLICT_QUEUE_MS',
-  'TUNING_SLIDER_DEBOUNCE_MS', 'TUNING_APPLY_QUIET_MS', 'TUNING_APPLY_FALLBACK_MS', 'TUNING_HOLD_STALE_MS',
-  '_tuningStore', '_tuningStockApply', '_tuningApplyHeld', '_tuningApplyTimer',
 ];
 const FNS = [
   'navBurstReset', 'navBurstHeldCount', 'emitSpeak', 'navBurstFlush', 'navSettleDelay',
   'navBurstArm', 'navBurstOnSettle', 'navBurstIsNavSource', 'navBurstNoteRedundant',
   'navBurstCapture', 'scheduleSpeak',
   'navActionName', 'navigationValuePressed', 'trackNavigationInput',
-  'tuningAdjusting', 'releaseHeldTuningApply', 'hookTuningApply',
 ];
 
 const lifted =
@@ -111,12 +109,10 @@ function makeSim() {
     lifted +
     '\nreturn { P: P, scheduleSpeak: scheduleSpeak, input: trackNavigationInput,' +
     ' navBurstReset: navBurstReset, navActionName: navActionName,' +
-    ' hookTuningApply: hookTuningApply, burst: _navBurst,' +
+    ' burst: _navBurst,' +
     ' setSuppression: function (v) { navHoldSuppression = v; },' +
     ' K: { DEBOUNCE_MS: DEBOUNCE_MS, DRAIN: NAV_RELEASE_DRAIN_MS, STALE: NAV_HOLD_STALE_MS,' +
-    '      GAP: NAV_BURST_GAP_MS, FRESH: NAV_PRESS_FRESH_MS, ECHO: NAV_EDGE_ECHO_MS,' +
-    '      QUIET: TUNING_APPLY_QUIET_MS, FALLBACK: TUNING_APPLY_FALLBACK_MS,' +
-    '      SLIDER: TUNING_SLIDER_DEBOUNCE_MS } };'
+    '      GAP: NAV_BURST_GAP_MS, FRESH: NAV_PRESS_FRESH_MS, ECHO: NAV_EDGE_ECHO_MS } };'
   )(
     fakeWindow, setT, clrT, () => now,
     msg => { if (msg.type === 'speak') spoken.push({ t: now, txt: msg.text }); },
@@ -430,95 +426,6 @@ const REPEAT_MS = 200;
   check('landing within NAV_BURST_GAP_MS of last move', lat >= 0 && lat <= s.K.GAP, lat + 'ms');
 }
 
-// ---------- tuning apply guard ----------
-// A stand-in for Tuning.vue + bngSlider + the pinia store, with the stock
-// timers: the slider commits `debounce` after its last nudge, and each commit
-// restarts a 1000ms apply timer. Nudging does NOT touch the apply timer, which
-// is the whole fault.
-function makeTuning(s, guarded) {
-  const applies = [];
-  const store = { value: 0, apply() { applies.push({ t: s.now(), value: store.value }); } };
-  s.fakeWindow.bngVue = { app: { config: { globalProperties: { $pinia: { _s: new Map([['tuning', store]]) } } } } };
-  if (guarded) s.hookTuningApply();
-  // The stock timers are stepped against the sim clock, so they interleave
-  // with the guard's own exactly as in the page.
-  let live = 0, commitAt = -1, applyAt = -1;
-  function tick() {
-    if (commitAt >= 0 && s.now() >= commitAt) { commitAt = -1; store.value = live; applyAt = s.now() + 1000; }
-    if (applyAt >= 0 && s.now() >= applyAt) { applyAt = -1; store.apply(); }
-  }
-  return {
-    applies, store,
-    nudge(dir, changes) {
-      s.input(dir > 0 ? 'focus_r' : 'focus_l', 1);
-      if (changes !== false) { live += dir; commitAt = s.now() + s.K.SLIDER; }
-      s.advance(1); tick();
-      s.input(dir > 0 ? 'focus_r' : 'focus_l', 0);
-    },
-    run(ms) { for (let i = 0; i < ms; i += 10) { s.advance(10); tick(); } },
-    live: () => live,
-  };
-}
-
-// --- Scenario 17: taps with one pause, the reported fault ---------------------
-{
-  console.log('\nScenario 17: tuning taps with a pause to listen');
-  const drive = t => {
-    for (let i = 0; i < 3; i++) { t.nudge(1); t.run(300); }
-    t.run(700);                                   // hear the value: slider commits
-    for (let i = 0; i < 5; i++) { t.nudge(1); t.run(400); }
-    const lastNudge = t.s.now() - 400;
-    t.run(4000);
-    return lastNudge;
-  };
-
-  const s0 = makeSim(); s0.advance(1000);
-  const stock = makeTuning(s0, false); stock.s = s0;
-  const stockLast = drive(stock);
-  check('unguarded, the car reloads in the middle of the taps',
-        stock.applies.length >= 1 && stock.applies[0].t < stockLast, JSON.stringify(stock.applies));
-  check('and applies a value the slider had already moved past',
-        stock.applies[0] && stock.applies[0].value < stock.live(), JSON.stringify(stock.applies[0]));
-
-  const s1 = makeSim(); s1.advance(1000);
-  const g = makeTuning(s1, true); g.s = s1;
-  const lastNudge = drive(g);
-  check('guarded, exactly one apply', g.applies.length === 1, JSON.stringify(g.applies));
-  check('after the last tap', g.applies[0] && g.applies[0].t > lastNudge, JSON.stringify(g.applies));
-  check('carrying the final value', g.applies[0] && g.applies[0].value === g.live(), JSON.stringify(g.applies));
-  check('at the stock moment (commit + 1000ms), not later',
-        g.applies[0] && Math.abs(g.applies[0].t - (lastNudge + s1.K.SLIDER + 1000)) <= 20,
-        g.applies[0] && String(g.applies[0].t - lastNudge));
-}
-
-// --- Scenario 18: a held apply with no commit behind it -----------------------
-// The taps after the pause change nothing (slider at its limit), so no commit
-// follows and the stock path never calls apply again.
-{
-  console.log('\nScenario 18: tuning taps against the limit');
-  const s = makeSim(); s.advance(1000);
-  const t = makeTuning(s, true);
-  t.nudge(1); t.run(900);                         // commits; apply due in 1000
-  for (let i = 0; i < 4; i++) { t.nudge(1, false); t.run(300); }
-  const lastNudge = s.now() - 300;
-  t.run(5000);
-  check('the held apply is not lost', t.applies.length === 1, JSON.stringify(t.applies));
-  check('released by the fallback, after the user stopped',
-        t.applies[0] && t.applies[0].t - lastNudge >= s.K.FALLBACK - 5, t.applies[0] && String(t.applies[0].t - lastNudge));
-}
-
-// --- Scenario 19: an apply with nobody adjusting is untouched -----------------
-{
-  console.log('\nScenario 19: tuning apply while idle');
-  const s = makeSim(); s.advance(5000);
-  const t = makeTuning(s, true);
-  t.store.apply();
-  check('passes straight through', t.applies.length === 1 && t.applies[0].t === s.now(), JSON.stringify(t.applies));
-  s.cleanups.forEach(fn => fn());
-  t.store.apply();
-  check('and the stock apply is restored on cleanup', t.applies.length === 2);
-}
-
 // --- Scenario 20: wiring ------------------------------------------------------
 // None of this is reachable through a fake clock, so it is asserted textually.
 {
@@ -535,8 +442,6 @@ function makeTuning(s, guarded) {
   check('the poll idles between events',
         /nextDelay = nowTS\(\) < _vuePollActiveUntil \? NAV_POLL_FAST_MS : NAV_POLL_IDLE_MS;/.test(code));
   check('the old hold tracker is gone', !/trackNavigationHold/.test(code));
-  check('the tuning guard is installed from the config screen',
-        /if \(onConfigScreen\) hookTuningApply\(\);/.test(code));
 }
 
 console.log(failures === 0 ? '\nAll scenarios passed.' : `\n${failures} check(s) FAILED.`);

@@ -61,7 +61,7 @@ The per-file detail, and the reasoning behind every decision that is not obvious
 | `docs/lua-ui-runtime-bindings.md` | `bnvdaRuntime.js`: binding readouts, hints, the edit-binding popup |
 | `docs/lua-ui-runtime-tabs.md` | `bnvdaRuntime.js`: tab, sub-tab and breadcrumb announcements |
 | `docs/lua-ui-runtime-mod-details.md` | `bnvdaRuntime.js`: `page_text` for the mod repository / automation details pages |
-| `docs/lua-ui-runtime-tuning.md` | `bnvdaRuntime.js`: tuning slider debounce and the apply guard |
+| `docs/lua-ui-runtime-tuning.md` | Tuning slider debounce and apply guard, **parked** in `parked_tuning_hold_workaround.js` (0.40 fixed the stock race; kept for reference) |
 | `docs/lua-terrain-scanner.md` | `terrainScanner.lua`: the terrain scan and nearest-POI lookup. Ports 4471/4472 |
 | `docs/lua-cannon-shot.md` | `cannonShot.lua`: shot outcomes. Port 4473 |
 | `docs/lua-environment.md` | `environmentAccessible.lua`: ambient temperature browser. Ports 4474/4475 |
