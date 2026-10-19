@@ -2149,8 +2149,10 @@ export function installBNVDA($rootScope, dependencies) {
 
           function focusedVueMainMenuItem(root) {
             if (!root || !isMainMenuRoute()) return null;
+            // No :hover here. The cursor is invisible and parked at screen
+            // centre, which the 0.40 layout puts on the Freeroam tile, so a
+            // hover match outranked focus and every top-row tile read Freeroam.
             var selectors = [
-              '.mainmenu-button:hover', '.menu-button-simple:hover',
               '.focus-visible',
               '[aria-current="true"]', '[aria-current="page"]',
               '[aria-selected="true"]',
