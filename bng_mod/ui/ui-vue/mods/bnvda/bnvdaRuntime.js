@@ -1666,6 +1666,20 @@ export function installBNVDA($rootScope, dependencies) {
             return translatedActionName(actionName);
           }
 
+          // The same, for a UI navigation event ("action_2") rather than an input
+          // action: controls.js maps one to the other through ACTIONS_BY_UI_EVENT,
+          // which is how BngBinding's own ui-event prop resolves. Empty when it
+          // cannot be named, so a caller can drop the hint rather than guess.
+          function formatUiEventBinding(uiEvent) {
+            try {
+              if (Controls && typeof Controls.makeViewerObj === 'function') {
+                var binding = viewerBindingText(Controls.makeViewerObj({ uiEvent: uiEvent, useLastDevice: true }));
+                if (binding && binding.toLowerCase() !== 'title') return binding;
+              }
+            } catch (e) { log('info', '[BINDING] Unable to resolve ui event ' + uiEvent + ': ' + e.message); }
+            return '';
+          }
+
           // ---------- ACTIVE INPUT DEVICE ----------
           // BngBinding renders one .binding-container per variant, and with two
           // pads plugged in -- an Xbox pad and a DualSense, say -- that is the
@@ -1762,9 +1776,35 @@ export function installBNVDA($rootScope, dependencies) {
           function resolveSingleBindingPart(partEl) {
             if (!partEl) return '';
             var tag = partEl.tagName ? partEl.tagName.toLowerCase() : '';
-            // Keyboard-style: <kbd> with icon glyph span + label span
+            // Keyboard-style. 0.40's bngBinding.vue renders the control as flat
+            // sibling segments, <kbd><span>alt</span><span class="label-multi">+
+            // </span><span>⇧</span>...<span>n</span></kbd>, splitting both at the
+            // " + " between keys and around the enlarged symbols (so "L⇧" is two
+            // segments of ONE key). Keys are rebuilt by joining segments up to
+            // each label-multi separator.
             if (tag === 'kbd') {
-              var spans = partEl.querySelectorAll('span span');
+              var segments = toArray(partEl.children).filter(function (child) { return child.tagName === 'SPAN'; });
+              var flat = segments.length && segments.every(function (child) { return !child.children.length; });
+              if (flat) {
+                var keys = [], current = '';
+                segments.forEach(function (seg) {
+                  if (seg.classList.contains('label-multi')) { if (current) keys.push(current); current = ''; }
+                  else current += seg.textContent || '';
+                });
+                if (current) keys.push(current);
+                var named = keys.map(function (key) {
+                  // The control names are lower case ("alt", "n"); the screen
+                  // upper-cases them in CSS.
+                  return cleanKeyboardText(key.trim()).replace(/(^|\s)([a-z])/g, function (_m, pre, ch) { return pre + ch.toUpperCase(); });
+                }).filter(Boolean);
+                if (named.length) return named.join(' + ');
+              }
+              // Older nesting: <kbd><span>(icon)<span>LABEL</span></span></kbd>.
+              // :scope keeps the match inside this kbd: a bare 'span span' also
+              // matched through the binding's own wrapper spans, so every flat
+              // segment qualified and only the last ("n") was read, dropping
+              // every modifier.
+              var spans = partEl.querySelectorAll(':scope span span');
               if (spans.length >= 2) {
                 var label = (spans[spans.length - 1].textContent || '').trim();
                 if (label) return cleanKeyboardText(label);
@@ -2842,7 +2882,7 @@ export function installBNVDA($rootScope, dependencies) {
                 var labelEl = row.querySelector && row.querySelector('.options-item-label-text');
                 var label = cleanText((labelEl && labelEl.innerText) || vueOwnLabel(item));
                 var state = vueControlState(closest(item, VUE_TARGET_SELECTOR) || item, row);
-                itemText = [label, state].filter(Boolean).join(', ');
+                itemText = vueBindingText(item) || [label, state, accordionHeadingState(item)].filter(Boolean).join(', ');
                 _vueWatchElement = item;
                 _vueWatchSignature = vueFocusSignature(item, root);
               }
@@ -3685,36 +3725,78 @@ export function installBNVDA($rootScope, dependencies) {
             return info ? ['binding-editor', info.role, info.position, info.label, info.state].join('|') : '';
           }
 
+          // In 0.40 (BindingItemRail.vue) each binding is a focusable
+          // .binding-item-chip and the rail ends in a focusable + button
+          // (.binding-item-add). Only chips are bindings: the + button sits in
+          // the same rail, and treating every rail element as a chip is how it
+          // read as "Unassigned, Activate to edit".
           function selectedBindingChip(rail) {
-            if (!rail) return null;
-            return rail.querySelector('.binding-item-chip-selected, .binding-item-chip.focus-visible, .binding-item.focus-visible, .binding-chip.focus-visible, [aria-selected="true"], .selected, .active') ||
-              (rail.matches('.focus-visible') ? rail.querySelector('.binding-item-chip, .binding-item, .binding-chip, [class*="binding"]') : null);
+            return rail ? rail.querySelector('.binding-item-chip.focus-visible') : null;
           }
 
+          // The way out of a rail is spoken once, on the way in, rather than on
+          // every binding and the + button inside it.
+          var _bindingRailSpoken = null;
+
           function speakVueBinding(element, src) {
+            var text = vueBindingText(element);
+            if (text === null) return false;
+            scheduleSpeak(text, src);
+            return true;
+          }
+
+          // The spoken text for a binding row, chip or + button, or null when the
+          // element is not part of the bindings list. Shared with the options
+          // category announcer, which otherwise read the row's raw label and
+          // spoke the on-screen glyph ("ALT+⇧+N").
+          function vueBindingText(element) {
             var row = closest(element, '.binding-item-row');
             var rail = closest(element, '.binding-item-rail-content');
             if (!row && rail) row = closest(rail, '.binding-item-row') || rail.parentElement;
-            if (!row) return false;
+            if (!row) return null;
             var titleEl = row.querySelector('.bng-row-label, .binding-item-title, .binding-title, .action-title, [class*="action-name"], [class*="title"]');
             var title = cleanText((titleEl && titleEl.innerText) || row.getAttribute('aria-label') || 'Action');
-            if (rail || closest(element, '.binding-item-chip, .binding-chip, .binding-item-rail-content .binding-item')) {
-              rail = rail || row.querySelector('.binding-item-rail-content');
-              var chips = toArray(rail ? rail.querySelectorAll('.binding-item-chip, .binding-chip, .binding-item') : []);
-              var selected = selectedBindingChip(rail) || closest(element, '.binding-item-chip, .binding-chip, .binding-item');
-              var position = chips.indexOf(selected);
-              var name = bindingChipName(selected) || 'Unassigned';
-              var parts = [name];
-              if (position >= 0 && chips.length) parts.push((position + 1) + ' of ' + chips.length);
-              parts.push('Activate to edit', 'Back to actions');
-              scheduleSpeak(parts.join(', '), src);
-              return true;
+            if (rail) {
+              var entering = rail !== _bindingRailSpoken;
+              _bindingRailSpoken = rail;
+              var parts;
+              if (closest(element, '.binding-item-add')) {
+                parts = [speechValue(findTranslateFunc()('ui.controls.addBinding'), 'Binding.add') || 'Add binding', 'button'];
+              } else {
+                var chips = toArray(rail.querySelectorAll('.binding-item-chip'));
+                var selected = closest(element, '.binding-item-chip') || selectedBindingChip(rail);
+                var position = chips.indexOf(selected);
+                parts = [bindingChipName(selected) || 'Unassigned'];
+                if (position >= 0) parts.push((position + 1) + ' of ' + chips.length);
+                parts.push('Activate to edit');
+              }
+              // BindingItemRail leaves on back, menu, focus_u and focus_d alike.
+              if (entering) parts.push('Up, Down or Back returns to actions');
+              return parts.join(', ');
             }
-            var rowChips = toArray(row.querySelectorAll('.binding-item-rail-content .binding-item-chip, .binding-item-rail-content .binding-chip, .binding-item-rail-content .binding-item'));
+            _bindingRailSpoken = null;
+            var rowChips = toArray(row.querySelectorAll('.binding-item-rail-content .binding-item-chip'));
             var names = rowChips.map(bindingChipName).filter(Boolean);
-            scheduleSpeak([title, names.length ? 'assigned to ' + names.join(', ') : 'unassigned',
-              names.length ? 'Activate to select bindings' : 'Activate to add binding'].join(', '), src);
-            return true;
+            var rowParts = [title, names.length ? 'assigned to ' + names.join(', ') : 'unassigned',
+              names.length ? 'Activate to select bindings' : 'Activate to add binding'];
+            // action_2 adds a binding straight from the row (BindingItemRail's
+            // rowControlApi). Only worth saying where Activate does not already.
+            if (names.length && row.querySelector('.binding-item-add')) {
+              var addButton = formatUiEventBinding('action_2');
+              if (addButton) rowParts.push(addButton + ' to add binding');
+            }
+            return rowParts.join(', ');
+          }
+
+          // "expanded"/"collapsed" for the caption of an expandable accordion item
+          // (the Controls screen's binding categories), from the class the game
+          // sets on the item. Empty anywhere else, including rows INSIDE an open
+          // item, which are not the heading.
+          function accordionHeadingState(el) {
+            if (!closest(el, '.bng-accitem-caption')) return '';
+            var item = closest(el, '.bng-accitem');
+            if (!item || !item.classList.contains('bng-accitem-expandable')) return '';
+            return item.classList.contains('bng-accitem-expanded') ? 'expanded' : 'collapsed';
           }
 
           function speakVueOptions(element, src, root) {
@@ -3738,7 +3820,7 @@ export function installBNVDA($rootScope, dependencies) {
             var labelEl = row.querySelector && row.querySelector('.options-item-label-text');
             var label = cleanText((labelEl && labelEl.innerText) || vueOwnLabel(target));
             var state = vueControlState(target, row);
-            var text = [label, state].filter(Boolean).join(', ');
+            var text = [label, state, accordionHeadingState(element)].filter(Boolean).join(', ');
             if (text) scheduleSpeak(text, src);
             return true;
           }
@@ -3950,8 +4032,19 @@ export function installBNVDA($rootScope, dependencies) {
             var label = tile && tile.querySelector('.item-name') ? cleanText(tile.querySelector('.item-name').innerText || '') : vueOwnLabel(el);
             var rail = closest(el, '.binding-item-rail-content') || (row.querySelector && row.querySelector('.binding-item-rail-content'));
             var selectedChip = selectedBindingChip(rail);
-            var chipSignature = selectedChip ? bindingChipName(selectedChip) + '|' + toArray(rail.querySelectorAll('.binding-item-chip, .binding-chip, .binding-item')).indexOf(selectedChip) : '';
-            return screenKind + '|' + label + '|' + vueControlState(el, row) + '|' + (el.className || '').toString() + '|' + chipSignature;
+            var chipSignature = selectedChip ? bindingChipName(selectedChip) + '|' + toArray(rail.querySelectorAll('.binding-item-chip')).indexOf(selectedChip) : '';
+            // Entering a binding row swaps focus-visible for no-focus-frame and
+            // binding-item-engaged on the row, which keeps DOM focus for ~240 ms
+            // before the first binding takes it (measured). Counted as a change,
+            // that re-read the row just ahead of the binding it was entering.
+            var elClass = (el.className || '').toString();
+            if (el.classList && el.classList.contains('binding-item-row')) {
+              elClass = elClass.replace(/\b(?:binding-item-engaged|no-focus-frame|focus-visible)\b/g, '').replace(/\s+/g, ' ').trim();
+            }
+            // A category heading's own classes do not change when it opens; its
+            // .bng-accitem's do, and without them A on a heading said nothing.
+            var headingState = accordionHeadingState(el);
+            return screenKind + '|' + label + '|' + vueControlState(el, row) + '|' + elClass + '|' + chipSignature + '|' + headingState;
           }
 
           // Run the poll now instead of on its interval. Called from the game's own

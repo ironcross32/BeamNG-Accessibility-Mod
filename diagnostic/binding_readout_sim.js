@@ -85,6 +85,7 @@ class El {
   constructor(tag, classes, text) {
     this.tagName = tag.toUpperCase();
     this.classList = new Set(classes || []);
+    this.classList.contains = name => this.classList.has(name);
     this.ownText = text || '';
     this.children = [];
     this.parentElement = null;
@@ -134,6 +135,13 @@ function kbdPart(label) {
   const outer = el('span');
   outer.add(el('span', [], label));
   return kbd.add(outer);
+}
+// 0.40 bngBinding.vue: <kbd> of flat segments, "+" separators as label-multi.
+// Segments split around enlarged symbols too, so "L⇧" arrives as "L", "⇧".
+function kbdFlat(...segments) {
+  const kbd = el('kbd');
+  segments.forEach(s => kbd.add(s === '+' ? el('span', ['label-multi'], '+') : el('span', [], s)));
+  return kbd;
 }
 const container = (...parts) => {
   const c = el('span', ['binding-container']);
@@ -252,6 +260,17 @@ scenario(7, 'combos keep their parts joined with +, not treated as variants', ()
   // what matters here is that two parts of ONE binding are joined with "+" and
   // are never mistaken for two device variants joined with "or".
   check('combo', scope.getBindingFriendlyName(wrapper(container(kbdPart('L Ctrl'), kbdPart('R')))), 'L Ctrl + R');
+});
+
+scenario(9, '0.40 flat <kbd>: every key of a combo is read, modifiers included', () => {
+  LAST_DEVICES = ['keyboard0'];
+  const altShiftN = kbdFlat('alt', '+', '⇧', '+', 'n');
+  check('Alt+Shift+N', scope.getBindingFriendlyName(wrapper(container(altShiftN))), 'Alt + Shift + N');
+  check('one key in two segments', scope.getBindingFriendlyName(wrapper(container(kbdFlat('L', '⇧', '+', 'n')))), 'Left Shift + N');
+  check('single key', scope.getBindingFriendlyName(wrapper(container(kbdFlat('m')))), 'M');
+  // The old 'span span' query matched every flat segment through the binding's
+  // own wrapper spans and kept the last one.
+  check('old form kept only the last segment', altShiftN.children[altShiftN.children.length - 1].textContent, 'n');
 });
 
 scenario(8, 'the radial centre readout no longer speaks a hotkey', () => {
