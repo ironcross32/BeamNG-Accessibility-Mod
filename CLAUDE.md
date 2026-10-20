@@ -40,7 +40,7 @@ There are no tests in this codebase.
 The project has two halves that communicate via UDP:
 
 1. **Python side** (this repo root) — Receives telemetry, generates audio, handles speech output
-2. **Lua mod** (`bng_mod/`) — A directory junction to `%LOCALAPPDATA%/BeamNG/BeamNG.drive/current/mods/unpacked/bng_screenreader_mod/`. Edits to `bng_mod/` are live in the game.
+2. **Lua mod** (`bng_mod/`) — A directory junction to `%LOCALAPPDATA%/BeamNG/BeamNG.drive/current/mods/unpacked/bng_mod/`. Edits to `bng_mod/` are live in the game. Claude Code resolves the junction before checking permissions, so that real folder must be in `permissions.additionalDirectories` (`.claude/settings.local.json`) or every mod edit prompts.
 
 ### Component Docs (read on demand)
 
