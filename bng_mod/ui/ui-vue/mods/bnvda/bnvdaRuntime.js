@@ -703,12 +703,38 @@ export function installBNVDA($rootScope, dependencies) {
           // probe only ever resolves on the remaining AngularJS screens -- so on
           // every Vue screen lookups fell straight through to the humanizing
           // fallback above and spoke raw key fragments.
+          // The game's own context translator (services/translation.js, exposed as
+          // $ctx_t). Prefer it to vueI18n.global.t: in 0.40 every string with an
+          // AngularJS "{{x | translate}}" placeholder is kept OUT of the Vue
+          // messages and served by angular$translate instead, which only this
+          // function knows to route to -- so vueI18n.t returned the bare key for
+          // ui.camera.switched, vehicle.driveModes.defaultMode and
+          // vehicle.vehicleController.shifterModeChanged. It also resolves the
+          // { txt, prefix } context values driveModes.lua sends for a mode name.
+          function gameContextTranslate() {
+            var app = window.bngVue && window.bngVue.app;
+            var gp = app && app.config && app.config.globalProperties;
+            return (gp && typeof gp.$ctx_t === 'function') ? gp.$ctx_t : null;
+          }
+
+          // A { txt, context } descriptor to text, context values translated too
+          // (what "{{name | translate}}" asks for). Null when the game's
+          // translator is not up yet, so the caller can take the older path.
+          function translateDescriptor(txt, context) {
+            var ctxT = gameContextTranslate();
+            if (!ctxT) return null;
+            try { return ctxT(context ? { txt: txt, context: context } : txt, true); } catch (e) { return null; }
+          }
+
           function findTranslateFunc() {
             if (_translate) return _translate;
             if (window.vueI18n && window.vueI18n.global && typeof window.vueI18n.global.t === 'function') {
               // Re-resolved per call rather than bound once: initTranslation()
-              // replaces window.vueI18n outright when its variant check fails.
+              // replaces window.vueI18n outright when its variant check fails,
+              // and $ctx_t may be installed after the first lookup.
               _translate = function (key, ctx) {
+                var viaGame = translateDescriptor(key, ctx);
+                if (viaGame !== null) return viaGame;
                 var g = window.vueI18n && window.vueI18n.global;
                 if (!g || typeof g.t !== 'function') return key;
                 try { return ctx ? g.t(key, ctx) : g.t(key); } catch (e) { return key; }
@@ -850,7 +876,11 @@ export function installBNVDA($rootScope, dependencies) {
               // Try translating dot-delimited keys (e.g. "vehicle.engine.oilLevelCritical.true")
               if (/^[\w]+\.[\w.]+$/.test(payload)) {
                 var translator = findTranslateFunc();
-                var translated = speechValue(translator(payload), 'Message.translation');
+                // guihooks.messageForSeatedPlayers sends { msg, context } with the
+                // context BESIDE the key, not inside a descriptor; without it the
+                // gearbox mode message read "switched to '' behavior".
+                var siblingCtx = (meta.context && typeof meta.context === 'object') ? meta.context : undefined;
+                var translated = speechValue(translator(payload, siblingCtx), 'Message.translation');
                 if (translated && translated !== payload) {
                   finalText = translated;
                 } else {
@@ -866,20 +896,26 @@ export function installBNVDA($rootScope, dependencies) {
                 // for a localization descriptor and is handled below.
                 try { log('info', '[MESSAGE_DESCRIPTOR] ' + JSON.stringify(payload)); } catch (e) {}
               }
-              var translator = findTranslateFunc();
-              // Pre-translate context values that are translation keys (e.g. "ui.xxx")
-              // and provide both "key" and "key | translate" variants so angular-translate's
-              // literal interpolation of {{key | translate}} patterns works correctly.
-              var ctx = {};
-              if (payload.context && typeof payload.context === 'object') {
-                for (var k in payload.context) {
-                  var v = payload.context[k];
-                  var translated = (typeof v === 'string' && v.indexOf('ui.') === 0) ? translator(v) : v;
-                  ctx[k] = translated;
-                  ctx[k + ' | translate'] = translated;
+              var viaGame = translateDescriptor(payload.txt,
+                (payload.context && typeof payload.context === 'object') ? payload.context : undefined);
+              if (viaGame !== null) {
+                finalText = speechValue(viaGame, 'Message.descriptor.translation');
+              } else {
+                var translator = findTranslateFunc();
+                // Pre-translate context values that are translation keys (e.g. "ui.xxx")
+                // and provide both "key" and "key | translate" variants so angular-translate's
+                // literal interpolation of {{key | translate}} patterns works correctly.
+                var ctx = {};
+                if (payload.context && typeof payload.context === 'object') {
+                  for (var k in payload.context) {
+                    var v = payload.context[k];
+                    var translated = (typeof v === 'string' && v.indexOf('ui.') === 0) ? translator(v) : v;
+                    ctx[k] = translated;
+                    ctx[k + ' | translate'] = translated;
+                  }
                 }
+                finalText = speechValue(translator(payload.txt, ctx), 'Message.descriptor.translation');
               }
-              finalText = speechValue(translator(payload.txt, ctx), 'Message.descriptor.translation');
             }
             else if (typeof payload === 'object' && payload !== null) {
               finalText = speechValue(payload, 'Message.payload');
@@ -887,6 +923,14 @@ export function installBNVDA($rootScope, dependencies) {
             }
             else { log('warn', '[UNSPEAKABLE] unexpected payload type (' + typeof payload + '): ' + String(payload)); return; }
             if (finalText === null) return;
+            // Translations carry markup too ("behavior.<br>Will be reset"), and
+            // angular-translate HTML-escapes interpolated values, so a drive mode
+            // named "ESC & TC Off" arrives as "ESC &amp; TC Off". Parsing the
+            // text as HTML strips the tags and decodes the entities in one go. A
+            // line break becomes a space first, or stripping it glues the words.
+            if (/<[a-z\/]|&(?:#\d+|#x[\da-f]+|[a-z]+);/i.test(finalText)) {
+              finalText = stripHtml(finalText.replace(/<br\s*\/?>/gi, ' '));
+            }
             // Follow the device most recently used, like BngBinding does.
             finalText = finalText.replace(/\[action=([^\]]+)\]/g, function(match, actionName) {
               return formatActionBinding(actionName);
@@ -1182,6 +1226,46 @@ export function installBNVDA($rootScope, dependencies) {
             var translatedText = speechValue(translator(damageText), 'DamageMessage.translation');
             if (translatedText && translatedText.length >= MIN_CHARS) { scheduleSpeak(cleanText(translatedText), P.SYSTEM); }
           });
+          // onCameraNameChanged carries the camera's internal name. Up to 0.39
+          // those were single words ("driver", "orbit") that read fine
+          // capitalised; 0.40 names them "onboard.hood" and, for the new
+          // per-seat cameras, "occupant.FL". The game's own display name is
+          // ui.camera.mode.<name>, except a seat camera, whose label (driver or
+          // passenger seat, or a vehicle-specific name) is only in the
+          // CameraConfigChanged payload -- core/camera.lua sends that right after
+          // every name change, so the cache is a switch behind at worst.
+          var _cameraLabels = Object.create(null);
+          var SEAT_POSITIONS = { FL: 'front left', FR: 'front right', RL: 'rear left', RR: 'rear right' };
+
+          subscribe($rootScope, 'CameraConfigChanged', function (event, data) {
+            var config = data && data.cameraConfig;
+            if (!Array.isArray(config)) return;
+            for (var i = 0; i < config.length; i++) {
+              if (config[i] && config[i].name && config[i].label) _cameraLabels[config[i].name] = config[i].label;
+            }
+          });
+
+          function cameraDisplayName(name) {
+            var translator = findTranslateFunc();
+            var occupant = /^occupant\.(.+)$/.exec(name);
+            if (occupant) {
+              var label = _cameraLabels[name];
+              var seatKey = label && label.context && label.context.occupantName;
+              var seat = seatKey ? cleanText(speechValue(translator(seatKey), 'Camera.seat')) : '';
+              // Every passenger seat shares one generic label, so add where it is.
+              var position = SEAT_POSITIONS[occupant[1].toUpperCase()];
+              if (seat && seatKey === 'ui.gameplay.seatOccupants.passengerSeat' && position) seat += ', ' + position;
+              // A vehicle's own displayName is plain text and translates to
+              // itself; only a key that came back untranslated is rejected.
+              if (seat && !/^[\w]+\.[\w.]+$/.test(seat)) return seat;
+              return 'Seat' + (position ? ', ' + position : ' ' + occupant[1]);
+            }
+            var key = 'ui.camera.mode.' + name;
+            var display = cleanText(speechValue(translator(key), 'Camera.mode'));
+            if (display && display !== key) return display;
+            return name.charAt(0).toUpperCase() + name.slice(1);
+          }
+
           subscribe($rootScope, 'onCameraNameChanged', function (event, data) {
             if (data && data.name) {
               if (suppressNextCameraEvent) {
@@ -1189,8 +1273,7 @@ export function installBNVDA($rootScope, dependencies) {
                 return;
               }
               lastCameraSwitchTs = nowTS();
-              var cameraName = data.name.charAt(0).toUpperCase() + data.name.slice(1);
-              var message = 'Camera: ' + cameraName;
+              var message = 'Camera: ' + cameraDisplayName(String(data.name));
               scheduleSpeak(message, P.SYSTEM);
             }
           });
