@@ -20,6 +20,7 @@ import time
 
 import speech
 import secretstore
+import gear_report
 
 # --- Audio Test Dependencies ---
 AUDIO_TEST_OK = False
@@ -117,7 +118,13 @@ DEFAULT_CONFIG = {
     "announce_turn_signals": True,
     "announce_speed": True,
     "speed_announce_interval": 25,
-    "announce_gear": True,
+    "gear_report_mode": "speech",
+    "gear_speech_sport_once": False,
+    "gear_speech_number_style": "ordinal",
+    "gear_tone_root": "C",
+    "gear_tone_octave": 4,
+    "gear_tone_scale": "major",
+    "gear_tone_level_dbfs": -3.0,
     "announce_clickspot_actions": False,
     "scanner_distance_callout_enabled": False,
     "scanner_distance_callout_interval": 10,
@@ -230,6 +237,29 @@ def play_test_tone(freq_hz, level_dbfs):
         return False, f"Failed to play audio: {e}"
 
 
+def play_gear_tone_preview(root, octave, scale, level_dbfs):
+    """Play reverse, neutral, first to sixth gear, then drive and sport 1 with the given
+    tone settings. Returns (success: bool, error_message: str | None)."""
+    if not AUDIO_TEST_OK:
+        return False, "Audio test unavailable. Please ensure 'numpy' and 'sounddevice' are installed."
+    try:
+        SR = 48000
+        spacing = int(SR * 0.3)
+        gears = ["R", "N", "1", "2", "3", "4", "5", "6", "D", "S1"]
+        out = np.zeros(spacing * len(gears) + SR // 4, dtype=np.float32)
+        for i, gear in enumerate(gears):
+            degree = gear_report.extended_gear_degree(gear)
+            hz = gear_report.degree_frequency(degree, root, octave, scale)
+            tone = gear_report.render_tone(
+                hz, float(level_dbfs), SR, gear_report.is_sport(gear)
+            )
+            out[i * spacing : i * spacing + len(tone)] += tone
+        sd.play(out, samplerate=SR, blocking=False)
+        return True, None
+    except Exception as e:
+        return False, f"Failed to play audio: {e}"
+
+
 def _write_config(path, cfg):
     """Write the config atomically.
 
@@ -307,6 +337,7 @@ def load_config():
             raise ValueError("Config root is not an object")
 
         speech.migrate_config(user)
+        gear_report.migrate_config(user)
         # Seal any plaintext secret the moment it is read, and write it back here
         # rather than waiting for the next edit -- a config that is only ever
         # opened and closed would otherwise stay in the clear forever.
@@ -369,7 +400,15 @@ def load_config():
         _coerce("announce_turn_signals", bool, True)
         _coerce("announce_speed", bool, True)
         _coerce("speed_announce_interval", int, 25)
-        _coerce("announce_gear", bool, True)
+        # Every gear key, validated against the lists the dropdowns are built from.
+        gear = gear_report.settings_from_config(merged)
+        merged["gear_report_mode"] = gear["mode"]
+        merged["gear_speech_sport_once"] = gear["collapse_sport"]
+        merged["gear_speech_number_style"] = gear["number_style"]
+        merged["gear_tone_root"] = gear["root"]
+        merged["gear_tone_octave"] = gear["octave"]
+        merged["gear_tone_scale"] = gear["scale"]
+        merged["gear_tone_level_dbfs"] = gear["level_db"]
         _coerce("announce_clickspot_actions", bool, False)
         _coerce("scanner_distance_callout_enabled", bool, False)
         _coerce("scanner_distance_callout_interval", int, 10)

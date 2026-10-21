@@ -11,6 +11,7 @@ import zipfile
 
 import wx
 
+import gear_report
 import secretstore
 from configurator import (
     load_config,
@@ -21,6 +22,7 @@ from configurator import (
     list_speech_voices,
     test_speech_voice,
     play_test_tone,
+    play_gear_tone_preview,
     AUDIO_TEST_OK,
     list_wasapi_output_devices,
     _get_program_dir,
@@ -638,11 +640,102 @@ class ConfigPanel(wx.ScrolledWindow):
         self._speed_interval_sizer.Add(self.choice_speed_interval, 1, wx.EXPAND)
         auto_sizer.Add(self._speed_interval_sizer, 0, wx.ALL | wx.EXPAND, 6)
 
-        self.chk_announce_gear = wx.CheckBox(sb_auto, label="Gear change announcements")
-        self.chk_announce_gear.SetToolTip(
-            "Speak the new gear each time the vehicle changes gears."
+        gear_mode_row = wx.BoxSizer(wx.HORIZONTAL)
+        lbl_gear_mode = wx.StaticText(sb_auto, label="Report gear changes:")
+        self.choice_gear_mode = wx.Choice(
+            sb_auto, choices=["Off", "As speech", "As audio"]
         )
-        auto_sizer.Add(self.chk_announce_gear, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+        self.choice_gear_mode.SetName("Report gear changes")
+        self.choice_gear_mode.SetToolTip(
+            "Speak the new gear each time the vehicle changes gears, play a short "
+            "tone whose pitch says which gear it is, or report nothing."
+        )
+        gear_mode_row.Add(lbl_gear_mode, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
+        gear_mode_row.Add(self.choice_gear_mode, 1, wx.EXPAND)
+        auto_sizer.Add(gear_mode_row, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 6)
+
+        # Speech options -- shown only while "As speech" is selected.
+        self._gear_speech_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.chk_gear_sport_once = wx.CheckBox(
+            sb_auto, label='Say only "Sport" for sport mode gears'
+        )
+        self.chk_gear_sport_once.SetToolTip(
+            "Say \"Sport\" once when you shift into sport mode, and stay silent while "
+            "the transmission steps through sport 1, sport 2 and so on, as a CVT does "
+            "on its own."
+        )
+        self._gear_speech_sizer.Add(self.chk_gear_sport_once, 0, wx.BOTTOM, 6)
+        number_row = wx.BoxSizer(wx.HORIZONTAL)
+        lbl_gear_number = wx.StaticText(sb_auto, label="Forward gears:")
+        self.choice_gear_number_style = wx.Choice(
+            sb_auto, choices=["Ordinals (first, second)", "Numbers (1, 2)"]
+        )
+        self.choice_gear_number_style.SetName("Forward gears")
+        self.choice_gear_number_style.SetToolTip(
+            "Whether forward gears are spoken as ordinals or as plain numbers."
+        )
+        number_row.Add(lbl_gear_number, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
+        number_row.Add(self.choice_gear_number_style, 1, wx.EXPAND)
+        self._gear_speech_sizer.Add(number_row, 0, wx.EXPAND)
+        auto_sizer.Add(
+            self._gear_speech_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 6
+        )
+
+        # Audio options -- shown only while "As audio" is selected.
+        self._gear_audio_grid = wx.FlexGridSizer(cols=2, vgap=6, hgap=6)
+        self._gear_audio_grid.AddGrowableCol(1, 1)
+        lbl_gear_root = wx.StaticText(sb_auto, label="Root note:")
+        self.choice_gear_root = wx.Choice(
+            sb_auto, choices=[label for _v, label in gear_report.ROOT_NOTES]
+        )
+        self.choice_gear_root.SetName("Root note")
+        self.choice_gear_root.SetToolTip(
+            "The note neutral plays. Each forward gear steps one note up the scale "
+            "from it; reverse is one note below and park two."
+        )
+        lbl_gear_octave = wx.StaticText(sb_auto, label="Octave:")
+        self.choice_gear_octave = wx.Choice(
+            sb_auto, choices=[str(o) for o in gear_report.ROOT_OCTAVES]
+        )
+        self.choice_gear_octave.SetName("Octave")
+        self.choice_gear_octave.SetToolTip(
+            "The octave of the root note. Octave 4 holds middle C."
+        )
+        lbl_gear_scale = wx.StaticText(sb_auto, label="Scale:")
+        self.choice_gear_scale = wx.Choice(
+            sb_auto, choices=[label for _k, label, _s in gear_report.SCALES]
+        )
+        self.choice_gear_scale.SetName("Scale")
+        self.choice_gear_scale.SetToolTip(
+            "Which notes the gears step through. The quarter-tone scales include "
+            "notes between the keys of a piano."
+        )
+        lbl_gear_level = wx.StaticText(sb_auto, label="Gear Tone Volume (dBFS):")
+        self.spin_gear_tone_level = wx.SpinCtrlDouble(
+            sb_auto, min=-120.0, max=0.0, inc=1.0
+        )
+        self.spin_gear_tone_level.SetDigits(1)
+        self.spin_gear_tone_level.SetToolTip("Peak level of the gear change tone.")
+        self.spin_gear_tone_level.SetName("Gear Tone Volume")
+        _label_spin(self.spin_gear_tone_level, "Gear Tone Volume")
+        self.btn_gear_preview = wx.Button(sb_auto, label="Preview gear tones")
+        self.btn_gear_preview.SetToolTip(
+            "Play reverse, neutral, first to sixth gear, then drive and sport "
+            "with these settings. Sport gears play brighter."
+        )
+        for lbl, ctrl in (
+            (lbl_gear_root, self.choice_gear_root),
+            (lbl_gear_octave, self.choice_gear_octave),
+            (lbl_gear_scale, self.choice_gear_scale),
+            (lbl_gear_level, self.spin_gear_tone_level),
+        ):
+            self._gear_audio_grid.Add(lbl, 0, wx.ALIGN_CENTER_VERTICAL)
+            self._gear_audio_grid.Add(ctrl, 0, wx.EXPAND)
+        self._gear_audio_grid.AddSpacer(0)
+        self._gear_audio_grid.Add(self.btn_gear_preview, 0)
+        auto_sizer.Add(
+            self._gear_audio_grid, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 6
+        )
 
         self.chk_announce_clickspot_actions = wx.CheckBox(
             sb_auto, label="Announce clickspot actions"
@@ -1385,7 +1478,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_follow_device,
             self.chk_announce_turn_signals,
             self.chk_announce_speed,
-            self.chk_announce_gear,
+            self.chk_gear_sport_once,
             self.chk_announce_clickspot_actions,
             self.chk_scanner_callout,
             self.chk_scanner_steer_tone,
@@ -1413,6 +1506,16 @@ class ConfigPanel(wx.ScrolledWindow):
         self.choice_renderer.Bind(wx.EVT_CHOICE, self._schedule_save)
         self.choice_callout_interval.Bind(wx.EVT_CHOICE, self._schedule_save)
         self.choice_obstacle_sensitivity.Bind(wx.EVT_CHOICE, self._schedule_save)
+        for ctrl in (
+            self.choice_gear_mode,
+            self.choice_gear_number_style,
+            self.choice_gear_root,
+            self.choice_gear_octave,
+            self.choice_gear_scale,
+        ):
+            ctrl.Bind(wx.EVT_CHOICE, self._schedule_save)
+        self.choice_gear_mode.Bind(wx.EVT_CHOICE, self.on_change_gear_mode)
+        self.btn_gear_preview.Bind(wx.EVT_BUTTON, self.on_preview_gear_tones)
 
         for ctrl in (self.rb_units, self.rb_proto):
             ctrl.Bind(wx.EVT_RADIOBOX, self._schedule_save)
@@ -1443,6 +1546,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.spin_lowspeed_stop_level,
             self.spin_slip_tone_level,
             self.spin_placement_ping_level,
+            self.spin_gear_tone_level,
             self.spin_road_beep,
             self.spin_road_correction,
             self.spin_road_junction,
@@ -1473,6 +1577,7 @@ class ConfigPanel(wx.ScrolledWindow):
         self.on_toggle_hrtf(None)
         self.on_toggle_follow_device(None)
         self.on_toggle_announce_speed(None)
+        self.on_change_gear_mode(None)
         self.on_toggle_launch_beamng(None)
         self.on_toggle_scanner_callout(None)
         self.on_refresh_voices(None)
@@ -1515,6 +1620,43 @@ class ConfigPanel(wx.ScrolledWindow):
         self.Layout()
         if evt:
             evt.Skip()
+
+    def on_change_gear_mode(self, evt):
+        """Show the speech options or the tone options, whichever the mode uses."""
+        mode = self.choice_gear_mode.GetSelection()
+        _set_row(
+            self._gear_speech_sizer,
+            (self.chk_gear_sport_once, self.choice_gear_number_style),
+            mode == 1,
+            self.choice_gear_mode,
+        )
+        _set_row(
+            self._gear_audio_grid,
+            (
+                self.choice_gear_root,
+                self.choice_gear_octave,
+                self.choice_gear_scale,
+                self.spin_gear_tone_level,
+                self.btn_gear_preview,
+            ),
+            mode == 2,
+            self.choice_gear_mode,
+        )
+        self.Layout()
+        self.FitInside()
+        if evt:
+            evt.Skip()
+
+    def on_preview_gear_tones(self, evt):
+        cfg = self.controls_to_config()
+        ok, err = play_gear_tone_preview(
+            cfg["gear_tone_root"],
+            cfg["gear_tone_octave"],
+            cfg["gear_tone_scale"],
+            cfg["gear_tone_level_dbfs"],
+        )
+        if not ok and err:
+            wx.MessageBox(err, "Audio Error", wx.OK | wx.ICON_ERROR)
 
     def _update_speed_interval_labels(self):
         unit = "km/h" if self.rb_units.GetSelection() == 1 else "mph"
@@ -1691,7 +1833,22 @@ class ConfigPanel(wx.ScrolledWindow):
             self.spin_poll.SetValue(cfg.get("audio_poll_interval_sec", 2.0))
             self.chk_announce_turn_signals.SetValue(cfg.get("announce_turn_signals", True))
             self.chk_announce_speed.SetValue(cfg.get("announce_speed", True))
-            self.chk_announce_gear.SetValue(cfg.get("announce_gear", True))
+            gear = gear_report.settings_from_config(cfg)
+            self.choice_gear_mode.SetSelection(gear_report.MODES.index(gear["mode"]))
+            self.chk_gear_sport_once.SetValue(gear["collapse_sport"])
+            self.choice_gear_number_style.SetSelection(
+                gear_report.NUMBER_STYLES.index(gear["number_style"])
+            )
+            self.choice_gear_root.SetSelection(
+                [v for v, _l in gear_report.ROOT_NOTES].index(gear["root"])
+            )
+            self.choice_gear_octave.SetSelection(
+                gear_report.ROOT_OCTAVES.index(gear["octave"])
+            )
+            self.choice_gear_scale.SetSelection(
+                [k for k, _l, _s in gear_report.SCALES].index(gear["scale"])
+            )
+            self.spin_gear_tone_level.SetValue(gear["level_db"])
             self.chk_announce_clickspot_actions.SetValue(
                 cfg.get("announce_clickspot_actions", False)
             )
@@ -1785,7 +1942,23 @@ class ConfigPanel(wx.ScrolledWindow):
         cfg["audio_poll_interval_sec"] = self.spin_poll.GetValue()
         cfg["announce_turn_signals"] = self.chk_announce_turn_signals.GetValue()
         cfg["announce_speed"] = self.chk_announce_speed.GetValue()
-        cfg["announce_gear"] = self.chk_announce_gear.GetValue()
+        cfg["gear_report_mode"] = gear_report.MODES[
+            max(0, self.choice_gear_mode.GetSelection())
+        ]
+        cfg["gear_speech_sport_once"] = self.chk_gear_sport_once.GetValue()
+        cfg["gear_speech_number_style"] = gear_report.NUMBER_STYLES[
+            max(0, self.choice_gear_number_style.GetSelection())
+        ]
+        cfg["gear_tone_root"] = gear_report.ROOT_NOTES[
+            max(0, self.choice_gear_root.GetSelection())
+        ][0]
+        cfg["gear_tone_octave"] = gear_report.ROOT_OCTAVES[
+            max(0, self.choice_gear_octave.GetSelection())
+        ]
+        cfg["gear_tone_scale"] = gear_report.SCALES[
+            max(0, self.choice_gear_scale.GetSelection())
+        ][0]
+        cfg["gear_tone_level_dbfs"] = self.spin_gear_tone_level.GetValue()
         cfg["announce_clickspot_actions"] = (
             self.chk_announce_clickspot_actions.GetValue()
         )
@@ -1996,6 +2169,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.on_toggle_follow_device(None)
             self.on_toggle_launch_beamng(None)
             self.on_toggle_announce_speed(None)
+            self.on_change_gear_mode(None)
             self.on_toggle_scanner_callout(None)
             self._schedule_save()
         except Exception as e:

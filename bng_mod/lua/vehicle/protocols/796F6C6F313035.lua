@@ -71,7 +71,12 @@ local function findSteerCylinders()
   for _, pump in pairs(pumps) do
     for _, cyl in ipairs(pump.connectedConsumers or {}) do
       local name = tostring(cyl.name or "")
-      local isSteer = STEER_VALVE_ELECTRICS[cyl.directionElectricsName] or name:find("^steer") ~= nil
+      -- The name is only a fallback for a ram with no valve of its own. The 0.40 Percheron
+      -- steers its tag and pusher axles with "steerTag" / "steerPusher" on valves
+      -- "tagSteerCylinder" / "pusherSteerCylinder": a rigid truck, not a bent frame.
+      local dirName = cyl.directionElectricsName
+      local isSteer = STEER_VALVE_ELECTRICS[dirName]
+        or ((dirName == nil or dirName == "") and name:find("^steer") ~= nil)
       if isSteer and cyl.currentExtendPercent then
         found[#found + 1] = cyl
         if (cyl.direction or 1) >= 0 then sawPositive = true else sawNegative = true end
@@ -1145,11 +1150,26 @@ local function updateLifetimeDistance(dt)
   return reply[1] + math.max(0, rel - (reply[2] or rel))
 end
 
+-- Whether a wheel hangs anywhere below this device. Not every electricMotor is traction:
+-- the 0.40 Percheron diesel has "hydraulicsMotor" driving only its cab tilt pump, and
+-- counting it switched the whole truck to EV readouts.
+local function drivesWheel(device, depth)
+  if device.connectedWheel then return true end
+  if (depth or 0) > 32 then return false end
+  for _, child in pairs(device.children or {}) do
+    if drivesWheel(child, (depth or 0) + 1) then return true end
+  end
+  return false
+end
+
 local function scanElectricDrive()
   _evScanned = true
   _evMotors, _evStorages = nil, nil
   _hasCombustion = #powertrain.getDevicesByType("combustionEngine") > 0
-  local motors = powertrain.getDevicesByType("electricMotor")
+  local motors = {}
+  for _, m in ipairs(powertrain.getDevicesByType("electricMotor")) do
+    if drivesWheel(m) then motors[#motors + 1] = m end
+  end
   if #motors == 0 then return end
   _evMotors = motors
   local seen, names = {}, {}

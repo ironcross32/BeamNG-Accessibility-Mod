@@ -48,7 +48,7 @@ The per-file detail, and the reasoning behind every decision that is not obvious
 
 | Doc | Covers |
 |---|---|
-| `docs/python-components.md` | Every Python module: `beamtel.py`, `audio.py`, `wheel_slip.py`, `hrtf.py`, `configurator.py`, `speech.py`, `ai_describer.py`, `secretstore.py`, `nvda_ws_speaker.py`, `mcp_server.py`, `updater.py`, `bnh_logger.py`, `diagnostic/` |
+| `docs/python-components.md` | Every Python module: `beamtel.py`, `audio.py`, `wheel_slip.py`, `gear_report.py`, `hrtf.py`, `configurator.py`, `speech.py`, `ai_describer.py`, `secretstore.py`, `nvda_ws_speaker.py`, `mcp_server.py`, `updater.py`, `bnh_logger.py`, `diagnostic/` |
 | `docs/lua-telemetry-protocol.md` | `lua/vehicle/protocols/796F6C6F313035.lua`: the 60 Hz extended struct on 4444, `actualSteering`, the ramp hydraulics push, the loader implement block, and the no-reset teleport rule |
 | `docs/lua-vehicle-geometry.md` | `vehicleGeometry.lua` + vehicle `beamtelGeometryWatch.lua`: per-vehicle extents, hull cids, contact bands, occupancy histogram, dropping broken-off parts |
 | `docs/lua-ramp-geometry.md` | `rampGeometry.lua`: the drive-in mouth of a ramp-equipped machine, declared mouths, `floorTrusted` |
@@ -66,6 +66,7 @@ The per-file detail, and the reasoning behind every decision that is not obvious
 | `docs/lua-cannon-shot.md` | `cannonShot.lua`: shot outcomes. Port 4473 |
 | `docs/lua-environment.md` | `environmentAccessible.lua`: ambient temperature browser. Ports 4474/4475 |
 | `docs/lua-trailer-angle.md` | `trailerAngle.lua`: trailer articulation tone. Port 4476 |
+| `docs/lua-wheel-report.md` | `wheelReport.lua` + `wheel_report.py`: every wheel's pressure and brake temperature on the vehicle and anything coupled, labelled from geometry. Port 4485 |
 | `docs/lua-route-beacon.md` | `routeBeacon.lua` and `route_beacon.relative_bearing`. Port 4482 |
 | `docs/lua-audio-debug.md` | `audioDebugAccessible.lua` + vehicle `beamtelAudioDebug.lua`: the editor's Window > Audio tools (engine sound parameters, sound library). Ports 4483/4484 |
 | `docs/lua-vehicle-info.md` | `vehicleInfo.lua`: vehicle selector specifications. Ports 4477/4478 |
@@ -144,6 +145,7 @@ The World Editor is ImGui with no accessibility tree, so `tools/mapgen/` writes 
 | 4482 | Game→Python | Navigation route destination (routeBeacon.lua) |
 | 4483 | Game→Python | Audio debug rows: engine sounds, sound library (audioDebugAccessible.lua) |
 | 4484 | Python→Game | Audio debug commands (REQUEST/SELECT/SET/RESTORE/COPY/SFX_*) |
+| 4485 | Game→Python | Every wheel's position, pressure and brake temperature, vehicle and trailers (wheelReport.lua) |
 | 4579 | Game→Python | UI toast messages |
 | 8765 | WebSocket | NVDA/UI bridge |
 

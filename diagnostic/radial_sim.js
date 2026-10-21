@@ -57,7 +57,7 @@ function sliceLine(name) {
 const LINES = [
   '_radialMenuWasOpen', '_radialAnnouncedOpen', '_radialFocusedText', '_radialLastSpokenItem',
   '_radialLastSegments', '_radialLastSig', '_radialPendingSig', '_radialSettleQueued',
-  '_radialSawDefault', '_radialReleaseTimer', '_radialCanvas', '_radialStick', '_radialDpad',
+  '_radialSawDefault', '_radialReleaseTimer', '_radialSvg', '_radialUnwrapEvents', '_radialStick', '_radialDpad',
   '_radialInputFalling', 'RADIAL_RELEASE_SETTLE_MS', 'RADIAL_FALL_EPSILON',
   '_vueHintTimer', '_vueHintGeneration',
 ];
@@ -65,7 +65,8 @@ const FNS = [
   'radialCenterText', 'radialNoteInput', 'radialDpadMagnitude', 'radialCancelRelease',
   'radialSpeak', 'onRadialCenterState', 'radialSettle', 'radialSegments',
   'radialLevelAnnouncement', 'radialMenuCheckLevel', 'radialMenuOnClose', 'navigationValuePressed',
-  'vueHintNoteActivity',
+  'vueHintNoteActivity', 'radialItemLabel', 'radialItemState', 'radialWrapEvents',
+  'installRadialCenterHook',
 ];
 
 const lifted = LINES.map(sliceLine).join('') + '\n' + FNS.map(n => sliceBalanced(n, 'fn')).join('\n');
@@ -110,17 +111,43 @@ function makeSim() {
   const cleanText = s => String(s == null ? '' : s).replace(/[-]/g, '').replace(/\s+/g, ' ').trim();
   const navBurst = { timer: null, active: true, text: 'stale row', src: 3, fresh: 2, ema: 200 };
 
+  // A model of 0.40's RadialSVG, as far as the hook touches it: update() lays
+  // the wedges out (re-focusing one already marked focused), and each wedge's
+  // focus/blur call the instance's centre callbacks only on an actual change.
+  class RadialSVG {
+    constructor(events) { this.events = events; this.buttons = null; }
+    update(items) {
+      const events = this.events;
+      this.buttons = items.map((item, index) => {
+        const btn = { item, _focused: false };
+        btn.focus = () => { if (item.focused && btn._focused) return; item.focused = btn._focused = true; events.centerFocus(item, index); };
+        btn.blur = () => { if (!item.focused && !btn._focused) return; item.focused = btn._focused = false; events.centerBlur(item, index); };
+        if (item.focused) btn.focus();
+        return btn;
+      });
+    }
+  }
+  const cleanups = [];
+  // $ctx_t: a { txt, context } descriptor, keys looked up in a tiny table.
+  const ctxT = (d, translateContext) => {
+    const table = { 'ui.radialmenu2.exitVehicle': 'Exit vehicle' };
+    const txt = d && typeof d === 'object' ? d.txt : d;
+    return (table[txt] || txt) + (translateContext ? ' [ctx translated]' : '');
+  };
+
   const api = new Function(
     'document', 'trackedSetTimeout', 'clearTimeout', 'nowTS', 'emitSpeak', 'log', 'cleanText', '_navBurst',
+    'RadialSVG', 'onCleanup', 'gameContextTranslate', 'findTranslateFunc',
     'var P = { POINTER: 1, KEYBOARD: 2, CONTROLLER: 3, SYSTEM: 4 };' +
     'var speakTimer = null, loadingActive = false, lastControllerTs = 0;' +
     lifted +
     '\nreturn { note: radialNoteInput, center: onRadialCenterState, poll: radialMenuCheckLevel,' +
-    ' close: radialMenuOnClose, settleMs: RADIAL_RELEASE_SETTLE_MS,' +
+    ' close: radialMenuOnClose, settleMs: RADIAL_RELEASE_SETTLE_MS, install: installRadialCenterHook,' +
     // Stands in for updateVuePauseHints arming the idle hint.
     ' armHint: function (ms) { _vueHintTimer = trackedSetTimeout(function () { _vueHintTimer = null; emitSpeak("HINT", 3); }, ms); },' +
     ' hintPending: function () { return !!_vueHintTimer; } };'
-  )(document, setT, clrT, () => now, txt => spoken.push({ t: now, txt }), () => {}, cleanText, navBurst);
+  )(document, setT, clrT, () => now, txt => spoken.push({ t: now, txt }), () => {}, cleanText, navBurst,
+    RadialSVG, fn => cleanups.push(fn), () => ctxT, () => k => k);
 
   // Model of Radial.vue: wedges laid out clockwise from straight up, and
   // radialsvg's focus/blur, which only call back on an actual change.
@@ -157,7 +184,8 @@ function makeSim() {
   function remount() { canvas = {}; focusedIdx = -1; }
 
   return {
-    api, dom, spoken, navBurst, advance, axis, rebuild, setItems, remount,
+    api, dom, spoken, navBurst, advance, axis, rebuild, setItems, remount, RadialSVG,
+    uninstall: () => { while (cleanups.length) cleanups.pop()(); },
     now: () => now,
     texts: () => spoken.map(x => x.txt),
     clear: () => { spoken.length = 0; },
@@ -323,12 +351,44 @@ async function openTop(s) {
   }
 
   {
-    console.log('\nScenario 12: wiring');
+    console.log('\nScenario 12: through the real hook on a model of 0.40\'s RadialSVG');
+    const s = makeSim();
+    const plainUpdate = s.RadialSVG.prototype.update;
+    s.api.install();
+    let origFocus = 0, origBlur = 0;
+    const ev = { centerFocus() { origFocus++; }, centerBlur() { origBlur++; } };
+    const plainFocus = ev.centerFocus;
+    const svg = new s.RadialSVG(ev);
+    const items = TOP.map(t => ({ title: t }));
+    items[1].title = 'ui.radialmenu2.exitVehicle';
+    items[2].price = { money: { amount: 250 } };
+    svg.update(items); await s.advance(5);
+    check('opening is announced from update()', JSON.stringify(s.texts()) === '["Radial Menu"]', JSON.stringify(s.texts()));
+    s.clear();
+    svg.buttons[1].focus(); await s.advance(5);
+    check('a focused wedge is spoken, translated, context left alone', JSON.stringify(s.texts()) === '["Exit vehicle"]', JSON.stringify(s.texts()));
+    s.clear();
+    svg.buttons[1].blur(); svg.buttons[2].focus(); await s.advance(5);
+    check('the next wedge carries its price', JSON.stringify(s.texts()) === '["Camera, costs 250"]', JSON.stringify(s.texts()));
+    check('the game\'s own callbacks still run', origFocus === 2 && origBlur === 1, origFocus + '/' + origBlur);
+    s.clear();
+    svg.update(items); await s.advance(5);
+    check('a rebuild under the pointer stays quiet', s.texts().length === 0, JSON.stringify(s.texts()));
+    s.uninstall();
+    check('uninstall restores update() and the callbacks',
+          s.RadialSVG.prototype.update === plainUpdate && ev.centerFocus === plainFocus && !ev.__bnvdaWrapped);
+  }
+
+  {
+    console.log('\nScenario 13: wiring');
     const code = source.split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
     check('direction input reaches the pointer tracking',
           /function trackNavigationInput\(action, value\) \{\s*radialNoteInput\(action, value\);/.test(code));
-    check('the hook passes the canvas instance',
-          /onRadialCenterState\(this, this\.state \|\| state\);/.test(code));
+    check('the update hook passes the RadialSVG instance',
+          /onRadialCenterState\(this, null\);/.test(code) && /onRadialCenterState\(svg, radialItemState\(item\)\);/.test(code));
+    const index = fs.readFileSync(path.join(path.dirname(SRC), 'index.js'), 'utf8');
+    check('index.js imports radialsvg and hands it over as radialSvg',
+          /import\('@\/modules\/radial\/radialsvg'\)/.test(index) && /^\s*radialSvg,\s*$/m.test(index));
     check('item names bypass scheduleSpeak',
           !/function radialSettle[\s\S]*?scheduleSpeak[\s\S]*?function installRadialCenterHook/.test(code));
   }

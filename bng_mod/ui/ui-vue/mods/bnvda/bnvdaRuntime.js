@@ -57,7 +57,7 @@ export function installBNVDA($rootScope, dependencies) {
           var Controls = dependencies.controls || null;
           var iconCatalog = dependencies.icons || null;
           var loadingScreen = dependencies.loadingScreen || null;
-          var RadialCenterCanvas = dependencies.radialCenterCanvas || null;
+          var RadialSVG = dependencies.radialSvg || null;
           var vueWatch = dependencies.watch || null;
           var loadingActive = false;
           var loadingSettleTimer = null;
@@ -1880,19 +1880,23 @@ export function installBNVDA($rootScope, dependencies) {
 
           // ========== RADIAL MENU SPEECH MODULE ==========
           // The middle of the radial menu -- the name, price and hotkey of the
-          // item currently pointed at -- is painted onto a <canvas> by
-          // radialCenterCanvas.js. See the <canvas ref="centerCanvas"> in
-          // modules/radial/views/Radial.vue: it is even marked aria-hidden.
-          // Canvas pixels carry no text, so there is nothing in the DOM to read;
-          // the previous implementation scraped an SVG <foreignObject> that does
-          // not exist in this UI, which is why it only ever logged "Gave up
-          // finding wrap after 10 attempts" and then polled a null every 80ms.
+          // item currently pointed at. Up to 0.39 it was painted onto a canvas
+          // by radialCenterCanvas.js and we wrapped its setState. 0.40 deleted
+          // that file: the centre is now a Vue-rendered .radial-center div fed
+          // from a ref private to Radial.vue's setup, and with the old import
+          // 404ing the hook silently never installed -- the clicks still played
+          // and nothing was said.
           //
-          // RadialCenterCanvas.prototype.setState is the last point at which the
-          // label is still a string, and Radial.vue calls it on every focus and
-          // blur whatever the input device (mouse, stick or d-pad). Wrapping it
-          // hands us exactly the text a sighted player sees, event-driven, with
-          // no polling and no dependence on markup.
+          // The events now come from RadialSVG (modules/radial/radialsvg.js).
+          // Each wedge's focus() and blur() call the centerFocus / centerBlur
+          // callbacks Radial.vue gives the instance, with the item itself,
+          // whatever the input device (mouse, stick or d-pad). Radial.vue also
+          // sets the centre directly around every update(): default first, then
+          // the item still marked focused. Wrapping update() on the prototype
+          // reaches the instance before any wedge exists, so its callbacks are
+          // wrapped there, and update() reports the direct pair itself. We read
+          // the item, not the DOM: Vue renders the div asynchronously and the
+          // pair would collapse to its end state.
           //
           // Everything outside the circle -- title, breadcrumbs, category tabs --
           // is still ordinary DOM and is read from there.
@@ -1916,10 +1920,12 @@ export function installBNVDA($rootScope, dependencies) {
           var _radialSettleQueued = false;
           var _radialSawDefault = false;
           var _radialReleaseTimer = null;
-          // Radial.vue makes a new RadialCenterCanvas per mount, so a new
-          // instance is a newly opened menu even when the 1s closed-menu poll
-          // never saw it close in between.
-          var _radialCanvas = null;
+          // Radial.vue makes a new RadialSVG per mount, so a new instance is a
+          // newly opened menu even when the 1s closed-menu poll never saw it
+          // close in between.
+          var _radialSvg = null;
+          // Puts back the callbacks wrapped on the current instance's events.
+          var _radialUnwrapEvents = null;
           // The latest direction input per device, and whether its last change
           // pulled the pointer back toward the centre.
           var _radialStick = { x: 0, y: 0 };
@@ -1938,26 +1944,43 @@ export function installBNVDA($rootScope, dependencies) {
 
           function radialCenterText(state) {
             if (!state) return '';
-            // cleanText strips the bngIcons private-use glyphs that Radial.vue's
-            // getHotkey() prefixes onto the control name.
             var label = cleanText(state.label);
             if (!label) return '';
             var parts = [label];
-            // Price arrives as "250 <money glyph>"; cleanText drops the glyph, so
-            // say what the bare number means.
+            // A bare amount (item.price.money.amount); BngUnit draws the money
+            // glyph beside it, so say what the number means.
             var price = cleanText(state.price);
             if (price) parts.push('costs ' + price);
-            // state.hotkey is deliberately NOT spoken. Radial.vue's getHotkey()
-            // builds it as an icon glyph plus the RAW control name, so cleanText
-            // strips the glyph and leaves things like "Btn_a" -- and it is
-            // appended to every wedge, so sweeping the menu reads a button name
-            // after every single item. Worse, getHotkey calls makeViewerObj with
-            // no device and no useLastDevice, so with two pads plugged in the
-            // button it names is whichever device happens to come first in the
-            // bindings list rather than the one in the player's hands. The item
-            // name is what the menu is navigated by; the shortcut is not worth
-            // the interruption, still less a wrong one.
+            // The item's binding (the centre's BngBinding hint) is deliberately
+            // NOT spoken: it would follow every wedge, so sweeping the menu reads
+            // a button name after every single item. The item name is what the
+            // menu is navigated by; the shortcut is not worth the interruption.
             return parts.join(', ');
+          }
+
+          // What Radial.vue's getCenterLabel shows: contextTranslate with the
+          // context left untranslated (its default; $ctx_t's is the opposite).
+          function radialItemLabel(item) {
+            var title = item.title;
+            var desc = typeof title === 'string' ? { txt: title, context: item.context } : title;
+            var ctxT = gameContextTranslate();
+            if (ctxT) {
+              try { return ctxT(desc, false); } catch (e) {}
+            }
+            if (desc && typeof desc === 'object') return findTranslateFunc()(desc.txt, desc.context);
+            return String(title == null ? '' : title);
+          }
+
+          // The centre state for an item, in the shape onRadialCenterState
+          // takes: null is the "Select an option" default.
+          function radialItemState(item) {
+            if (!item) return null;
+            var amount = item.price && item.price.money ? item.price.money.amount : undefined;
+            return {
+              focused: true,
+              label: radialItemLabel(item),
+              price: amount === undefined || amount === null ? '' : String(amount),
+            };
           }
 
           // Called from trackNavigationInput for every direction event, open menu
@@ -2023,10 +2046,10 @@ export function installBNVDA($rootScope, dependencies) {
           // speaks it again. Vue's own render flush was queued first (radialData
           // changed before setCenterDefault ran), so the heading in the DOM is
           // already the new one by the time this runs.
-          function onRadialCenterState(canvas, state) {
-            if (canvas !== _radialCanvas) {
-              if (_radialCanvas) radialMenuOnClose();
-              _radialCanvas = canvas;
+          function onRadialCenterState(svg, state) {
+            if (svg !== _radialSvg) {
+              if (_radialSvg) radialMenuOnClose();
+              _radialSvg = svg;
             }
             if (!_radialMenuWasOpen) {
               if (!document.querySelector('.radial-menu')) return;
@@ -2086,29 +2109,79 @@ export function installBNVDA($rootScope, dependencies) {
             radialSpeak(item);
           }
 
-          function installRadialCenterHook() {
-            if (!RadialCenterCanvas || !RadialCenterCanvas.prototype) {
-              log('error', '[bnvda] RadialCenterCanvas unavailable; radial item names will not be spoken.');
+          // Wraps the centerFocus / centerBlur callbacks on one RadialSVG's own
+          // events object. The wedges look them up there at call time, so this
+          // covers wedges made before and after. Only the newest instance is
+          // kept: an older one belongs to an unmounted menu.
+          function radialWrapEvents(svg) {
+            var ev = svg.events;
+            if (!ev || ev.__bnvdaWrapped) return;
+            var focus = ev.centerFocus, blur = ev.centerBlur;
+            if (typeof focus !== 'function' || typeof blur !== 'function') {
+              log('error', '[bnvda] RadialSVG has no centerFocus/centerBlur; radial item names will not be spoken.');
               return;
             }
-            var proto = RadialCenterCanvas.prototype;
-            var original = proto.setState;
+            // Run after the original and inside a try so a fault of ours can
+            // never stop the menu drawing.
+            ev.centerFocus = function (item) {
+              var result = focus.apply(this, arguments);
+              try { onRadialCenterState(svg, radialItemState(item)); } catch (e) {
+                log('error', '[bnvda] Radial centre hook failed: ' + e.message);
+              }
+              return result;
+            };
+            ev.centerBlur = function () {
+              var result = blur.apply(this, arguments);
+              try { onRadialCenterState(svg, null); } catch (e) {
+                log('error', '[bnvda] Radial centre hook failed: ' + e.message);
+              }
+              return result;
+            };
+            ev.__bnvdaWrapped = true;
+            if (_radialUnwrapEvents) _radialUnwrapEvents();
+            _radialUnwrapEvents = function () {
+              ev.centerFocus = focus;
+              ev.centerBlur = blur;
+              delete ev.__bnvdaWrapped;
+            };
+          }
+
+          function installRadialCenterHook() {
+            if (!RadialSVG || !RadialSVG.prototype) {
+              log('error', '[bnvda] RadialSVG unavailable; radial item names will not be spoken.');
+              return;
+            }
+            var proto = RadialSVG.prototype;
+            var original = proto.update;
             if (typeof original !== 'function' || original.__bnvdaWrapped) return;
-            var wrapped = function (state) {
-              var result = original.apply(this, arguments);
-              // Read this.state, not the argument: setState normalizes it first,
-              // filling in the defaults. Run after the original and inside a
-              // try so a fault of ours can never stop the menu drawing.
+            var wrapped = function (items) {
+              // requestData() has just reset the centre to the default and, once
+              // this returns, focuses the item still marked focused -- both
+              // directly, not through the callbacks.
               try {
-                onRadialCenterState(this, this.state || state);
+                radialWrapEvents(this);
+                onRadialCenterState(this, null);
+              } catch (e) {
+                log('error', '[bnvda] Radial centre hook failed: ' + e.message);
+              }
+              var result = original.apply(this, arguments);
+              try {
+                var list = Array.isArray(items) ? items : [];
+                for (var i = 0; i < list.length; i++) {
+                  if (list[i] && list[i].focused) { onRadialCenterState(this, radialItemState(list[i])); break; }
+                }
               } catch (e) {
                 log('error', '[bnvda] Radial centre hook failed: ' + e.message);
               }
               return result;
             };
             wrapped.__bnvdaWrapped = true;
-            proto.setState = wrapped;
-            onCleanup(function () { if (proto.setState === wrapped) proto.setState = original; });
+            proto.update = wrapped;
+            onCleanup(function () {
+              if (proto.update === wrapped) proto.update = original;
+              if (_radialUnwrapEvents) _radialUnwrapEvents();
+              _radialUnwrapEvents = null;
+            });
             log('info', '[bnvda] Radial centre hook installed.');
           }
 
@@ -3155,8 +3228,12 @@ export function installBNVDA($rootScope, dependencies) {
               if (control.type !== 'checkbox' && control.type !== 'radio') value = scalarValue(control.value);
               if (!value && control.getAttribute) value = control.getAttribute('aria-valuetext') || control.getAttribute('aria-valuenow') || '';
             }
+            // 0.40's bngSelect (e.g. Part camera: Off / Hover / On) is a
+            // left/right stepper whose value lives only in .select-display -- no
+            // aria, no input -- so without it the row read as a bare label and a
+            // step changed nothing in the focus signature, so never re-announced.
             if (!value && row && row.querySelector) {
-              var valueEl = row.querySelector('.dropdown-display, .options-item-value, .current-value, .value, output, input, select, [aria-valuetext], [aria-valuenow]');
+              var valueEl = row.querySelector('.bng-select .select-display, .dropdown-display, .options-item-value, .current-value, .value, output, input, select, [aria-valuetext], [aria-valuenow]');
               if (valueEl) {
                 value = scalarValue(valueEl.value);
                 if (!value) value = valueEl.getAttribute('aria-valuetext') || valueEl.getAttribute('aria-valuenow') || valueEl.innerText || '';
@@ -3863,6 +3940,34 @@ export function installBNVDA($rootScope, dependencies) {
             return count + (count === 1 ? ' configuration' : ' configurations');
           }
 
+          // A grid selector filter chip carries its state only as a class and an
+          // icon glyph (DetailedFilters.vue, getFilterOptionClass). The game's
+          // toggle is not a plain flip: while every option of a filter is
+          // enabled the chips are all filter-neutral -- nothing is filtered --
+          // and pressing one enables ONLY that one. From then on each chip is
+          // filter-active (shown) or filter-inactive (hidden), until the last
+          // one is switched off and the filter resets to neutral. Neutral says
+          // nothing, so "on" and "off" are only ever heard while the filter is
+          // actually narrowing the list. The class change re-announces the
+          // focused chip through vueFocusSignature, which signs on elClass.
+          function vueFilterChipState(chip) {
+            var out = [];
+            var classes = chip && chip.classList;
+            if (!classes || !classes.contains('filter-option-chip')) return out;
+            if (classes.contains('filter-active')) out.push('on');
+            else if (classes.contains('filter-inactive')) out.push('off');
+            if (classes.contains('filter-locked')) out.push('locked');
+            return out;
+          }
+
+          // The filter category headings: has-active-filters is set on the
+          // .bng-accitem when any of its options (or its range) is narrowing.
+          function vueFilterHeadingState(el) {
+            if (!closest(el, '.bng-accitem-caption')) return '';
+            var item = closest(el, '.bng-accitem');
+            return item && closest(item, '.filters-accordion') && item.classList.contains('has-active-filters') ? 'filtered' : '';
+          }
+
           function speakVueVehicleSelector(element, src, root) {
             if (!root || !root.querySelector('.vehicle-grid, .grid-selector-screen-content, .grid-content')) return false;
             var tile = closest(element, '[bng-nav-item]');
@@ -3872,9 +3977,16 @@ export function installBNVDA($rootScope, dependencies) {
               if (text) scheduleSpeak(text, src);
               return true;
             }
+            var chip = closest(element, '.filter-option-chip');
+            if (chip) {
+              var label = chip.querySelector('.option-label');
+              var chipText = [cleanText((label && label.innerText) || '')].concat(vueFilterChipState(chip)).filter(Boolean).join(', ');
+              if (chipText) scheduleSpeak(chipText, src);
+              return true;
+            }
             var target = closest(element, VUE_TARGET_SELECTOR) || element;
             var row = closest(target, '.bng-row') || target;
-            var genericText = [vueOwnLabel(target), vueControlState(target, row)].filter(Boolean).join(', ');
+            var genericText = [vueOwnLabel(target), vueControlState(target, row), vueFilterHeadingState(element), accordionHeadingState(element)].filter(Boolean).join(', ');
             if (genericText) scheduleSpeak(genericText, src);
             return true;
           }

@@ -26,6 +26,8 @@ try:
 except Exception:
     ScannerHRTFDiagnostic = None
 
+import gear_report
+
 DEFAULT_SR = 48000
 
 # =========================
@@ -1629,6 +1631,11 @@ class AudioController:
         self._road_chime_next_allowed_time = 0.0
         self._road_junction_queue = []
         self._assistant_cue_queue = []
+        # Gear change tones: [{"buf": mono np.ndarray, "pos": int}]. A list rather than
+        # one slot so a quick double shift overlaps the previous tone instead of cutting
+        # it off mid-tail, which would click.
+        self._gear_tones = []
+        self._gear_tone_settings = gear_report.settings_from_config({})
         self._junction_proximity_enabled = True
         self._junction_proximity = None
         self._junction_proximity_time = 0.0
@@ -2300,6 +2307,34 @@ class AudioController:
             buf_l += wave
             buf_r += wave
 
+    def trigger_gear_tone(self, degree, sport=False):
+        """Play the tone for a gear, given as its scale degree from neutral; sport gears
+        play the same pitch with a brighter timbre.
+
+        Rendered here, on the caller's thread, so the callback only adds a buffer."""
+        if not self._is_enabled:
+            return
+        s = self._gear_tone_settings
+        hz = gear_report.degree_frequency(degree, s["root"], s["octave"], s["scale"])
+        buf = gear_report.render_tone(hz, s["level_db"], self.samplerate, sport)
+        with self.lock:
+            # Three in flight is already a shift every few tens of milliseconds; past
+            # that the oldest is inaudible under the cubic tail anyway.
+            self._gear_tones = self._gear_tones[-3:] + [{"buf": buf, "pos": 0}]
+
+    def _mix_gear_tones(self, buf_l, buf_r, frames):
+        with self.lock:
+            pending = []
+            for entry in self._gear_tones:
+                buf, pos = entry["buf"], entry["pos"]
+                count = min(frames, len(buf) - pos)
+                buf_l[:count] += buf[pos:pos + count]
+                buf_r[:count] += buf[pos:pos + count]
+                entry["pos"] = pos + count
+                if entry["pos"] < len(buf):
+                    pending.append(entry)
+            self._gear_tones = pending
+
     def _mix_assistant_cues(self, buf_l, buf_r, frames):
         with self.lock:
             pending = []
@@ -2606,6 +2641,8 @@ class AudioController:
 
         chime_db = float(cfg.get("oil_chime_level_dbfs", -12.0))
         self.chime_amp = float(10.0 ** (chime_db / 20.0))
+
+        self._gear_tone_settings = gear_report.settings_from_config(cfg)
 
         self.CHECK_ENGINE_BUZZER_WAVEFORM = self._generate_check_engine_buzzer(
             self.buzzer_amp
@@ -6688,6 +6725,7 @@ class AudioController:
 
         self._mix_junction_proximity(bufL, bufR, frames)
         self._mix_assistant_cues(bufL, bufR, frames)
+        self._mix_gear_tones(bufL, bufR, frames)
         out = np.stack([bufL, bufR], axis=1).astype(np.float32)
         np.clip(out, -0.999, 0.999, out=out)
         outdata[:] = out

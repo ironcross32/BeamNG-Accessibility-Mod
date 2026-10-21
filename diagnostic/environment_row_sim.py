@@ -39,6 +39,7 @@ _WANTED = (
     "_env_row_line",
     "_env_on_adjust",
     "fmt_temp_c_or_f",
+    "speak_ambient_temperature",
 )
 
 with open(_SRC, encoding="utf-8") as fh:
@@ -279,6 +280,38 @@ check("a flat set writes TWO curve points, not one",
 # is the one that actually re-reads the cached curve.
 check("the refresh goes through core_environment.onInit",
       "core_environment.onInit()" in lua and "setEditorDirty" not in lua.split("--")[0])
+print()
+
+# ==========================================================================================
+print("8. the F9 Ctrl+T ambient readout speaks the live figure, and asks when it has none")
+# ==========================================================================================
+speak_ambient = _ns["speak_ambient_temperature"]
+_ns["_env_unavailable"] = ""
+
+set_units("imperial")
+_ns["_env_ambient_c"] = 15.0
+del _spoken[:]
+speak_ambient()
+check("imperial readout", _spoken == ["Ambient temperature 59 Fahrenheit"], repr(_spoken))
+
+set_units("metric")
+_ns["_env_ambient_c"] = -3.6
+del _spoken[:]
+speak_ambient()
+check("metric readout, below zero", _spoken == ["Ambient temperature -4 Celsius"], repr(_spoken))
+
+# None is "no level", not zero degrees: zero is a real reading.
+_ns["_env_ambient_c"] = None
+del _spoken[:], _sent[:]
+speak_ambient()
+check("no figure says so instead of reading zero", _spoken == ["No ambient temperature"],
+      repr(_spoken))
+check("and nudges the mod for one", _sent == ["REQUEST"], repr(_sent))
+
+# The push the listener reads; an empty one clears the figure on leaving a level.
+check("the mod pushes AMBIENT:valueC=", 'AMBIENT:valueC=' in lua and '"AMBIENT:"' in lua)
+check("an empty AMBIENT line parses to no value",
+      _ns["_env_float"](parse(""), "valueC") is None)
 print()
 
 if _failures:

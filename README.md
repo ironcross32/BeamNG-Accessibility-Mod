@@ -71,6 +71,7 @@ Press F9, then one of the following keys. If you press an invalid key or allow t
 - O: Speak oil temperature
 - T: Speak turbo pressure
 - Shift+T: Speak max turbo pressure
+- Ctrl+T: Speak ambient temperature (the level's outside temperature at the current time of day; also a row in the status menu)
 - P: Speak air pressure (pneumatic vehicles only)
 - H: Speak heading
 - A: Speak attitude (roll and pitch)

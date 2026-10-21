@@ -27,6 +27,9 @@ extensions.load("vehicleScanner")
 -- bodies; it holds no scene references between ticks and reads a registry the engine maintains,
 -- so it needs neither implementProximity's late slot nor a command port.
 extensions.load("trailerAngle")
+-- Every wheel on the driven vehicle and on what is coupled to it, for the status rows. Reads the
+-- same coupler registry as trailerAngle and asks each vehicle VM for its wheels; send only.
+extensions.load("wheelReport")
 -- Where the big map's navigation route ends, so Python can pulse a beacon at it. Reads
 -- core_groundMarkers, which the engine maintains; it holds no scene references between ticks
 -- and binds no command port, so like trailerAngle it needs no late slot and nothing to be told.

@@ -49,7 +49,10 @@ from route_beacon import (
 )
 from poi_guidance import parse_poi_packet, poi_phrase
 import wheel_slip
+import wheel_report
 import audio_debug
+import gear_report
+from gear_report import gear_to_phrase, extended_gear_to_phrase
 
 logger = get_logger()
 
@@ -229,7 +232,14 @@ DEFAULT_CONFIG = {
     "announce_turn_signals": True,
     "announce_speed": True,
     "speed_announce_interval": 25,
-    "announce_gear": True,
+    # Replaces the old announce_gear boolean; gear_report.migrate_config carries it over.
+    "gear_report_mode": "speech",
+    "gear_speech_sport_once": False,
+    "gear_speech_number_style": "ordinal",
+    "gear_tone_root": "C",
+    "gear_tone_octave": 4,
+    "gear_tone_scale": "major",
+    "gear_tone_level_dbfs": -3.0,
     "announce_clickspot_actions": False,
     "scanner_distance_callout_enabled": False,
     "scanner_distance_callout_interval": 10,
@@ -564,6 +574,9 @@ def load_config():
         # for the user to re-enter a key they have no reason to touch again.
         if secretstore.migrate_config(user):
             logger.info("Encrypted plaintext config secrets with DPAPI.")
+            migrated = True
+        if gear_report.migrate_config(user):
+            logger.info("Migrated announce_gear to gear_report_mode.")
             migrated = True
         if migrated:
             _write_config(CONFIG_PATH, user)
@@ -2204,6 +2217,40 @@ def trailer_angle_listener(stop_event):
         logger.info("Trailer angle listener stopped.")
 
 
+def wheel_report_listener(stop_event):
+    """Listens for the wheel list from wheelReport.lua; labels come from wheel_report.py."""
+    global last_wheel_rows, last_wheel_stamp
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", WHEEL_REPORT_LISTEN_PORT))
+        sock.settimeout(0.2)
+        logger.info(f"Wheel report listener started on port {WHEEL_REPORT_LISTEN_PORT}")
+        while not stop_event.is_set():
+            try:
+                data, _addr = sock.recvfrom(65535)
+                vehicles = wheel_report.parse_packet(
+                    data.decode("utf-8", errors="ignore")
+                )
+                if vehicles is None:
+                    continue
+                rows = wheel_report.all_rows(vehicles)
+                with state_lock:
+                    last_wheel_rows = rows
+                    last_wheel_stamp = time.monotonic()
+            except socket.timeout:
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Wheel report listener socket error.")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+        logger.info("Wheel report listener stopped.")
+
+
 def route_beacon_listener(stop_event):
     """Listens for the map route's destination from routeBeacon.lua.
 
@@ -3593,6 +3640,7 @@ def environment_listener(stop_event):
     opens the browser (F9 then N) or edits a value from inside it.
     """
     global _env_rows, _env_level, _env_can_change, _env_building, _env_unavailable
+    global _env_ambient_c
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -3624,18 +3672,30 @@ def environment_listener(stop_event):
                         _env_building.append(row)
                     continue
 
+                if text.startswith("AMBIENT:"):
+                    # AMBIENT:valueC=<c>, or bare AMBIENT: when the level is gone.
+                    fields = _parse_env_fields(text[len("AMBIENT:") :])
+                    _env_ambient_c = _env_float(fields, "valueC")
+                    continue
+
                 if text == "ENV_END":
                     # Swapped in whole, so a browser opened mid-push never sees a
                     # torn list.
                     if _env_building is not None:
                         _env_rows = _env_building
                         _env_building = None
+                        for row in _env_rows:
+                            if row.get("key") == "temperature":
+                                live = _env_float(row, "value")
+                                if live is not None:
+                                    _env_ambient_c = live
                         _env_notify_refresh()
                     continue
 
                 if text.startswith("ENV_UNAVAILABLE:"):
                     _env_rows = []
                     _env_building = None
+                    _env_ambient_c = None
                     _env_unavailable = text[len("ENV_UNAVAILABLE:") :].strip()
                     continue
 
@@ -3869,7 +3929,8 @@ oil_chime_enabled = True
 announce_turn_signals = True
 announce_speed = True
 speed_announce_interval = 25
-announce_gear = True
+# Mode, speech style and tone settings for gear changes; see gear_report.settings_from_config.
+gear_report_settings = gear_report.settings_from_config({})
 # Held-navigation speech coalescing. Enforced entirely in the UI JS runtime; this
 # side only owns the value and pushes it across the bridge.
 ui_nav_hold_suppression = True
@@ -4016,67 +4077,16 @@ def flip_units():
 # =========================
 #  Gear helpers
 # =========================
-_ORDINAL_WORDS = {
-    1: "first",
-    2: "second",
-    3: "third",
-    4: "fourth",
-    5: "fifth",
-    6: "sixth",
-    7: "seventh",
-    8: "eighth",
-    9: "ninth",
-    10: "tenth",
-    11: "eleventh",
-    12: "twelfth",
-}
-
-
-def gear_to_phrase(gear_byte: int) -> str:
-    if gear_byte == 0:
-        return "reverse"
-    if gear_byte == 1:
-        return "neutral"
-    if gear_byte >= 2:
-        n = gear_byte - 1
-        return _ORDINAL_WORDS.get(n, f"{n}th")
-    return "unknown"
-
-
-def extended_gear_to_phrase(gear_str: str) -> str:
-    s = (gear_str or "").strip().upper()
-    if not s:
-        return "unknown"
-
-    if s == "P":
-        return "park"
-    if s == "D":
-        return "drive"
-    if s == "R":
-        return "reverse"
-    if s == "N":
-        return "neutral"
-
-    if len(s) > 1 and s[1:].isdigit():
-        num_part = s[1:]
-        if s.startswith("S"):
-            return f"sport {num_part}"
-        if s.startswith("M"):
-            return f"manual {num_part}"
-
-    if s.isdigit() or s.startswith("-"):
-        try:
-            num = int(s)
-            if num == -1:
-                return "reverse"
-            elif num == 0:
-                return "neutral"
-            else:
-                return _ORDINAL_WORDS.get(num, f"{num}th")
-        except ValueError:
-            return "unknown"
-
-    return "unknown"
+# The phrases, the scale maths and the tone itself live in gear_report.py so
+# diagnostic/gear_report_sim.py can assert them without the game.
+def _report_gear_change(phrase, degree, sport=False):
+    """Speak or play one gear change, per gear_report_mode. Caller holds state_lock."""
+    if gear_report_settings["mode"] == "speech":
+        if phrase:
+            say(phrase, exclude_from_buffer=True)
+    elif gear_report_settings["mode"] == "audio":
+        if degree is not None and audio_controller_ref is not None:
+            audio_controller_ref.trigger_gear_tone(degree, sport)
 
 
 def get_speed_bucket(speed_ms: float) -> int:
@@ -4186,6 +4196,14 @@ last_trailer_stamp = 0.0  # time.monotonic() of the last packet; 0.0 = never
 # TRAILER_FULL_DEG; trailer_angle_sim.lua greps both.
 TRAILER_FULL_DEG = 45.0
 TRAILER_STALE_SEC = 1.0  # no packet for this long and the tone goes silent
+
+# Every wheel on the driven vehicle and on whatever is coupled to it, written by
+# wheel_report_listener under state_lock as wheel_report.all_rows() output. While it is fresh it
+# replaces the struct's six fixed-slot wheel rows, which only know wheels NAMED FL FR RL RR F R;
+# stale (an older mod half, the extension down) and those rows come back.
+last_wheel_rows = []
+last_wheel_stamp = 0.0  # time.monotonic() of the last packet; 0.0 = never
+WHEEL_REPORT_STALE_SEC = 3.0  # the mod sends twice a second
 
 # --- Route beacon state, written by route_beacon_listener under state_lock ---
 # The DESTINATION, not a bearing. routeBeacon.lua sends a world position because the
@@ -4738,6 +4756,10 @@ _env_level = ""
 _env_can_change = True
 _env_building = None  # accumulator between ENV_BEGIN and ENV_END
 _env_unavailable = ""
+# Live ambient temperature in Celsius (F9 Ctrl+T and the status row), or None outside a
+# level. Kept current by the mod's AMBIENT: pushes; a mod half that predates them still
+# fills it from the temperature row of each ENV_END, just not as the day advances.
+_env_ambient_c = None
 
 # Vehicle Information State (vehicleInfo.lua, ports 4477/4478)
 # _vinfo_building is the accumulator between INFO_BEGIN and INFO_END; the finished
@@ -5021,6 +5043,7 @@ _F9_HELP = {
     ("h", False, True, False): "Dump hydros to log",
     ("t", False, False, False): "Speak turbo pressure",
     ("t", False, True, False): "Speak max turbo pressure",
+    ("t", True, False, False): "Speak ambient temperature",
     ("o", False, False, False): "Speak oil temperature",
     ("a", False, False, False): "Speak attitude, roll and pitch",
     ("c", False, False, False): "Speak coordinates",
@@ -5159,6 +5182,131 @@ def _wheel_status_metric(label, category, value_getter, position_flag):
     }
 
 
+def _wheel_report_live():
+    return last_wheel_stamp > 0.0 and (
+        time.monotonic() - last_wheel_stamp
+    ) <= WHEEL_REPORT_STALE_SEC
+
+
+def _wheel_rows(category, field, fmt, slot_rows):
+    """A group of status rows, one per wheel, expanded by _status_rows().
+
+    From wheelReport.lua's list while it is live, which knows every axle and anything
+    coupled; otherwise the struct's fixed slots. A wheel the game has no reading for gets
+    no row, and one that has broken off says so rather than reading a pressure of zero.
+    """
+
+    def rows():
+        if not _wheel_report_live():
+            return slot_rows
+        out = []
+        for w in last_wheel_rows:
+            if w["broken"]:
+                getter = lambda: ("broken off", "")
+            elif w[field] is None:
+                continue
+            else:
+                getter = lambda value=w[field]: fmt(value)
+            out.append(
+                {
+                    "label": w["label"],
+                    "category": category,
+                    "getValue": getter,
+                    "isAvailable": lambda: True,
+                }
+            )
+        return out
+
+    return {"rows": rows}
+
+
+def _status_rows():
+    for metric in STATUS_METRICS:
+        if "rows" in metric:
+            yield from metric["rows"]()
+        else:
+            yield metric
+
+
+_TIRE_PRESSURE_SLOT_ROWS = [
+    _wheel_status_metric(
+        "front",
+        "Tire pressures",
+        lambda: fmt_pressure(last_tire_pressure_f),
+        WHEEL_POS_F,
+    ),
+    _wheel_status_metric(
+        "front left",
+        "Tire pressures",
+        lambda: fmt_pressure(last_tire_pressure_fl),
+        WHEEL_POS_FL,
+    ),
+    _wheel_status_metric(
+        "front right",
+        "Tire pressures",
+        lambda: fmt_pressure(last_tire_pressure_fr),
+        WHEEL_POS_FR,
+    ),
+    _wheel_status_metric(
+        "rear",
+        "Tire pressures",
+        lambda: fmt_pressure(last_tire_pressure_r),
+        WHEEL_POS_R,
+    ),
+    _wheel_status_metric(
+        "rear left",
+        "Tire pressures",
+        lambda: fmt_pressure(last_tire_pressure_rl),
+        WHEEL_POS_RL,
+    ),
+    _wheel_status_metric(
+        "rear right",
+        "Tire pressures",
+        lambda: fmt_pressure(last_tire_pressure_rr),
+        WHEEL_POS_RR,
+    ),
+]
+
+_BRAKE_TEMP_SLOT_ROWS = [
+    _wheel_status_metric(
+        "front",
+        "Brake temperatures",
+        lambda: fmt_temp_c_or_f(last_brake_temp_f),
+        WHEEL_POS_F,
+    ),
+    _wheel_status_metric(
+        "front left",
+        "Brake temperatures",
+        lambda: fmt_temp_c_or_f(last_brake_temp_fl),
+        WHEEL_POS_FL,
+    ),
+    _wheel_status_metric(
+        "front right",
+        "Brake temperatures",
+        lambda: fmt_temp_c_or_f(last_brake_temp_fr),
+        WHEEL_POS_FR,
+    ),
+    _wheel_status_metric(
+        "rear",
+        "Brake temperatures",
+        lambda: fmt_temp_c_or_f(last_brake_temp_r),
+        WHEEL_POS_R,
+    ),
+    _wheel_status_metric(
+        "rear left",
+        "Brake temperatures",
+        lambda: fmt_temp_c_or_f(last_brake_temp_rl),
+        WHEEL_POS_RL,
+    ),
+    _wheel_status_metric(
+        "rear right",
+        "Brake temperatures",
+        lambda: fmt_temp_c_or_f(last_brake_temp_rr),
+        WHEEL_POS_RR,
+    ),
+]
+
+
 def _air_pressure_status():
     val, unit = fmt_pressure(last_air_pressure)
     if last_air_pressure_max > 1:
@@ -5241,6 +5389,13 @@ STATUS_METRICS = [
         "isAvailable": lambda: protocol_mode == "extended"
         and bool(int(last_telemetry_presence) & TELEMETRY_HAS_CLUTCH),
     },
+    # The level's, not the vehicle's: present whenever a level is loaded, so it only comes
+    # and goes on a level change, never mid-drive under the cursor.
+    {
+        "label": "Ambient Temperature",
+        "getValue": lambda: fmt_temp_c_or_f(_env_ambient_c),
+        "isAvailable": lambda: _env_ambient_c is not None,
+    },
     {
         "label": "Turbo Pressure",
         "getValue": lambda: fmt_turbo(last_turbo),
@@ -5272,42 +5427,7 @@ STATUS_METRICS = [
     },
     # {'label': 'Lateral G-Force', 'getValue': lambda: (f"{last_g_lat:.2f}", "G"), 'isAvailable': lambda: protocol_mode == 'extended'},
     # {'label': 'Longitudinal G-Force', 'getValue': lambda: (f"{last_g_lon:.2f}", "G"), 'isAvailable': lambda: protocol_mode == 'extended'},
-    _wheel_status_metric(
-        "front",
-        "Tire pressures",
-        lambda: fmt_pressure(last_tire_pressure_f),
-        WHEEL_POS_F,
-    ),
-    _wheel_status_metric(
-        "front left",
-        "Tire pressures",
-        lambda: fmt_pressure(last_tire_pressure_fl),
-        WHEEL_POS_FL,
-    ),
-    _wheel_status_metric(
-        "front right",
-        "Tire pressures",
-        lambda: fmt_pressure(last_tire_pressure_fr),
-        WHEEL_POS_FR,
-    ),
-    _wheel_status_metric(
-        "rear",
-        "Tire pressures",
-        lambda: fmt_pressure(last_tire_pressure_r),
-        WHEEL_POS_R,
-    ),
-    _wheel_status_metric(
-        "rear left",
-        "Tire pressures",
-        lambda: fmt_pressure(last_tire_pressure_rl),
-        WHEEL_POS_RL,
-    ),
-    _wheel_status_metric(
-        "rear right",
-        "Tire pressures",
-        lambda: fmt_pressure(last_tire_pressure_rr),
-        WHEEL_POS_RR,
-    ),
+    _wheel_rows("Tire pressures", "psi", fmt_pressure, _TIRE_PRESSURE_SLOT_ROWS),
     # Loader implement (WL-40 bucket / forks). These three only appear when the mod actually
     # resolved an implement or hydraulic steering — implementFlags is 0 on every ordinary
     # vehicle, so a Pickup's status list is unchanged.
@@ -5365,41 +5485,8 @@ STATUS_METRICS = [
         and (time.monotonic() - last_trailer_stamp) <= TRAILER_STALE_SEC,
     },
     # {'label': 'Tire Temps (FL, FR, RL, RR)', 'getValue': lambda: (f"{fmt_temp_c_or_f(last_tire_temp_fl)[0]}, {fmt_temp_c_or_f(last_tire_temp_fr)[0]}, {fmt_temp_c_or_f(last_tire_temp_rl)[0]}, {fmt_temp_c_or_f(last_tire_temp_rr)[0]}", "F" if UNITS_MODE == 'imperial' else "C"), 'isAvailable': lambda: protocol_mode == 'extended'},
-    _wheel_status_metric(
-        "front",
-        "Brake temperatures",
-        lambda: fmt_temp_c_or_f(last_brake_temp_f),
-        WHEEL_POS_F,
-    ),
-    _wheel_status_metric(
-        "front left",
-        "Brake temperatures",
-        lambda: fmt_temp_c_or_f(last_brake_temp_fl),
-        WHEEL_POS_FL,
-    ),
-    _wheel_status_metric(
-        "front right",
-        "Brake temperatures",
-        lambda: fmt_temp_c_or_f(last_brake_temp_fr),
-        WHEEL_POS_FR,
-    ),
-    _wheel_status_metric(
-        "rear",
-        "Brake temperatures",
-        lambda: fmt_temp_c_or_f(last_brake_temp_r),
-        WHEEL_POS_R,
-    ),
-    _wheel_status_metric(
-        "rear left",
-        "Brake temperatures",
-        lambda: fmt_temp_c_or_f(last_brake_temp_rl),
-        WHEEL_POS_RL,
-    ),
-    _wheel_status_metric(
-        "rear right",
-        "Brake temperatures",
-        lambda: fmt_temp_c_or_f(last_brake_temp_rr),
-        WHEEL_POS_RR,
+    _wheel_rows(
+        "Brake temperatures", "brake_c", fmt_temp_c_or_f, _BRAKE_TEMP_SLOT_ROWS
     ),
 ]
 
@@ -5735,7 +5822,7 @@ def navigate_accessibility_menu(action):
 
         switched_screen = action in {"next_menu", "previous_menu"}
         if current_accessibility_screen_index == 0:
-            available_metrics = [m for m in STATUS_METRICS if m["isAvailable"]()]
+            available_metrics = [m for m in _status_rows() if m["isAvailable"]()]
             if not available_metrics:
                 speech = "No status metrics available"
             else:
@@ -6227,6 +6314,9 @@ TRAILER_ANGLE_LISTEN_PORT = (
 )
 ROUTE_BEACON_LISTEN_PORT = (
     4482  # UDP port to receive the map route's destination from routeBeacon.lua
+)
+WHEEL_REPORT_LISTEN_PORT = (
+    4485  # UDP port to receive every wheel's position, pressure and brake temperature
 )
 # No command port for routeBeacon either, and for the same reason: whether a route is
 # set is a fact the game maintains, so the mod has nothing to be told. Whether the
@@ -7248,6 +7338,20 @@ def _env_row_line(row):
         return f"{label}, {lo_shown} {unit}"
 
     return str(label)
+
+
+def speak_ambient_temperature():
+    """F9 Ctrl+T: the live outside temperature."""
+    if _env_ambient_c is None:
+        # Nudge the mod in case the push was missed, so the next press can answer.
+        _send_env_cmd("REQUEST")
+        if _env_unavailable:
+            say(f"Ambient temperature unavailable, {_env_unavailable}")
+        else:
+            say("No ambient temperature")
+        return
+    shown, unit = fmt_temp_c_or_f(_env_ambient_c)
+    say(f"Ambient temperature {shown} {unit}")
 
 
 # Set while an edit is in flight, so the mod's own pushes (a level load, a
@@ -8342,6 +8446,14 @@ def _on_next_key_press(event, audio_controller):
         say(f"Fuel {fuel_pct} percent")
     elif name == "g":
         say(gear_phrase)
+    elif (
+        name == "t"
+        and _capture_mods["ctrl"]
+        and not _capture_mods["shift"]
+        and not _capture_mods["alt"]
+    ):
+        # Before the turbo branches, which test only shift and would otherwise swallow it.
+        speak_ambient_temperature()
     elif name == "t" and _capture_mods["shift"]:
         val, unit = fmt_turbo(turbo_max_snap)
         say(f"Max turbo {val} {unit}" if protocol_mode == "extended" else "Unavailable")
@@ -10491,23 +10603,29 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         # dispatching. F9 and F11 keep working, which is what makes it look
                         # like a Lua fault rather than a Python one.
                         in_cannon = cannon_active
-                        if announce_gear and not baseline_frame and not in_cannon:
-                            phrase = extended_gear_to_phrase(gear_str)
-                            if (gear_str or "").strip().upper() == "N":
-                                say("neutral", exclude_from_buffer=True)
-                            elif phrase not in ("unknown", "neutral"):
-                                say(phrase, exclude_from_buffer=True)
+                        if not baseline_frame and not in_cannon:
+                            _report_gear_change(
+                                gear_report.extended_change_phrase(
+                                    gear_str,
+                                    last_gear_str,
+                                    gear_report_settings["collapse_sport"],
+                                    gear_report_settings["number_style"],
+                                ),
+                                gear_report.extended_gear_degree(gear_str),
+                                gear_report.is_sport(gear_str),
+                            )
                         last_gear_str = gear_str
                         _push_gear_direction(gear_str)
                 else:  # outgauge
                     gear_byte = unpacked[3]
                     if gear_byte != last_gear_byte:
-                        if announce_gear and not baseline_frame:
-                            phrase = gear_to_phrase(gear_byte)
-                            if gear_byte == NEUTRAL:
-                                say("neutral", exclude_from_buffer=True)
-                            elif phrase not in ("unknown", "neutral"):
-                                say(phrase, exclude_from_buffer=True)
+                        if not baseline_frame:
+                            _report_gear_change(
+                                gear_report.outgauge_change_phrase(
+                                    gear_byte, gear_report_settings["number_style"]
+                                ),
+                                gear_report.outgauge_gear_degree(gear_byte),
+                            )
                         last_gear_byte = gear_byte
                         # OutGauge encodes reverse as byte 0, unlike the extended protocol's
                         # "R" string, so the two paths cannot share a formatter.
@@ -11462,7 +11580,7 @@ def _apply_live_config(audio_controller):
         compass_highlight_enabled, \
         compass_highlight_nth_click, \
         compass_click_interval_deg
-    global announce_turn_signals, announce_speed, speed_announce_interval, announce_gear
+    global announce_turn_signals, announce_speed, speed_announce_interval, gear_report_settings
     global announce_clickspot_actions
     global scanner_distance_callout_enabled, scanner_distance_callout_interval
     global announce_implement_proximity, announce_cannon_shot
@@ -11489,7 +11607,7 @@ def _apply_live_config(audio_controller):
         announce_turn_signals = cfg.get("announce_turn_signals", True)
         announce_speed = cfg.get("announce_speed", True)
         speed_announce_interval = cfg.get("speed_announce_interval", 25)
-        announce_gear = cfg.get("announce_gear", True)
+        gear_report_settings = gear_report.settings_from_config(cfg)
         announce_clickspot_actions = bool(
             cfg.get("announce_clickspot_actions", False)
         )
@@ -11554,7 +11672,7 @@ def _run_engine():
     """Telemetry engine — runs in a daemon thread while the GUI event loop owns the main thread."""
     cfg = load_config()
     global UNITS_MODE, oil_chime_enabled
-    global announce_turn_signals, announce_speed, speed_announce_interval, announce_gear
+    global announce_turn_signals, announce_speed, speed_announce_interval, gear_report_settings
     global announce_clickspot_actions
     global scanner_distance_callout_enabled, scanner_distance_callout_interval
     global announce_implement_proximity, announce_cannon_shot
@@ -11570,7 +11688,7 @@ def _run_engine():
     announce_turn_signals = cfg.get("announce_turn_signals", True)
     announce_speed = cfg.get("announce_speed", True)
     speed_announce_interval = cfg.get("speed_announce_interval", 25)
-    announce_gear = cfg.get("announce_gear", True)
+    gear_report_settings = gear_report.settings_from_config(cfg)
     announce_clickspot_actions = bool(cfg.get("announce_clickspot_actions", False))
     scanner_distance_callout_enabled = cfg.get("scanner_distance_callout_enabled", False)
     scanner_distance_callout_interval = cfg.get("scanner_distance_callout_interval", 10)
@@ -11733,6 +11851,11 @@ def _run_engine():
         target=trailer_angle_listener, args=(STOP,), daemon=True
     )
     trailer_angle_thread.start()
+
+    wheel_report_thread = threading.Thread(
+        target=wheel_report_listener, args=(STOP,), daemon=True
+    )
+    wheel_report_thread.start()
 
     route_beacon_thread = threading.Thread(
         target=route_beacon_listener, args=(STOP,), daemon=True

@@ -51,6 +51,16 @@ local originalCurve = nil
 local originalLevel = nil
 local resendTimer   = nil
 
+-- The live ambient temperature, pushed on its own line (AMBIENT:) whenever it moves, so the F9
+-- readout and the status menu row read a current figure without a request round trip. It is
+-- derived from the time of day every frame (see the header), so a value cached at level load
+-- goes stale as the day advances; polled once a second and sent only on a real change, which
+-- in practice is a line every few minutes of game time.
+local AMBIENT_POLL_S     = 1.0
+local AMBIENT_MIN_STEP_C = 0.1
+local ambientPoll        = 0
+local ambientLastSentC   = nil
+
 local function envLog(level, msg)
   log(level, 'EnvAccessible', msg)
 end
@@ -145,6 +155,26 @@ local function row(idx, fields)
   return table.concat(parts, ";")
 end
 
+local function sendAmbient(force)
+  if not udpSend then return end
+  if not levelInfoObject() then return end
+  local ok, k = pcall(function() return core_environment.getTemperatureK() end)
+  if not ok or type(k) ~= "number" then return end
+  local c = k - 273.15
+  if not force and ambientLastSentC and math.abs(c - ambientLastSentC) < AMBIENT_MIN_STEP_C then
+    return
+  end
+  ambientLastSentC = c
+  udpSend:send(string.format("AMBIENT:valueC=%.2f", c))
+end
+
+-- Leaving a level: an empty AMBIENT line tells Python the figure it holds no longer describes
+-- anything, so the status row drops out instead of reading the last map's weather.
+local function clearAmbient()
+  ambientLastSentC = nil
+  if udpSend then udpSend:send("AMBIENT:") end
+end
+
 local function sendState()
   if not udpSend then return end
 
@@ -204,6 +234,7 @@ local function sendState()
     udpSend:send(line)
   end
   udpSend:send("ENV_END")
+  sendAmbient(true)
 end
 
 -- =================================================================================================
@@ -328,6 +359,7 @@ function M.onWorldReadyState(state)
     originalCurve = nil
     originalLevel = nil
     captureOriginalCurve()
+    sendAmbient(true)
   end
 end
 
@@ -342,6 +374,7 @@ end
 function M.onClientEndMission()
   originalCurve = nil
   originalLevel = nil
+  clearAmbient()
 end
 
 function M.onUpdate(dtReal, dtSim, dtRaw)
@@ -374,6 +407,12 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
         end
       end
     until not data
+  end
+
+  ambientPoll = ambientPoll + (dtReal or 0)
+  if ambientPoll >= AMBIENT_POLL_S then
+    ambientPoll = 0
+    sendAmbient(false)
   end
 
   -- Deferred resend: see RESEND_DELAY_S.
