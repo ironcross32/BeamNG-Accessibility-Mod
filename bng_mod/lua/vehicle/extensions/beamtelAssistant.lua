@@ -7,7 +7,7 @@ local retired = {}
 local endpoint, recovering, hazardAge = nil, false, 8
 local plannerStarts, pathExtensions = 0, 0
 local lastChoice, lastRequested, choiceAutomatic, lastOffReason
-local standstillTime = 0
+local standstillTime, aiSilentTime = 0, 0
 local reversing, motionWaiting, motionRevision = false, false, 0
 local reverseWheelbase, reverseBlocked, forwardSpeed = 3, false, 0
 local selection = {junction = nil, direction = nil, held = nil, seconds = 0, reported = false}
@@ -18,6 +18,23 @@ local function callback(kind, message)
   obj:queueGameEngineLua(string.format(
     'if extensions.beamtelAI then extensions.beamtelAI.onAssistantEvent(%d,%q,%q,%q) end',
     obj:getID(), session, kind, message or ''))
+end
+
+-- A refusal the player can act on carries its own spoken reason. Any other
+-- error is a fault: raw Lua text (file, line) is never spoken.
+local function refuse(message) error({friendly = message}, 0) end
+
+local function friendlyReason(err, fallback)
+  if type(err) == 'table' and err.friendly then return err.friendly end
+  return fallback
+end
+
+-- The raw error goes to the game log here and to bnvdahook.log through GE;
+-- the player hears only `spoken`.
+local function reportFault(spoken, err)
+  local raw = type(err) == 'table' and tostring(err.friendly) or tostring(err)
+  log('E', 'beamtelAssistant', spoken .. ' | ' .. raw)
+  callback('error', raw)
 end
 
 local function preserveGearboxCall(fn, ...)
@@ -41,11 +58,26 @@ local function resetSelection(junction)
   announced = nil
 end
 
-local function wantsReverse()
+-- How long a left or right hold must last to latch a turn choice.
+local SELECT_HOLD_S = 0.5
+
+-- A hard stop or an impact rocks the car back for a few tenths of a second.
+-- Only a sustained roll, not held on the brake, or reverse gear means backing up.
+local ROLLBACK_S, ROLLBACK_FAST_MPS = 0.6, -2
+local rollbackTime = 0
+local function wantsReverse(dt)
   forwardSpeed = obj:getVelocity():dot(obj:getDirectionVector())
   local gear = electrics.values.gearIndex or 0
-  return gear < 0 or forwardSpeed < -0.3
-    or (reversing and (forwardSpeed < -0.05 or (gear == 0 and forwardSpeed < 0.3)))
+  if reversing then
+    return gear < 0 or forwardSpeed < -0.05 or (gear == 0 and forwardSpeed < 0.3)
+  end
+  if gear < 0 then return true end
+  if forwardSpeed < -0.3 and (input.state.brake.val or 0) < 0.5 then
+    rollbackTime = rollbackTime + (dt or 0)
+  else
+    rollbackTime = 0
+  end
+  return rollbackTime >= ROLLBACK_S or forwardSpeed < ROLLBACK_FAST_MPS
 end
 
 local function measureWheelbase()
@@ -145,8 +177,13 @@ function M.stop(token, reason)
   if token and session ~= token then return end
   if session then retired[session] = true end
   local ok, err = pcall(restore)
-  lastOffReason = ok and (reason or 'Driving assistant off') or ('Control restoration failed: ' .. tostring(err))
-  callback('off', ok and (reason or 'Driving assistant off') or ('Control restoration failed: ' .. tostring(err)))
+  local message = reason or 'Driving assistant off'
+  if not ok then
+    message = 'Controls could not be fully restored. Steering assistance off. Reset the vehicle if steering does not respond'
+    reportFault(message, err)
+  end
+  lastOffReason = message
+  callback('off', message)
   session, plan, locked, announced, pathKey = nil, nil, nil, nil, nil
   reversing, motionWaiting, reverseBlocked = false, false, false
   resetSelection(nil)
@@ -190,7 +227,7 @@ function M.start(token, initialPlan)
       'Input source filters unavailable')
     assert(controller.mainController and controller.mainController.setGearboxMode
       and electrics.values.gearboxMode, 'Gearbox mode unavailable')
-    assert(ai.mode == 'disabled', 'Disable ordinary AI before enabling the driving assistant')
+    if ai.mode ~= 'disabled' then refuse('Disable ordinary AI before enabling the driving assistant') end
     local snapshot = {sources = {}, metadata = {}, gearbox = electrics.values.gearboxMode}
     for _, name in ipairs(controls) do
       assert(input.state[name], 'Missing input: ' .. name)
@@ -209,7 +246,8 @@ function M.start(token, initialPlan)
     end
     lease, planAge, reportAge, brakeTime, cueAge = 0, 0, 0, 0, 8
     suspended = false
-    standstillTime, M.stoppedTime = 0, 0
+    standstillTime, M.stoppedTime, aiSilentTime, rollbackTime = 0, 0, 0, 0
+    M.slowAge = 8
     recovering, hazardAge = false, 8
     plannerStarts, pathExtensions = 0, 0
     lastChoice, lastRequested, choiceAutomatic, lastOffReason = nil, nil, false, nil
@@ -218,11 +256,13 @@ function M.start(token, initialPlan)
     measureWheelbase()
     plan = initialPlan
     reversing = wantsReverse()
-    if not reversing and plan.chooseNow and plan.junction then
+    -- A dead end has nothing to choose: follow the road up to its stop bar.
+    if not reversing and plan.chooseNow and plan.junction and next(plan.junction.choices) then
+      if plan.junction.unsupported then
+        refuse('Roundabout or unsupported junction just ahead. Drive through it, then switch on again')
+      end
       local value = (input.lastInputs['local'] or {}).steering or 0
       local name, path = choose(plan.junction.choices, value)
-      assert(path, 'No valid exit at this junction')
-      assert(not plan.junction.unsupported, 'This junction is unsupported')
       plan.path = path
       locked = plan.junction.id
       plan.initialChoice = name
@@ -232,9 +272,14 @@ function M.start(token, initialPlan)
       input.event('steering', 0, 'FILTER_AI', nil, nil, nil, 'ai')
     else follow(plan.path) end
   end)
-  if not ok then M.stop(token, 'Driving assistant unavailable. ' .. tostring(err)); return end
-  callback('ready', 'Driving assistant on. You control speed and stopping'
-    .. (plan.roadMessage and ('. ' .. plan.roadMessage) or ''))
+  if not ok then
+    local spoken = 'Driving assistant unavailable. '
+      .. friendlyReason(err, 'It could not take the steering. Steering assistance off')
+    if type(err) ~= 'table' then reportFault(spoken, err) end
+    M.stop(token, spoken)
+    return
+  end
+  callback('ready', 'Driving assistant on' .. (plan.roadMessage and ('. ' .. plan.roadMessage) or ''))
   if reversing then
     callback('motion', 'reverse')
     callback('say', 'Reverse steering assistance. Go slowly')
@@ -261,7 +306,11 @@ function M.setPlan(token, value)
     resetSelection(nil)
     if not reversing then
       local ok, err = pcall(follow, value.path)
-      if not ok then M.stop(token, 'Route control failed. ' .. tostring(err)); return end
+      if not ok then
+        reportFault('Route control failed', err)
+        M.stop(token, 'Route control failed. Steering assistance off')
+        return
+      end
       suspended = false
       callback('say', 'Forward steering assistance')
     end
@@ -276,7 +325,10 @@ function M.setPlan(token, value)
   local key = table.concat(plan.path, '\0')
   if not suspended and key ~= pathKey then
     local ok, err = pcall(extendPath, plan.path)
-    if not ok then M.stop(token, 'Route control failed. ' .. tostring(err)) end
+    if not ok then
+      reportFault('Route control failed', err)
+      M.stop(token, 'Route control failed. Steering assistance off')
+    end
   end
 end
 
@@ -286,13 +338,17 @@ local function update(dt)
   for _, name in ipairs(controls) do
     local allowed = input.allowedInputSources[name]
     local expected = name == 'steering' and 'ai' or 'local'
-    if not allowed or not allowed[expected] then error('Input ownership lost') end
+    if not allowed or not allowed[expected] then
+      refuse('Something else took over the ' .. name .. '. Steering assistance off')
+    end
     for source, enabled in pairs(allowed) do
-      if enabled and source ~= expected then error('Input ownership changed') end
+      if enabled and source ~= expected then
+        refuse('Something else took over the ' .. name .. '. Steering assistance off')
+      end
     end
   end
   local speed = obj:getVelocity():length()
-  local reverseNow = wantsReverse()
+  local reverseNow = wantsReverse(dt)
   if reverseNow ~= reversing then
     reversing, motionWaiting, reverseBlocked = reverseNow, true, false
     motionRevision = plan.motionRevision or motionRevision
@@ -342,24 +398,49 @@ local function update(dt)
   if not suspended and ai.mode ~= 'manual' then
     M.stop(session, 'AI control changed. Steering assistance off'); return
   end
+  -- Stock AI gives up on a path it cannot drive (a hairpin of short links) by
+  -- holding exactly zero steering while the car runs straight on. A steering AI
+  -- never outputs exact zero, so hand back control before the car leaves the road.
+  if not suspended and speed > 1.5 and (input.lastInputs.ai or {}).steering == 0 then
+    aiSilentTime = aiSilentTime + dt
+    if aiSilentTime >= 0.4 then
+      M.stop(session, 'Steering lost. Brake now. Steering assistance off')
+      return
+    end
+  else
+    aiSilentTime = 0
+  end
   -- A held throttle against player brake or an obstacle must not trigger recovery.
   if speed < 0.1 and not suspended then
     M.stoppedTime = (M.stoppedTime or 0) + dt
     if M.stoppedTime > 2 then follow(plan.path); M.stoppedTime = 0 end
   else M.stoppedTime = 0 end
   local j = plan.junction
-  if j and not locked then
+  -- A dead end is never locked: GE keeps sending it, and a locked junction's
+  -- plans are ignored, which would starve the plan lease. The assist stays on
+  -- so the driver can stop at the bar and reverse out with guidance.
+  local deadEnd = j and not j.unsupported and not next(j.choices)
+  if deadEnd then
+    local remaining = math.max(0, plan.distance - speed * planAge)
+    if remaining <= math.max(30, math.min(140, speed * 7)) and announced ~= j.id then
+      callback('say', 'Dead end ahead. Stop at the bar')
+      announced, cueAge = j.id, 0
+    end
+  elseif j and not locked then
     if selection.junction ~= j.id then resetSelection(j.id) end
     local remaining = math.max(0, plan.distance - speed * planAge)
     if remaining <= math.max(30, math.min(140, speed * 7)) and announced ~= j.id then
       if j.unsupported then M.stop(session, 'Unsupported junction or roundabout. Steering assistance off'); return end
-      if not next(j.choices) then M.stop(session, 'Dead end ahead. Steering assistance off'); return end
       local names = {}
-      for _, name in ipairs({'left', 'straight', 'right'}) do if j.choices[name] then names[#names + 1] = name end end
+      for _, name in ipairs({'left', 'straight', 'right'}) do
+        if j.choices[name] then
+          names[#names + 1] = (j.gated or {})[name] and (name .. ' through a gate') or name
+        end
+      end
       announceChoices(j)
       callback('say', 'Junction ahead. ' .. table.concat(names, ' or ') .. '. '
-        .. (j.choices.straight and 'Hold a turn for one second to select.'
-          or 'Turn required. Hold left or right for one second.'))
+        .. (j.choices.straight and 'Hold a turn to select.'
+          or 'Turn required. Hold left or right.'))
       announced, cueAge = j.id, 0
     end
     if announced == j.id then
@@ -371,7 +452,7 @@ local function update(dt)
           selection.held, selection.seconds, selection.reported = direction, 0, false
         end
         selection.seconds = selection.seconds + dt
-        if selection.seconds >= 1 and not selection.reported then
+        if selection.seconds >= SELECT_HOLD_S and not selection.reported then
           selection.reported = true
           if not j.choices[direction] then
             callback('say', direction .. ' is unavailable')
@@ -387,7 +468,7 @@ local function update(dt)
     if remaining <= math.max(12, math.min(35, speed * 2)) then
       local value = localInputs.steering or 0
       local name, path = choose(j.choices, value)
-      if not path then M.stop(session, 'Dead end ahead. Steering assistance off'); return end
+      if not path then M.stop(session, 'No valid exit at this junction. Steering assistance off'); return end
       locked, cueAge = j.id, 0
       extendPath(path)
       plan.path = path
@@ -398,7 +479,13 @@ local function update(dt)
   -- An unresolved endpoint produces artificial braking; conservatively suppress
   -- its advisory until an outgoing route has been selected.
   if brake > 0.15 and speed > 5 and (not j or locked) then brakeTime = brakeTime + dt else brakeTime = 0 end
-  if brakeTime >= 0.4 and cueAge >= 8 then callback('slow', 'Slow down'); cueAge, brakeTime = 0, 0 end
+  -- The warning repeats at most every 8 s, but only steps aside from other
+  -- junction speech for a second: a tight turn straight after "Turning left"
+  -- is exactly when it is needed, and Johnson Valley's driveway went unwarned.
+  M.slowAge = (M.slowAge or 8) + dt
+  if brakeTime >= 0.4 and M.slowAge >= 8 and cueAge >= 1 then
+    callback('slow', 'Slow down'); M.slowAge, cueAge, brakeTime = 0, 0, 0
+  end
   if reportAge >= 0.2 then
     callback('alive')
     if plan.diagnostic then callback('diagnostic', jsonEncode(M.diagnosticState())) end
@@ -409,7 +496,11 @@ end
 function M.updateGFX(dt)
   if not session then return end
   local ok, err = pcall(update, dt)
-  if not ok then M.stop(session, 'Control failure. Steering assistance off. ' .. tostring(err)) end
+  if not ok then
+    local spoken = friendlyReason(err, 'Driving assistant fault. Steering assistance off')
+    if type(err) ~= 'table' then reportFault(spoken, err) end
+    M.stop(session, spoken)
+  end
 end
 
 function M.onReset() M.stop(nil, 'Vehicle reset. Steering assistance off') end

@@ -13,6 +13,7 @@ from nvda_ws_speaker import (
     register_settings_request_callback,
     register_accessibility_action_callback,
     register_challenge_event_callback,
+    register_drift_event_callback,
     register_screen_context_callback,
     register_page_text_callback,
     broadcast,
@@ -31,7 +32,8 @@ import wx
 
 from bnh_logger import get_logger, LOG_FILENAME
 from audio import AudioController, DOCK_RAMP_MAX_RANGE_M, SCAN_FAMILY_CODES
-from road_guidance import RoadGuidanceFeed, junction_phrase, parse_r2_packet, signal_phrase, one_way_phrase, map_speed_limit_phrase
+from road_guidance import (RoadGuidanceFeed, junction_phrase, parse_r2_packet, signal_phrase, one_way_phrase,
+                           map_speed_limit_phrase, parse_surface_packet, surface_phrase)
 from road_diagnostics import RoadDiagnosticRecorder
 from driving_assistant import DrivingAssistant
 from assistant_diagnostics import AssistantDiagnosticRecorder
@@ -39,6 +41,7 @@ from challenge_results import (
     HillClimbChallengeRecorder,
     completion_speech as hill_climb_completion_speech,
 )
+from drift_speech import DriftAnnouncer
 from route_beacon import (
     parse_route_packet,
     relative_bearing,
@@ -85,6 +88,9 @@ ROAD_DIAGNOSTICS = RoadDiagnosticRecorder(
 HILL_CLIMB_CHALLENGE = HillClimbChallengeRecorder(
     os.path.join(CONFIG_DIR, "challenges", "hill_climb")
 )
+# Speaks the game's drift display; while it shows, automatic speed and compass
+# speech hold back (quiet()). say() is defined further down.
+DRIFT_ANNOUNCER = DriftAnnouncer(lambda *args, **kwargs: say(*args, **kwargs))
 
 
 STOP = threading.Event()
@@ -215,6 +221,8 @@ DEFAULT_CONFIG = {
     "road_stop_sign_speech_enabled": True,
     "road_traffic_light_speech_enabled": True,
     "road_speed_limit_speech_enabled": True,
+    "road_surface_speech_enabled": True,
+    "drift_speech_enabled": True,
     "road_junction_earcon_enabled": True,
     "road_junction_proximity_enabled": True,
     "road_include_private": False,
@@ -593,6 +601,8 @@ def load_config():
             ("road_stop_sign_speech_enabled", True),
             ("road_traffic_light_speech_enabled", True),
             ("road_speed_limit_speech_enabled", True),
+            ("road_surface_speech_enabled", True),
+            ("drift_speech_enabled", True),
             ("road_junction_earcon_enabled", True),
             ("road_junction_proximity_enabled", True),
             ("road_include_private", False),
@@ -1243,6 +1253,7 @@ def road_listener(audio_controller, stop_event):
         first_packet = True
         last_state = None  # "DORMANT" / "ON_ROAD" / "OFF_ROAD"
         last_r2_state = None
+        last_gate_id = None
 
         while not stop_event.is_set():
             try:
@@ -1255,6 +1266,14 @@ def road_listener(audio_controller, stop_event):
 
                 text = data.decode("utf-8", errors="ignore").strip()
                 if not text:
+                    continue
+
+                if text.startswith("SURFACE|"):
+                    surface = parse_surface_packet(text)
+                    with _loading_lock:
+                        controls_ready = not (_loading_active or _loading_settling)
+                    if surface and controls_ready and road_surface_speech_enabled:
+                        say(surface_phrase(*surface), interrupt=False, source="road_surface")
                     continue
 
                 if text.startswith("R2|"):
@@ -1281,10 +1300,27 @@ def road_listener(audio_controller, stop_event):
                         packet.get("correction"),
                         road_mode_active and road_follow_guidance_enabled,
                     )
+                    target = packet.get("proximity")
                     audio_controller.update_junction_proximity(
-                        packet.get("proximity"),
+                        target,
                         enabled=awareness_active,
                     )
+                    # The assistant drives gated roads, so the gate gets a word and a
+                    # stop bar. Manual guidance says it as a junction phrase instead.
+                    if (
+                        awareness_active
+                        and driving_assistant.active
+                        and target
+                        and target["kind"] == "gate"
+                        and target["id"] != last_gate_id
+                    ):
+                        say(
+                            "Gated road ahead. Stop at the bar",
+                            interrupt=False,
+                            source="road_guidance",
+                        )
+                    if target and target["kind"] == "gate":
+                        last_gate_id = target["id"]
                     ASSISTANT_DIAGNOSTICS.record_road(packet, audio_controller.junction_proximity_snapshot())
                     ROAD_DIAGNOSTICS.record(
                         packet, telemetry_snapshot, audio_event
@@ -4083,7 +4119,9 @@ def _report_gear_change(phrase, degree, sport=False):
     """Speak or play one gear change, per gear_report_mode. Caller holds state_lock."""
     if gear_report_settings["mode"] == "speech":
         if phrase:
-            say(phrase, exclude_from_buffer=True)
+            # During a drift a shift waits behind the drift speech instead of cutting
+            # it off; the first driven run lost bonuses to "second" and "third".
+            say(phrase, interrupt=not DRIFT_ANNOUNCER.quiet(), exclude_from_buffer=True)
     elif gear_report_settings["mode"] == "audio":
         if degree is not None and audio_controller_ref is not None:
             audio_controller_ref.trigger_gear_tone(degree, sport)
@@ -4315,6 +4353,7 @@ road_junction_speech_enabled = True
 road_stop_sign_speech_enabled = True
 road_traffic_light_speech_enabled = True
 road_speed_limit_speech_enabled = True
+road_surface_speech_enabled = True
 road_junction_earcon_enabled = True
 road_include_private = False
 ROAD_GUIDANCE_FEED = RoadGuidanceFeed()
@@ -5307,6 +5346,10 @@ _BRAKE_TEMP_SLOT_ROWS = [
 ]
 
 
+def _current_speed_limit():
+    return ROAD_GUIDANCE_FEED.speed_limit(road_mode_active or driving_assistant.active)
+
+
 def _air_pressure_status():
     val, unit = fmt_pressure(last_air_pressure)
     if last_air_pressure_max > 1:
@@ -5325,6 +5368,12 @@ STATUS_METRICS = [
         "label": "Speed",
         "getValue": lambda: fmt_speed(last_speed_ms),
         "isAvailable": lambda: True,
+    },
+    # Only while road data is flowing and the map gives this road a limit.
+    {
+        "label": "Speed limit",
+        "getValue": lambda: fmt_speed(_current_speed_limit() or 0),
+        "isAvailable": lambda: _current_speed_limit() is not None,
     },
     {
         "label": "RPM",
@@ -7985,7 +8034,7 @@ def _on_next_key_press(event, audio_controller):
         return
     if name == "s" and not _capture_mods["ctrl"]:
         limit = ROAD_GUIDANCE_FEED.speed_limit_phrase(
-            road_mode_active or driving_assistant.active, UNITS_MODE
+            road_mode_active or driving_assistant.active, UNITS_MODE, "Speed limit"
         )
         say(f"{spd_val} {spd_unit}. {limit}")
     elif name == "r" and _capture_mods["shift"] and not _capture_mods["ctrl"]:
@@ -10247,7 +10296,9 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                                 compass_match != -1
                                 and compass_match != last_announced_compass_idx
                             ):
-                                if (now - last_compass_ts) >= compass_min_interval:
+                                # The drift display mutes the spoken heading, not the clicks;
+                                # the index still moves on so nothing is said late.
+                                if (now - last_compass_ts) >= compass_min_interval and not DRIFT_ANNOUNCER.quiet():
                                     say(
                                         COMPASS_NAMES[compass_match],
                                         exclude_from_buffer=True,
@@ -10633,7 +10684,8 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
 
                 current_bucket = get_speed_bucket(speed_ms)
                 if current_bucket != last_bucket:
-                    if not baseline_frame and announce_speed and now - last_speed_announce_ts >= cooldown_sec:
+                    if (not baseline_frame and announce_speed and now - last_speed_announce_ts >= cooldown_sec
+                            and not DRIFT_ANNOUNCER.quiet()):
                         spd_val, spd_unit = fmt_speed(speed_ms)
                         say(f"{spd_val} {spd_unit}", exclude_from_buffer=True)
                         last_speed_announce_ts = now
@@ -11587,7 +11639,7 @@ def _apply_live_config(audio_controller):
     global announce_binding_learn_description
     global road_follow_guidance_enabled, road_junction_speech_enabled
     global road_stop_sign_speech_enabled, road_traffic_light_speech_enabled
-    global road_speed_limit_speech_enabled
+    global road_speed_limit_speech_enabled, road_surface_speech_enabled
     global road_junction_earcon_enabled, road_include_private
     global obstacle_warning_sensitivity
     global ai_describer_provider, ai_describer_settings, ai_describer_disable_ui_toggle
@@ -11627,6 +11679,8 @@ def _apply_live_config(audio_controller):
         road_stop_sign_speech_enabled = bool(cfg.get("road_stop_sign_speech_enabled", True))
         road_traffic_light_speech_enabled = bool(cfg.get("road_traffic_light_speech_enabled", True))
         road_speed_limit_speech_enabled = bool(cfg.get("road_speed_limit_speech_enabled", True))
+        road_surface_speech_enabled = bool(cfg.get("road_surface_speech_enabled", True))
+        DRIFT_ANNOUNCER.set_enabled(cfg.get("drift_speech_enabled", True))
         road_junction_earcon_enabled = bool(
             cfg.get("road_junction_earcon_enabled", True)
         )
@@ -11679,7 +11733,7 @@ def _run_engine():
     global announce_binding_learn_description
     global road_follow_guidance_enabled, road_junction_speech_enabled
     global road_stop_sign_speech_enabled, road_traffic_light_speech_enabled
-    global road_speed_limit_speech_enabled
+    global road_speed_limit_speech_enabled, road_surface_speech_enabled
     global road_junction_earcon_enabled, road_include_private
     global obstacle_warning_sensitivity
     global ui_nav_hold_suppression
@@ -11702,6 +11756,8 @@ def _run_engine():
     road_stop_sign_speech_enabled = bool(cfg.get("road_stop_sign_speech_enabled", True))
     road_traffic_light_speech_enabled = bool(cfg.get("road_traffic_light_speech_enabled", True))
     road_speed_limit_speech_enabled = bool(cfg.get("road_speed_limit_speech_enabled", True))
+    road_surface_speech_enabled = bool(cfg.get("road_surface_speech_enabled", True))
+    DRIFT_ANNOUNCER.set_enabled(cfg.get("drift_speech_enabled", True))
     road_junction_earcon_enabled = bool(cfg.get("road_junction_earcon_enabled", True))
     road_include_private = bool(cfg.get("road_include_private", False))
     obstacle_warning_sensitivity = cfg.get("obstacle_warning_sensitivity", "normal")
@@ -11746,6 +11802,7 @@ def _run_engine():
     register_screen_context_callback(_on_screen_context)
     register_page_text_callback(_on_page_text)
     register_challenge_event_callback(_on_hill_climb_event)
+    register_drift_event_callback(DRIFT_ANNOUNCER.handle)
 
     # Wait for the updater's answer before touching the game. The timeout is the
     # failure path, not the normal one: a flow that never answers -- a dialog the

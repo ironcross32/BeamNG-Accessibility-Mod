@@ -744,6 +744,52 @@ ROAD_JUNCTION_ENTRY_START_HZ = 659.25
 ROAD_JUNCTION_ENTRY_END_HZ = 440.0
 ROAD_JUNCTION_ENTRY_MS = 180
 
+# Stop bar: the line before a junction, a stop point, a gated road or a dead end.
+# D#4 with a sub an octave down (D#3) at half amplitude. It pulses faster as the
+# nose closes on the bar, holds solid while the nose is on it, and drops 18 dB
+# once the car has stopped there. The bar runs from REACH before the line to
+# CLEAR past it; the mod reports the same CLEAR as STOP_BAR_CLEAR_M.
+STOP_BAR_HZ = 440.0 * 2.0 ** (-6 / 12)
+STOP_BAR_SUB_HZ = STOP_BAR_HZ / 2.0
+STOP_BAR_SUB_LEVEL = 0.5
+STOP_BAR_REACH_M = 0.5
+STOP_BAR_CLEAR_M = 2.5
+# Front-node distance and speed both jitter. Without these margins a car creeping
+# or parked at the edge of the bar flips between pulse, solid and silence.
+STOP_BAR_HOLD_M = 1.0  # once on the bar, it takes this much backing off to leave
+STOP_BAR_STOPPED_MPS = 0.2
+STOP_BAR_MOVING_MPS = 0.5
+STOP_BAR_STOPPED_GAIN = 10.0 ** (-18.0 / 20.0)
+STOP_BAR_FADE_S = 0.6
+STOP_BAR_EDGE_S = 0.008
+# 90 ms on, 90 ms off at the fastest: any quicker and it blurs into the solid tone.
+STOP_BAR_MIN_PERIOD_S = 0.18
+STOP_BAR_MAX_PERIOD_S = 1.5
+# Stopped short of a bar: one short pulse at the stopped level every 2 s, so the
+# bar ahead is not forgotten, without the urgency of the approach pulses.
+STOP_BAR_WAIT_PERIOD_S = 2.0
+STOP_BAR_WAIT_ON_S = 0.15
+
+
+def stop_bar_state(signed_distance, speed, stopped=None, on_bar=False):
+    """Return ("pulse", period_s), ("waiting", period_s), ("solid", None) or ("silent", None).
+
+    `on_bar` says the nose was already on this bar, which widens it behind the
+    line. Past the bar the cue has done its job."""
+    if stopped is None:
+        stopped = speed < STOP_BAR_STOPPED_MPS
+    reach = STOP_BAR_REACH_M + (STOP_BAR_HOLD_M if on_bar else 0.0)
+    if -STOP_BAR_CLEAR_M <= signed_distance <= reach:
+        return "solid", None
+    if signed_distance < -STOP_BAR_CLEAR_M:
+        return "silent", None
+    if stopped:
+        return "waiting", STOP_BAR_WAIT_PERIOD_S
+    to_bar = signed_distance - STOP_BAR_REACH_M
+    # Distance keeps it useful while creeping; time to the bar adds urgency at speed.
+    return "pulse", max(STOP_BAR_MIN_PERIOD_S, min(
+        STOP_BAR_MAX_PERIOD_S, to_bar / 30.0, to_bar / max(1.0, speed) / 4.0))
+
 
 def road_beacon_rate_hz(distance=0.0):
     """Pure off-road pulse-rate map shared by callback and diagnostics."""
@@ -1640,6 +1686,18 @@ class AudioController:
         self._junction_proximity = None
         self._junction_proximity_time = 0.0
         self._junction_proximity_phase = 0.0
+        # Stop bar oscillator phases (cycles), and the last envelope and gain so
+        # every change of state ramps from where the previous block ended.
+        self._stop_bar_phase = 0.0
+        self._stop_bar_sub_phase = 0.0
+        self._stop_bar_env = 0.0
+        self._stop_bar_gain = 1.0
+        # Hysteresis state: whether the car counts as stopped, the bar the nose
+        # is on, and the last rendered state for the MCP snapshot.
+        self._stop_bar_stopped = False
+        self._stop_bar_on_id = None
+        self._stop_bar_reached_id = None
+        self._stop_bar_mode = ("silent", None)
         self._road_junction_amp = 10.0 ** (ROAD_JUNCTION_AMP_DB / 20.0)
 
         # Route Beacon State (crow-flies homing on the map route's destination)
@@ -2259,51 +2317,94 @@ class AudioController:
         return self._junction_proximity_enabled
 
     def update_junction_proximity(self, target, enabled=True):
-        """Refresh the shared manual/assisted distance cue from validated R2 data."""
+        """Refresh the shared manual/assisted stop bar from validated R2 data."""
         with self.lock:
             if not enabled or not self._junction_proximity_enabled:
                 target = None
-            if target and target["speed"] < 0.25:
-                target = None
             if target and (not self._junction_proximity
-                           or target["id"] != self._junction_proximity["id"]
-                           or target["action"] != self._junction_proximity["action"]):
+                           or target["id"] != self._junction_proximity["id"]):
                 self._junction_proximity_phase = 0.0
             self._junction_proximity = dict(target) if target else None
             self._junction_proximity_time = time.monotonic()
 
     @staticmethod
-    def junction_proximity_period(distance, speed):
-        # Distance stays useful while creeping; time to the point adds urgency
-        # at speed. This is an approach cue, not an estimate of safe corner speed.
-        return max(0.30, min(1.8, distance / 30.0, distance / max(1.0, speed) / 4.0))
+    def _stop_bar_signed(target):
+        return target.get("signedDistance", target["distance"])
 
     def junction_proximity_snapshot(self):
         with self.lock:
             age = time.monotonic() - self._junction_proximity_time
             target = self._junction_proximity
+            mode, period = self._stop_bar_mode if target else ("silent", None)
             return {"enabled": self._junction_proximity_enabled,
-                    "active": bool(target and self._junction_proximity_enabled and age <= 0.75),
+                    "active": bool(target and self._junction_proximity_enabled and age <= 0.75
+                                   and mode != "silent"),
                     "age_s": round(age, 3), "target": dict(target) if target else None,
-                    "period_s": self.junction_proximity_period(target["distance"], target["speed"]) if target else None}
+                    "mode": mode, "period_s": period}
+
+    def _stop_bar_render_state(self, target):
+        """Advance the stopped and on-bar hysteresis for one block; return the state."""
+        if not target:
+            self._stop_bar_on_id = None
+            return "silent", None
+        speed = target["speed"]
+        if self._stop_bar_stopped and speed > STOP_BAR_MOVING_MPS:
+            self._stop_bar_stopped = False
+        elif not self._stop_bar_stopped and speed < STOP_BAR_STOPPED_MPS:
+            self._stop_bar_stopped = True
+        mode, period = stop_bar_state(self._stop_bar_signed(target), speed,
+                                      stopped=self._stop_bar_stopped,
+                                      on_bar=self._stop_bar_on_id == target["id"])
+        self._stop_bar_on_id = target["id"] if mode == "solid" else None
+        if mode == "solid":
+            self._stop_bar_reached_id = target["id"]
+        elif mode == "waiting" and self._stop_bar_reached_id == target["id"]:
+            # Backed off a bar already reached: that is leaving it, not waiting.
+            return "silent", None
+        return mode, period
 
     def _mix_junction_proximity(self, buf_l, buf_r, frames):
         with self.lock:
             target = self._junction_proximity
-            if (not target or not self._junction_proximity_enabled
-                    or time.monotonic() - self._junction_proximity_time > 0.75):
-                self._junction_proximity = None
+            if (target and (not self._junction_proximity_enabled
+                            or time.monotonic() - self._junction_proximity_time > 0.75)):
+                self._junction_proximity = target = None
+            mode, period = self._stop_bar_mode = self._stop_bar_render_state(target)
+            if mode == "silent" and self._stop_bar_env == 0.0:
+                self._stop_bar_gain = 1.0
                 return
-            period = self.junction_proximity_period(target["distance"], target["speed"])
-            # Carry phase across audio blocks and telemetry refreshes. A shorter
-            # period advances the next pip without repeatedly retriggering it.
-            phase = (self._junction_proximity_phase + np.arange(frames) / self.samplerate) % period
-            self._junction_proximity_phase = (self._junction_proximity_phase + frames / self.samplerate) % period
-            pulse_time = np.where(phase >= 0.10, phase - 0.10, phase) if target["action"] == "stop" else phase
-            envelope = np.where(pulse_time < 0.05, np.sin(np.pi * pulse_time / 0.05) ** 2, 0.0)
-            pulse = (np.sin(2 * np.pi * 520 * pulse_time)
-                     + 0.25 * np.sin(2 * np.pi * 1040 * pulse_time))
-            wave = (pulse * envelope * self._road_junction_amp).astype(np.float32)
+            sr = self.samplerate
+            t = np.arange(frames) / sr
+            if mode in ("pulse", "waiting"):
+                # The pulse clock counts cycles, not seconds: as the bar nears and
+                # the period shortens, the tempo rises smoothly instead of the
+                # current pulse being cut short or stretched at every update.
+                duty = 0.5 if mode == "pulse" else STOP_BAR_WAIT_ON_S / period
+                cycles = (self._junction_proximity_phase + t / period) % 1.0
+                self._junction_proximity_phase = (self._junction_proximity_phase + frames / sr / period) % 1.0
+                ramp = np.clip(np.minimum(cycles, duty - cycles) * period / STOP_BAR_EDGE_S, 0.0, 1.0)
+                env = np.sin(0.5 * np.pi * ramp) ** 2
+            else:
+                env = np.full(frames, 1.0 if mode == "solid" else 0.0)
+            # Every change of state starts from the previous block's last level.
+            edge = min(frames, int(sr * STOP_BAR_EDGE_S))
+            if edge:
+                blend = np.arange(1, edge + 1) / edge
+                env[:edge] = self._stop_bar_env + (env[:edge] - self._stop_bar_env) * blend
+            self._stop_bar_env = float(env[-1]) if frames else self._stop_bar_env
+            stopped_level = mode == "waiting" or (mode == "solid" and self._stop_bar_stopped)
+            goal = STOP_BAR_STOPPED_GAIN if stopped_level else 1.0
+            step = (1.0 - STOP_BAR_STOPPED_GAIN) / STOP_BAR_FADE_S * (t + 1.0 / sr)
+            start = self._stop_bar_gain
+            gain = np.maximum(start - step, goal) if goal < start else np.minimum(start + step, goal)
+            self._stop_bar_gain = float(gain[-1]) if frames else start
+            cycles = self._stop_bar_phase + STOP_BAR_HZ * t
+            sub_cycles = self._stop_bar_sub_phase + STOP_BAR_SUB_HZ * t
+            self._stop_bar_phase = (self._stop_bar_phase + STOP_BAR_HZ * frames / sr) % 1.0
+            self._stop_bar_sub_phase = (self._stop_bar_sub_phase + STOP_BAR_SUB_HZ * frames / sr) % 1.0
+            tone = (np.sin(2 * np.pi * cycles)
+                    + STOP_BAR_SUB_LEVEL * np.sin(2 * np.pi * sub_cycles)) / (1.0 + STOP_BAR_SUB_LEVEL)
+            wave = (tone * env * gain * self._road_junction_amp).astype(np.float32)
             buf_l += wave
             buf_r += wave
 

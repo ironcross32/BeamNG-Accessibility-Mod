@@ -37,10 +37,10 @@ function M.proximity(signal, junction, speed, activeId)
     local stop = not signal.preview and (signal.state == 'stop' or signal.state == 'red'
       or signal.state == 'redYellow' or signal.state == 'flashingRed')
     target = {id = 'signal:' .. signal.id, distance = signal.distance,
-      source = 'stopPoint', action = stop and 'stop' or 'approach'}
+      source = 'stopPoint', action = stop and 'stop' or 'approach', kind = signal.kind}
   elseif junction then
     target = {id = 'junction:' .. junction.id, distance = junction.distance,
-      source = 'junctionBoundary', action = 'approach'}
+      source = 'junctionBoundary', action = 'approach', kind = junction.kind}
   end
   if target and (target.id == activeId or target.distance <= M.warningDistance(speed)) then
     target.speed = speed

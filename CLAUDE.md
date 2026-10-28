@@ -70,6 +70,7 @@ The per-file detail, and the reasoning behind every decision that is not obvious
 | `docs/lua-route-beacon.md` | `routeBeacon.lua` and `route_beacon.relative_bearing`. Port 4482 |
 | `docs/lua-audio-debug.md` | `audioDebugAccessible.lua` + vehicle `beamtelAudioDebug.lua`: the editor's Window > Audio tools (engine sound parameters, sound library). Ports 4483/4484 |
 | `docs/lua-vehicle-info.md` | `vehicleInfo.lua`: vehicle selector specifications. Ports 4477/4478 |
+| `docs/lua-drift.md` | `driftAccessible.lua` + `drift_speech.py`: speaking the stock drift display, its hooks and contexts, the speed/compass quiet window |
 | `docs/lua-extensions.md` | Everything smaller: `accessibilityInput.lua`, `beamtelAI.lua`, `obstacleDetector.lua`, `roadDetector.lua`, `hillClimbChallenge.lua`, `cameraInfo.lua`, `nodeGrabberAccessible.lua`, `clickspotAccessible.lua`, `uiToggle.lua`, `consoleAccessible.lua`, `vehicleBindings.lua` |
 | `docs/level-generation.md` | `tools/mapgen/`: the `.ter` format, ground models and which make sound, spawn/POI conventions, level discovery and reload, node-vs-cell grids, `WaterBlock` |
 | `docs/level-proving-grounds.md` | The Proving Grounds layout (`mapdef.py`): surfaces, climb, tunnel, sound stage, suspension straights |

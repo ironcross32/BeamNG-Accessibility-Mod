@@ -43,6 +43,7 @@ _ACCESSIBILITY_ACTION_CALLBACK = None
 _SCREEN_CONTEXT_CALLBACK = None
 _PAGE_TEXT_CALLBACK = None
 _CHALLENGE_EVENT_CALLBACK = None
+_DRIFT_EVENT_CALLBACK = None
 
 # Mirrors window.BNVDA_DEBUG from the CEF/UI JS context. The UI runtime reports it
 # whenever it changes, so debug output anywhere in the Python side can be switched on
@@ -101,6 +102,12 @@ def register_challenge_event_callback(callback):
     """Register the application handler for native mission lifecycle events."""
     global _CHALLENGE_EVENT_CALLBACK
     _CHALLENGE_EVENT_CALLBACK = callback
+
+
+def register_drift_event_callback(callback):
+    """Register the handler for free-roam drift scoring events (driftAccessible.lua)."""
+    global _DRIFT_EVENT_CALLBACK
+    _DRIFT_EVENT_CALLBACK = callback
 
 
 def bnvda_debug_enabled():
@@ -270,6 +277,13 @@ def handle_ws_message(data):
                 _CHALLENGE_EVENT_CALLBACK(data)
             except Exception as e:
                 logger.error(f"challenge_event callback error: {e}")
+
+    elif msg_type == "drift_event":
+        if _DRIFT_EVENT_CALLBACK:
+            try:
+                _DRIFT_EVENT_CALLBACK(data)
+            except Exception as e:
+                logger.error(f"drift_event callback error: {e}")
 
 # ---------- WebSocket Server Logic ----------
 async def ws_handler(request: web.Request):

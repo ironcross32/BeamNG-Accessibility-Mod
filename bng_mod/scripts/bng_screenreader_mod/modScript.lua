@@ -105,4 +105,10 @@ if extensions.isExtensionLoaded("hillClimbChallenge") then
 else
   extensions.load("hillClimbChallenge")
 end
-log('I', 'bng_screenreader_mod', 'modScript.lua executed: accessibility extensions, bnvdaBridge and hill-climb challenge loaded.')
+-- Also calls the transport; passive unless the game's drift display is up.
+if extensions.isExtensionLoaded("driftAccessible") then
+  extensions.reload("driftAccessible")
+else
+  extensions.load("driftAccessible")
+end
+log('I', 'bng_screenreader_mod', 'modScript.lua executed: accessibility extensions, bnvdaBridge, hill-climb challenge and drift speech loaded.')

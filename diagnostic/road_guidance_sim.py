@@ -12,6 +12,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from road_guidance import (  # noqa: E402
     RoadGuidanceFeed,
+    parse_surface_packet,
+    surface_phrase,
     direction_list,
     junction_phrase,
     parse_r2_packet,
@@ -69,6 +71,7 @@ def main():
         "road_stop_sign_speech_enabled",
         "road_traffic_light_speech_enabled",
         "road_speed_limit_speech_enabled",
+        "road_surface_speech_enabled",
         "road_junction_earcon_enabled",
         "road_include_private",
         "road_beep_volume_db",
@@ -76,6 +79,13 @@ def main():
         "road_junction_volume_db",
     )
     assert all(runtime_defaults[key] == tool_defaults[key] for key in road_keys)
+
+    assert parse_surface_packet("SURFACE|Dirt|1") == ("Dirt", True)
+    assert parse_surface_packet("SURFACE|Grass|0|future") == ("Grass", False), "tails are optional"
+    for bad in ("SURFACE|Dirt", "SURFACE||1", "SURFACE|Dirt road|1", "SURFACE|Dirt|2", "R2|x"):
+        assert parse_surface_packet(bad) is None, bad
+    assert surface_phrase("Dirt", True) == "Dirt road"
+    assert surface_phrase("Grass", False) == "Grass"
 
     valid = packet(
         correction={

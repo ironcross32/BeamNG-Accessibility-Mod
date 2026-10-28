@@ -1,5 +1,6 @@
 """Confirmed assistant state and session heartbeat; no steering runs in Python."""
 import json
+import logging
 import threading
 import time
 import uuid
@@ -77,13 +78,19 @@ class DrivingAssistant:
                 return
             elif kind in {"diagnostic", "choice"}:
                 return
+            elif kind == "error":
+                # Raw Lua text for the log only; the following off event carries
+                # the reason the player hears.
+                data = value.get("data")
+                detail = data.get("detail", "") if isinstance(data, dict) else ""
+                logging.getLogger("bnvdahook").error(f"Driving assistant fault: {detail}")
+                return
             elif kind not in {"say", "slow", "status", "alive"}:
                 return
             if kind == "alive" and value.get("active") is True and not self.active:
                 self.active = True
                 self.vehicle = value.get("vehicle")
-                self.speak("Driving assistant on. You control speed and stopping",
-                           exclude_from_buffer=True)
+                self.speak("Driving assistant on", exclude_from_buffer=True)
             if message and kind != "alive":
                 self.speak(message, interrupt=kind != "slow", exclude_from_buffer=True)
 

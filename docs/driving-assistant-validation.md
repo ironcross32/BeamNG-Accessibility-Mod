@@ -1,5 +1,30 @@
 # Driving assistant: implementation and validation
 
+## Gated roads, rough tracks and dead ends, 2026-10-27
+
+The assistant routes over every road a car can drive: `legalRecord(record, true)` binds only one-way direction, so gated, private and low-drivability (dirt) edges are exits. Manual guidance keeps its stricter listing. On Johnson Valley the old rule reported 13 junctions with no exit; 12 of them continued as gated, private or rough roads. Switching on within the commitment zone of one raised `beamtelAssistant.lua:224: No valid exit at this junction` from a bare `assert`.
+
+A junction with no exit (a true dead end, or only a U-turn or a wrong-way one-way) no longer disengages. The vehicle announces "Dead end ahead. Stop at the bar" once and keeps steering to the stop bar, so the driver can stop and reverse out with reverse guidance. A dead end is never `locked`, because `setPlan` ignores plans for the locked junction and the plan lease would expire. Activating beside one skips the choice and follows the path. A gate on the route is spoken by Python ("Gated road ahead. Stop at the bar") from the proximity `kind`. Stop bars are described in [junction-proximity-validation.md](junction-proximity-validation.md). A driven run past a gate and into a dead end is still needed.
+
+**Roundabout detection.** Opening private roads brought in Johnson Valley's two-way carriageway crossovers. `assistantJunction` called any grouped-junction node reached by a second path a "directed cycle", so these crossovers switched the assistant off as "Unsupported junction or roundabout". Now only a loop back onto the path's own nodes, made entirely of one-way edges, is unsupported. A read-only sweep of every approach on Johnson Valley finds none. The one-way ring case is covered only by `driving_assistant_sim.lua`.
+
+**Second driven run (`20261027T150015-005634Z-stop-bar-gate-approach.ndjson`).** The bars behaved as designed. The run exposed five faults, all fixed:
+
+- **A median gap was offered as "left".** Its 6 m first link leaves the junction at 144 degrees, then it turns back the way the car came. Exits are now judged by their heading 25 m on (`settledHeading`), and one that has turned round more than 150 degrees is no exit.
+- **Two exits reached the same road.** A jog through a crossover node to the road "straight" already reached was offered as "right". Exits are now merged by the node they leave onto; the more direct path is kept.
+- **Stock AI gave up on the hairpin without the assist noticing.** It steered -1.41, then held exactly 0 while the car ran straight on at 8 m/s into a 1 m barrier. A steering AI never outputs exact zero, so 0.4 s of it above 1.5 m/s now ends assistance with "Steering lost. Brake now".
+- **The obstacle ray saw the barrier but discarded it as `outsideRoute`,** because the car had already left the route. While recovering, any hit counts (`offRouteObstruction`).
+- **Rocking back at the end of a hard stop, or after the impact, started reverse guidance** (-0.3 to -0.9 m/s for under half a second). In a forward or neutral gear, rolling back now has to last 0.6 s with the brake below 0.5, unless faster than 2 m/s. Reverse gear still switches at once.
+
+**Third driven run (not recorded: the receiver restart closed the session).** Southbound at about 50 mph, the player chose "right" at `autojunction_541`, a gated driveway. "Gated road ahead" came about 2.5 s after "Turning right". Seven metres in, the driveway branches (`DR155_34`). The assistant picked left automatically, a turn of more than 90 degrees. The car went wide, west of the line, and stopped against a concrete barrier beside the gate link `DR155_35`→`DR420_8`. Corridor rays along the route, 0.9 m either side of centre at 0.6 m and 1.0 m, are all clear. The barrier is beside the route, not across it, so a blocked-gate probe would not have caught it and was not built: across the map's 166 gated links, none probe as blocked. Fixes:
+
+- **"Slow down" was held back for 8 s after any junction speech** (`cueAge`). Both turns came within that window, so it could not fire. It now repeats at most every 8 s (`M.slowAge`) and waits only 1 s after other junction speech.
+- **Gated exits are named in the prompt** ("right through a gate"), and a gate between two private roads gets a bar. See [junction-proximity-validation.md](junction-proximity-validation.md).
+
+The same request changed the turn latch to 0.5 s (`SELECT_HOLD_S`). The prompt is now "Hold a turn to select." Switching on now says only "Driving assistant on". Only a start that is off a one-way road's legal direction adds its angle.
+
+**No raw errors in speech.** Earlier, `M.start`, `updateGFX`, `setPlan` and restore failures spoke `tostring(err)`, file and line included. Now a refusal the player can act on is raised as `refuse(message)` (an `{friendly = ...}` error) and spoken as is: AI already active, roundabout just ahead, another controller taking an input. Every other error speaks a fixed reason. Its raw text goes to the game log (`beamtelAssistant`/`drivingAssistant`) and, as an unspoken `error` event with `data.detail`, to `bnvdahook.log` via `driving_assistant.py`. `beamtelAI`'s two GE `pcall`s use `drivingAssistant.fail` for the same path. Old receivers ignore the unknown `error` kind.
+
 ## First driven diagnostic run and repair, 2026-09-14
 
 The player confirmed hearing the three spatial junction tones and the two descending disengagement sweeps. The first recorded drive (`20260914T230001-624414Z-player-junction-drive.ndjson`) then exposed three additional problems before an automatic fallback could be tested:

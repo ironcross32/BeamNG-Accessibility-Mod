@@ -17,6 +17,10 @@ end
 
 function M.owns(vid) return active and (not vid or vid == active.vid) or false end
 function M.status() return active and active.ready and 'driving assistant' or 'disabled' end
+-- The forward route the stop bars are read from; reverse guidance has none ahead.
+function M.route()
+  return active and active.ready and active.motion ~= 'reverse' and active.route or nil
+end
 
 function M.off(reason)
   if not active then return end
@@ -29,6 +33,19 @@ function M.off(reason)
   active = nil
 end
 
+-- A fault is spoken as `spoken` only. The raw error goes to the game log and,
+-- as an unspoken `error` event, to bnvdahook.log.
+local function fault(raw)
+  log('E', 'drivingAssistant', tostring(raw))
+  emit('error', '', {detail = tostring(raw)})
+end
+
+function M.fail(spoken, err)
+  if not active then log('E', 'drivingAssistant', tostring(err)); return end
+  fault(err)
+  M.off(spoken)
+end
+
 local function packet()
   local state = active.route
   local value = {path = state.path, distance = state.distance, clear = not state.committed,
@@ -38,7 +55,7 @@ local function packet()
   active.options = {}
   if active.motion ~= 'reverse' and state.junction and not state.committed then
     local junction = state.junction
-    value.junction = {id = junction.id, unsupported = junction.unsupported, choices = {}}
+    value.junction = {id = junction.id, unsupported = junction.unsupported, choices = {}, gated = {}}
     for name in pairs(junction.choices) do
       local candidate = {records = {}, junction = junction, generation = state.generation,
         travelled = state.travelled, history = state.history}
@@ -48,6 +65,7 @@ local function packet()
         local path = require('ge/extensions/assistantRoutes').nodes(chosen.records)
         if path then
           value.junction.choices[name] = path
+          value.junction.gated[name] = junction.choices[name].gated or nil
           active.options[name] = chosen
         end
       end
@@ -111,7 +129,8 @@ function M.event(vid, token, kind, message)
   if not active or active.vid ~= vid or active.token ~= token then return end
   if be:getPlayerVehicleID(0) ~= vid then M.off('Vehicle changed. Steering assistance off'); return end
   active.age = 0
-  if kind == 'off' then lastOffReason = message; emit('off', message); retired[active.token] = true; active = nil
+  if kind == 'error' then fault(message)
+  elseif kind == 'off' then lastOffReason = message; emit('off', message); retired[active.token] = true; active = nil
   elseif kind == 'ready' then active.ready = true; emit('on', message)
   elseif kind == 'motion' and (message == 'reverse' or message == 'forward') then
     if active.motion == message then return end

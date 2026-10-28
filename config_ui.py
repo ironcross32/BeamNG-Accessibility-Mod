@@ -640,6 +640,14 @@ class ConfigPanel(wx.ScrolledWindow):
         self._speed_interval_sizer.Add(self.choice_speed_interval, 1, wx.EXPAND)
         auto_sizer.Add(self._speed_interval_sizer, 0, wx.ALL | wx.EXPAND, 6)
 
+        self.chk_drift_speech = wx.CheckBox(sb_auto, label="Speak drift scoring")
+        self.chk_drift_speech.SetToolTip(
+            "With the game's drift display on in free roam, read its messages: tiers, bonuses, "
+            "combo, crashes and the points scored, plus drift zone results. While the display "
+            "shows, automatic speed and compass speech pause; compass sounds keep playing."
+        )
+        auto_sizer.Add(self.chk_drift_speech, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+
         gear_mode_row = wx.BoxSizer(wx.HORIZONTAL)
         lbl_gear_mode = wx.StaticText(sb_auto, label="Report gear changes:")
         self.choice_gear_mode = wx.Choice(
@@ -817,12 +825,20 @@ class ConfigPanel(wx.ScrolledWindow):
         )
         road_sizer.Add(self.chk_road_speed_limits, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
+        self.chk_road_surface = wx.CheckBox(sb_road, label="Speak road surface changes")
+        self.chk_road_surface.SetToolTip(
+            "Always on, with or without road detection: say the surface under the tires when it changes, "
+            "such as dirt road, asphalt road or grass. No stock map names its streets, so the surface is what is announced."
+        )
+        road_sizer.Add(self.chk_road_surface, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+
         self.chk_road_junction_proximity = wx.CheckBox(
-            sb_road, label="Junction distance beeps (manual driving and AI assist)"
+            sb_road, label="Stop bar tone (manual driving and AI assist)"
         )
         self.chk_road_junction_proximity.SetToolTip(
-            "Beep faster towards the mapped stopping point or junction boundary. "
-            "Double pips mean a known stop requirement; single pips include green lights. "
+            "A tone that pulses faster towards the stop bar before a junction, stop point, "
+            "gated road or dead end, holds steady while you are on the bar, and quietens "
+            "once you stop there. Speech still announces stop signs and lights. "
             "Manual driving requires road guidance on. Uses Intersection Tone Volume."
         )
         road_sizer.Add(self.chk_road_junction_proximity, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
@@ -831,7 +847,7 @@ class ConfigPanel(wx.ScrolledWindow):
             sb_road, label="Intersection proximity and entry tones"
         )
         self.chk_road_junction_earcon.SetToolTip(
-            "Play an entry tone, plus a near-junction double pip when distance beeps are disabled."
+            "Play an entry tone, plus a near-junction double pip when the stop bar tone is disabled."
         )
         road_sizer.Add(self.chk_road_junction_earcon, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
@@ -1478,6 +1494,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_follow_device,
             self.chk_announce_turn_signals,
             self.chk_announce_speed,
+            self.chk_drift_speech,
             self.chk_gear_sport_once,
             self.chk_announce_clickspot_actions,
             self.chk_scanner_callout,
@@ -1494,6 +1511,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_road_stop_signs,
             self.chk_road_traffic_lights,
             self.chk_road_speed_limits,
+            self.chk_road_surface,
             self.chk_road_junction_earcon,
             self.chk_road_junction_proximity,
             self.chk_road_private,
@@ -1799,6 +1817,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.chk_road_stop_signs.SetValue(cfg.get("road_stop_sign_speech_enabled", True))
             self.chk_road_traffic_lights.SetValue(cfg.get("road_traffic_light_speech_enabled", True))
             self.chk_road_speed_limits.SetValue(cfg.get("road_speed_limit_speech_enabled", True))
+            self.chk_road_surface.SetValue(cfg.get("road_surface_speech_enabled", True))
             self.chk_road_junction_earcon.SetValue(
                 cfg.get("road_junction_earcon_enabled", True)
             )
@@ -1833,6 +1852,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.spin_poll.SetValue(cfg.get("audio_poll_interval_sec", 2.0))
             self.chk_announce_turn_signals.SetValue(cfg.get("announce_turn_signals", True))
             self.chk_announce_speed.SetValue(cfg.get("announce_speed", True))
+            self.chk_drift_speech.SetValue(cfg.get("drift_speech_enabled", True))
             gear = gear_report.settings_from_config(cfg)
             self.choice_gear_mode.SetSelection(gear_report.MODES.index(gear["mode"]))
             self.chk_gear_sport_once.SetValue(gear["collapse_sport"])
@@ -1916,6 +1936,7 @@ class ConfigPanel(wx.ScrolledWindow):
         cfg["road_stop_sign_speech_enabled"] = self.chk_road_stop_signs.GetValue()
         cfg["road_traffic_light_speech_enabled"] = self.chk_road_traffic_lights.GetValue()
         cfg["road_speed_limit_speech_enabled"] = self.chk_road_speed_limits.GetValue()
+        cfg["road_surface_speech_enabled"] = self.chk_road_surface.GetValue()
         cfg["road_junction_speech_enabled"] = (
             self.chk_road_junction_speech.GetValue()
         )
@@ -1942,6 +1963,7 @@ class ConfigPanel(wx.ScrolledWindow):
         cfg["audio_poll_interval_sec"] = self.spin_poll.GetValue()
         cfg["announce_turn_signals"] = self.chk_announce_turn_signals.GetValue()
         cfg["announce_speed"] = self.chk_announce_speed.GetValue()
+        cfg["drift_speech_enabled"] = self.chk_drift_speech.GetValue()
         cfg["gear_report_mode"] = gear_report.MODES[
             max(0, self.choice_gear_mode.GetSelection())
         ]

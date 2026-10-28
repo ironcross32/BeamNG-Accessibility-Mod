@@ -15,6 +15,7 @@ local M = {}
 local assistant = require('ge/extensions/drivingAssistant')
 function M.assistantState() return assistant.diagnosticState() end
 function M.assistantActive() return assistant.owns() end
+function M.assistantRoute() return assistant.route() end
 
 function M.onAssistantEvent(vid, token, kind, message)
   assistant.event(vid, token, kind, message)
@@ -249,7 +250,7 @@ end
 
 function M.onUpdate(dtReal, dtSim, dtRaw)
   local ok, err = pcall(assistant.update, dtSim or 0)
-  if not ok then assistant.off('Navigation failure. Steering assistance off'); aiLog('error', tostring(err)) end
+  if not ok then assistant.fail('Navigation failure. Steering assistance off', err) end
   retryCmdBind(dtReal)
   -- Drive the STATUS_ALL timeout so unresponsive vehicles don't stall the report.
   if _statusAllTimeout > 0 then
@@ -284,7 +285,7 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
 
   if cmdType:find('^ASSISTANT_') then
     local success, message = pcall(assistant.command, cmdType, cmdArg, sendResponse)
-    if not success then assistant.off('Assistant setup failed. Steering assistance off'); aiLog('error', tostring(message)) end
+    if not success then assistant.fail('Assistant setup failed. Steering assistance off', message) end
     return
   end
   if assistant.owns() and (cmdType == 'AGGR' or cmdType == 'SPEED' or cmdType == 'CLEARSPEED'

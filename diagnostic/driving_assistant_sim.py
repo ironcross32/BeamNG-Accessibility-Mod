@@ -50,6 +50,19 @@ class AssistantSessionChecks(unittest.TestCase):
         self.response("on", 3, token)
         self.assertFalse(self.client.active)
 
+    def test_raw_errors_are_logged_never_spoken(self):
+        self.client.toggle()
+        raw = "lua/vehicle/extensions/beamtelAssistant.lua:223: attempt to index nil"
+        with self.assertLogs("bnvdahook", level="ERROR") as logs:
+            self.client.receive(json.dumps({"token": self.client.token, "kind": "error",
+                                            "sequence": 1, "message": "",
+                                            "data": {"detail": raw}}))
+        self.assertIn(raw, logs.output[0])
+        self.client.receive(json.dumps({"token": self.client.token, "kind": "off", "sequence": 2,
+                                        "message": "Driving assistant fault. Steering assistance off"}))
+        self.assertEqual(self.spoken, ["Driving assistant fault. Steering assistance off"])
+        self.assertFalse(any(".lua" in text for text in self.spoken))
+
     def test_toggle_off_uses_current_token(self):
         self.client.toggle()
         token = self.client.token

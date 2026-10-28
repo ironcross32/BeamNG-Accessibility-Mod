@@ -271,8 +271,18 @@ def parse_r2_packet(text):
         speed = _finite_number(proximity.get("speed"), "proximity.speed")
         if not 0 <= distance <= 1000 or speed < 0:
             raise ValueError("invalid proximity distance or speed")
+        # Optional tails. distance stays non-negative for older receivers; the
+        # stop bar needs to know how far past the line the nose has gone.
+        signed = proximity.get("signedDistance", distance)
+        signed = _finite_number(signed, "proximity.signedDistance")
+        if not -50 <= signed <= 1000:
+            raise ValueError("invalid proximity.signedDistance")
+        target_kind = proximity.get("kind", "")
+        if not isinstance(target_kind, str) or len(target_kind) > 40:
+            raise ValueError("invalid proximity.kind")
         proximity = {"id": target_id, "distance": distance, "speed": speed,
-                     "action": action, "source": source}
+                     "action": action, "source": source,
+                     "signedDistance": signed, "kind": target_kind}
 
     speed_limit = packet.get("speedLimit")
     if speed_limit is not None:
@@ -364,6 +374,8 @@ def junction_phrase(junction, units):
     exits = direction_list(junction.get("exits", []), conjunction="or" if kind in {"fork", "tJunction"} else "and")
     if kind == "deadEnd":
         return f"Road ends in {distance}."
+    if kind == "gate":
+        return f"Gated road in {distance}."
     names = {
         "fork": "Road forks",
         "tJunction": "T-junction",
@@ -395,12 +407,30 @@ def signal_phrase(signal, units, change=False):
     return f"Traffic light {state}, in {format_road_distance(signal['distance'], units)}."
 
 
-def map_speed_limit_phrase(speed_ms, units):
+def parse_surface_packet(text):
+    """``SURFACE|Dirt|1`` from roadDetector: the new surface and whether it is a mapped road.
+
+    Returns (word, on_road), or None for anything malformed. Optional tails may follow.
+    """
+    parts = text.split("|")
+    if len(parts) < 3 or parts[0] != "SURFACE":
+        return None
+    word = parts[1]
+    if not word.isalpha() or len(word) > 20 or parts[2] not in ("0", "1"):
+        return None
+    return word, parts[2] == "1"
+
+
+def surface_phrase(word, on_road):
+    return f"{word} road" if on_road else word
+
+
+def map_speed_limit_phrase(speed_ms, units, label="Map speed limit"):
     if speed_ms is None:
-        return "Map speed limit unavailable."
+        return f"{label} unavailable."
     value = round(speed_ms * (2.2369362920544 if units == "imperial" else 3.6))
     unit = "mph" if units == "imperial" else "kilometers per hour"
-    return f"Map speed limit {value} {unit}."
+    return f"{label} {value} {unit}."
 
 
 class RoadGuidanceFeed:
@@ -574,13 +604,16 @@ class RoadGuidanceFeed:
                 "junction": deepcopy(self.last_known_junction),
             }
 
-    def speed_limit_phrase(self, enabled, units):
+    def speed_limit(self, enabled):
+        """Current map limit in m/s, or None when off, stale, off-road or unmapped."""
         with self._lock:
             recent = (self.last_r2_time is not None
                       and self._clock() - self.last_r2_time <= R2_STALE_SECONDS)
             packet = self.packet or {}
-            value = packet.get("speedLimit") if enabled and recent and packet.get("state") == "onRoad" else None
-        return map_speed_limit_phrase(value, units)
+            return packet.get("speedLimit") if enabled and recent and packet.get("state") == "onRoad" else None
+
+    def speed_limit_phrase(self, enabled, units, label="Map speed limit"):
+        return map_speed_limit_phrase(self.speed_limit(enabled), units, label)
 
     def status_phrase(self, enabled, units):
         if not enabled:

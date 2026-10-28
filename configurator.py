@@ -89,6 +89,8 @@ DEFAULT_CONFIG = {
     "road_stop_sign_speech_enabled": True,
     "road_traffic_light_speech_enabled": True,
     "road_speed_limit_speech_enabled": True,
+    "road_surface_speech_enabled": True,
+    "drift_speech_enabled": True,
     "road_junction_earcon_enabled": True,
     "road_junction_proximity_enabled": True,
     "road_include_private": False,
@@ -378,6 +380,8 @@ def load_config():
         _coerce("road_stop_sign_speech_enabled", bool, True)
         _coerce("road_traffic_light_speech_enabled", bool, True)
         _coerce("road_speed_limit_speech_enabled", bool, True)
+        _coerce("road_surface_speech_enabled", bool, True)
+        _coerce("drift_speech_enabled", bool, True)
         _coerce("road_junction_earcon_enabled", bool, True)
         _coerce("road_junction_proximity_enabled", bool, True)
         _coerce("road_include_private", bool, False)

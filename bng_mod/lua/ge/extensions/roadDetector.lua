@@ -247,6 +247,7 @@ local function rebuildNavigationModel(reason)
                 oneWay = truthy(data.oneWay),
                 drivability = tonumber(data.drivability) or 1.0,
                 private = isPrivateEdge(data),
+                gated = truthy(data.gatedRoad) or truthy(data.gated) or truthy(data.isGated),
                 raw = data,
               }
               edge.length = edgeLength(edge)
@@ -273,17 +274,21 @@ local function edgeDirection(edge, directionSign)
   return direction
 end
 
-local function legalRecord(record)
+-- Permissive is the driving assistant's rule: a car can drive any road, so
+-- gated, private and rough tracks are routes and only one-way direction binds.
+-- Manual guidance keeps the stricter listing its settings describe.
+local function legalRecord(record, permissive)
+  if record.edge.oneWay and not record.forward then return false end
+  if permissive then return true end
   if record.edge.drivability < MIN_DRIVABILITY then return false end
   if record.edge.private and not includePrivate then return false end
-  if record.edge.oneWay and not record.forward then return false end
   return true
 end
 
-local function outgoing(nodeId, incomingEdge, incomingDirection)
+local function outgoing(nodeId, incomingEdge, incomingDirection, permissive)
   local result = {}
   for _, record in ipairs(adjacency[nodeId] or {}) do
-    if record.edge ~= incomingEdge and legalRecord(record) then
+    if record.edge ~= incomingEdge and legalRecord(record, permissive) then
       local direction = edgeDirection(record.edge, record.forward and 1 or -1)
       if direction and (not incomingDirection or math.abs(bearingToDir(incomingDirection, direction)) <= 150) then
         record.direction = direction
@@ -474,7 +479,7 @@ local function classifyJunction(exits, complex)
   return "intersection"
 end
 
-local function junctionZone(startNode, incomingEdge, incomingDirection, initialChoices)
+local function junctionZone(startNode, incomingEdge, incomingDirection, initialChoices, permissive)
   local zone, queue = {[startNode] = true}, {startNode}
   local startRecords = adjacency[startNode] or {}
   local startPos = nil
@@ -487,11 +492,11 @@ local function junctionZone(startNode, incomingEdge, incomingDirection, initialC
     local nodeId = queue[head]
     head = head + 1
     for _, record in ipairs(adjacency[nodeId] or {}) do
-      if legalRecord(record) and record.edge ~= incomingEdge and not zone[record.to]
+      if legalRecord(record, permissive) and record.edge ~= incomingEdge and not zone[record.to]
         and record.edge.length <= 35 then
         local targetPos = record.to == record.edge.inNode and record.edge.inPos or record.edge.outPos
         local close = not startPos or horizontalDistance(startPos, targetPos) <= 40
-        local targetChoices = outgoing(record.to, record.edge, record.direction)
+        local targetChoices = outgoing(record.to, record.edge, record.direction, permissive)
         if close and #targetChoices >= 2 then
           zone[record.to] = true
           table.insert(queue, record.to)
@@ -503,7 +508,7 @@ local function junctionZone(startNode, incomingEdge, incomingDirection, initialC
   local exitBearings = {}
   for nodeId, _ in pairs(zone) do
     for _, record in ipairs(adjacency[nodeId] or {}) do
-      if legalRecord(record) and record.edge ~= incomingEdge and not zone[record.to] then
+      if legalRecord(record, permissive) and record.edge ~= incomingEdge and not zone[record.to] then
         local direction = edgeDirection(record.edge, record.forward and 1 or -1)
         if direction then
           local bearing = bearingToDir(incomingDirection, direction)
@@ -523,6 +528,15 @@ local function junctionZone(startNode, incomingEdge, incomingDirection, initialC
   return clusterBearings(exitBearings), ids, zone
 end
 
+local function nodeRadius(nodeId)
+  local radius = 0
+  for _, record in ipairs(adjacency[nodeId] or {}) do
+    local atIn = record.from == record.edge.inNode
+    radius = math.max(radius, atIn and record.edge.inRadius or record.edge.outRadius)
+  end
+  return radius
+end
+
 local function findJunctionAhead(edge, projection, directionSign)
   local distance = directionSign > 0 and edge.length * (1 - projection.t) or edge.length * projection.t
   local nodeId = directionSign > 0 and edge.outNode or edge.inNode
@@ -532,15 +546,18 @@ local function findJunctionAhead(edge, projection, directionSign)
     local choices = outgoing(nodeId, incoming, incomingDir)
     if #choices ~= 1 then
       local exits, ids = junctionZone(nodeId, incoming, incomingDir, choices)
-      local nodeRadius = 0
-      for _, record in ipairs(adjacency[nodeId] or {}) do
-        local atIn = record.from == record.edge.inNode
-        nodeRadius = math.max(nodeRadius, atIn and record.edge.inRadius or record.edge.outRadius)
+      local kind = classifyJunction(exits, #ids > 1)
+      -- A road that only goes on as a gated or private road has not ended;
+      -- whether the gate opens is for the driver to find out at the bar.
+      if kind == "deadEnd" then
+        for _, record in ipairs(outgoing(nodeId, incoming, incomingDir, true)) do
+          if record.edge.private then kind = "gate"; break end
+        end
       end
       return {
         id = table.concat(ids, "+"),
-        kind = classifyJunction(exits, #ids > 1),
-        distance = math.max(0, distance - nodeRadius),
+        kind = kind,
+        distance = math.max(0, distance - nodeRadius(nodeId)),
         centreDistance = distance,
         exits = exits,
       }
@@ -552,10 +569,89 @@ local function findJunctionAhead(edge, projection, directionSign)
   return nil
 end
 
-function M.proximityAt(position, forward, speed, activeId)
+-- While the assistant steers, the stops are the ones on its own route. It
+-- drives roads the manual detector does not list, and once a turn is committed
+-- the junction it is about to cross is no longer the route's open junction.
+local function routeStopAhead(route, position)
+  local records = route.records or {}
+  local best, index
+  for i = 1, math.min(#records, 8) do
+    local p = projectOnEdge(position, records[i].edge)
+    if math.abs(p.dz) <= OVERPASS_Z_TOLERANCE and (not best or p.distance < best.distance - 0.1) then
+      best, index = p, i
+    end
+  end
+  if not best then return nil end
+  local first = records[index]
+  local distance = (first.forward and 1 - best.t or best.t) * first.edge.length
+  local history = route.history or {}
+  local behind = records[index - 1] or history[#history]
+  local previousExits = behind and #outgoing(first.from, behind.edge,
+    edgeDirection(behind.edge, behind.forward and 1 or -1), true) or 1
+  for i = index, #records do
+    local record = records[i]
+    if i > index then distance = distance + record.edge.length end
+    if distance > JUNCTION_SEARCH_M then return nil end
+    local nextRecord = records[i + 1]
+    -- A gate between two private roads is still a gate: Johnson Valley's
+    -- driveways have them, and only the public-to-private step had a bar.
+    local gate = nextRecord and ((nextRecord.edge.private and not record.edge.private)
+      or (nextRecord.edge.gated and not record.edge.gated))
+    local exits = #outgoing(record.to, record.edge,
+      edgeDirection(record.edge, record.forward and 1 or -1), true)
+    -- The far nodes of a grouped junction are a short link on from a node that
+    -- branched on this route; their bar was the one at the entry, now behind.
+    local inside = record.edge.length <= 35 and previousExits ~= 1
+    previousExits = exits
+    if gate or (exits ~= 1 and not inside) then
+      return {id = tostring(record.to), centreDistance = distance,
+        distance = math.max(0, distance - nodeRadius(record.to)),
+        kind = gate and 'gate' or (exits == 0 and 'deadEnd' or 'junction')}
+    end
+  end
+end
+
+function M.proximityAt(position, forward, speed, activeId, route)
   local signal, status, edgeId, warning, edge, projection, sign = M.signalAt(position, forward, speed)
-  local junction = edge and findJunctionAhead(edge, projection, sign)
+  local junction
+  if route then junction = routeStopAhead(route, position)
+  else junction = edge and findJunctionAhead(edge, projection, sign) end
   return roadSignals.proximity(signal, junction, speed, activeId), signal, status, edgeId, warning
+end
+
+-- A stop bar is a place, not just the next target: once the nose reaches it the
+-- selectors move on to whatever lies beyond. Remember it as a line across the
+-- road and report a signed distance until the nose has cleared it.
+local STOP_BAR_CLEAR_M = 2.5
+local stopBar = {}
+
+function M.stopBarAt(position, forward, speed, activeId)
+  local ai = extensions and extensions.beamtelAI
+  local route = ai and ai.assistantRoute and ai.assistantRoute() or nil
+  local proximity, signal, status, edgeId, warning =
+    M.proximityAt(position, forward, speed, activeId, route)
+  if proximity and proximity.id == stopBar.id then
+    -- Distance clamps to zero at a junction boundary; keep the last real fix.
+    if proximity.distance > 0.5 then
+      stopBar.pos, stopBar.dir = position + forward * proximity.distance, forward
+    end
+    stopBar.target = proximity
+    proximity.signedDistance = (stopBar.pos - position):dot(stopBar.dir)
+  elseif stopBar.id and (stopBar.pos - position):dot(stopBar.dir) > -STOP_BAR_CLEAR_M
+    and (stopBar.pos - position):dot(stopBar.dir) < 1 then
+    local held = {}
+    for key, value in pairs(stopBar.target) do held[key] = value end
+    held.signedDistance = (stopBar.pos - position):dot(stopBar.dir)
+    held.distance = math.max(0, held.signedDistance)
+    proximity = held
+  elseif proximity then
+    stopBar.id, stopBar.target = proximity.id, proximity
+    stopBar.pos, stopBar.dir = position + forward * proximity.distance, forward
+    proximity.signedDistance = proximity.distance
+  else
+    stopBar.id = nil
+  end
+  return proximity, signal, status, edgeId, warning
 end
 
 local function makeRoadDirections(vehicleForward, edge)
@@ -593,6 +689,7 @@ end
 local function resetTracking(reason)
   signalGeneration = signalGeneration + 1
   signalSnapshot.proximity = nil
+  stopBar.id = nil
   activeSignalId = nil
   isDormant, missCount, scanTimer = false, 0, 0
   currentEdge, onRoad = nil, false
@@ -940,7 +1037,7 @@ local function performScan()
   local directions = makeRoadDirections(vehicleForward, edge)
   local frontPosition, frontNode, frontOffset = roadSignals.frontPosition(player)
   local proximity, signal, signalStatus, signalEdge, warningDistance =
-    M.proximityAt(frontPosition, forwardFlat, speed, signalSnapshot.proximity and signalSnapshot.proximity.id)
+    M.stopBarAt(frontPosition, forwardFlat, speed, signalSnapshot.proximity and signalSnapshot.proximity.id)
   if proximity then proximity.speed = math.max(0, player:getVelocity():dot(forwardFlat)) end
   if signal and (signal.groupId == activeSignalId or signal.distance <= warningDistance) then
     activeSignalId = signal.groupId
@@ -1016,6 +1113,85 @@ function M.onVehicleDiagnostic(vehicleId, steeringInput, steering, contactMateri
   }
 end
 
+-- No stock map names its streets (checked: DecalRoads carry editor labels at
+-- most), so a change of road is told by the ground under the tires. This runs
+-- whether or not road detection or the assistant is on. The vehicle reports the
+-- ground model most of its wheels touch; a tie or no contact keeps the current
+-- one. A new surface must hold for SURFACE_SETTLE_M of travel, so a patch of
+-- dirt on asphalt or a wheel on the shoulder is not a change.
+local SURFACE_COMMAND = [[
+  local _materials = particles and particles.getMaterialsParticlesTable
+    and particles.getMaterialsParticlesTable()
+  local _counts, _total = {}, 0
+  if _materials and wheels and wheels.wheels then
+    for _, _wheel in pairs(wheels.wheels) do
+      local _id = tonumber(_wheel.contactMaterialID1)
+      local _entry = _id and _id >= 0 and _materials[_id]
+      if _entry and _entry.name then
+        local _name = (tostring(_entry.name):upper():gsub('[^A-Z0-9_]', ''))
+        _counts[_name] = (_counts[_name] or 0) + 1
+        _total = _total + 1
+      end
+    end
+  end
+  local _best, _count = '', 0
+  for _name, _n in pairs(_counts) do if _n > _count then _best, _count = _name, _n end end
+  if _count * 2 <= _total then _best = '' end
+  obj:queueGameEngineLua('if extensions.roadDetector then extensions.roadDetector.onSurface('
+    .. tostring(obj:getID()) .. ',"' .. _best .. '") end')
+]]
+local SURFACE_INTERVAL, SURFACE_SETTLE_M = 0.2, 8
+local SURFACE_WORDS = {
+  ASPHALT = 'Asphalt', CONCRETE = 'Concrete', COBBLESTONE = 'Cobblestone',
+  DIRT = 'Dirt', ROCKYDIRT = 'Dirt', GRAVEL = 'Gravel', GRASS = 'Grass',
+  SAND = 'Sand', SANDY = 'Sand', MUD = 'Mud', ROCK = 'Rock', ICE = 'Ice', SNOW = 'Snow',
+  METAL = 'Metal', WOOD = 'Wood',
+}
+local surface = {timer = 0}
+
+-- Ground models come in families (ASPHALT_WET, DIRT_DUSTY, GRASS2); the
+-- family is the change worth a word. Unknown models are not announced.
+function M.surfaceWord(name)
+  name = tostring(name or '')
+  if SURFACE_WORDS[name] then return SURFACE_WORDS[name] end
+  local family = name:match('^([A-Z]+)')
+  return family and SURFACE_WORDS[family] or nil
+end
+
+function M.onSurface(vehicleId, name)
+  local player = be:getPlayerVehicle(0)
+  if not player or tonumber(vehicleId) ~= player:getID() then return end
+  local word = M.surfaceWord(name)
+  if not word then return end
+  if surface.vehicle ~= player:getID() then
+    surface.vehicle, surface.current, surface.candidate = player:getID(), nil, nil
+  end
+  local position = player:getPosition()
+  if word == surface.current then surface.candidate = nil; return end
+  -- The surface the car starts on, or spawns onto, is not a change.
+  if not surface.current then surface.current = word; return end
+  if word ~= surface.candidate then surface.candidate, surface.from = word, position; return end
+  if horizontalDistance(position, surface.from) < SURFACE_SETTLE_M then return end
+  surface.current, surface.candidate = word, nil
+  local edge, projection = nearestCompatibleEdge(position)
+  local onRoad = edge and projection.distance <= projection.radius + 1
+  if udpSend then
+    pcall(function() udpSend:send('SURFACE|' .. word .. '|' .. (onRoad and '1' or '0')) end)
+  end
+end
+
+function M.surfaceState()
+  return {vehicle = surface.vehicle, current = surface.current, candidate = surface.candidate}
+end
+
+local function surfaceTick(dtReal)
+  surface.timer = surface.timer + (dtReal or 0)
+  if surface.timer < SURFACE_INTERVAL then return end
+  surface.timer = 0
+  local player = be:getPlayerVehicle(0)
+  if player then pcall(function() player:queueLuaCommand(SURFACE_COMMAND) end) end
+end
+
 function M.onExtensionUnloaded()
   if udpSend then pcall(function() udpSend:close() end); udpSend = nil end
   if udpCmd then pcall(function() udpCmd:close() end); udpCmd = nil end
@@ -1083,6 +1259,7 @@ function M.onUpdate(dtReal)
       end
     end
   end
+  surfaceTick(dtReal)
   if assistantActive and not assistantWasActive and not isActive then resetTracking('assistant on') end
   assistantWasActive = assistantActive
   if not isActive and not challengeCaptureActive and not assistantActive then return end
@@ -1123,15 +1300,51 @@ end
 local assistantRoutes = require('ge/extensions/assistantRoutes')
 
 local function sortedOutgoing(node, edge, direction)
-  local result = outgoing(node, edge, direction)
+  local result = outgoing(node, edge, direction, true)
   table.sort(result, function(a, b) return tostring(a.to) < tostring(b.to) end)
   return result
+end
+
+-- An exit is judged by where it heads once it has settled, not by its first
+-- link. A gap through a central reservation can leave a junction at 144
+-- degrees ("left") and be a U-turn within 10 m: stock AI cannot drive it.
+local EXIT_HEADING_M = 25
+local function settledHeading(record)
+  local direction = edgeDirection(record.edge, record.forward and 1 or -1)
+  local probe, travelled = record, record.edge.length
+  for _ = 1, 16 do
+    if travelled >= EXIT_HEADING_M or not direction then break end
+    local continuations = sortedOutgoing(probe.to, probe.edge, direction)
+    if #continuations ~= 1 then break end
+    probe = continuations[1]
+    travelled = travelled + probe.edge.length
+    direction = edgeDirection(probe.edge, probe.forward and 1 or -1) or direction
+  end
+  return direction
+end
+
+-- Whether an exit passes a gate before it settles: inside the junction, or on
+-- the road it joins before that road next branches (at most 40 m on). The
+-- prompt names it so the choice is made knowing, not 2 s after committing.
+local GATE_LOOKAHEAD_M = 40
+function M.gatedAhead(records)
+  for _, record in ipairs(records) do if record.edge.gated then return true end end
+  local last, travelled = records[#records], 0
+  while last and travelled < GATE_LOOKAHEAD_M do
+    local onward = outgoing(last.to, last.edge,
+      edgeDirection(last.edge, last.forward and 1 or -1), true)
+    if #onward ~= 1 then return false end
+    last = onward[1]
+    if last.edge.gated then return true end
+    travelled = travelled + last.edge.length
+  end
+  return false
 end
 
 local function assistantJunction(record)
   local direction = edgeDirection(record.edge, record.forward and 1 or -1)
   local initial = sortedOutgoing(record.to, record.edge, direction)
-  local _, ids, zone = junctionZone(record.to, record.edge, direction, initial)
+  local _, ids, zone = junctionZone(record.to, record.edge, direction, initial, true)
   local paths, queue = {[record.to] = {}}, {record.to}
   local exits, unsupported = {}, false
   local head = 1
@@ -1147,16 +1360,30 @@ local function assistantJunction(record)
       path[#path + 1] = nextRecord
       if zone[nextRecord.to] then
         if paths[nextRecord.to] then
-          unsupported = true -- A directed cycle needs numbered-exit handling.
+          -- Reaching a node a second way is ordinary where two-way links cross a
+          -- grouped junction (Johnson Valley's carriageway crossovers). Only a
+          -- one-way loop back onto this path is a roundabout needing numbered exits.
+          local loop
+          for k, item in ipairs(path) do
+            if item.from == nextRecord.to then loop = k; break end
+          end
+          if loop then
+            local oneWay = true
+            for k = loop, #path do if not path[k].edge.oneWay then oneWay = false end end
+            if oneWay then unsupported = true end
+          end
         else
           paths[nextRecord.to] = path
           queue[#queue + 1] = nextRecord.to
         end
       else
-        local bearing = bearingToDir(direction,
-          edgeDirection(nextRecord.edge, nextRecord.forward and 1 or -1))
+        local first = edgeDirection(nextRecord.edge, nextRecord.forward and 1 or -1)
+        local settled = settledHeading(nextRecord) or first
+        local bearing = bearingToDir(direction, first)
+        -- Keep the first link's side, but a path that has turned round is no exit.
+        if math.abs(bearingToDir(direction, settled)) > 150 then bearing = 180 end
         exits[#exits + 1] = {id = tostring(node) .. '>' .. tostring(nextRecord.to),
-          bearing = bearing, records = path}
+          bearing = bearing, records = path, gated = M.gatedAhead(path)}
         -- Detect compact one-way circuits outside the grouped intersection.
         local probe, visited, length = nextRecord, {}, 0
         for _ = 1, 32 do
@@ -1179,8 +1406,22 @@ local function assistantJunction(record)
       end
     end
   end
+  -- Two exits onto the same road are one exit: a jog through a crossover node
+  -- to the road "straight" already reaches was being offered as "right".
+  local byRoad, distinct = {}, {}
+  for _, exit in ipairs(exits) do
+    local key = tostring(exit.records[#exit.records].to)
+    local kept = byRoad[key]
+    if not kept or #exit.records < #kept.records
+      or (#exit.records == #kept.records and math.abs(exit.bearing) < math.abs(kept.bearing)) then
+      byRoad[key] = exit
+    end
+  end
+  for _, exit in ipairs(exits) do
+    if byRoad[tostring(exit.records[#exit.records].to)] == exit then distinct[#distinct + 1] = exit end
+  end
   return {id = table.concat(ids, '+'), zone = zone,
-    choices = assistantRoutes.choices(exits), unsupported = unsupported}
+    choices = assistantRoutes.choices(distinct), unsupported = unsupported}
 end
 
 local function extendAssistantRoute(state)
@@ -1213,8 +1454,7 @@ function M.assistantStart(player)
   local nearest, nearestProjection
   for _, candidate in ipairs(candidateEdges(position)) do
     local p = projectOnEdge(position, candidate)
-    if candidate.drivability >= MIN_DRIVABILITY and (includePrivate or not candidate.private)
-      and math.abs(p.dz) <= OVERPASS_Z_TOLERANCE then
+    if math.abs(p.dz) <= OVERPASS_Z_TOLERANCE then
       if not nearestProjection or p.distance < nearestProjection.distance then
         nearest, nearestProjection = candidate, p
       end
@@ -1241,11 +1481,12 @@ function M.assistantStart(player)
   local record = {edge = edge, forward = sign > 0,
     from = sign > 0 and edge.inNode or edge.outNode,
     to = sign > 0 and edge.outNode or edge.inNode}
-  if not legalRecord(record) then return nil, 'This road is not legal in this direction' end
+  if not legalRecord(record, true) then return nil, 'This road is not legal in this direction' end
   local angle = bearingToDir(facing, edgeDirection(edge, sign))
-  local message = edge.oneWay and ('One-way road. Legal travel is '
-    .. (math.abs(angle) < 10 and 'ahead' or string.format('%d degrees to your %s',
-      math.floor(math.abs(angle) + 0.5), angle > 0 and 'left' or 'right'))) or nil
+  -- Only a start that is off the legal direction is worth more than "on".
+  local message = edge.oneWay and math.abs(angle) >= 10 and string.format(
+    'One-way road. Legal travel is %d degrees to your %s',
+    math.floor(math.abs(angle) + 0.5), angle > 0 and 'left' or 'right') or nil
   return extendAssistantRoute({records = {record}, generation = navigationGeneration,
     roadMessage = message})
 end
@@ -1317,6 +1558,11 @@ function M.assistantUpdate(state, player, dt)
       local hit = rayStart + forward * distance
       local reason, height
       obstruction, reason, height = require('ge/extensions/assistantRoutes').obstacleHit(state.records, hit, projectOnEdge)
+      -- Off the route there is no corridor to filter by, and whatever is ahead
+      -- is what the car will hit: a barrier was discarded this way at 8 m/s.
+      if not obstruction and reason == 'outsideRoute' and state.recovering then
+        obstruction, reason = true, 'offRouteObstruction'
+      end
       state.hazardDetail.reason, state.hazardDetail.height = reason, height
       state.hazardDetail.hit = {hit.x, hit.y, hit.z}
     end

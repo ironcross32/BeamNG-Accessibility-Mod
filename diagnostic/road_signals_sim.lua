@@ -114,6 +114,11 @@ assert(cue.source == 'junctionBoundary' and cue.distance == 90, 'do not skip nea
 assert(resolver.proximity(nil, junction, 0) == nil, 'outside warning range')
 assert(resolver.proximity(nil, junction, 0, 'junction:T').distance == 90, 'retain cue while slowing')
 assert(resolver.proximity(nil, junction, 20).distance == 90)
+junction.kind = 'gate'
+assert(resolver.proximity(nil, junction, 20).kind == 'gate', 'the stop kind travels with the target')
+light.kind = 'stopSign'
+assert(resolver.proximity(light, nil, 20).kind == 'stopSign')
+light.kind = nil
 assert(resolver.proximity(nil, nil, 20) == nil)
 assert(resolver.proximity(light, nil, 20).distance == 110, 'signals without graph junctions')
 return 'road_signals_sim: all diagnostics passed'

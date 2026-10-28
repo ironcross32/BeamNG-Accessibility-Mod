@@ -32,6 +32,9 @@ def main():
     assert map_speed_limit_phrase(8.333333333333, "metric") == "Map speed limit 30 kilometers per hour."
     assert map_speed_limit_phrase(8.333333333333, "imperial") == "Map speed limit 19 mph."
     assert "unavailable" in map_speed_limit_phrase(None, "imperial")
+    # F9, S says "Speed limit"; the automatic announcement keeps "Map speed limit".
+    assert map_speed_limit_phrase(8.333333333333, "imperial", "Speed limit") == "Speed limit 19 mph."
+    assert map_speed_limit_phrase(None, "metric", "Speed limit") == "Speed limit unavailable."
 
     now = [0.0]
     feed = RoadGuidanceFeed(clock=lambda: now[0])
