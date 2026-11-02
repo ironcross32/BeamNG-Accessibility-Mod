@@ -68,6 +68,7 @@ The per-file detail, and the reasoning behind every decision that is not obvious
 | `docs/lua-trailer-angle.md` | `trailerAngle.lua`: trailer articulation tone. Port 4476 |
 | `docs/lua-wheel-report.md` | `wheelReport.lua` + `wheel_report.py`: every wheel's pressure and brake temperature on the vehicle and anything coupled, labelled from geometry. Port 4485 |
 | `docs/lua-route-beacon.md` | `routeBeacon.lua` and `route_beacon.relative_bearing`. Port 4482 |
+| `docs/driving-assistant-route.md` | `drivingAssistant.lua` following a big-map route, `assistant_route.py`: what the game clears on arrival, the forward-only search, callouts, off-road destinations |
 | `docs/lua-audio-debug.md` | `audioDebugAccessible.lua` + vehicle `beamtelAudioDebug.lua`: the editor's Window > Audio tools (engine sound parameters, sound library). Ports 4483/4484 |
 | `docs/lua-vehicle-info.md` | `vehicleInfo.lua`: vehicle selector specifications. Ports 4477/4478 |
 | `docs/lua-drift.md` | `driftAccessible.lua` + `drift_speech.py`: speaking the stock drift display, its hooks and contexts, the speed/compass quiet window |

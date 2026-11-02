@@ -369,6 +369,116 @@ vm.stop('reverse-model')
 motionPosition,motionFacing=vec3(0,0,0),vec3(1,0,0)
 values.gearIndex, speed = 1, 10
 
+-- Join stage: stock AI gets the whole car, then lets go of it for the assisted start.
+-- Like stock: entering through driveUsingPath sets arcade without saving the
+-- player's mode, so disabling restores nothing.
+local drive, setMode, joinArgs = ai.driveUsingPath, ai.setMode, nil
+local function stockJoin(p) joinArgs=p; ai.mode='manual'; values.gearboxMode='arcade' end
+ai.setMode=function(mode) ai.mode=mode end
+ai.driveUsingPath=stockJoin
+vm.join('joining','b',10)
+ai.driveUsingPath=drive
+assert(values.gearboxMode=='arcade')
+assert(joinArgs.wpTargetList[1]=='b' and joinArgs.routeSpeed==10 and joinArgs.routeSpeedMode=='limit')
+assert(vm.diagnosticState().joining and filters.throttle==original.throttle, 'The join stage filters nothing')
+vm.updateGFX(0.25)
+assert(callbacks[#callbacks]:find('"alive"',1,true))
+vm.start('joining',{path={'a','b'},distance=100})
+assert(not vm.diagnosticState().joining and ai.mode=='manual' and filters.steering.ai
+  and filters.throttle['local'] and not filters.throttle.ai, 'Assisted start takes over from the join')
+assert(callbacks[#callbacks]:find('"ready"',1,true))
+assert(values.gearboxMode=='realistic', 'Hand-over restores the player gearbox mode')
+vm.stop('joining')
+assert(ai.mode=='disabled' and filters.throttle==original.throttle)
+ai.driveUsingPath=stockJoin
+vm.join('quit','b',10)
+ai.driveUsingPath=drive
+ai.mode='disabled'
+vm.updateGFX(0.1)
+assert(not vm.diagnosticState().active and callbacks[#callbacks]:find('AI stopped driving',1,true),
+  'AI that stops driving on its own ends the join')
+assert(values.gearboxMode=='realistic', 'AI quitting restores the player gearbox mode')
+ai.driveUsingPath=stockJoin
+vm.join('lost','b',10)
+ai.driveUsingPath=drive
+vm.updateGFX(3.1)
+assert(not vm.diagnosticState().active and ai.mode=='disabled', 'A silent receiver ends the join')
+assert(values.gearboxMode=='realistic', 'Giving up restores the player gearbox mode')
+ai.driveUsingPath=stockJoin
+vm.join('reset','b',10)
+ai.driveUsingPath=drive
+vm.onReset()
+assert(values.gearboxMode=='realistic', 'A reset during the join restores the player gearbox mode')
+ai.setMode=setMode
+values.gearIndex, speed = 1, 10
+
+-- A route round a block repeats a node: extending must use the visit it reached.
+vm.start('looped',{path={'s','a','b','c','a'},distance=100,clear=true,replanRevision=0})
+vm.setPlan('looped',{path={'s','a','b','c','a','d'},distance=100,clear=true,replanRevision=0})
+local loopTail=paths[#paths]
+assert(loopTail[#loopTail]=='d' and loopTail[#loopTail-1]=='a' and loopTail[#loopTail-2]=='c' and #loopTail==5,
+  'The second visit to a is the one extended from')
+vm.stop('looped')
+-- A followed route: no junction reaches the vehicle, so held steering cannot
+-- select anything, and only a new route revision restarts the planner.
+before = #callbacks
+input.lastInputs['local'].steering = -1
+vm.start('routed',{path={'a','b','l'},distance=100,clear=true,replanRevision=0})
+for _ = 1, 3 do
+  vm.heartbeat('routed')
+  vm.setPlan('routed',{path={'a','b','l'},distance=100,clear=true,replanRevision=0})
+  vm.updateGFX(0.5)
+end
+for _, e in ipairs(events(before)) do
+  assert(e.kind~='selection' and e.kind~='junction' and e.kind~='choice', 'Steering selects nothing on a route')
+end
+assert(vm.diagnosticState().plannerStarts==1)
+vm.setPlan('routed',{path={'a','b','l','m'},distance=100,clear=true,replanRevision=0})
+assert(vm.diagnosticState().plannerStarts==1 and vm.diagnosticState().pathExtensions==1,
+  'Further along the same route appends')
+vm.setPlan('routed',{path={'a','b','x','y'},distance=100,clear=true,replanRevision=1})
+assert(vm.diagnosticState().plannerStarts==2 and vm.diagnosticState().active,
+  'A different road ahead restarts the planner rather than failing to append')
+assert(paths[#paths][#paths[#paths]]=='y')
+vm.setPlan('routed',{path={'a','b','x','y'},distance=100,clear=true,replanRevision=1})
+assert(vm.diagnosticState().plannerStarts==2, 'Each revision restarts it once')
+vm.stop('routed')
+input.lastInputs['local'].steering = 0
+
+-- The three point turn in the vehicle: steering held, nothing else touched, then
+-- handed to an ordinary start with the steering taken afresh.
+local turnFrom = #callbacks
+values.gearIndex = 0
+vm.turn('turning')
+assert(vm.diagnosticState().turning and ai.mode=='disabled', 'Stock AI has no part in it')
+assert(filters.steering.ai and filters.throttle['local'] and not filters.throttle.ai, 'The pedals stay with the player')
+vm.setTurn('turning',-1)
+vm.heartbeat('turning'); vm.updateGFX(0.05)
+assert(input.lastInputs.ai.steering==-1, 'Full lock as told')
+local gearReports = 0
+for i = turnFrom + 1, #callbacks do if callbacks[i]:find('"gear","0"',1,true) then gearReports = gearReports + 1 end end
+assert(gearReports==1, 'The gear is reported')
+values.gearIndex = -1
+vm.updateGFX(0.05)
+assert(callbacks[#callbacks]:find('"gear","-1"',1,true), 'And each change')
+local gearFrom = #callbacks
+vm.updateGFX(0.05)
+for i = gearFrom + 1, #callbacks do assert(not callbacks[i]:find('"gear"',1,true), 'But not when unchanged') end
+values.gearIndex = 1
+vm.start('turning',{path={'a','b'},distance=100,clear=true,replanRevision=0})
+assert(not vm.diagnosticState().turning and ai.mode=='manual' and filters.steering.ai, 'Handed to the route')
+vm.stop('turning')
+for name, value in pairs(original) do assert(filters[name]==value, name..' restored after a turn') end
+vm.turn('turnstop')
+vm.setTurn('turnstop',1)
+vm.heartbeat('turnstop'); vm.updateGFX(0.05)
+vm.stop('turnstop')
+assert(not vm.diagnosticState().turning and filters.steering==original.steering, 'Stopping mid-turn gives the steering back')
+vm.turn('turnlost')
+vm.updateGFX(1.2)
+assert(not vm.diagnosticState().active and filters.steering==original.steering, 'A silent GE ends the turn')
+values.gearIndex, speed = 1, 10
+
 -- Use the real detector adapter against a small directed graph.
 local function node(x,y) return {pos=vec3(x,y,0),radius=4,links={}} end
 local nodes = {a=node(0,0), b=node(100,0), c=node(110,0),
@@ -406,13 +516,49 @@ link('r3','r5'); link('r4','r6')
 nodes.m1, nodes.m2, nodes.m3 = node(6000,0), node(6000,100), node(6000,300)
 nodes.m4, nodes.m5 = node(6000-6*math.sin(math.rad(144)), 100+6*math.cos(math.rad(144))), node(5996.5,-100)
 link('m1','m2'); link('m2','m3'); link('m2','m4'); link('m4','m5')
+-- A road leading to a block: a destination behind the car is reached by going round it.
+for name, xy in pairs({b0={19900,0}, b1={20000,0}, b2={20100,0}, b3={20200,0}, b4={20200,100}, b5={20100,100}}) do
+  nodes[name]=node(xy[1],xy[2])
+end
+link('b0','b1'); link('b1','b2'); link('b2','b3'); link('b3','b4'); link('b4','b5'); link('b5','b2')
+-- Two roads leaving almost straight on: the route has to say which.
+nodes.f1, nodes.f2, nodes.f3, nodes.f4 = node(30000,0), node(30100,0), node(30200,20), node(30200,-20)
+link('f1','f2'); link('f2','f3'); link('f2','f4')
+-- A main road with a private slip link every so often, as on Johnson Valley's
+-- divided roads: 24 degrees off, onto a parallel road.
+nodes.s0, nodes.s1, nodes.s2, nodes.s3 = node(31000,0), node(31100,0), node(31200,0), node(31300,0)
+nodes.t1, nodes.t2 = node(31120,9), node(31300,9)
+link('s0','s1'); link('s1','s2'); link('s2','s3')
+link('s1','t1',false,{type='private',drivability=0.5}); link('t1','t2',false,{type='private',drivability=0.5})
+-- A road bending 40 degrees with a side link off the other way: only a bend.
+nodes.k0, nodes.k1, nodes.k2, nodes.k3 = node(32000,0), node(32100,0), node(32177,64), node(32254,128)
+nodes.k4 = node(32117,-98)
+link('k0','k1'); link('k1','k2'); link('k2','k3'); link('k1','k4')
+-- A real crossroads of equal roads, driven straight across.
+nodes.x0, nodes.x1, nodes.x2, nodes.x3, nodes.x4 = node(33000,0), node(33100,0), node(33300,0), node(33100,100), node(33100,-100)
+link('x0','x1'); link('x1','x2'); link('x1','x3'); link('x1','x4')
+-- A road ending in a tiny two-way loop, as at Italy's port.
+nodes.p0, nodes.p1, nodes.p2, nodes.p3, nodes.p4 = node(34900,0), node(35100,0), node(35116,-4), node(35108,8), node(35106,4)
+link('p0','p1'); link('p1','p2'); link('p2','p3'); link('p3','p4'); link('p4','p1')
+-- The main road bends away and the route carries straight on to a private road.
+nodes.y0, nodes.y1, nodes.y2, nodes.y3 = node(34000,0), node(34100,0), node(34180,-60), node(34300,0)
+link('y0','y1'); link('y1','y2'); link('y1','y3',false,{type='private'})
 local pos, facing=vec3(10,0,0),vec3(1,0,0)
 local player={getPosition=function() return pos end, getDirectionVector=function() return facing end,
   getVelocity=function() return vec3(10,0,0) end}
-local rayHit
+local rayHit, dropAt
 local rd=module('bng_mod/lua/ge/extensions/roadDetector.lua', {
   map={getMap=function() return {nodes=nodes} end}, log=function() end,
-  castRayStatic=function(_, _, range) return rayHit or range end,
+  -- Not the game's: a real session in progress would lend stopBarAt its live route.
+  extensions={},
+  castRayStatic=function(origin, direction, range)
+    -- Downward rays see the ground 2 m below their start, unless over a drop.
+    if direction.z < -0.5 then
+      if dropAt and origin.y > pos.y + 2.25 + dropAt then return range end
+      return 2
+    end
+    return rayHit or range
+  end,
   require=function(name)
     if name=='ge/extensions/assistantRoutes' then return routes end
     if name=='ge/extensions/roadSignals' then return module('bng_mod/lua/ge/extensions/roadSignals.lua') end
@@ -468,6 +614,23 @@ assert(not wrong and reason:find('One-way road. Legal travel is 180 degrees',1,t
 facing=vec3(1,0,0)
 local legal=assert(rd.assistantStart(player))
 assert(legal.roadMessage==nil, 'Starting with legal travel ahead says only that the assist is on')
+
+-- Off the road: join at the nearest edge's far end, in its legal direction.
+pos,facing=vec3(50,30,0),vec3(1,0,0)
+assert(not rd.assistantStart(player), 'Thirty metres off is not on the road')
+local join=assert(rd.assistantJoinTarget(player))
+assert(join.target=='b' and math.abs(join.distance-26)<0.01 and join.bearing<-80, 'Road to the right, toward b')
+facing=vec3(-1,0,0)
+assert(rd.assistantJoinTarget(player).target=='a', 'A two-way road is joined the way the car faces')
+pos=vec3(1050,12,0)
+assert(rd.assistantJoinTarget(player).target=='v', 'A one-way road is joined only in its legal direction')
+-- The join hands over only once properly on the road.
+pos,facing=vec3(50,7,0),vec3(1,0,0)
+assert(rd.assistantStart(player) and not rd.assistantStart(player,1,30), 'A verge is not yet the road')
+pos,facing=vec3(50,2,0),vec3(1,1,0):normalized()
+assert(rd.assistantStart(player) and not rd.assistantStart(player,1,30), 'Forty-five degrees is not yet aligned')
+facing=vec3(1,0.2,0):normalized()
+assert(rd.assistantStart(player,1,30), 'On the road and aligned')
 
 -- Gated roads and rough tracks are routes for the assistant, not dead ends.
 pos,facing=vec3(2010,0,0),vec3(1,0,0)
@@ -587,4 +750,507 @@ coordinator.update(0.1)
 assert(routeStarts==beforeReverse+1 and coordinator.diagnosticState().motionRevision==2,
   'Forward resumption replaces the route once at the current vehicle position')
 coordinator.off()
+
+-- Join stage: off the road, stock AI drives the whole car until the strict test passes.
+local joinCommands, joinEvents, onRoad, joinSpeed = {}, {}, false, 5
+local joinVehicle={getID=function() return 42 end,getVelocity=function() return vec3(joinSpeed,0,0) end,
+  queueLuaCommand=function(_,c) joinCommands[#joinCommands+1]=c end}
+local joiner=module('bng_mod/lua/ge/extensions/drivingAssistant.lua', {
+  be={getPlayerVehicle=function() return joinVehicle end,getPlayerVehicleID=function() return 42 end},
+  scenetree={findObjectById=function() return joinVehicle end},
+  extensions={roadDetector={
+    assistantStart=function(_, margin, angle)
+      assert(margin==1, 'The verge is not the road, at switch-on or hand-over')
+      if angle then assert(angle==30, 'Hand over only once aligned with the road') end
+      if onRoad then return {path={'a','b'},distance=100,records={}} end
+      return nil, 'No reachable navigable road nearby'
+    end,
+    assistantUpdate=function(s) return s end,
+    assistantJoinTarget=function() return {target='b',distance=26,bearing=-90} end}},
+  serialize=function() return '{}' end,jsonEncode=function(v) joinEvents[#joinEvents+1]=v; return '{}' end})
+joiner.command('ASSISTANT_TOGGLE','join',function() end)
+assert(joinCommands[1]:find('beamtelAssistant.join("join","b",10)',1,true))
+assert(joinEvents[1].kind=='say' and joinEvents[1].message:find('26 metres to your right',1,true))
+assert(joiner.owns() and joiner.diagnosticState().joining and joiner.route()==nil)
+joiner.update(0.1); joiner.event(42,'join','alive','')
+assert(#joinCommands==1, 'Still off the road: AI keeps driving')
+onRoad=true
+joiner.update(0.1)
+assert(joinCommands[2]:find('beamtelAssistant.start("join"',1,true))
+joiner.event(42,'join','ready','on')
+assert(joiner.status()=='driving assistant')
+joiner.update(0.1)
+assert(joinCommands[3]:find('setPlan("join"',1,true), 'Handed over: ordinary plans follow')
+joiner.off()
+onRoad, joinSpeed = false, 0
+joiner.command('ASSISTANT_TOGGLE','stuck',function() end)
+for _ = 1, 16 do
+  joiner.update(1); joiner.event(42,'stuck','alive','')
+  joiner.command('ASSISTANT_HEARTBEAT','stuck',function() end)
+end
+assert(not joiner.owns() and joinEvents[#joinEvents].message:find('Could not reach a road',1,true),
+  'A car that never reaches a road is let go')
+
+-- ================================================================================================
+--  Following a destination
+-- ================================================================================================
+local function near(a, b, tolerance) return math.abs(a-b) <= (tolerance or 0.01) end
+local function pathHas(names, name)
+  for _, value in ipairs(names) do if value==name then return true end end
+  return false
+end
+
+pos,facing=vec3(10,0,0),vec3(1,0,0)
+local routed=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(routed,player))
+assert(routed.junction, 'Without a destination the junction is the player\'s')
+assert(rd.assistantSetDestination(routed,vec3(100,150,0),10,'l'))
+assert(routed.junction==nil and pathHas(routed.path,'l') and pathHas(routed.path,'endL'),
+  'A destination drives through the junction with no choice left open')
+assert(#routed.nav.turns==1 and routed.nav.turns[1].name=='left')
+local guide=rd.assistantGuidance(routed)
+assert(near(guide.destDistance,240) and guide.turn=='left' and guide.turnId==1, 'Distances along the route')
+assert(near(guide.turnDistance,86), 'A turn is counted to where its junction starts')
+assert(guide.offRoad==nil)
+pos,facing=vec3(100,50,0),vec3(0,1,0)
+assert(rd.assistantUpdate(routed,player))
+guide=rd.assistantGuidance(routed)
+assert(near(guide.destDistance,100) and guide.turn==nil and guide.turnDistance==nil,
+  'Past the last turn: no turn field at all, never a zero')
+pos=vec3(100,120,0)
+assert(rd.assistantUpdate(routed,player))
+local stop=rd.proximityAt(pos,facing,10,nil,routed)
+assert(stop and stop.kind=='destination' and near(stop.distance,30), 'The destination is a stop on the route')
+pos,facing=vec3(10,0,0),vec3(1,0,0)
+
+routed=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(routed,player))
+assert(rd.assistantSetDestination(routed,vec3(100,150,0),10,'l'))
+assert(rd.assistantClearDestination(routed,10))
+assert(routed.nav==nil and routed.junction and routed.junction.choices.left and not pathHas(routed.path,'l'),
+  'Clearing the route gives the next junction back')
+
+-- A destination behind the car: forward only, the long way round.
+pos,facing=vec3(20050,0,0),vec3(1,0,0)
+local behind=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(behind,player))
+assert(rd.assistantSetDestination(behind,vec3(19950,0,0),10,'b1'))
+local records=behind.nav.records
+assert(records[1].to=='b2' and records[#records].from=='b1' and records[#records].to=='b0',
+  'It leaves forwards and comes back along the road')
+assert(near(rd.assistantGuidance(behind).destDistance,50+100+100+100+100+100+50), 'Once round the block')
+-- The same, with the destination 40 m off the road.
+behind=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(behind,player))
+assert(rd.assistantSetDestination(behind,vec3(19950,40,0),10,'b1'))
+assert(behind.nav.offRoad==true and rd.assistantGuidance(behind).offRoad==true)
+
+-- One-way: behind on a one-way road is not reachable, and the route is left alone.
+pos,facing=vec3(1050,0,0),vec3(1,0,0)
+local oneWay=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(oneWay,player))
+local unchanged=oneWay.records[1]
+local noRoute,noReason=rd.assistantSetDestination(oneWay,vec3(1010,0,0),10,'u')
+assert(not noRoute and noReason=='No forward route to the destination')
+assert(oneWay.nav==nil and oneWay.records[1]==unchanged)
+-- Ahead on the same road is fine.
+assert(rd.assistantSetDestination(oneWay,vec3(1090,0,0),10,'u'))
+assert(near(rd.assistantGuidance(oneWay).destDistance,40))
+
+-- A median gap is not a road to the destination beyond it.
+pos,facing=vec3(6000,10,0),vec3(0,1,0)
+local median=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(median,player))
+assert(not rd.assistantSetDestination(median,vec3(5998,0,0),10,'m4'),
+  'A gap that turns straight back cannot be routed through')
+
+-- A roundabout is refused when the player has to name an exit. A route names it.
+pos,facing=vec3(4960,0,0),vec3(1,0,0)
+local ring2=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(ring2,player))
+assert(ring2.junction and ring2.junction.unsupported, 'Refused without a route')
+assert(rd.assistantSetDestination(ring2,vec3(5030,8,0),10,'r5'))
+assert(ring2.junction==nil and pathHas(ring2.path,'r3') and pathHas(ring2.path,'r5'), 'Driven as nodes')
+assert(ring2.nav.turns[1].name=='roundabout' and #ring2.nav.turns==1, 'One word for the ring')
+
+-- A fork inside 30 degrees is still a choice, and has to be named.
+pos,facing=vec3(30010,0,0),vec3(1,0,0)
+local fork=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(fork,player))
+assert(rd.assistantSetDestination(fork,vec3(30150,-10,0),10,'f4'))
+assert(fork.nav.turns[1].name=='keep right', 'Negative bearings are right')
+-- Straight on past a slip link: no instruction and no stop bar. Run on the live
+-- map, this said "keep left" every 300 feet and never stopped counting in.
+pos,facing=vec3(31010,0,0),vec3(1,0,0)
+local slip=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(slip,player))
+assert(rd.assistantSetDestination(slip,vec3(31250,0,0),10,'s3'))
+assert(#slip.nav.turns==0, 'Carrying straight on is not a turn')
+pos=vec3(31080,0,0)
+assert(rd.assistantUpdate(slip,player))
+assert(rd.proximityAt(pos,facing,10,nil,slip)==nil, 'A junction driven straight through is no stop')
+pos=vec3(31220,0,0)
+assert(rd.assistantUpdate(slip,player))
+assert(rd.proximityAt(pos,facing,10,nil,slip).kind=='destination', 'The destination still is')
+-- A bend with a side link is no turn, however far the road swings.
+pos,facing=vec3(32010,0,0),vec3(1,0,0)
+local bend=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(bend,player))
+assert(rd.assistantSetDestination(bend,vec3(32240,116,0),10,'k3'))
+assert(#bend.nav.turns==0, 'The road only bends: 40 degrees, its rival twice that')
+-- Straight across a real crossroads: nothing to say, but it does get a bar.
+pos,facing=vec3(33010,0,0),vec3(1,0,0)
+local cross=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(cross,player))
+assert(rd.assistantSetDestination(cross,vec3(33250,0,0),10,'x2'))
+assert(#cross.nav.turns==0)
+pos=vec3(33050,0,0)
+assert(rd.assistantUpdate(cross,player))
+assert(rd.proximityAt(pos,facing,10,nil,cross).id=='junction:x1', 'Equal roads crossing keep their bar')
+-- Straightest is not enough when it leaves the main road: that is worth a word.
+pos,facing=vec3(34010,0,0),vec3(1,0,0)
+local leaving=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(leaving,player))
+assert(rd.assistantSetDestination(leaving,vec3(34250,0,0),10,'y3'))
+assert(leaving.nav.turns[1] and leaving.nav.turns[1].name=='keep left', 'The main road bends off to the right')
+-- Italy's port: the only way round is a 40 m loop a car cannot drive. No route is
+-- the honest answer, not a route off the road.
+pos,facing=vec3(35050,0,0),vec3(1,0,0)
+local port=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(port,player))
+local portRoute,portWhy=rd.assistantSetDestination(port,vec3(34950,0,0),10,'p0')
+assert(not portRoute and portWhy=='No forward route to the destination', 'A 40 m loop is not a way round')
+-- A true roundabout of the same size is built to be driven round.
+pos,facing=vec3(4960,0,0),vec3(1,0,0)
+local roundAgain=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(roundAgain,player))
+assert(rd.assistantSetDestination(roundAgain,vec3(4955,0,0),10,'r1'), 'A one-way ring can turn a car round')
+assert(pathHas(roundAgain.path,'r3') and pathHas(roundAgain.path,'r4'))
+-- A real turn on a route still gets its bar.
+pos,facing=vec3(10,0,0),vec3(1,0,0)
+local barTurn=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(barTurn,player))
+assert(rd.assistantSetDestination(barTurn,vec3(100,150,0),10,'l'))
+pos=vec3(50,0,0)
+assert(rd.assistantUpdate(barTurn,player))
+assert(rd.proximityAt(pos,facing,10,nil,barTurn).id=='junction:b', 'The turn is a stop')
+pos,facing=vec3(10,0,0),vec3(1,0,0)
+
+-- The coordinator, on the real detector, with the game's route mocked.
+local routeEvents, routePlan, routeCommands, focusCleared = {}, nil, {}, 0
+local routeVehicle={getID=function() return 42 end,getVelocity=player.getVelocity,
+  getPosition=player.getPosition,getDirectionVector=player.getDirectionVector,
+  queueLuaCommand=function(_,c) routeCommands[#routeCommands+1]=c end}
+local gm={hasTarget=false,clearPathOnReachingTarget=true,routePlanner={path={}},
+  currentlyHasTarget=function() return gm_hasTarget end}
+local function setRoute(x,y,wp)
+  gm.currentlyHasTarget=function() return true end
+  gm.routePlanner.path={{pos=vec3(pos.x,pos.y,0)},{pos=vec3(0,0,0),wp=wp},{pos=vec3(x,y,0)}}
+end
+local function clearRoute()
+  gm.currentlyHasTarget=function() return false end
+  gm.routePlanner.path={}
+end
+gm.setPath=function(value) assert(value==nil); clearRoute() end
+clearRoute()
+local bigMap={setNavFocus=function(value) assert(value==nil); focusCleared=focusCleared+1; clearRoute() end}
+local route=module('bng_mod/lua/ge/extensions/drivingAssistant.lua', {
+  be={getPlayerVehicle=function() return routeVehicle end,getPlayerVehicleID=function() return 42 end},
+  scenetree={findObjectById=function() return routeVehicle end},
+  core_groundMarkers=gm, freeroam_bigMapMode=bigMap, log=function() end,
+  extensions={roadDetector=rd},
+  require=function(name)
+    if name=='ge/extensions/assistantRoutes' then return routes end
+    return {}
+  end,
+  serialize=function(value) routePlan=value; return '{}' end,
+  jsonEncode=function(value) routeEvents[#routeEvents+1]=value; return '{}' end})
+local function kinds(kind)
+  local out={}
+  for _, e in ipairs(routeEvents) do if e.kind==kind then out[#out+1]=e end end
+  return out
+end
+local function session(token)
+  routeEvents={}
+  route.command('ASSISTANT_TOGGLE',token,function() end)
+  route.event(42,token,'ready','Driving assistant on')
+end
+local function tick(token, dt)
+  route.command('ASSISTANT_HEARTBEAT',token,function() end)
+  route.event(42,token,'alive','')
+  route.update(dt or 0.1)
+end
+
+-- Set before switch-on: spoken after "on", which would otherwise interrupt it.
+pos,facing=vec3(10,0,0),vec3(1,0,0)
+setRoute(100,150,'l')
+session('r1')
+assert(routeEvents[1].kind=='on' and routeEvents[2].kind=='route_set')
+assert(near(routeEvents[2].data.destDistance,240) and routeEvents[2].data.turn=='left')
+assert(routePlan.junction==nil and pathHas(routePlan.path,'l'), 'The vehicle starts on the route')
+assert(routePlan.replanRevision==0, 'The first path is no replan')
+assert(route.diagnosticState().routeFollowing)
+tick('r1',0.6)
+assert(#kinds('route')==1 and near(kinds('route')[1].data.turnDistance,86))
+assert(#kinds('route_set')==1, 'An unchanged route is not searched or announced again')
+-- Removed by the player: not an arrival, and the session carries on.
+clearRoute()
+tick('r1')
+assert(route.owns() and #kinds('route_clear')==1 and not route.diagnosticState().routeFollowing)
+assert(routePlan.replanRevision==1 and routePlan.junction and routePlan.junction.choices.left)
+assert(#kinds('off')==0)
+-- Set mid-session: announced, and the vehicle's planner is restarted.
+setRoute(100,150,'l')
+tick('r1')
+assert(#kinds('route_set')==2 and routePlan.replanRevision==2 and pathHas(routePlan.path,'l'))
+-- Moved: searched again, but a route that keeps moving cannot search every tick.
+setRoute(100,180,'l')
+tick('r1')
+assert(#kinds('route_set')==2, 'Throttled')
+tick('r1',1.1); tick('r1',1.1)
+assert(#kinds('route_set')==3 and routePlan.replanRevision==3)
+-- Through reverse: the fresh forward state follows the route again.
+route.event(42,'r1','motion','reverse')
+tick('r1')
+assert(route.diagnosticState().motion=='reverse')
+route.event(42,'r1','motion','forward')
+tick('r1')
+assert(route.diagnosticState().routeFollowing, 'Route survives backing up')
+assert(#kinds('route_set')==4)
+-- Arrival on the road: cleared once, session over, nothing left to trap the next start.
+pos,facing=vec3(100,50,0),vec3(0,1,0)
+tick('r1')
+pos=vec3(100,175,0)
+tick('r1')
+assert(not route.owns() and focusCleared==1 and not gm.currentlyHasTarget())
+local off=kinds('off')[1]
+assert(off.data.arrival.offRoad==false and off.message:find('Destination reached',1,true))
+pos,facing=vec3(10,0,0),vec3(1,0,0)
+session('r2')
+assert(route.owns() and #kinds('off')==0 and not route.diagnosticState().routeFollowing,
+  'Switching on again just works')
+route.off()
+
+-- Off the road: stock would never clear this one, so the mod has to.
+focusCleared=0
+setRoute(140,150,'l')
+session('r3')
+assert(routeEvents[2].data.offRoad==true)
+pos,facing=vec3(100,50,0),vec3(0,1,0)
+tick('r3')
+pos=vec3(100,145,0)
+tick('r3')
+off=kinds('off')[1]
+assert(not route.owns() and focusCleared==1, 'The mod clears what stock would not')
+assert(off.data.arrival.offRoad==true and near(off.data.arrival.distance,40.3,0.1))
+assert(off.data.arrival.bearing<-80 and off.data.arrival.bearing>-90, 'Facing north, east is on the right')
+assert(off.data.arrival.x==140 and off.data.arrival.y==150, 'Enough to mark it as a waypoint')
+
+-- Stock arrives first (within 7 m by its own count): the hook is the arrival.
+pos,facing=vec3(10,0,0),vec3(1,0,0)
+setRoute(140,150,'l')
+session('r4')
+route.reached()
+assert(not route.owns() and kinds('off')[1].data.arrival.offRoad==false, 'The game says it was reached')
+clearRoute()
+route.reached() -- no session: nothing to do, and no error
+
+-- A route the mod does not own is left alone, and cannot trap the next switch-on.
+focusCleared=0
+setRoute(100,150,'l')
+gm.clearPathOnReachingTarget=false
+session('r5')
+pos,facing=vec3(100,50,0),vec3(0,1,0)
+tick('r5')
+pos=vec3(100,145,0)
+tick('r5')
+assert(not route.owns() and focusCleared==0 and gm.currentlyHasTarget(), 'Not ours to clear')
+session('r6')
+assert(route.owns() and #kinds('off')==0 and not route.diagnosticState().routeFollowing,
+  'It still engages, at the same place, with the same route set')
+local foundAlready=false
+for _, e in ipairs(kinds('say')) do if e.message=='Already at the destination' then foundAlready=true end end
+assert(foundAlready)
+tick('r6')
+assert(#kinds('route_set')==0, 'And it stays ignored')
+route.off()
+gm.clearPathOnReachingTarget=true
+
+-- Already at a route we own: cleared at switch-on, and the session continues.
+focusCleared=0
+setRoute(100,147,'l')
+session('r7')
+assert(route.owns() and focusCleared==1 and not gm.currentlyHasTarget())
+route.off()
+
+-- No forward route: said once, ordinary junctions, no disengagement.
+pos,facing=vec3(1050,0,0),vec3(1,0,0)
+setRoute(1010,0,'u')
+session('r8')
+for _ = 1, 5 do tick('r8',1.1) end
+local refused=0
+for _, e in ipairs(kinds('say')) do if e.message:find('No forward route',1,true) then refused=refused+1 end end
+assert(route.owns() and refused==1 and not route.diagnosticState().routeFollowing, 'One apology, not one a tick')
+route.off()
+
+-- A route still being computed is neither a route nor a removal.
+pos,facing=vec3(10,0,0),vec3(1,0,0)
+gm.currentlyHasTarget=function() return true end
+gm.routePlanner.path={}
+session('r9')
+assert(route.owns() and #kinds('route_set')==0 and #kinds('route_clear')==0)
+setRoute(100,150,'l')
+tick('r9')
+assert(#kinds('route_set')==1 and routePlan.replanRevision==1, 'Picked up when it is ready')
+route.off()
+clearRoute()
+
+-- Set before an off-road switch-on: the join stage hands over onto the route.
+pos,facing=vec3(50,60,0),vec3(1,0,0)
+setRoute(100,150,'l')
+routeEvents={}
+route.command('ASSISTANT_TOGGLE','r10',function() end)
+assert(route.diagnosticState().joining and #kinds('route_set')==0)
+pos,facing=vec3(10,0,0),vec3(1,0,0)
+route.update(0.1)
+route.event(42,'r10','ready','on')
+assert(#kinds('route_set')==1 and pathHas(routePlan.path,'l'), 'The route waits out the join')
+route.off()
+clearRoute()
+
+-- ================================================================================================
+--  Three point turn
+-- ================================================================================================
+local stepInput = function(err, speed_, gear, front, rear)
+  return {err=err, speed=speed_, gear=gear, front=front, rear=rear, dt=0.1}
+end
+local leg = routes.turnBegin(170, 20, 10, 12, 3)
+assert(leg.side==1 and leg.phase=='forward', 'Dead away: the roomier side, the roomier way')
+assert(routes.turnBegin(170, 3, 10, 2, 9).side==-1 and routes.turnBegin(170, 3, 10, 2, 9).phase=='reverse')
+assert(routes.turnBegin(-100, 5, 5, 20, 0).side==-1, 'Otherwise the side the road is on')
+local step = routes.turnStep(leg, stepInput(170, 0, 0, 20, 10))
+assert(step.steering==-1 and leg.waiting and not step.say, 'Left lock forward; waits for a forward gear')
+step = routes.turnStep(leg, stepInput(170, 0, 1, 20, 10))
+assert(not leg.waiting)
+step = routes.turnStep(leg, stepInput(150, 2, 1, 5, 10))
+assert(not step.say, 'Room left')
+step = routes.turnStep(leg, stepInput(120, 2, 1, 1.5, 10))
+assert(step.say=='Stop. Reverse' and leg.phase=='reverse' and step.steering==1,
+  'Out of room: reverse, on opposite lock so the nose keeps swinging left')
+step = routes.turnStep(leg, stepInput(120, 1, 1, 1.5, 10))
+assert(not step.say, 'Said once')
+for _ = 1, 21 do step = routes.turnStep(leg, stepInput(120, 1, 1, 1.5, 10)); if step.say then break end end
+assert(step.say=='Stop. Reverse', 'Said again if the car is still rolling on towards it')
+step = routes.turnStep(leg, stepInput(120, 0, -1, 1.5, 10))
+assert(not leg.waiting and not step.say)
+step = routes.turnStep(leg, stepInput(80, -1.5, -1, 8, 1))
+assert(step.say=='Stop. Forward' and leg.phase=='forward' and step.steering==-1)
+step = routes.turnStep(leg, stepInput(80, 0, 1, 8, 8))
+step = routes.turnStep(leg, stepInput(20, 2, 1, 8, 8))
+assert(step.done, 'Facing the road, in a forward gear: done')
+-- Facing the road but still in reverse: one more shift first.
+leg = routes.turnBegin(100, 1, 10, 5, 5)
+routes.turnStep(leg, stepInput(100, 0, -1, 1, 10))
+step = routes.turnStep(leg, stepInput(10, -1, -1, 5, 5))
+assert(step.say=='Stop. Forward' and not step.done)
+step = routes.turnStep(leg, stepInput(10, 0, 1, 5, 5))
+assert(step.done)
+-- Walled in both ways, and a turn that never finishes, both end honestly.
+leg = routes.turnBegin(100, 5, 5, 5, 5)
+routes.turnStep(leg, stepInput(100, 0, 1, 5, 5))
+step = routes.turnStep(leg, stepInput(100, 0, 1, 0.3, 0.3))
+assert(step.fail=='No room to turn round')
+leg = routes.turnBegin(100, 5, 5, 5, 5)
+leg.time = 200
+assert(routes.turnStep(leg, stepInput(100, 0, 1, 5, 5)).fail=='Could not turn round')
+
+-- When a turn is worth it, on the real detector.
+pos,facing=vec3(20050,0,0),vec3(1,0,0)
+local choiceState=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(choiceState,player))
+local choice=rd.assistantTurnChoice(choiceState,vec3(19950,0,0),'b1',player)
+assert(choice.turn and near(choice.backLength,100) and near(choice.forwardLength,600),
+  'Once round the block costs 500 m against turning round')
+choice=rd.assistantTurnChoice(choiceState,vec3(20150,0,0),'b3',player)
+assert(not (choice and choice.turn), 'Ahead already: no turn')
+pos,facing=vec3(10,0,0),vec3(1,0,0)
+choiceState=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(choiceState,player))
+choice=rd.assistantTurnChoice(choiceState,vec3(100,150,0),'l',player)
+assert(not (choice and choice.turn), 'On the way: no turn')
+-- No forward route at all, as at a tiny loop.
+pos,facing=vec3(35050,0,0),vec3(1,0,0)
+choiceState=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(choiceState,player))
+choice=rd.assistantTurnChoice(choiceState,vec3(34950,0,0),'p0',player)
+assert(choice.turn and choice.forwardLength==nil, 'No way forward at all: turning round is the way')
+-- A one-way road has no turning round.
+pos,facing=vec3(1050,0,0),vec3(1,0,0)
+choiceState=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(choiceState,player))
+assert(rd.assistantTurnChoice(choiceState,vec3(1010,0,0),'u',player)==nil)
+-- A lane between walls does not get a three point turn.
+pos,facing=vec3(20050,0,0),vec3(1,0,0)
+choiceState=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(choiceState,player))
+rayHit=3
+assert(not rd.assistantTurnChoice(choiceState,vec3(19950,0,0),'b1',player).turn, 'Six metres across is not enough')
+-- Room: a wall ahead, and a drop no forward ray can see.
+local reading=rd.assistantTurnReading(player,choiceState.records[1])
+assert(near(reading.front,3) and near(reading.rear,3))
+rayHit=nil
+reading=rd.assistantTurnReading(player,choiceState.records[1])
+assert(near(math.abs(reading.err),180,0.01), 'The road the other way')
+assert(reading.front==30, 'Along the road nothing stops it')
+facing=vec3(0,1,0)
+reading=rd.assistantTurnReading(player,choiceState.records[1])
+assert(near(reading.front,5.5-2.25,0.01), 'Across the road: the verge limits it')
+dropAt=1.5
+reading=rd.assistantTurnReading(player,choiceState.records[1])
+assert(near(reading.front,2,0.01), 'A drop, as off the edge of a pier, ends the leg before the verge')
+dropAt=nil
+facing=vec3(1,0,0)
+
+-- The whole sequence, in the coordinator.
+local turnEvents, turnCommands = {}, {}
+local turnVehicle={getID=function() return 42 end,getVelocity=function() return vec3(0,0,0) end,
+  getPosition=player.getPosition,getDirectionVector=player.getDirectionVector,
+  queueLuaCommand=function(_,c) turnCommands[#turnCommands+1]=c end}
+local turner=module('bng_mod/lua/ge/extensions/drivingAssistant.lua', {
+  be={getPlayerVehicle=function() return turnVehicle end,getPlayerVehicleID=function() return 42 end},
+  scenetree={findObjectById=function() return turnVehicle end},
+  core_groundMarkers=gm, freeroam_bigMapMode=bigMap, log=function() end,
+  extensions={roadDetector=rd},
+  require=function(name)
+    if name=='ge/extensions/assistantRoutes' then return routes end
+    return {}
+  end,
+  serialize=function() return '{}' end,
+  jsonEncode=function(value) turnEvents[#turnEvents+1]=value; return '{}' end})
+local function hasCommand(text)
+  for _, c in ipairs(turnCommands) do if c:find(text,1,true) then return true end end
+  return false
+end
+pos,facing=vec3(20050,0,0),vec3(1,0,0)
+setRoute(19950,0,'b1')
+turner.command('ASSISTANT_TOGGLE','t1',function() end)
+assert(turner.owns() and turner.diagnosticState().turning, 'Stopped, destination behind, long way round: turn')
+assert(hasCommand('beamtelAssistant.turn("t1")') and not hasCommand('beamtelAssistant.start'))
+assert(turnEvents[1].kind=='say' and turnEvents[1].message:find('Three point turn',1,true) and turnEvents[1].data.protect)
+turner.update(0.1)
+assert(hasCommand('setTurn("t1",'), 'Steering is sent')
+turner.event(42,'t1','gear','1')
+turner.update(0.1)
+facing=vec3(-1,0,0)
+turner.update(0.1)
+assert(not turner.diagnosticState().turning and hasCommand('beamtelAssistant.start("t1"'), 'Facing the road: handed to the route')
+turner.event(42,'t1','ready','Driving assistant on')
+local turnSet
+for _, e in ipairs(turnEvents) do if e.kind=='route_set' then turnSet=e end end
+assert(turnSet and near(turnSet.data.destDistance,100), 'The route now runs straight there')
+turner.update(0.1)
+assert(turner.diagnosticState().routeFollowing)
+turner.off()
+clearRoute()
+
 print('Driving assistant diagnostics passed')

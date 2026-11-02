@@ -1,5 +1,7 @@
 # Driving assistant: implementation and validation
 
+Switching on off the road first hands the whole car to stock AI until it is on one; see [driving-assistant-join.md](driving-assistant-join.md). With a route set on the big map, the AI chooses every turn; see [driving-assistant-route.md](driving-assistant-route.md).
+
 ## Gated roads, rough tracks and dead ends, 2026-10-27
 
 The assistant routes over every road a car can drive: `legalRecord(record, true)` binds only one-way direction, so gated, private and low-drivability (dirt) edges are exits. Manual guidance keeps its stricter listing. On Johnson Valley the old rule reported 13 junctions with no exit; 12 of them continued as gated, private or rough roads. Switching on within the commitment zone of one raised `beamtelAssistant.lua:224: No valid exit at this junction` from a bare `assert`.
@@ -107,7 +109,7 @@ Install the edited mod and run the edited Python receiver. Focus BeamNG before a
 5. Verify F10 help, slot independence, status, actual speech, both UDP directions, AI-mode takeover, tuning rejection, reset/switch/unload/level cleanup, and killing the receiver. Pause longer than the timeout, then resume.
 6. Check slowdown speech on bends/obstacles: brake demand above 0.15 for 0.4 seconds above 5 m/s, at most once per eight seconds, with junction/disengagement priority. For this initial implementation, all advisory braking is conservatively suppressed while a junction endpoint remains unresolved, so some genuine slowdown cues in that interval may be omitted.
 
-There is no automatic braking or traffic-light stopping, lane-change request, destination routing, or persistent activation. Exact lane retention is not guaranteed by stock lane driving. File checks and synchronous VM tests do not replace this acceptance pass.
+There is no automatic braking or traffic-light stopping, lane-change request, or persistent activation. Destination routing was added later; see [driving-assistant-route.md](driving-assistant-route.md). Exact lane retention is not guaranteed by stock lane driving. File checks and synchronous VM tests do not replace this acceptance pass.
 
 ## One-second selection latch and obstacle filtering, 2026-09-14
 

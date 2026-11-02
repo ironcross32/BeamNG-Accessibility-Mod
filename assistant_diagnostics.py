@@ -127,7 +127,7 @@ class AssistantDiagnosticRecorder:
                         previous_choice = choice
                     elif kind == "road":
                         road_samples += 1
-                    elif kind not in {"alive", "start", "stop"}:
+                    elif kind not in {"alive", "route", "start", "stop"}:
                         events.append(row)
             return {"session": path.name, "samples": samples, "road_samples": road_samples,
                     "automatic_choices_observed": automatic, "events": events[-200:],

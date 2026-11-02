@@ -5,10 +5,12 @@ local lease, planAge, reportAge, brakeTime, cueAge = 0, 0, 0, 0, 8
 local announced, locked, pathKey, suspended = nil, nil, nil, false
 local retired = {}
 local endpoint, recovering, hazardAge = nil, false, 8
+local endpointFrom
 local plannerStarts, pathExtensions = 0, 0
 local lastChoice, lastRequested, choiceAutomatic, lastOffReason
 local standstillTime, aiSilentTime = 0, 0
 local reversing, motionWaiting, motionRevision = false, false, 0
+local replanRevision = 0
 local reverseWheelbase, reverseBlocked, forwardSpeed = 3, false, 0
 local selection = {junction = nil, direction = nil, held = nil, seconds = 0, reported = false}
 local controls = {'steering', 'throttle', 'brake', 'parkingbrake', 'clutch'}
@@ -172,11 +174,53 @@ local function restore()
   saved = nil
 end
 
+-- The join stage gives stock AI the whole car; nothing is filtered or saved.
+-- Stock driveUsingPath enters manual through setState, which merges the mode
+-- before setMode runs: AI never saves the gearbox mode it then sets to arcade,
+-- and its disable restores nothing. The join stage restores it itself.
+local joining, joinGearbox = false, nil
+local function endJoin()
+  if not joining then return end
+  joining = false
+  ai.setMode('disabled')
+  local mode = joinGearbox
+  joinGearbox = nil
+  if mode and electrics.values.gearboxMode ~= mode then controller.mainController.setGearboxMode(mode) end
+end
+
+-- The three point turn: steering only, as ever, held where GE says. Nothing else
+-- runs, because stock AI has no way to do this.
+local turning, turnSteering, turnAge, turnGear = false, 0, 0, nil
+
+local function takeSteering()
+  assert(type(input.allowedInputSources) == 'table' and type(input.lastInputs) == 'table',
+    'Input source filters unavailable')
+  local snapshot = {sources = {}, metadata = {}, gearbox = electrics.values.gearboxMode}
+  for _, name in ipairs(controls) do
+    assert(input.state[name], 'Missing input: ' .. name)
+    snapshot.sources[name] = input.allowedInputSources[name]
+    local state = input.state[name]
+    snapshot.metadata[name] = {filter = state.filter, angle = state.angle, lockType = state.lockType}
+  end
+  saved = snapshot
+  for _, name in ipairs(controls) do
+    input.allowedInputSources[name] = name == 'steering' and {ai = true} or {['local'] = true}
+    if name ~= 'steering' then
+      if input.state[name].source ~= 'local' then
+        input.state[name].val = (input.lastInputs['local'] or {})[name] or 0
+      end
+    end
+  end
+end
+
 function M.stop(token, reason)
   if token then retired[token] = true end
   if token and session ~= token then return end
   if session then retired[session] = true end
+  turning = false
+  local joinOk, joinErr = pcall(endJoin)
   local ok, err = pcall(restore)
+  if not joinOk then ok, err = false, joinErr end
   local message = reason or 'Driving assistant off'
   if not ok then
     message = 'Controls could not be fully restored. Steering assistance off. Reset the vehicle if steering does not respond'
@@ -200,50 +244,119 @@ local function follow(path)
   ai.setRecoverOnCrash(false)
   if ai.mode ~= 'manual' then error('AI manual path mode unavailable') end
   pathKey = table.concat(path, '\0')
-  endpoint = path[#path]
+  endpoint, endpointFrom = path[#path], path[#path - 1]
   plannerStarts = plannerStarts + 1
 end
 
 local function extendPath(path)
   if path[#path] == endpoint then return end -- GE only removed passed nodes.
+  -- A route round a block visits a node twice: the endpoint is the visit reached
+  -- the same way, or the appended tail would repeat or skip the loop.
   local start
-  for i, node in ipairs(path) do if node == endpoint then start = i; break end end
+  for i, node in ipairs(path) do
+    if node == endpoint and (not start or path[i - 1] == endpointFrom) then
+      start = i
+      if path[i - 1] == endpointFrom then break end
+    end
+  end
   if not start then error('Route extension is disconnected') end
   local tail = {}
   for i = start, #path do tail[#tail + 1] = path[i] end
   -- Stock setPath APPENDS only when the first node equals its current endpoint.
   -- Restarting driveUsingPath here discards the smoothed plan mid-corner.
   ai.setPath(tail)
-  endpoint, pathKey = path[#path], table.concat(path, '\0')
+  endpoint, endpointFrom, pathKey = path[#path], path[#path - 1], table.concat(path, '\0')
   pathExtensions = pathExtensions + 1
 end
 
-function M.start(token, initialPlan)
+function M.join(token, target, speed)
   if retired[token] or session == token then return end
   if session then M.stop(nil, 'Driving assistant restarted') end
   session = token
   local ok, err = pcall(function()
-    assert(type(input.allowedInputSources) == 'table' and type(input.lastInputs) == 'table',
-      'Input source filters unavailable')
+    if ai.mode ~= 'disabled' then refuse('Disable ordinary AI before enabling the driving assistant') end
+    joining, joinGearbox = true, electrics.values.gearboxMode
+    ai.driveUsingPath({wpTargetList = {target}, driveInLane = 'on', avoidCars = 'on',
+      aggression = 0.3, routeSpeed = speed, routeSpeedMode = 'limit'})
+    -- Stock crash recovery can reset the vehicle.
+    ai.setRecoverOnCrash(false)
+    if ai.mode ~= 'manual' then error('AI manual path mode unavailable') end
+  end)
+  if not ok then
+    local spoken = 'Driving assistant unavailable. '
+      .. friendlyReason(err, 'AI could not take the car. Steering assistance off')
+    if type(err) ~= 'table' then reportFault(spoken, err) end
+    M.stop(token, spoken)
+    return
+  end
+  lease, reportAge = 0, 0
+end
+
+local function updateJoin(dt)
+  lease, reportAge = lease + dt, reportAge + dt
+  if lease > 3 then M.stop(session, 'Connection lost. Brake now. Driving assistant off'); return end
+  if ai.mode == 'disabled' then
+    refuse('AI stopped driving. Brake now. Driving assistant off')
+  end
+  if reportAge >= 0.2 then
+    callback('alive')
+    reportAge = 0
+  end
+end
+
+function M.turn(token)
+  if retired[token] or session == token then return end
+  if session then M.stop(nil, 'Driving assistant restarted') end
+  session = token
+  local ok, err = pcall(function()
+    if ai.mode ~= 'disabled' then refuse('Disable ordinary AI before enabling the driving assistant') end
+    takeSteering()
+    turning, turnSteering, turnAge, turnGear = true, 0, 0, nil
+    lease, reportAge = 0, 0
+  end)
+  if not ok then
+    local spoken = 'Driving assistant unavailable. '
+      .. friendlyReason(err, 'It could not take the steering. Steering assistance off')
+    if type(err) ~= 'table' then reportFault(spoken, err) end
+    M.stop(token, spoken)
+  end
+end
+
+function M.setTurn(token, steering)
+  if session == token and turning then turnSteering, turnAge = steering, 0 end
+end
+
+local function updateTurn(dt)
+  lease, turnAge, reportAge = lease + dt, turnAge + dt, reportAge + dt
+  if lease > 3 or turnAge > 1 then M.stop(session, 'Connection lost. Brake now. Steering assistance off'); return end
+  input.event('steering', turnSteering, 'FILTER_AI', nil, nil, nil, 'ai')
+  local gear = electrics.values.gearIndex or 0
+  if gear ~= turnGear then
+    turnGear = gear
+    callback('gear', tostring(gear))
+  end
+  if reportAge >= 0.2 then
+    callback('alive')
+    reportAge = 0
+  end
+end
+
+function M.start(token, initialPlan)
+  if retired[token] or (session == token and not joining and not turning) then return end
+  if session and session ~= token then M.stop(nil, 'Driving assistant restarted') end
+  session = token
+  local ok, err = pcall(function()
+    -- Handover from the join stage: stock AI lets go of the whole car first.
+    endJoin()
+    -- Handover from the turn: the steering goes back and is taken again below.
+    if turning then
+      turning = false
+      restore()
+    end
     assert(controller.mainController and controller.mainController.setGearboxMode
       and electrics.values.gearboxMode, 'Gearbox mode unavailable')
     if ai.mode ~= 'disabled' then refuse('Disable ordinary AI before enabling the driving assistant') end
-    local snapshot = {sources = {}, metadata = {}, gearbox = electrics.values.gearboxMode}
-    for _, name in ipairs(controls) do
-      assert(input.state[name], 'Missing input: ' .. name)
-      snapshot.sources[name] = input.allowedInputSources[name]
-      local state = input.state[name]
-      snapshot.metadata[name] = {filter = state.filter, angle = state.angle, lockType = state.lockType}
-    end
-    saved = snapshot
-    for _, name in ipairs(controls) do
-      input.allowedInputSources[name] = name == 'steering' and {ai = true} or {['local'] = true}
-      if name ~= 'steering' then
-        if input.state[name].source ~= 'local' then
-          input.state[name].val = (input.lastInputs['local'] or {})[name] or 0
-        end
-      end
-    end
+    takeSteering()
     lease, planAge, reportAge, brakeTime, cueAge = 0, 0, 0, 0, 8
     suspended = false
     standstillTime, M.stoppedTime, aiSilentTime, rollbackTime = 0, 0, 0, 0
@@ -255,6 +368,7 @@ function M.start(token, initialPlan)
     reversing, motionWaiting, motionRevision, reverseBlocked = false, false, 0, false
     measureWheelbase()
     plan = initialPlan
+    replanRevision = plan.replanRevision or 0
     reversing = wantsReverse()
     -- A dead end has nothing to choose: follow the road up to its stop bar.
     if not reversing and plan.chooseNow and plan.junction and next(plan.junction.choices) then
@@ -282,7 +396,7 @@ function M.start(token, initialPlan)
   callback('ready', 'Driving assistant on' .. (plan.roadMessage and ('. ' .. plan.roadMessage) or ''))
   if reversing then
     callback('motion', 'reverse')
-    callback('say', 'Reverse steering assistance. Go slowly')
+    callback('say', 'Reverse steering')
   end
   if plan.initialChoice then
     announceChoices(plan.junction)
@@ -312,7 +426,7 @@ function M.setPlan(token, value)
         return
       end
       suspended = false
-      callback('say', 'Forward steering assistance')
+      callback('say', 'Forward steering')
     end
   end
   -- Until GE acknowledges a choice, an in-flight old plan cannot overwrite it.
@@ -321,6 +435,20 @@ function M.setPlan(token, value)
   plan, planAge = value, 0
   if not plan.junction or plan.junction.id ~= selection.junction then
     resetSelection(plan.junction and plan.junction.id)
+  end
+  -- The map's route changed: stock setPath can only append, so a different road
+  -- ahead restarts the planner. A suspended planner starts on the new path anyway.
+  local revision = plan.replanRevision or 0
+  if revision ~= replanRevision then
+    replanRevision = revision
+    if not suspended then
+      local ok, err = pcall(follow, plan.path)
+      if not ok then
+        reportFault('Route control failed', err)
+        M.stop(token, 'Route control failed. Steering assistance off')
+      end
+    end
+    return
   end
   local key = table.concat(plan.path, '\0')
   if not suspended and key ~= pathKey then
@@ -356,7 +484,7 @@ local function update(dt)
     suspended = true
     input.event('steering', 0, 'FILTER_AI', nil, nil, nil, 'ai')
     callback('motion', reversing and 'reverse' or 'forward')
-    if reversing then callback('say', 'Reverse steering assistance. Go slowly') end
+    if reversing then callback('say', 'Reverse steering') end
   end
   if reversing or motionWaiting then
     if ai.mode ~= 'disabled' then M.stop(session, 'AI control changed. Steering assistance off'); return end
@@ -495,7 +623,7 @@ end
 
 function M.updateGFX(dt)
   if not session then return end
-  local ok, err = pcall(update, dt)
+  local ok, err = pcall(joining and updateJoin or turning and updateTurn or update, dt)
   if not ok then
     local spoken = friendlyReason(err, 'Driving assistant fault. Steering assistance off')
     if type(err) ~= 'table' then reportFault(spoken, err) end
@@ -522,7 +650,8 @@ function M.diagnosticState()
       if force > 1 then contactWheels = contactWheels + 1 end
     end
   end
-  return {active = session ~= nil, endpoint = endpoint, recovering = recovering,
+  return {active = session ~= nil, joining = joining, turning = turning, turnSteering = turnSteering,
+    endpoint = endpoint, recovering = recovering,
     reversing = reversing, forwardSpeed = forwardSpeed, motionWaiting = motionWaiting,
     reverseBlocked = reverseBlocked, reverseWheelbase = reverseWheelbase,
     plannerStarts = plannerStarts, pathExtensions = pathExtensions, suspended = suspended,

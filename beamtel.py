@@ -35,6 +35,7 @@ from audio import AudioController, DOCK_RAMP_MAX_RANGE_M, SCAN_FAMILY_CODES
 from road_guidance import (RoadGuidanceFeed, junction_phrase, parse_r2_packet, signal_phrase, one_way_phrase,
                            map_speed_limit_phrase, parse_surface_packet, surface_phrase)
 from road_diagnostics import RoadDiagnosticRecorder
+from assistant_route import suppressed_toast
 from driving_assistant import DrivingAssistant
 from assistant_diagnostics import AssistantDiagnosticRecorder
 from challenge_results import (
@@ -772,6 +773,12 @@ def ui_listener(stop_event):
                 text = text.strip() if text is not None else ""
             else:
                 text = ""
+            if text and suppressed_toast(
+                text,
+                driving_assistant.snapshot()["following_route"],
+                driving_assistant.seconds_since_arrival(),
+            ):
+                continue
             if text:
                 say(text, source=f"ui_udp.{kind}")
     finally:
@@ -8957,12 +8964,35 @@ def _send_ai_command(cmd):
 
 
 def _assistant_cue(kind, choices=()):
+    global _speech_protected_until
+    # The cue comes just before the sentence saying why assistance ended. A compass
+    # heading landing with it cut an arrival off 6 ms in, so background speech queues.
+    if kind in ("off", "protect"):
+        _speech_protected_until = time.monotonic() + SPEECH_PROTECT_S
+    if kind == "protect":
+        return
     controller = audio_controller_ref
     if controller:
         controller.trigger_assistant_cue(kind, choices)
 
 
-driving_assistant = DrivingAssistant(_send_ai_command, say, _assistant_cue, ASSISTANT_DIAGNOSTICS)
+def _assistant_arrival(arrival):
+    """An off-road destination stays guidable once the route has been cleared."""
+    global marked_coord_x, marked_coord_y, _last_coord_bearing_ts
+    x, y = arrival.get("x"), arrival.get("y")
+    if arrival.get("offRoad") and isinstance(x, (int, float)) and isinstance(y, (int, float)):
+        marked_coord_x, marked_coord_y = float(x), float(y)
+        _last_coord_bearing_ts = 0.0  # force immediate recalculation
+
+
+driving_assistant = DrivingAssistant(
+    _send_ai_command,
+    say,
+    _assistant_cue,
+    ASSISTANT_DIAGNOSTICS,
+    units=lambda: UNITS_MODE,
+    on_arrival=_assistant_arrival,
+)
 
 
 def _send_slot_command(cmd):
@@ -11845,7 +11875,11 @@ def _run_engine():
     HILL_CLIMB_CHALLENGE.set_finalize_callback(_hill_climb_finalized)
     try:
         _ws_thread, _ws_stop = start_server_in_thread(
-            lambda text, interrupt=True: say(text, interrupt, source="ui_bridge")
+            lambda text, interrupt=True: None if suppressed_toast(
+                text,
+                driving_assistant.snapshot()["following_route"],
+                driving_assistant.seconds_since_arrival(),
+            ) else say(text, interrupt, source="ui_bridge")
         )
     except Exception as _e:
         logger.error(f"Failed to start NVDA WS/HTTP bridge: {_e}")

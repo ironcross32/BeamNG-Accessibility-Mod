@@ -588,9 +588,17 @@ local function routeStopAhead(route, position)
   local behind = records[index - 1] or history[#history]
   local previousExits = behind and #outgoing(first.from, behind.edge,
     edgeDirection(behind.edge, behind.forward and 1 or -1), true) or 1
+  local nav = route.nav
   for i = index, #records do
     local record = records[i]
     if i > index then distance = distance + record.edge.length end
+    -- The destination is a stop like any other: the pips count down into it.
+    if nav and i == #records and nav.tail == #nav.records then
+      local toDestination = distance - (record.edge.length - nav.goalAlong)
+      if toDestination < -2 then return nil end
+      return {id = 'destination', centreDistance = toDestination,
+        distance = math.max(0, toDestination), kind = 'destination'}
+    end
     if distance > JUNCTION_SEARCH_M then return nil end
     local nextRecord = records[i + 1]
     -- A gate between two private roads is still a gate: Johnson Valley's
@@ -603,7 +611,12 @@ local function routeStopAhead(route, position)
     -- branched on this route; their bar was the one at the entry, now behind.
     local inside = record.edge.length <= 35 and previousExits ~= 1
     previousExits = exits
-    if gate or (exits ~= 1 and not inside) then
+    -- On a followed route a bar marks a turn or a real crossing road, not every
+    -- side link driven past. Signals have their own target.
+    local stopHere
+    if nav then stopHere = nav.stopNodes[record.to] or exits == 0
+    else stopHere = exits ~= 1 and not inside end
+    if gate or stopHere then
       return {id = tostring(record.to), centreDistance = distance,
         distance = math.max(0, distance - nodeRadius(record.to)),
         kind = gate and 'gate' or (exits == 0 and 'deadEnd' or 'junction')}
@@ -1427,6 +1440,18 @@ end
 local function extendAssistantRoute(state)
   local length = -(state.travelled or 0)
   for _, record in ipairs(state.records) do length = length + record.edge.length end
+  -- A destination decides every turn, so the route never stops at a junction.
+  local nav = state.nav
+  if nav then
+    while length < 800 and #state.records < 256 and nav.tail < #nav.records do
+      nav.tail = nav.tail + 1
+      local record = nav.records[nav.tail]
+      state.records[#state.records + 1] = record
+      length = length + record.edge.length
+    end
+    state.junction = nil
+    return state
+  end
   local visited = {}
   while length < 800 and #state.records < 256 do
     local last = state.records[#state.records]
@@ -1444,10 +1469,24 @@ local function extendAssistantRoute(state)
   return state
 end
 
-function M.assistantStart(player)
+local function measureRoute(state)
+  local distance = -(state.travelled or 0)
+  for _, record in ipairs(state.records) do distance = distance + record.edge.length end
+  local last = state.records[#state.records]
+  local radius = last.forward and last.edge.outRadius or last.edge.inRadius
+  state.distance = math.max(0, distance - radius)
+  state.path = assistantRoutes.nodes(state.records)
+  if not state.path then return nil, 'Disconnected navigation route' end
+  return state
+end
+
+-- margin and maxAngle default to the lenient switch-on test (a shoulder within
+-- 8 m, under 80 degrees). The join stage hands over only once properly on it.
+function M.assistantStart(player, margin, maxAngle)
   if #edges == 0 and not rebuildNavigationModel('driving assistant') then
     return nil, 'Navigation is unavailable'
   end
+  margin, maxAngle = margin or 8, maxAngle or 80
   local facing = player:getDirectionVector()
   local position = player:getPosition()
   local edge, projection, sign, score
@@ -1462,13 +1501,13 @@ function M.assistantStart(player)
       local travel = (not candidate.oneWay and facing:dot(direction) < 0) and -1 or 1
       local angle = math.abs(bearingToDir(facing, edgeDirection(candidate, travel)))
       local rank = math.max(0, p.distance - p.radius) * 2 + p.distance + angle / 30
-      if p.distance <= p.radius + 8 and angle < 80 and (not score or rank < score) then
+      if p.distance <= p.radius + margin and angle < maxAngle and (not score or rank < score) then
         edge, projection, sign, score = candidate, p, travel, rank
       end
     end
   end
   if not edge then
-    if nearest and nearestProjection.distance <= nearestProjection.radius + 8 then
+    if nearest and nearestProjection.distance <= nearestProjection.radius + margin then
       local direction = edgeDirection(nearest, 1)
       if not nearest.oneWay and facing:dot(direction) < 0 then direction = direction * -1 end
       local angle = bearingToDir(facing, direction)
@@ -1489,6 +1528,31 @@ function M.assistantStart(player)
     math.floor(math.abs(angle) + 0.5), angle > 0 and 'left' or 'right') or nil
   return extendAssistantRoute({records = {record}, generation = navigationGeneration,
     roadMessage = message})
+end
+
+-- Where stock AI drives a car that is off the road or facing away from it: the
+-- far end of the nearest edge in its legal direction, preferring the way the
+-- car already faces on a two-way road. `bearing` is relative, positive left.
+function M.assistantJoinTarget(player)
+  if #edges == 0 and not rebuildNavigationModel('driving assistant') then
+    return nil, 'Navigation is unavailable'
+  end
+  local facing, position = player:getDirectionVector(), player:getPosition()
+  local edge, projection
+  for _, candidate in ipairs(candidateEdges(position)) do
+    local p = projectOnEdge(position, candidate)
+    if math.abs(p.dz) <= OVERPASS_Z_TOLERANCE and p.distance <= SEARCH_RADIUS_M
+      and (not projection or p.distance < projection.distance) then
+      edge, projection = candidate, p
+    end
+  end
+  if not edge then return nil, 'No reachable navigable road nearby' end
+  local forward = edge.oneWay or facing:dot(edgeDirection(edge, 1)) >= 0
+  local offset = projection.point - position
+  offset.z = 0
+  return {target = forward and edge.outNode or edge.inNode,
+    distance = math.max(0, projection.distance - projection.radius),
+    bearing = offset:length() > 0.5 and bearingToDir(facing, offset:normalized()) or 0}
 end
 
 function M.assistantChoose(state, name)
@@ -1589,14 +1653,413 @@ function M.assistantUpdate(state, player, dt)
     local ok, err = extendAssistantRoute(state)
     if not ok then return nil, err end
   end
-  local distance = -travelled
-  for _, record in ipairs(state.records) do distance = distance + record.edge.length end
-  local last = state.records[#state.records]
-  local radius = last.forward and last.edge.outRadius or last.edge.inRadius
-  state.distance = math.max(0, distance - radius)
-  state.path = assistantRoutes.nodes(state.records)
-  if not state.path then return nil, 'Disconnected navigation route' end
-  return state
+  return measureRoute(state)
+end
+
+-- ================================================================================================
+--  Following a destination
+-- ================================================================================================
+-- The stock route supplies only WHERE. Its node list can start with a U-turn
+-- behind the car and can use median gaps stock AI gives up on, so the road to
+-- drive is searched here, forward only, by the rules the assistant already keeps.
+local ROUGH_ROAD_FACTOR, GATE_COST_M, TURN_COST_M = 3, 300, 30
+local GROUPED_LINK_M = 35
+local OFF_ROAD_MARGIN_M = 10
+local FORK_MIN_BEARING = 10
+local SHALLOW_EXIT = 45
+local ROAD_GOES_ON_GAP = 20
+local CROSS_ROAD_MIN, CROSS_ROAD_MAX, CROSS_ROAD_ARM_M = 50, 130, 60
+local LESSER_ROAD_RATIO = 0.7
+local TURN_ROUND_LOOP_M = 80
+
+local function isPrivateRoad(edge)
+  return edge.private or edge.gated or (edge.raw and edge.raw.type == 'private') or false
+end
+
+-- Whether road `a` is clearly a lesser road than `b`. Only ever relative: private
+-- is 86 percent of Johnson Valley and 1 percent of Utah, and drivability tops out
+-- at 0.9 on some maps and is 1.0 everywhere on others.
+local function lesserRoad(a, b)
+  if isPrivateRoad(a) and not isPrivateRoad(b) then return true end
+  if a.drivability < LESSER_ROAD_RATIO * b.drivability then return true end
+  return a.inRadius + a.outRadius < LESSER_ROAD_RATIO * (b.inRadius + b.outRadius)
+end
+
+-- How far an exit runs before it branches or ends. A slip link is short.
+local function armLength(record)
+  local total, probe = record.edge.length, record
+  for _ = 1, 40 do
+    if total >= CROSS_ROAD_ARM_M then break end
+    local direction = edgeDirection(probe.edge, probe.forward and 1 or -1)
+    local onward = direction and sortedOutgoing(probe.to, probe.edge, direction) or {}
+    if #onward ~= 1 then break end
+    probe = onward[1]
+    total = total + probe.edge.length
+  end
+  return total
+end
+
+-- Coming back to a node left under this far ago is a car turning in its own
+-- length, not a drive round a block. At Italy's port the search used a 40 m loop
+-- of 120 degree corners to turn round, and stock AI ran off the road every time.
+-- A one-way ring is a roundabout, built to be driven, and stays allowed.
+local function tightLoop(record, nextRecord, parent)
+  local travelled, oneWayOnly = nextRecord.edge.length, nextRecord.edge.oneWay
+  local step = record
+  while step and travelled < TURN_ROUND_LOOP_M do
+    travelled = travelled + step.edge.length
+    oneWayOnly = oneWayOnly and step.edge.oneWay
+    if step.from == nextRecord.to then return travelled < TURN_ROUND_LOOP_M and not oneWayOnly end
+    step = parent and parent[step]
+  end
+  return false
+end
+
+local function routeNeighbours(record, visit, parent)
+  local direction = edgeDirection(record.edge, record.forward and 1 or -1)
+  if not direction then return end
+  local exits = sortedOutgoing(record.to, record.edge, direction)
+  for _, nextRecord in ipairs(exits) do
+    local bearing = 0
+    local usable = not tightLoop(record, nextRecord, parent)
+    if usable and #exits > 1 then
+      local settled = settledHeading(nextRecord) or nextRecord.direction
+      usable = math.abs(bearingToDir(direction, settled)) <= 150
+      bearing = bearingToDir(direction, nextRecord.direction)
+    end
+    if usable then
+      local edge = nextRecord.edge
+      local cost = edge.length
+      -- The stock navgraph spells a gated road as type = 'private' (map.lua).
+      if isPrivateRoad(edge) or edge.drivability < MIN_DRIVABILITY then cost = cost * ROUGH_ROAD_FACTOR end
+      if edge.gated then cost = cost + GATE_COST_M end
+      if math.abs(bearing) > 30 then cost = cost + TURN_COST_M end
+      visit(nextRecord, cost)
+    end
+  end
+end
+
+-- Where the route is heading once a junction is behind it.
+local function routeHeading(records, first)
+  local travelled, heading = 0, nil
+  for i = first, #records do
+    local record = records[i]
+    heading = edgeDirection(record.edge, record.forward and 1 or -1) or heading
+    travelled = travelled + record.edge.length
+    if travelled >= EXIT_HEADING_M then break end
+  end
+  return heading
+end
+
+local function turnName(bearing)
+  local side = bearing > 0 and 'left' or 'right'
+  local size = math.abs(bearing)
+  if size > 120 then return 'sharp ' .. side end
+  if size <= 45 then return 'slight ' .. side end
+  return side
+end
+
+local function exitsAt(record)
+  local direction = edgeDirection(record.edge, record.forward and 1 or -1)
+  return direction and sortedOutgoing(record.to, record.edge, direction) or {}, direction
+end
+
+-- The spoken turns along a route. `at` is where the junction starts, as a
+-- distance along the route; `centre` is where it has been passed.
+local function routeTurns(records, cum)
+  local turns, stopNodes, i, inRing = {}, {}, 1, false
+  while i < #records do
+    local record, following = records[i], records[i + 1]
+    local exits, direction = exitsAt(record)
+    if inRing then
+      -- One word for the whole ring: its own exits are not turns to count.
+      inRing = following.edge.oneWay
+      i = i + 1
+    elseif #exits > 1 and direction then
+      -- A grouped junction is one turn however many short links it is drawn with.
+      local last = i
+      while last + 1 < #records and records[last + 1].edge.length <= GROUPED_LINK_M
+        and #exitsAt(records[last + 1]) > 1 do
+        last = last + 1
+      end
+      local heading = routeHeading(records, last + 1)
+      local bearing = heading and bearingToDir(direction, heading) or 0
+      -- Every test here compares roads AT THIS JUNCTION. Nothing is absolute,
+      -- because no absolute means the same across maps: see "Rules from the map
+      -- survey" in docs/driving-assistant-route.md for the measurements.
+      local chosen = edgeDirection(following.edge, following.forward and 1 or -1) or direction
+      local firstBearing = bearingToDir(direction, chosen)
+      local firstSize = math.abs(firstBearing)
+      local rival, rivalSize, leavingBiggerRoad = nil, math.huge, false
+      for _, other in ipairs(exits) do
+        if other ~= following then
+          local size = math.abs(bearingToDir(direction, other.direction))
+          if size < rivalSize then rival, rivalSize = other, size end
+          if size <= SHALLOW_EXIT and lesserRoad(following.edge, other.edge) then leavingBiggerRoad = true end
+        end
+      end
+      -- The road simply carries on, straight or round a bend: the route takes the
+      -- best-aligned exit, nothing else is close to it, and it stays the main road.
+      local roadGoesOn = firstSize <= SHALLOW_EXIT and rivalSize - firstSize >= ROAD_GOES_ON_GAP
+        and not leavingBiggerRoad
+      local name
+      if assistantJunction(record).unsupported then
+        name, inRing = 'roundabout', true
+      elseif roadGoesOn then
+        name = nil
+      elseif math.abs(bearing) > 30 then
+        name = turnName(bearing)
+      elseif rival and (leavingBiggerRoad or (firstSize > FORK_MIN_BEARING and rivalSize <= SHALLOW_EXIT)) then
+        name = bearingToDir(rival.direction, chosen) > 0 and 'keep left' or 'keep right'
+      end
+      if name then
+        turns[#turns + 1] = {name = name, bearing = bearing, centre = cum[i],
+          at = cum[i] - nodeRadius(record.to), node = record.to}
+        stopNodes[record.to] = true
+      else
+        -- Driving straight across: a bar only for a real road of the same order.
+        for k = i, last do
+          local here, onward = records[k], records[k + 1]
+          local hereExits, hereDirection = exitsAt(here)
+          for _, other in ipairs(hereExits) do
+            if other ~= onward then
+              local size = math.abs(bearingToDir(hereDirection, other.direction))
+              if size >= CROSS_ROAD_MIN and size <= CROSS_ROAD_MAX
+                and not lesserRoad(other.edge, onward.edge)
+                and armLength(other) >= CROSS_ROAD_ARM_M then
+                stopNodes[record.to] = true
+              end
+            end
+          end
+        end
+      end
+      i = last + 1
+    else
+      i = i + 1
+    end
+  end
+  return turns, stopNodes
+end
+
+-- The stock route has already judged which road the destination belongs to,
+-- overpasses included. A big-map marker's height is often a display height, so
+-- the fallback is judged flat.
+local function destinationEdge(destination, hintNode)
+  local edge, projection
+  local function consider(candidate)
+    local p = projectOnEdge(destination, candidate)
+    if not projection or p.distance < projection.distance then edge, projection = candidate, p end
+  end
+  for _, record in ipairs(adjacency[hintNode] or {}) do consider(record.edge) end
+  if not edge then
+    for _, candidate in ipairs(edges) do consider(candidate) end
+  end
+  return edge, projection
+end
+
+-- The road the car is committed to whatever is decided now. A turn it can no
+-- longer make in time stays out of the new route's hands.
+local function committedRecords(state, speed)
+  local keep = math.max(60, (speed or 0) * 4)
+  local kept, ahead = {}, -(state.travelled or 0)
+  for _, record in ipairs(state.records) do
+    kept[#kept + 1] = record
+    ahead = ahead + record.edge.length
+    if ahead >= keep then break end
+  end
+  return kept
+end
+
+local function alongEdge(record, goal, projection)
+  return (record.forward and projection.t or 1 - projection.t) * goal.length
+end
+
+-- `tail` is the record the car is committed to and `startAlong` how far along it.
+local function searchFrom(tail, startAlong, goal, projection)
+  -- A copy, so a route that loops round the block can re-enter this very edge.
+  local start = {edge = tail.edge, forward = tail.forward, from = tail.from, to = tail.to}
+  local function isGoal(record)
+    return record.edge == goal and (record ~= start or alongEdge(record, goal, projection) >= startAlong)
+  end
+  local function heuristic(record)
+    if record.edge == goal then return alongEdge(record, goal, projection) - goal.length end
+    return horizontalDistance(record.forward and record.edge.outPos or record.edge.inPos, projection.point)
+  end
+  return assistantRoutes.search(start, routeNeighbours, isGoal, heuristic)
+end
+
+local function routeLength(path, startAlong, goal, projection)
+  local total = -startAlong
+  for _, record in ipairs(path) do total = total + record.edge.length end
+  return total - goal.length + alongEdge(path[#path], goal, projection)
+end
+
+-- ================================================================================================
+--  Turning round first
+-- ================================================================================================
+-- Worth a three point turn only if going forward costs at least this much more,
+-- or cannot get there at all. Stock AI cannot do one: its only reverse is a straight
+-- back-up after being stuck, so the player drives the legs and this file steers.
+local TURN_BENEFIT_M = 150
+local TURN_MIN_ACROSS_M = 7
+local TURN_VERGE_M = 1.5
+local TURN_RAY_M = 30
+local TURN_DROP_M, TURN_DROP_SLOPE = 0.6, 0.25
+
+local function flatFacing(player)
+  local facing = player:getDirectionVector()
+  local flat = vec3(facing.x, facing.y, 0)
+  return flat:length() > 1e-6 and flat:normalized() or vec3(1, 0, 0)
+end
+
+local function lengthAndWidth(player)
+  local ok, length, width = pcall(function() return player:getInitialLength(), player:getInitialWidth() end)
+  if ok and length and length > 0.5 then return length, width or 2 end
+  return 4.5, 2
+end
+
+-- Metres the bumper can travel along `direction`: a wall, a drop, or the far side
+-- of the road's verge, whichever comes first. A pier is why the drop matters: the
+-- road edge there is the edge of a fall, and no forward ray will ever see it.
+local function roomFrom(bumper, direction, edge, halfWidth)
+  local room = TURN_RAY_M
+  if castRayStatic then
+    local lateral = vec3(-direction.y, direction.x, 0)
+    for _, offset in ipairs({-halfWidth, 0, halfWidth}) do
+      local origin = bumper + lateral * offset + vec3(0, 0, 0.6)
+      room = math.min(room, castRayStatic(origin, direction, TURN_RAY_M))
+    end
+    local up = vec3(0, 0, 2)
+    local down = vec3(0, 0, -1)
+    local base = castRayStatic(bumper + up, down, 8)
+    for distance = 0.5, 4.5 do
+      local ground = castRayStatic(bumper + direction * distance + up, down, 8)
+      if ground - base > TURN_DROP_M + TURN_DROP_SLOPE * distance then
+        room = math.min(room, math.max(0, distance - 0.5))
+        break
+      end
+    end
+  end
+  local across = edgeDirection(edge, 1)
+  if across then
+    local normal = vec3(-across.y, across.x, 0)
+    local closing = direction:dot(normal)
+    local offset = (bumper - edge.inPos):dot(normal)
+    local limit = (edge.inRadius + edge.outRadius) / 2 + TURN_VERGE_M
+    if closing > 0.05 then room = math.min(room, (limit - offset) / closing)
+    elseif closing < -0.05 then room = math.min(room, (limit + offset) / -closing) end
+  end
+  return room
+end
+
+-- What the turn stage needs on each tick. Bearings are positive left.
+function M.assistantTurnReading(player, record)
+  local facing = flatFacing(player)
+  local position = player:getPosition()
+  local length, width = lengthAndWidth(player)
+  local _, _, frontExtent = roadSignals.frontPosition(player)
+  if not frontExtent or frontExtent <= 0 then frontExtent = length / 2 end
+  local rearExtent = math.max(0.5, length - frontExtent)
+  local target = edgeDirection(record.edge, record.forward and -1 or 1)
+  local velocity = player:getVelocity()
+  return {
+    err = target and bearingToDir(facing, target) or 0,
+    speed = velocity:dot(facing),
+    front = roomFrom(position + facing * frontExtent, facing, record.edge, width / 2),
+    rear = roomFrom(position - facing * rearExtent, facing * -1, record.edge, width / 2),
+  }
+end
+
+-- Sideways room at the car, for choosing a side and refusing a lane between walls.
+local function sideRoom(player)
+  if not castRayStatic then return TURN_RAY_M, TURN_RAY_M end
+  local facing = flatFacing(player)
+  local left = vec3(-facing.y, facing.x, 0)
+  local origin = player:getPosition() + vec3(0, 0, 0.6)
+  return castRayStatic(origin, left, TURN_RAY_M), castRayStatic(origin, left * -1, TURN_RAY_M)
+end
+M.assistantTurnSides = sideRoom
+
+-- Whether to turn round before setting off, and what either way would cost.
+function M.assistantTurnChoice(state, destination, hintNode, player)
+  local goal, projection = destinationEdge(destination, hintNode)
+  if not goal then return nil end
+  local tail = state.records[1]
+  if not tail or tail.edge.oneWay then return nil end
+  local travelled = state.travelled or 0
+  local backward
+  for _, record in ipairs(adjacency[tail.to] or {}) do
+    if record.edge == tail.edge and record.to == tail.from then backward = record end
+  end
+  if not backward then return nil end
+  local backAlong = tail.edge.length - travelled
+  local backPath = searchFrom(backward, backAlong, goal, projection)
+  if not backPath then return nil end
+  local backLength = routeLength(backPath, backAlong, goal, projection)
+  local forwardPath = searchFrom(tail, travelled, goal, projection)
+  local forwardLength = forwardPath and routeLength(forwardPath, travelled, goal, projection) or nil
+  local left, right = sideRoom(player)
+  local worthIt = not forwardLength or forwardLength - backLength >= TURN_BENEFIT_M
+  return {turn = worthIt and left + right >= TURN_MIN_ACROSS_M, forwardLength = forwardLength,
+    backLength = backLength, left = left, right = right}
+end
+
+-- Leaves the state untouched when no forward route exists.
+function M.assistantSetDestination(state, destination, speed, hintNode)
+  local goal, projection = destinationEdge(destination, hintNode)
+  if not goal then return nil, 'No road near the destination' end
+  local kept = committedRecords(state, speed)
+  local tail = kept[#kept]
+  local startAlong = #kept == 1 and (state.travelled or 0) or 0
+  local function along(record) return alongEdge(record, goal, projection) end
+  local began = os.clock()
+  local path = searchFrom(tail, startAlong, goal, projection)
+  if not path then return nil, 'No forward route to the destination' end
+  local cum, total = {}, 0
+  for i, record in ipairs(path) do
+    total = total + record.edge.length
+    cum[i] = total
+  end
+  local final = path[#path]
+  local goalAlong = along(final)
+  local turns, stopNodes = routeTurns(path, cum)
+  state.nav = {destination = vec3(destination.x, destination.y, destination.z), records = path, cum = cum,
+    tail = 1, goalAlong = goalAlong, goalCum = total - goal.length + goalAlong,
+    turns = turns, stopNodes = stopNodes, nextTurn = 1,
+    offRoad = projection.distance - projection.radius > OFF_ROAD_MARGIN_M,
+    searchSeconds = os.clock() - began}
+  state.records, state.junction, state.committed = kept, nil, nil
+  extendAssistantRoute(state)
+  return measureRoute(state)
+end
+
+-- The route ends: back to the player's choice at the next junction out of reach.
+function M.assistantClearDestination(state, speed)
+  state.nav = nil
+  state.records, state.junction, state.committed = committedRecords(state, speed), nil, nil
+  local ok, err = extendAssistantRoute(state)
+  if not ok then return nil, err end
+  return measureRoute(state)
+end
+
+-- Distances along the route from where the car is now. A field with nothing to
+-- report is absent, never zero.
+function M.assistantGuidance(state)
+  local nav = state and state.nav
+  if not nav then return nil end
+  local toEnd = -(state.travelled or 0)
+  for _, record in ipairs(state.records) do toEnd = toEnd + record.edge.length end
+  local position = nav.cum[nav.tail] - toEnd
+  local result = {destDistance = nav.goalCum - position, offRoad = nav.offRoad or nil}
+  while nav.turns[nav.nextTurn] and nav.turns[nav.nextTurn].centre <= position do
+    nav.nextTurn = nav.nextTurn + 1
+  end
+  local turn = nav.turns[nav.nextTurn]
+  if turn then
+    result.turnId, result.turn = nav.nextTurn, turn.name
+    result.turnDistance = math.max(0, turn.at - position)
+  end
+  return result
 end
 
 return M

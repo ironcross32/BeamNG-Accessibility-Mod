@@ -5,13 +5,19 @@ import threading
 import time
 import uuid
 
+from assistant_route import RouteCallouts, arrival_phrase
+
 
 class DrivingAssistant:
-    def __init__(self, send, speak, cue=None, diagnostics=None):
+    def __init__(self, send, speak, cue=None, diagnostics=None, units=None, on_arrival=None):
         self.send = send
         self.speak = speak
         self.cue = cue or (lambda kind, choices=(): None)
         self.diagnostics = diagnostics
+        self.units = units or (lambda: "imperial")
+        self.on_arrival = on_arrival
+        self.callouts = RouteCallouts(self.units)
+        self.arrived_at = None
         self.lock = threading.RLock()
         self.token = None
         self.active = False
@@ -23,6 +29,7 @@ class DrivingAssistant:
     def snapshot(self):
         with self.lock:
             return {"active": self.active, "pending": bool(self.token) and not self.active,
+                    "following_route": self.callouts.following,
                     "vehicle": self.vehicle, "sequence": self.sequence,
                     "response_age_s": time.monotonic() - self.last_response if self.last_response else None}
 
@@ -43,7 +50,34 @@ class DrivingAssistant:
             self.token = uuid.uuid4().hex
             self.sequence = -1
             self.last_response = time.monotonic()
+            self.callouts.reset()
             self.send(f"ASSISTANT_TOGGLE:{self.token}")
+
+    def seconds_since_arrival(self):
+        with self.lock:
+            return None if self.arrived_at is None else time.monotonic() - self.arrived_at
+
+    def _route_report(self, kind, value):
+        data = value.get("data")
+        if not isinstance(data, dict):
+            return
+        try:
+            phrase = (self.callouts.route_set if kind == "route_set" else self.callouts.update)(data)
+        except (TypeError, ValueError):
+            return
+        if phrase:
+            self.speak(phrase, interrupt=False, exclude_from_buffer=True)
+
+    def _arrival(self, value, message):
+        """The arrival sentence, in the player's units, for an off event that carries one."""
+        data = value.get("data")
+        arrival = data.get("arrival") if isinstance(data, dict) else None
+        if not isinstance(arrival, dict):
+            return message
+        self.arrived_at = time.monotonic()
+        if self.on_arrival:
+            self.on_arrival(arrival)
+        return arrival_phrase(arrival, self.units())
 
     def receive(self, payload):
         try:
@@ -70,7 +104,14 @@ class DrivingAssistant:
                 self.vehicle = value.get("vehicle")
             elif kind == "off":
                 self.active, self.token, self.vehicle = False, None, None
+                self.callouts.reset()
+                message = self._arrival(value, message)
                 self.cue("off")
+            elif kind in {"route", "route_set"}:
+                self._route_report(kind, value)
+                return
+            elif kind == "route_clear":
+                self.callouts.reset()
             elif kind == "junction":
                 choices = tuple(name for name in ("left", "straight", "right")
                                 if name in message.split(","))
@@ -91,6 +132,9 @@ class DrivingAssistant:
                 self.active = True
                 self.vehicle = value.get("vehicle")
                 self.speak("Driving assistant on", exclude_from_buffer=True)
+            if kind == "say" and isinstance(value.get("data"), dict) and value["data"].get("protect"):
+                # An instruction to stop or change gear: nothing background may talk over it.
+                self.cue("protect")
             if message and kind != "alive":
                 self.speak(message, interrupt=kind != "slow", exclude_from_buffer=True)
 
@@ -101,6 +145,7 @@ class DrivingAssistant:
             if time.monotonic() - self.last_response > 5:
                 self.send(f"ASSISTANT_OFF:{self.token}")
                 self.active, self.token, self.vehicle = False, None, None
+                self.callouts.reset()
                 message = "Driving assistant connection lost. Steering assistance off"
                 self._record({"kind": "off", "message": message, "origin": "receiver_timeout"})
                 self.cue("off")

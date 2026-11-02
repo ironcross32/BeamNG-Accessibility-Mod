@@ -21,6 +21,12 @@ function M.onAssistantEvent(vid, token, kind, message)
   assistant.event(vid, token, kind, message)
 end
 
+-- Stock hook: the game has just decided a big-map route is finished.
+function M.onReachedTargetPos()
+  local ok, err = pcall(assistant.reached)
+  if not ok then log('E', 'BeamtelAI', 'Arrival failed: ' .. tostring(err)) end
+end
+
 -- Configuration
 local PYTHON_HOST     = "127.0.0.1"
 local PYTHON_PORT     = 4445   -- send responses on scanner data port (with AI_ prefix)
