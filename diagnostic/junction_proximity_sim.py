@@ -91,9 +91,33 @@ def main():
         assert len(starts(stopped)) == 1, "still solid once stopped"
         drop = 20 * np.log10(rms(stopped) / moving_level)
         assert -18.5 < drop < -17.5, f"stopped fade is {drop:.1f} dB"
-        controller.update_junction_proximity(at(-0.5, 3))
+        # Pulling away past the line: a short release, not a click, then silence.
+        controller.update_junction_proximity(at(0.3, 0))
+        render(0.1)
+        controller.update_junction_proximity(at(0.3, 3))
         render(1)
         assert abs(rms(render(0.5)) / moving_level - 1) < 0.02, "full level once moving again"
+        before = controller._stop_bar_env
+        controller.update_junction_proximity(at(-0.2, 3))
+        release = np.concatenate([render(0.004) for _ in range(10)])
+        assert before == 1.0 and controller._stop_bar_env == 0.0
+        assert np.max(np.abs(np.diff(release))) < 0.02, "the release does not click"
+        audible = np.flatnonzero(np.abs(release) > 1e-4)
+        assert 0.015 < audible[-1] / sr < 0.021, "released over about 20 ms"
+        assert not np.any(render(0.5)), "silent once departing past the line"
+        controller.update_junction_proximity(at(-1.5, 0))
+        render(0.1)
+        assert not np.any(render(0.5)), "stopping just past the line does not bring the bar back"
+
+        # Rolled onto the bar and stopped past the line: the quiet solid tone holds.
+        controller.update_junction_proximity(dict(at(0.2, 0), id="junction:S"))
+        render(0.1)
+        controller.update_junction_proximity(dict(at(-0.6, 0.1), id="junction:S"))
+        render(0.1)
+        assert controller._stop_bar_mode[0] == "solid", "stopped past the line still on the bar"
+        controller.update_junction_proximity(dict(at(-0.6, 3), id="junction:S"))
+        render(0.1)
+        assert controller._stop_bar_mode[0] == "silent", "pulling away from it is departing"
 
         controller.update_junction_proximity(at(-3.0, 3))
         render(0.05)

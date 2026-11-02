@@ -748,7 +748,9 @@ ROAD_JUNCTION_ENTRY_MS = 180
 # D#4 with a sub an octave down (D#3) at half amplitude. It pulses faster as the
 # nose closes on the bar, holds solid while the nose is on it, and drops 18 dB
 # once the car has stopped there. The bar runs from REACH before the line to
-# CLEAR past it; the mod reports the same CLEAR as STOP_BAR_CLEAR_M.
+# CLEAR past it; the mod reports the same CLEAR as STOP_BAR_CLEAR_M. Past the
+# line it only sounds while stopped: moving past it is departing, and the tone
+# releases over RELEASE_S, just long enough not to click.
 STOP_BAR_HZ = 440.0 * 2.0 ** (-6 / 12)
 STOP_BAR_SUB_HZ = STOP_BAR_HZ / 2.0
 STOP_BAR_SUB_LEVEL = 0.5
@@ -762,6 +764,7 @@ STOP_BAR_MOVING_MPS = 0.5
 STOP_BAR_STOPPED_GAIN = 10.0 ** (-18.0 / 20.0)
 STOP_BAR_FADE_S = 0.6
 STOP_BAR_EDGE_S = 0.008
+STOP_BAR_RELEASE_S = 0.02
 # 90 ms on, 90 ms off at the fastest: any quicker and it blurs into the solid tone.
 STOP_BAR_MIN_PERIOD_S = 0.18
 STOP_BAR_MAX_PERIOD_S = 1.5
@@ -775,9 +778,11 @@ def stop_bar_state(signed_distance, speed, stopped=None, on_bar=False):
     """Return ("pulse", period_s), ("waiting", period_s), ("solid", None) or ("silent", None).
 
     `on_bar` says the nose was already on this bar, which widens it behind the
-    line. Past the bar the cue has done its job."""
+    line. Past the bar, or past the line while moving, the cue has done its job."""
     if stopped is None:
         stopped = speed < STOP_BAR_STOPPED_MPS
+    if signed_distance < 0.0 and not stopped:
+        return "silent", None
     reach = STOP_BAR_REACH_M + (STOP_BAR_HOLD_M if on_bar else 0.0)
     if -STOP_BAR_CLEAR_M <= signed_distance <= reach:
         return "solid", None
@@ -1697,6 +1702,7 @@ class AudioController:
         self._stop_bar_stopped = False
         self._stop_bar_on_id = None
         self._stop_bar_reached_id = None
+        self._stop_bar_departed_id = None
         self._stop_bar_mode = ("silent", None)
         self._road_junction_amp = 10.0 ** (ROAD_JUNCTION_AMP_DB / 20.0)
 
@@ -2346,13 +2352,24 @@ class AudioController:
         """Advance the stopped and on-bar hysteresis for one block; return the state."""
         if not target:
             self._stop_bar_on_id = None
+            self._stop_bar_departed_id = None
             return "silent", None
         speed = target["speed"]
         if self._stop_bar_stopped and speed > STOP_BAR_MOVING_MPS:
             self._stop_bar_stopped = False
         elif not self._stop_bar_stopped and speed < STOP_BAR_STOPPED_MPS:
             self._stop_bar_stopped = True
-        mode, period = stop_bar_state(self._stop_bar_signed(target), speed,
+        signed = self._stop_bar_signed(target)
+        if signed < 0.0 and not self._stop_bar_stopped:
+            self._stop_bar_departed_id = target["id"]
+        elif signed > STOP_BAR_REACH_M + STOP_BAR_HOLD_M:
+            self._stop_bar_departed_id = None  # back before it: a new approach
+        if self._stop_bar_departed_id == target["id"]:
+            # Crossed the line moving: stopping a little further on does not
+            # bring the bar back.
+            self._stop_bar_on_id = None
+            return "silent", None
+        mode, period = stop_bar_state(signed, speed,
                                       stopped=self._stop_bar_stopped,
                                       on_bar=self._stop_bar_on_id == target["id"])
         self._stop_bar_on_id = target["id"] if mode == "solid" else None
@@ -2384,11 +2401,15 @@ class AudioController:
                 self._junction_proximity_phase = (self._junction_proximity_phase + frames / sr / period) % 1.0
                 ramp = np.clip(np.minimum(cycles, duty - cycles) * period / STOP_BAR_EDGE_S, 0.0, 1.0)
                 env = np.sin(0.5 * np.pi * ramp) ** 2
+            elif mode == "solid":
+                env = np.full(frames, 1.0)
             else:
-                env = np.full(frames, 1.0 if mode == "solid" else 0.0)
+                # Released at a fixed rate, so a short block cannot cut the fade.
+                env = np.maximum(self._stop_bar_env - np.arange(1, frames + 1)
+                                 / (sr * STOP_BAR_RELEASE_S), 0.0)
             # Every change of state starts from the previous block's last level.
             edge = min(frames, int(sr * STOP_BAR_EDGE_S))
-            if edge:
+            if edge and mode != "silent":
                 blend = np.arange(1, edge + 1) / edge
                 env[:edge] = self._stop_bar_env + (env[:edge] - self._stop_bar_env) * blend
             self._stop_bar_env = float(env[-1]) if frames else self._stop_bar_env

@@ -4,6 +4,8 @@
 
 The stop bar replaces the 520 Hz pips below; their target selection survives. A bar is the line before a junction boundary, a mapped stop point, the start of a gated or private road, or a dead end. The tone is D#4 (311.13 Hz) with a sub an octave down (D#3, 155.56 Hz) at half amplitude. It pulses faster towards the bar (period `clamp(min(d/30, d/speed/4), 0.18, 1.5)` s, half on), holds solid while the nose is on the bar (0.5 m before the line to 2.5 m past it), fades 18 dB over 0.6 s once stopped there, and stops when the nose leaves the bar either way.
 
+Departing, 2026-10-29: past the line (`signedDistance < 0`) the bar sounds only while stopped. Crossing it moving, or pulling away after stopping on it, releases the tone linearly over 20 ms (`STOP_BAR_RELEASE_S`, rate-limited across audio blocks so a short block cannot cut it into a click) and latches that bar silent; stopping a little further on does not bring it back. The latch clears if the nose is back more than 1.5 m before the line, which is a new approach.
+
 The first driven run sounded erratic: pulses switching to solid while moving slowly. Three causes, all fixed in `audio.py`:
 
 - The pulse clock kept seconds modulo the period. A period shrinking at every 20 Hz update cut the current pulse short or stretched it. It now counts cycles, so the tempo changes smoothly.
