@@ -69,8 +69,9 @@ Press F9, then one of the following keys. If you press an invalid key or allow t
 - F: Speak fuel
 - E: Speak engine temperature
 - O: Speak oil temperature
-- T: Speak turbo pressure
-- Shift+T: Speak max turbo pressure
+- T: Speak boost pressure (turbo, supercharger, or both combined)
+- Shift+T: Speak max boost pressure
+- Alt+T: Speak forced induction details. For a turbo: boost, wastegate target for the current gear, turbo speed, torque change, best gain, heat and condition. For a supercharger: type, boost, blower speed and drag, torque change, best gain and condition
 - Ctrl+T: Speak ambient temperature (the level's outside temperature at the current time of day; also a row in the status menu)
 - P: Speak air pressure (pneumatic vehicles only)
 - H: Speak heading
@@ -139,12 +140,12 @@ The **Status** screen is the same live, conditionally filtered telemetry catalog
 - **Alignment:** instrument toggle, alignment/cannon readout, and reference-band selection.
 - **Driving assistance:** pedal tones, heading/coordinate guidance, drift, low-speed, wheel-slip, obstacle and road detection, plus road status.
 - **Waypoints:** mark, speak, and read distance/bearing to a waypoint, or announce the nearest point of interest.
-- **Vehicle information:** redline, maximum turbo and air pressure when supported, attitude, coordinates, and damage.
+- **Vehicle information:** redline, maximum boost and air pressure when supported, forced induction details on turbocharged and supercharged vehicles, attitude, coordinates, and damage.
 - **Camera:** camera-information toggle plus heading, altitude, pitch, vehicle bearing, and vehicle distance.
 - **Interaction:** accessible node grabber, clickspot detection, and unit switching.
 - **Environment:** terrain scan while driving. This command cannot activate an on-screen control when the game world is unavailable.
 
-Availability is recalculated on every press. For example, scanner readouts appear after the scanner is enabled, waypoint commands after marking a waypoint, camera readouts after camera information is enabled, and turbo or pneumatic readouts only on vehicles that publish those capabilities.
+Availability is recalculated on every press. For example, scanner readouts appear after the scanner is enabled, waypoint commands after marking a waypoint, camera readouts after camera information is enabled, and boost or pneumatic readouts only on vehicles that publish those capabilities.
 
 The **Click spots** screen lists the current vehicle's completed clickspot scan. When detection is off it contains one item, **Turn on clickspot detection**, so it can be enabled without returning to Functions. While the vehicle is being scanned it reads **Detecting click spots**; an empty completed scan reads **No click spots found**. Those two status items are harmless when activated. Once results arrive, up/down wrap through their names and Activate performs the same cursor snap and clickspot press/release as Enter in the keyboard clickspot browser. Changing vehicles clears the old list immediately rather than exposing stale controls from the previous vehicle.
 
@@ -291,7 +292,7 @@ Arrangement types are: line (all vehicles in a row), side by side (abreast), two
 
 **Pedal tone mode** allows you to hear tones that identify how much input the game is receiving from you. You'll hear four tones: one near the center for brake, one at the right for gas, one at the left for clutch, and a buzzy tone that hard pans left and right, increasing pitch which indicates steering input. If the vehicle is automatic or DCT, the clutch tone will never play, even if the input is actuated. The tones also require input of each type before they will begin.
 
-**Status keyboard mode** commandeers the arrow keys for itself. Up and down step through each telemetry item; left or right give an up-to-date readout of the currently selected item. Related items can share a spoken category: entering tire pressures or brake temperatures from either direction announces the category with the first wheel, while later wheels omit it until you leave and re-enter. Each existing wheel gets its own item, including the centred front wheel on three-wheeled Pigeon and Wigeon variants; nonexistent corners are omitted. Clutch temperature and turbo pressure are likewise omitted when the vehicle does not expose those capabilities. Ctrl+S resets the shared selection when it turns this keyboard mode on. The unbound controller status actions use the same selection and metric list but work whether this mode is on or off. Keyboard mode must be turned off in order to use a screen reader effectively. It must also not be used if you play with a keyboard, because you will not be able to accelerate, brake, or steer.
+**Status keyboard mode** commandeers the arrow keys for itself. Up and down step through each telemetry item; left or right give an up-to-date readout of the currently selected item. Related items can share a spoken category: entering tire pressures or brake temperatures from either direction announces the category with the first wheel, while later wheels omit it until you leave and re-enter. Each existing wheel gets its own item, including the centred front wheel on three-wheeled Pigeon and Wigeon variants; nonexistent corners are omitted. Clutch temperature and boost pressure are likewise omitted when the vehicle does not expose those capabilities. Ctrl+S resets the shared selection when it turns this keyboard mode on. The unbound controller status actions use the same selection and metric list but work whether this mode is on or off. Keyboard mode must be turned off in order to use a screen reader effectively. It must also not be used if you play with a keyboard, because you will not be able to accelerate, brake, or steer.
 
 **Drift scoring** speaks the game's own drift display. Turn on "show drift UI in free roam" in the game's gameplay settings. The display appears once you have drifted for a moment.
 - **Start:** you hear "Drift", with the points so far.

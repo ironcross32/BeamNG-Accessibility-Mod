@@ -1436,14 +1436,19 @@ local function fillStruct(o, dtSim)
     return false
   end
 
-  o.flags = OG_KM + OG_BAR + (electrics.values.turboBoost and OG_TURBO or 0)
+  -- The stock electric "boost" is turbo plus supercharger; turboBoost alone reads 0 on a
+  -- supercharged car and also clears the capability bit.
+  local hasBoost = electrics.values.turboBoost or electrics.values.superchargerBoost
+  o.flags = OG_KM + OG_BAR + (hasBoost and OG_TURBO or 0)
   o.gear = string.sub(electrics.values.gear .. "\0\0\0", 1, 4)
   o.plid = 0
   o.speed = electrics.values.wheelspeed or electrics.values.airspeed or 0
   o.rpm = electrics.values.rpm or 0
   o.rpmMax = electrics.values.maxrpm or 0
-  o.turbo = (electrics.values.turboBoost or 0) / 14.504 -- BAR
-  o.turboMax = (electrics.values.turboBoostMax or 0) / 14.504 -- BAR
+  o.turbo = (electrics.values.boost or 0) / 14.504 -- BAR
+  -- Summed rather than the stock boostMax, which is the larger of the two: "boost" adds them,
+  -- so a twin-charged car could otherwise read above its own maximum.
+  o.turboMax = ((electrics.values.turboBoostMax or 0) + (electrics.values.superchargerBoostMax or 0)) / 14.504 -- BAR
   o.oilPressure = (powertrain.engine and powertrain.engine.oilPressure or 0) / 14.504 -- PSI to BAR
   o.engTemp = electrics.values.watertemp or 0
   o.fuel = electrics.values.fuel or 0

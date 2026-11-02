@@ -1027,6 +1027,126 @@ function M.onUpdate(dtReal, dtSim, dtRaw)
             _ds:close()
           ]], vehName))
         end
+      elseif cmd == "INDUCTION" then
+        local player = be:getPlayerVehicle(0)
+        if not player then
+          local tmpSock = socket.udp()
+          if tmpSock then
+            tmpSock:setpeername("127.0.0.1", 4447)
+            tmpSock:send("NONE")
+            tmpSock:send("DONE")
+            tmpSock:close()
+          end
+        else
+          -- Figures are read from public fields and jbeam rather than the private upvalues of
+          -- powertrain/supercharger.lua and turbocharger.lua, and sent raw so Python owns units
+          -- and wording. Blower speed and the wastegate target repeat those files' sums, which
+          -- they do not expose.
+          player:queueLuaCommand([[
+            local _ds = require("socket").udp()
+            _ds:setpeername("127.0.0.1", 4447)
+            local ok, err = pcall(function()
+              local eng = nil
+              for _, d in ipairs(powertrain.getDevicesByType("combustionEngine")) do
+                local hasSC = d.supercharger and d.supercharger.isExisting
+                local hasTC = d.turbocharger and d.turbocharger.isExisting
+                if hasSC or hasTC then eng = d; break end
+              end
+              if not eng then _ds:send("NONE"); return end
+              local values = electrics.values
+              local jbeamEngine = v.data[eng.name] or {}
+              -- Keys are engine RPM + 1 (see getTorqueCoefs), at wide open throttle, undamaged.
+              local function peakOf(device)
+                local peakCoef, peakRPM = nil, nil
+                for key, coef in pairs(device.getTorqueCoefs()) do
+                  if not peakCoef or coef > peakCoef then peakCoef, peakRPM = coef, key - 1 end
+                end
+                return peakCoef, peakRPM
+              end
+              local report = {
+                torqueCoef = eng.forcedInductionCoef,
+                damaged = damageTracker.getDamage("engine", "inductionSystemDamaged") == true,
+                twoStep = values.twoStep,
+              }
+
+              if eng.supercharger and eng.supercharger.isExisting then
+                local jb = v.data[jbeamEngine.supercharger or "supercharger"] or {}
+                local rpm = math.max(eng.outputAV1, 0) * 9.5493
+                local engageRPM = jb.clutchEngageRPM or 1000
+                local engageRange = jb.clutchEngageRange or engageRPM * 0.2
+                local disengageRPM = jb.clutchDisengageRPM or eng.maxRPM * 2
+                local disengageRange = jb.clutchDisengageRange or disengageRPM * 0.05
+                local engage = rpm >= engageRPM and 1 or 0
+                if engageRange > 0 then engage = math.min(math.max((rpm - engageRPM) / engageRange, 0), 1) end
+                local disengage = rpm <= disengageRPM and 1 or 0
+                if disengageRange > 0 then disengage = math.min(math.max(1 - (rpm - disengageRPM) / disengageRange, 0), 1) end
+                local blowerRPM = rpm * (jb.gearRatio or 1) * math.min(engage, disengage)
+                local peakCoef, peakRPM = peakOf(eng.supercharger)
+                report.supercharger = {
+                  boost = values.superchargerBoost or 0,
+                  boostMax = values.superchargerBoostMax or 0,
+                  type = jb.type,
+                  twisted = jb.twistedLobes == true,
+                  blowerRPM = blowerRPM,
+                  lossCoef = (jb.crankLossPer1kRPM or 5) * 0.001 * blowerRPM,
+                  peakCoef = peakCoef,
+                  peakRPM = peakRPM,
+                  condition = (eng.supercharger.getPartCondition()),
+                }
+              end
+
+              if eng.turbocharger and eng.turbocharger.isExisting then
+                local jb = v.data[jbeamEngine.turbocharger or "turbocharger"] or {}
+                -- A gear with no entry uses the last value listed, as turbocharger.lua does.
+                local starts = type(jb.wastegateStart) == "table" and jb.wastegateStart or {jb.wastegateStart or 0}
+                local limits = nil
+                if type(jb.wastegateLimit) == "table" then limits = jb.wastegateLimit
+                elseif type(jb.wastegateLimit) == "number" then limits = {jb.wastegateLimit} end
+                local lastLimit = nil
+                if limits then for _, limit in pairs(limits) do lastLimit = limit end end
+                local lastStart, lastRange = 0, 0
+                local function rangeFor(key, start)
+                  if limits then return (limits[key] or lastLimit) - start end
+                  return 0.01
+                end
+                for key, start in pairs(starts) do lastStart, lastRange = start, rangeFor(key, start) end
+                local gear = values.gearIndex or 1
+                local start, range = starts[gear], lastRange
+                if start then range = rangeFor(gear, start) else start = lastStart end
+
+                local maxTurboRPM = 0
+                for _, point in ipairs(jb.pressurePSI or {}) do maxTurboRPM = math.max(maxTurboRPM, point[1]) end
+                local thermals = eng.thermals or {}
+                local heat = nil
+                if thermals.exhaustTemperature and thermals.oilTemperature then
+                  heat = thermals.exhaustTemperature + (thermals.coolantTemperature or 0) + thermals.oilTemperature
+                end
+                local peakCoef, peakRPM = peakOf(eng.turbocharger)
+                report.turbo = {
+                  boost = values.turboBoost or 0,
+                  boostMax = values.turboBoostMax or 0,
+                  wastegateTarget = start + range * 0.5,
+                  turboRPM = (eng.turbocharger.turboAV or 0) * 9.5493,
+                  maxTurboRPM = maxTurboRPM,
+                  peakCoef = peakCoef,
+                  peakRPM = peakRPM,
+                  heat = heat,
+                  heatLimit = jb.damageThresholdTemperature or 1000,
+                  hot = damageTracker.getDamage("engine", "turbochargerHot") == true,
+                  condition = (eng.turbocharger.getPartCondition()),
+                  blowOff = jb.bovEnabled ~= false and eng.requiredEnergyType ~= "diesel",
+                  -- The power figure does nothing without the controller, which sets alsState.
+                  antilag = (jb.maxAntilagPower or 0) > 0 and values.alsState ~= nil,
+                }
+              end
+
+              _ds:send("FI:" .. jsonEncode(report))
+            end)
+            if not ok then _ds:send("ERROR:" .. tostring(err)) end
+            _ds:send("DONE")
+            _ds:close()
+          ]])
+        end
       elseif cmd == "DUMP" then
         scannerLog('info', "DUMP command received, routing to active vehicle.")
         local player = be:getPlayerVehicle(0)

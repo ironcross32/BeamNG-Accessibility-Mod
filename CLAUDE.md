@@ -48,7 +48,7 @@ The per-file detail, and the reasoning behind every decision that is not obvious
 
 | Doc | Covers |
 |---|---|
-| `docs/python-components.md` | Every Python module: `beamtel.py`, `audio.py`, `wheel_slip.py`, `gear_report.py`, `hrtf.py`, `configurator.py`, `speech.py`, `ai_describer.py`, `secretstore.py`, `nvda_ws_speaker.py`, `mcp_server.py`, `updater.py`, `bnh_logger.py`, `diagnostic/` |
+| `docs/python-components.md` | Every Python module: `beamtel.py`, `audio.py`, `wheel_slip.py`, `gear_report.py`, `induction_report.py`, `hrtf.py`, `configurator.py`, `speech.py`, `ai_describer.py`, `secretstore.py`, `nvda_ws_speaker.py`, `mcp_server.py`, `updater.py`, `bnh_logger.py`, `diagnostic/` |
 | `docs/lua-telemetry-protocol.md` | `lua/vehicle/protocols/796F6C6F313035.lua`: the 60 Hz extended struct on 4444, `actualSteering`, the ramp hydraulics push, the loader implement block, and the no-reset teleport rule |
 | `docs/lua-vehicle-geometry.md` | `vehicleGeometry.lua` + vehicle `beamtelGeometryWatch.lua`: per-vehicle extents, hull cids, contact bands, occupancy histogram, dropping broken-off parts |
 | `docs/lua-ramp-geometry.md` | `rampGeometry.lua`: the drive-in mouth of a ramp-equipped machine, declared mouths, `floorTrusted` |
@@ -109,7 +109,7 @@ The World Editor is ImGui with no accessibility tree, so `tools/mapgen/` writes 
 | 4445 | Game→Python | Vehicle scanner data + AI status |
 | 4446 | Python→Game | Diagnostic dump commands |
 | 4447 | Game→Python | Diagnostic dump responses |
-| 4448 | Python→Game | Scanner commands (ON/OFF/NEXT/PREV/ALIGN/DAMAGE/GEAR) |
+| 4448 | Python→Game | Scanner commands (ON/OFF/NEXT/PREV/ALIGN/DAMAGE/INDUCTION/GEAR) |
 | 4449 | Python→Game | AI commands (MODE/AGGR/SPEED/AVOID/LANE/STATUS) |
 | 4450 | Game→Python | Camera info data |
 | 4451 | Python→Game | Camera info commands (ON/OFF/DIAG) |

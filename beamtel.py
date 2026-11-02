@@ -55,6 +55,7 @@ import wheel_slip
 import wheel_report
 import audio_debug
 import gear_report
+import induction_report
 from gear_report import gear_to_phrase, extended_gear_to_phrase
 
 logger = get_logger()
@@ -5080,8 +5081,9 @@ _F9_HELP = {
     ("e", False, True, False): "Dump electrics to log",
     ("p", False, True, False): "Dump powertrain to log",
     ("h", False, True, False): "Dump hydros to log",
-    ("t", False, False, False): "Speak turbo pressure",
-    ("t", False, True, False): "Speak max turbo pressure",
+    ("t", False, False, False): "Speak boost pressure",
+    ("t", False, True, False): "Speak max boost pressure",
+    ("t", False, False, True): "Speak forced induction details",
     ("t", True, False, False): "Speak ambient temperature",
     ("o", False, False, False): "Speak oil temperature",
     ("a", False, False, False): "Speak attitude, roll and pitch",
@@ -5446,7 +5448,7 @@ STATUS_METRICS = [
         "isAvailable": lambda: _env_ambient_c is not None,
     },
     {
-        "label": "Turbo Pressure",
+        "label": "Boost Pressure",
         "getValue": lambda: fmt_turbo(last_turbo),
         "isAvailable": lambda: bool(int(last_protocol_flags) & OG_TURBO),
     },
@@ -5668,10 +5670,18 @@ FUNCTION_ITEMS = [
         is_available=lambda: protocol_mode == "extended",
     ),
     _function_item(
-        "Maximum turbo pressure",
+        "Maximum boost pressure",
         "Vehicle information",
         "t",
         shift=True,
+        is_available=lambda: protocol_mode == "extended"
+        and bool(int(last_protocol_flags) & OG_TURBO),
+    ),
+    _function_item(
+        "Forced induction details",
+        "Vehicle information",
+        "t",
+        alt=True,
         is_available=lambda: protocol_mode == "extended"
         and bool(int(last_protocol_flags) & OG_TURBO),
     ),
@@ -7389,6 +7399,44 @@ def _env_row_line(row):
     return str(label)
 
 
+def speak_induction_report():
+    """F9 Alt+T: the turbo's and supercharger's live figures, asked for over the dump ports."""
+
+    def _do_report():
+        report, answered = None, False
+        recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            # 4447 is shared with the damage report and the dumps, so it can be busy.
+            recv_sock.bind(("127.0.0.1", 4447))
+            cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            cmd_sock.sendto(b"INDUCTION", ("127.0.0.1", SCANNER_CMD_PORT))
+            cmd_sock.close()
+            recv_sock.settimeout(2.0)
+            while True:
+                data, _ = recv_sock.recvfrom(4096)
+                text = data.decode("utf-8", errors="replace").strip()
+                answered = True
+                if text == "DONE":
+                    break
+                if text.startswith("ERROR:"):
+                    logger.warning("Forced induction report failed: %s", text[6:])
+                report = induction_report.parse_reply(text) or report
+        except socket.timeout:
+            pass
+        except OSError:
+            logger.exception("Forced induction report could not use its port")
+        finally:
+            recv_sock.close()
+        if report:
+            say(induction_report.report_phrase(report, fmt_pressure))
+        elif answered:
+            say("No forced induction")
+        else:
+            say("No response from the game", exclude_from_buffer=True)
+
+    threading.Thread(target=_do_report, daemon=True).start()
+
+
 def speak_ambient_temperature():
     """F9 Ctrl+T: the live outside temperature."""
     if _env_ambient_c is None:
@@ -8503,11 +8551,17 @@ def _on_next_key_press(event, audio_controller):
     ):
         # Before the turbo branches, which test only shift and would otherwise swallow it.
         speak_ambient_temperature()
+    elif (
+        name == "t"
+        and _capture_mods["alt"]
+        and not (_capture_mods["ctrl"] or _capture_mods["shift"])
+    ):
+        speak_induction_report()
     elif name == "t" and _capture_mods["shift"]:
         val, unit = fmt_turbo(turbo_max_snap)
-        say(f"Max turbo {val} {unit}" if protocol_mode == "extended" else "Unavailable")
+        say(f"Max boost {val} {unit}" if protocol_mode == "extended" else "Unavailable")
     elif name == "t":
-        say(f"Turbo {turbo_val} {turbo_unit}")
+        say(f"Boost {turbo_val} {turbo_unit}")
     elif name == "p" and _capture_mods["shift"]:
         say("Requesting powertrain dump", exclude_from_buffer=True)
 
