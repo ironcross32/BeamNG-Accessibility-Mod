@@ -69,6 +69,7 @@ The per-file detail, and the reasoning behind every decision that is not obvious
 | `docs/lua-wheel-report.md` | `wheelReport.lua` + `wheel_report.py`: every wheel's pressure and brake temperature on the vehicle and anything coupled, labelled from geometry. Port 4485 |
 | `docs/lua-route-beacon.md` | `routeBeacon.lua` and `route_beacon.relative_bearing`. Port 4482 |
 | `docs/driving-assistant-route.md` | `drivingAssistant.lua` following a big-map route, `assistant_route.py`: what the game clears on arrival, the forward-only search, callouts, off-road destinations |
+| `docs/camera-lineup.md` | `cameraLineup.lua` + `camera_lineup.py`: the free-camera line-up guide (F9 Alt+G), head-on and crossing targets, the FM tone. Port 4489 |
 | `docs/lua-audio-debug.md` | `audioDebugAccessible.lua` + vehicle `beamtelAudioDebug.lua`: the editor's Window > Audio tools (engine sound parameters, sound library). Ports 4483/4484 |
 | `docs/lua-vehicle-info.md` | `vehicleInfo.lua`: vehicle selector specifications. Ports 4477/4478 |
 | `docs/lua-drift.md` | `driftAccessible.lua` + `drift_speech.py`: speaking the stock drift display, its hooks and contexts, the speed/compass quiet window |
@@ -148,6 +149,7 @@ The World Editor is ImGui with no accessibility tree, so `tools/mapgen/` writes 
 | 4483 | Game→Python | Audio debug rows: engine sounds, sound library (audioDebugAccessible.lua) |
 | 4484 | Python→Game | Audio debug commands (REQUEST/SELECT/SET/RESTORE/COPY/SFX_*) |
 | 4485 | Game→Python | Every wheel's position, pressure and brake temperature, vehicle and trailers (wheelReport.lua) |
+| 4489 | Game→Python | Free-camera line-up geometry (cameraLineup.lua) |
 | 4579 | Game→Python | UI toast messages |
 | 8765 | WebSocket | NVDA/UI bridge |
 

@@ -55,6 +55,7 @@ from poi_guidance import parse_poi_packet, poi_phrase
 import wheel_slip
 import wheel_report
 import audio_debug
+import camera_lineup
 import gear_report
 import induction_report
 from gear_report import gear_to_phrase, extended_gear_to_phrase
@@ -2189,6 +2190,180 @@ def cannon_shot_listener(stop_event):
         except Exception:
             pass
         logger.info("Cannon shot listener stopped.")
+
+
+# ---------------------------------------------------------------------------------------------
+# Free-camera line-up guide (cameraLineup.lua -> camera_lineup.py -> audio.set_lineup).
+# F9 then Alt+G opens a key layer: X mode, arrows distance, T target, M mute, Escape closes.
+# The guide keeps sounding after the layer closes; values last for the session only, and
+# the mute is never written to the config. See docs/camera-lineup.md.
+# ---------------------------------------------------------------------------------------------
+_lineup_mode = camera_lineup.HEAD_ON
+_lineup_offset_m = camera_lineup.DEFAULT_OFFSET_M
+_lineup_depth_m = camera_lineup.DEFAULT_DEPTH_M
+_lineup_enabled = False  # armed by the first F9 Alt+G of the session
+_lineup_muted = False  # M
+_lineup_geom = None  # last Geometry, or None when not in free camera
+_lineup_stamp = 0.0
+_lineup_hooks = []
+_lineup_layer_open = False
+LINEUP_STALE_S = 0.5  # cameraLineup.lua sends at 20 Hz
+
+
+def _lineup_in_free_cam():
+    return _lineup_geom is not None and (time.monotonic() - _lineup_stamp) <= LINEUP_STALE_S
+
+
+def _lineup_push(audio_controller=None):
+    """Recompute the tone from the latest geometry and hand it to audio."""
+    ac = audio_controller or audio_controller_ref
+    if ac is None:
+        return
+    geom = _lineup_geom
+    if not _lineup_enabled or _lineup_muted or geom is None:
+        ac.set_lineup(False)
+        return
+    status, miss, bearing = camera_lineup.solve(
+        geom, _lineup_mode, _lineup_offset_m, _lineup_depth_m
+    )
+    tone = camera_lineup.tone_for(status, miss, bearing)
+    ac.set_lineup(True, tone.amp, tone.index, tone.ratio, tone.az)
+
+
+def camera_lineup_listener(audio_controller, stop_event):
+    """Receives cameraLineup.lua geometry and drives the guide tone per packet. A feed
+    that stops is aged out in audio.py (LINEUP_STALE_S), since nothing runs here to notice."""
+    global _lineup_geom, _lineup_stamp
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", CAMERA_LINEUP_LISTEN_PORT))
+        sock.settimeout(0.2)
+        logger.info(f"Camera line-up listener started on port {CAMERA_LINEUP_LISTEN_PORT}")
+        while not stop_event.is_set():
+            try:
+                data, _addr = sock.recvfrom(1024)
+            except socket.timeout:
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Camera line-up listener socket error.")
+                continue
+            parsed = camera_lineup.parse_packet(data.decode("utf-8", errors="ignore"))
+            if parsed is None:
+                continue
+            if parsed == "OFF":
+                _lineup_geom = None
+            else:
+                _lineup_geom = parsed
+                _lineup_stamp = time.monotonic()
+            try:
+                _lineup_push(audio_controller)
+            except Exception:
+                logger.exception("Camera line-up push failed")
+    except OSError as e:
+        logger.error(f"Camera line-up listener failed to bind: {e}")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+
+
+def _lineup_state_suffix():
+    text = ""
+    if _lineup_muted:
+        text += ", muted"
+    if not _lineup_in_free_cam():
+        text += ", not in free camera"
+    return text
+
+
+def _lineup_on_key(event):
+    global _lineup_mode, _lineup_offset_m, _lineup_depth_m, _lineup_muted
+    if not _lineup_layer_open:
+        return
+    name = (event.name or "").lower()
+    # keyboard hooks the key as "escape" but REPORTS it as "esc".
+    if name in ("esc", "escape"):
+        _lineup_close_layer(speak=True)
+        return
+    if name == "x":
+        _lineup_mode = (
+            camera_lineup.CROSSING
+            if _lineup_mode == camera_lineup.HEAD_ON
+            else camera_lineup.HEAD_ON
+        )
+        say(
+            camera_lineup.target_phrase(
+                _lineup_mode, _lineup_offset_m, _lineup_depth_m, UNITS_MODE
+            ),
+            exclude_from_buffer=True,
+        )
+    elif name in ("up", "right", "down", "left"):
+        delta = 1 if name in ("up", "right") else -1
+        _lineup_offset_m, _lineup_depth_m = camera_lineup.step_value(
+            _lineup_mode, _lineup_offset_m, _lineup_depth_m, delta
+        )
+        say(
+            camera_lineup.value_phrase(
+                _lineup_mode, _lineup_offset_m, _lineup_depth_m, UNITS_MODE
+            ),
+            exclude_from_buffer=True,
+        )
+    elif name == "t":
+        say(
+            camera_lineup.target_phrase(
+                _lineup_mode, _lineup_offset_m, _lineup_depth_m, UNITS_MODE
+            )
+            + _lineup_state_suffix(),
+            exclude_from_buffer=True,
+        )
+    elif name == "m":
+        _lineup_muted = not _lineup_muted
+        say("Guide muted" if _lineup_muted else "Guide on", exclude_from_buffer=True)
+    _lineup_push()
+
+
+def _lineup_close_layer(speak=False):
+    """Hand the guide's keys back. The guide itself keeps sounding."""
+    global _lineup_layer_open
+    was_open = _lineup_layer_open
+    _lineup_layer_open = False
+    _unhook_suppressed(_lineup_hooks)
+    if speak and was_open:
+        say("Line-up keys closed", exclude_from_buffer=True)
+
+
+def open_camera_lineup():
+    """F9 then Alt+G, a toggle. Off -> arms the guide and takes its keys until Escape.
+    On -> turns the guide off entirely and releases the keys; the session values stay."""
+    global _lineup_enabled, _lineup_layer_open
+    if _lineup_enabled:
+        _lineup_enabled = False
+        _lineup_close_layer(speak=False)
+        _lineup_push()
+        say("Camera line-up off", exclude_from_buffer=True)
+        return
+    release_arrow_owners("camera line-up opened")
+    _lineup_enabled = True
+    _lineup_layer_open = True
+    if KEYBOARD_OK:
+        try:
+            for key in ("x", "t", "m", "up", "down", "left", "right", "escape"):
+                # Queued: Escape unhooks the very list keyboard is iterating to reach it.
+                _lineup_hooks.append(_hook_suppressed(key, _kb_enqueue(_lineup_on_key)))
+        except Exception as e:
+            logger.error(f"Failed to hook camera line-up keys: {e}")
+    say(
+        "Camera line-up. "
+        + camera_lineup.target_phrase(
+            _lineup_mode, _lineup_offset_m, _lineup_depth_m, UNITS_MODE
+        )
+        + _lineup_state_suffix(),
+        exclude_from_buffer=True,
+    )
+    _lineup_push()
 
 
 def trailer_angle_listener(stop_event):
@@ -5134,6 +5309,10 @@ _F9_HELP = {
     ("k", True, False, False): "Toggle wheel slip detection",
     ("s", True, True, False): "Toggle speech logger",
     ("f", False, False, True): "Toggle camera info",
+    ("g", False, False, True): (
+        "Toggle camera line-up guide: X mode, arrows distance, T target, M mute, "
+        "Escape releases the keys"
+    ),
     ("h", False, False, True): "Camera heading",
     ("a", False, False, True): "Camera altitude",
     ("p", False, False, True): "Camera pitch",
@@ -5812,6 +5991,7 @@ def release_arrow_owners(reason=""):
     of another leaves two owners on the same key — see `_hook_suppressed`.
     """
     close_virtual_browser(speak_exit=False)
+    _lineup_close_layer(speak=False)
     if status_keyboard_mode_active:
         toggle_status_mode()
     elif status_arrow_hooks:
@@ -6034,6 +6214,7 @@ def toggle_status_mode():
     status_keyboard_mode_active = not status_keyboard_mode_active
     if status_keyboard_mode_active:
         current_status_metric_index = 0
+        _lineup_close_layer(speak=False)
         say("Status mode on", exclude_from_buffer=True)
         try:
             for key in ["up", "down", "left", "right"]:
@@ -6178,6 +6359,7 @@ def open_virtual_browser(
     if _vehicle_spawner is not None and _vehicle_spawner.is_modal_open():
         _vehicle_spawner.close_modal()
     close_virtual_browser(speak_exit=False)
+    _lineup_close_layer(speak=False)
     if not lines:
         say("No information available", exclude_from_buffer=True)
         return
@@ -6384,6 +6566,9 @@ ROUTE_BEACON_LISTEN_PORT = (
 WHEEL_REPORT_LISTEN_PORT = (
     4485  # UDP port to receive every wheel's position, pressure and brake temperature
 )
+CAMERA_LINEUP_LISTEN_PORT = 4489  # free-camera line-up geometry from cameraLineup.lua
+# (4487 is taken by diagnostic/mcp_server_sim.py.) No command port: the mode, target and
+# mute live on this side, so cameraLineup.lua has nothing to be told.
 # No command port for routeBeacon either, and for the same reason: whether a route is
 # set is a fact the game maintains, so the mod has nothing to be told. Whether the
 # beacon SOUNDS is this side's toggle and never leaves the process.
@@ -7978,6 +8163,14 @@ def _on_next_key_press(event, audio_controller):
 
     # ALT+ camera info commands (before bare key handlers)
     if (
+        name == "g"
+        and _capture_mods["alt"]
+        and not (_capture_mods["ctrl"] or _capture_mods["shift"])
+    ):
+        _clear_next_key_hook(speak_exit=False)
+        open_camera_lineup()
+        return
+    elif (
         name == "f"
         and _capture_mods["alt"]
         and not (_capture_mods["ctrl"] or _capture_mods["shift"])
@@ -11996,6 +12189,11 @@ def _run_engine():
         target=trailer_angle_listener, args=(STOP,), daemon=True
     )
     trailer_angle_thread.start()
+
+    camera_lineup_thread = threading.Thread(
+        target=camera_lineup_listener, args=(audio_controller, STOP), daemon=True
+    )
+    camera_lineup_thread.start()
 
     wheel_report_thread = threading.Thread(
         target=wheel_report_listener, args=(STOP,), daemon=True

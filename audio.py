@@ -27,6 +27,7 @@ except Exception:
     ScannerHRTFDiagnostic = None
 
 import gear_report
+import camera_lineup
 
 DEFAULT_SR = 48000
 
@@ -833,6 +834,16 @@ COORD_GUIDE_FM_RATIO_MAX = (
 COORD_GUIDE_MOD_INDEX_MAX = 3.0  # FM β (modulation index) at 180° off course
 COORD_GUIDE_AMP_DB = -12.0  # Peak amplitude at 180° off course
 COORD_GUIDE_DEADZONE_DEG = 5.0  # Silent within this bearing error
+
+# Free-camera line-up guide (camera_lineup.py computes the parameters; see
+# docs/camera-lineup.md). Peak level at full error, parameter smoothing, and the age-out
+# that silences a feed that stopped arriving (the GE side sends at 20 Hz).
+LINEUP_AMP_DB = -12.0
+LINEUP_SMOOTH_S = 0.12
+# Position glides slower than loudness: the bearing follows the steering directly and a
+# head that is being swung around every few frames cannot be localised at all.
+LINEUP_AZ_SMOOTH_S = 0.25
+LINEUP_STALE_S = 0.5
 
 # Placement Pings (vehicle spawner 3D placement editor).
 # Five rungs, one per step magnitude (1 / 10 / 100 / 1000 / 10000 units). The carrier
@@ -1835,6 +1846,19 @@ class AudioController:
         self._coord_phase_mod = 0.0
         self._coord_hrtf_overlap_L = None
         self._coord_hrtf_overlap_R = None
+        # Free-camera line-up guide (set_lineup)
+        self._lineup_active = False
+        self._lineup_stamp = 0.0
+        self._lineup_target = (0.0, 1.0, 1.0, 0.0)  # amp, index, ratio, az
+        self._sm_lineup_amp = 0.0
+        self._sm_lineup_index = 1.0
+        self._sm_lineup_ratio = 1.0
+        self._sm_lineup_az_xy = (1.0, 0.0)
+        self._lineup_phase_carrier = 0.0
+        self._lineup_phase_mod = 0.0
+        self._lineup_ir = None  # last block's HRIR pair, for the crossfade
+        self._lineup_overlap_L = None
+        self._lineup_overlap_R = None
 
         # NEW: Drift Detection State
         self._drift_alert_active = False
@@ -3237,6 +3261,105 @@ class AudioController:
 
     # --- Private Methods ---
 
+    def set_lineup(self, active, amp=0.0, index=1.0, ratio=1.0, az=0.0):
+        """Free-camera line-up guide. Called per GE packet (20 Hz) while the guide is
+        live, and with active=False when it is muted, closed or out of free camera. A
+        feed that simply stops is aged out in the callback (LINEUP_STALE_S)."""
+        with self.lock:
+            self._lineup_active = bool(active)
+            self._lineup_stamp = time.monotonic()
+            self._lineup_target = (float(amp), float(index), float(ratio), float(az))
+
+    def _render_lineup(self, bufL, bufR, frames, live, target):
+        """Line-up guide FM tone, HRTF-placed.
+
+        Two things keep it free of zipper noise, both learned from the driver's seat:
+        amplitude and index are RAMPED across the block from last block's value rather than
+        stepped, and when the azimuth moves the block is convolved with BOTH the previous and
+        the new HRIR and crossfaded, instead of swapping the filter at the block edge.
+        """
+        t_amp, t_index, t_ratio, t_az = target if live else (0.0, 1.0, 1.0, 0.0)
+        if not live:
+            t_index, t_ratio = self._sm_lineup_index, self._sm_lineup_ratio
+            t_az = None
+        dt = frames / self.samplerate
+        beta = 1.0 - math.exp(-dt / LINEUP_SMOOTH_S)
+        beta_az = 1.0 - math.exp(-dt / LINEUP_AZ_SMOOTH_S)
+
+        amp0, idx0 = self._sm_lineup_amp, self._sm_lineup_index
+        self._sm_lineup_amp += beta * (t_amp - self._sm_lineup_amp)
+        self._sm_lineup_index += beta * (t_index - self._sm_lineup_index)
+        self._sm_lineup_ratio += beta * (t_ratio - self._sm_lineup_ratio)
+        if t_az is not None:
+            # Smoothed as a unit vector so a swing through behind takes the short way.
+            tx, ty = math.cos(math.radians(t_az)), math.sin(math.radians(t_az))
+            sx, sy = self._sm_lineup_az_xy
+            self._sm_lineup_az_xy = (sx + beta_az * (tx - sx), sy + beta_az * (ty - sy))
+
+        if amp0 < 1e-4 and self._sm_lineup_amp < 1e-4:
+            self._sm_lineup_amp = 0.0
+            if self._lineup_overlap_L is not None and len(self._lineup_overlap_L) > 0:
+                ol = min(len(self._lineup_overlap_L), frames)
+                bufL[:ol] += self._lineup_overlap_L[:ol].astype(np.float32)
+                bufR[:ol] += self._lineup_overlap_R[:ol].astype(np.float32)
+            self._lineup_overlap_L = None
+            self._lineup_overlap_R = None
+            self._lineup_ir = None
+            return
+
+        peak = float(10.0 ** (LINEUP_AMP_DB / 20.0))
+        ramp = (np.arange(frames, dtype=np.float64) + 1.0) / max(1, frames)
+        amp = peak * (amp0 + (self._sm_lineup_amp - amp0) * ramp)
+        index = idx0 + (self._sm_lineup_index - idx0) * ramp
+
+        fc = camera_lineup.CARRIER_HZ
+        fm = fc * self._sm_lineup_ratio
+        n = np.arange(frames, dtype=np.float64)
+        mod_phase = self._lineup_phase_mod + n * (fm / self.samplerate)
+        car_phase = self._lineup_phase_carrier + n * (fc / self.samplerate)
+        mono = (
+            amp * np.sin(2.0 * np.pi * car_phase + index * np.sin(2.0 * np.pi * mod_phase))
+        ).astype(np.float32)
+        if frames > 0:
+            self._lineup_phase_carrier = (car_phase[-1] + fc / self.samplerate) % 1.0
+            self._lineup_phase_mod = (mod_phase[-1] + fm / self.samplerate) % 1.0
+
+        sx, sy = self._sm_lineup_az_xy
+        az = math.degrees(math.atan2(sy, sx)) % 360.0
+        ir_l = ir_r = None
+        if self._hrtf is not None and self._hrtf_user_enabled:
+            ir_l, ir_r = self._hrtf.get_hrir(az)
+        if ir_l is None:
+            # Stereo fallback: sin(az) is +1 hard left, matching the HRTF's 90 = left.
+            Lg, Rg = self._pan_gains(self._clamp(-math.sin(math.radians(az)), -1.0, 1.0))
+            bufL += mono * Lg
+            bufR += mono * Rg
+            self._lineup_overlap_L = None
+            self._lineup_overlap_R = None
+            self._lineup_ir = None
+            return
+
+        conv_l = np.convolve(mono, ir_l, mode="full")
+        conv_r = np.convolve(mono, ir_r, mode="full")
+        prev = self._lineup_ir
+        if prev is not None and len(prev[0]) == len(ir_l):
+            # Crossfade the block from the old filter to the new one. The tail (beyond
+            # `frames`) belongs to the new filter alone; the ramp has reached 1 by then.
+            old_l = np.convolve(mono, prev[0], mode="full")[:frames]
+            old_r = np.convolve(mono, prev[1], mode="full")[:frames]
+            w = ramp.astype(np.float64)
+            conv_l[:frames] = old_l * (1.0 - w) + conv_l[:frames] * w
+            conv_r[:frames] = old_r * (1.0 - w) + conv_r[:frames] * w
+        self._lineup_ir = (ir_l, ir_r)
+        if self._lineup_overlap_L is not None:
+            ol = min(len(self._lineup_overlap_L), len(conv_l))
+            conv_l[:ol] += self._lineup_overlap_L[:ol]
+            conv_r[:ol] += self._lineup_overlap_R[:ol]
+        bufL += conv_l[:frames].astype(np.float32)
+        bufR += conv_r[:frames].astype(np.float32)
+        self._lineup_overlap_L = conv_l[frames:].copy()
+        self._lineup_overlap_R = conv_r[frames:].copy()
+
     def _clamp(self, v, a=0.0, b=1.0):
         return a if v < a else b if v > b else v
 
@@ -4123,6 +4246,10 @@ class AudioController:
             # Coordinate Guidance
             coord_guide_active = self._coord_guidance_active
             coord_guide_error = self._coord_guidance_error
+            lineup_live = self._lineup_active and (
+                time.monotonic() - self._lineup_stamp
+            ) <= LINEUP_STALE_S
+            lineup_target = self._lineup_target
             # NEW: Low speed state
             ls_active = self._ls_clicks_active
             ls_speed_mph = self._ls_speed_mph
@@ -6805,6 +6932,11 @@ class AudioController:
         if obstacle_duck < 1.0:
             bufL = coordinate_mix_l + (bufL - coordinate_mix_l) * obstacle_duck
             bufR = coordinate_mix_r + (bufR - coordinate_mix_r) * obstacle_duck
+
+        # Free-camera line-up guide FM tone. Parameters arrive finished from
+        # camera_lineup.tone_for; this only smooths and synthesises them. The amplitude
+        # glides to zero rather than cutting, so muting or reaching the line never clicks.
+        self._render_lineup(bufL, bufR, frames, lineup_live, lineup_target)
 
         # Terrain sonification scan playback. Nothing is synthesised here -- the whole
         # three seconds arrived finished from the listener thread (render_scan), because a

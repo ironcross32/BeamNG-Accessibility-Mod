@@ -37,6 +37,9 @@ extensions.load("routeBeacon")
 extensions.load("beamtelAI")
 extensions.load("vehicleSlots")
 extensions.load("cameraInfo")
+-- Free-camera line-up guide geometry (camera and vehicle nose on the ground plane). After
+-- vehicleGeometry, whose boxFrame and extents it reads; send only, nothing to be told.
+extensions.load("cameraLineup")
 -- Manual extensions survive the engine's Ctrl+L unload pass. A plain load therefore keeps
 -- the old module table and old source even though this modScript is executed again. Reload
 -- this detector explicitly so Python's backwards-compatible audio cannot make an old Lua
