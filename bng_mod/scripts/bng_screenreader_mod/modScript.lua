@@ -94,6 +94,14 @@ extensions.load("vehicleInfo")
 -- Loaded late on purpose: an uncaught throw in an extension's onUpdate stops every
 -- extension AFTER it in this list, and this one raycasts against arbitrary scene objects.
 extensions.load("implementProximity")
+-- Fuel stations: the map's pumps and chargers, the route to one, and parking at a pump. Late for
+-- the same reason (it raycasts round the forecourt), and manual, so reloaded explicitly: a stale
+-- copy would keep the command port and the parking session's vehicle callbacks.
+if extensions.isExtensionLoaded("fuelStations") then
+  extensions.reload("fuelStations")
+else
+  extensions.load("fuelStations")
+end
 -- Both are manual extensions, so a plain load after Ctrl+L would retain the old
 -- source. Reload explicitly to keep the lifecycle producer and transport in step.
 if extensions.isExtensionLoaded("bnvdaBridge") then

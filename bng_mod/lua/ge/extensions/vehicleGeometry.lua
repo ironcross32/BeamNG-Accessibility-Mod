@@ -184,13 +184,14 @@ local ok, err = pcall(function()
     end
   end
 
-  local cids, fs, rs, us = {}, {}, {}, {}
+  local cids, fs, rs, us, tyre = {}, {}, {}, {}, {}
   local n = 0
   for _, nd in pairs(v.data.nodes) do
     if not (dropped and dropped[nd.cid]) then
       local lp = vec3(obj:getNodePosition(nd.cid))
       n = n + 1
       cids[n], fs[n], rs[n], us[n] = nd.cid, fwd:dot(lp), rgt:dot(lp), up:dot(lp)
+      tyre[n] = nd.wheelID ~= nil
     end
   end
   if n < ]] .. MIN_NODES .. [[ then return end
@@ -260,6 +261,36 @@ local ok, err = pcall(function()
     end
     return out
   end
+  -- The height profile: where the ground is under the tyres, and how low the body comes at
+  -- each end. Every raycast that stands in for "would this vehicle touch that" uses these,
+  -- so a sports car and a lifted truck are each judged by their own underside rather than by
+  -- a fixed offset from a reference node whose height differs from jbeam to jbeam.
+  -- Tyre nodes carry wheelID on every vehicle, stock or modded. The lowest is the contact
+  -- patch at rest. The body figures are a low percentile rather than the minimum, so a single
+  -- stray node (a dangling mud flap) does not decide the clearance.
+  local groundU, bodyU, frontU, rearU = nil, {}, {}, {}
+  for i = 1, n do
+    if tyre[i] then
+      if not groundU or us[i] < groundU then groundU = us[i] end
+    else
+      bodyU[#bodyU + 1] = us[i]
+      local fN = fRange > 0.01 and (fs[i] - minF) / fRange or 0.5
+      if fN > 0.75 then frontU[#frontU + 1] = us[i] end
+      if fN < 0.25 then rearU[#rearU + 1] = us[i] end
+    end
+  end
+  local function low(t)
+    if #t == 0 then return minU end
+    table.sort(t)
+    return t[math.max(1, math.floor(#t * 0.01 + 1))]
+  end
+  local wheelRadius = 0
+  for _, w in pairs(wheels and wheels.wheels or {}) do
+    if (w.radius or 0) > wheelRadius then wheelRadius = w.radius end
+  end
+  local profile = tostring(groundU or minU) .. "," .. tostring(low(bodyU)) .. ","
+    .. tostring(low(frontU)) .. "," .. tostring(low(rearU)) .. "," .. tostring(wheelRadius)
+
   hull  = thin(hull,  ]] .. HULL_MAX .. [[)
   front = thin(front, ]] .. BAND_MAX .. [[)
   rear  = thin(rear,  ]] .. BAND_MAX .. [[)
@@ -271,7 +302,7 @@ local ok, err = pcall(function()
     .. obj:getID() .. "," .. %d
     .. ",'" .. ext .. "','" .. table.concat(hull, ",") .. "','"
     .. table.concat(front, ",") .. "','" .. table.concat(rear, ",") .. "','"
-    .. table.concat(hist, ",") .. "'," .. nDropped .. ") end")
+    .. table.concat(hist, ",") .. "'," .. nDropped .. ",'" .. profile .. "') end")
 end)
 if not ok then
   obj:queueGameEngineLua("log('E','vehicleGeometry','vehicle-side resolve failed: "
@@ -292,7 +323,9 @@ end
 -- the id is the same across a reset, so an id check alone would happily install pre-reset
 -- cids for a part configuration that has since changed.
 -- `detached` is an optional tail (nodes dropped as broken off), used only for the log line.
-function M.onVehicleGeometry(vehID, epoch, extCsv, hullCsv, frontCsv, rearCsv, histCsv, detached)
+-- `profileCsv` is an optional tail too: groundU, bodyLowU, frontLowU, rearLowU, wheelRadius.
+function M.onVehicleGeometry(vehID, epoch, extCsv, hullCsv, frontCsv, rearCsv, histCsv, detached,
+                             profileCsv)
   local p = pending[vehID]
   if not p or p.epoch ~= epoch then
     vgLog('D', string.format("stale geometry reply for %s (epoch %s)",
@@ -321,6 +354,11 @@ function M.onVehicleGeometry(vehID, epoch, extCsv, hullCsv, frontCsv, rearCsv, h
     histLo = ext[5],
     histHi = ext[6],
   }
+  local prof = parseNums(profileCsv)
+  if #prof == 5 then
+    cache[vehID].profile = {groundU = prof[1], bodyLowU = prof[2], frontLowU = prof[3],
+      rearLowU = prof[4], wheelRadius = prof[5]}
+  end
   vgLog('I', string.format(
     "vehicle %d geometry: %d hull, %d front, %d rear, span %.2f x %.2f x %.2f m, %d detached nodes ignored",
     vehID, #hull, #cache[vehID].front, #cache[vehID].rear,
@@ -357,6 +395,40 @@ end
 function M.get(vehID)
   return cache[vehID]
 end
+
+-- The one answer to "at what heights should a ray stand in for this vehicle's body", for every
+-- raycasting feature in the mod (obstacleDetector, fuelStations' planner, beamtelFuelPark's
+-- look-ahead). directionSign 1 is the front end, -1 the rear.
+--   lowU / highU   offsets along the vehicle's up axis from its origin (for rays built there)
+--   lowLift / highLift   the same two heights above the ground under the tyres (for rays built
+--                  from a measured ground point)
+--   step           the tallest sudden rise this vehicle can roll over or overhang at that end
+--   measured       false when the profile is not resolved yet and the defaults are in use
+-- The low ray sits just under the lowest body at that end, so anything that would meet the
+-- bumper meets the ray; the high one 0.4 m above it, inside the body. A kerb the bumper clears
+-- is below both, and it is the step figure that decides it for ground-profile checks.
+local DEFAULT_RAYS = {lowU = -0.2, highU = 0.2, lowLift = 0.35, highLift = 0.8, step = 0.15,
+  measured = false}
+
+local function rayProfileFor(entry, directionSign)
+  local p = entry and entry.profile
+  if not p then return DEFAULT_RAYS end
+  local endLow = (directionSign or 1) < 0 and p.rearLowU or p.frontLowU
+  local overhang = math.max(0, endLow - p.groundU)
+  local lowLift = math.max(0.08, overhang - 0.02)
+  local highLift = lowLift + 0.4
+  local roof = entry.ext.maxU - p.groundU - 0.05
+  if highLift > roof then highLift = math.max(lowLift + 0.15, roof) end
+  -- A tyre climbs about half its radius; the body must also pass over whatever it climbs.
+  local step = math.max(0.05, math.min(0.5 * p.wheelRadius, overhang) - 0.03)
+  return {lowU = p.groundU + lowLift, highU = p.groundU + highLift, lowLift = lowLift,
+    highLift = highLift, step = step, measured = true}
+end
+
+function M.rayProfile(vehID, directionSign)
+  return rayProfileFor(vehID and cache[vehID], directionSign)
+end
+M.debugRayProfile = rayProfileFor
 
 -- The resolved cross-VM chunk, for diagnostics. This exists because a syntax error inside a
 -- queueLuaCommand string is invisible: it does not fail here, it fails later in another VM,

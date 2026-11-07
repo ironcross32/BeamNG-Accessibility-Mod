@@ -55,6 +55,7 @@ from poi_guidance import parse_poi_packet, poi_phrase
 import wheel_slip
 import wheel_report
 import audio_debug
+import fuel_stations
 import camera_lineup
 import gear_report
 import induction_report
@@ -5275,6 +5276,10 @@ _F9_HELP = {
     ("w", False, False, False): "Distance and bearing to waypoint",
     ("w", True, False, False): "Toggle route beacon",
     ("w", False, True, False): "Nearest point of interest",
+    ("f", False, True, False): (
+        "Fuel stations: choose one, park at a pump once there, or cancel parking"
+    ),
+    ("f", True, True, False): "List fuel stations",
     ("d", False, False, False): "Scanner distance and orientation",
     ("d", False, True, False): "Scanner relative bearing to target",
     ("d", True, False, False): "Toggle drift detection",
@@ -5847,6 +5852,28 @@ FUNCTION_ITEMS = [
         "w",
         shift=True,
         is_available=_world_is_active,
+    ),
+    # Handlers are lambdas: open_fuel_stations is defined further down than this catalog.
+    _function_item(
+        "Fuel stations",
+        "Waypoints",
+        handler=lambda: open_fuel_stations(force_list=True),
+        is_available=_world_is_active,
+    ),
+    _function_item(
+        "Park at a pump",
+        "Waypoints",
+        handler=lambda: open_fuel_stations(),
+        is_available=lambda: _world_is_active()
+        and _fuel_target_id is not None
+        and _fuel_in_range
+        and not _fuel_parking,
+    ),
+    _function_item(
+        "Cancel parking",
+        "Waypoints",
+        handler=lambda: open_fuel_stations(),
+        is_available=lambda: _fuel_parking,
     ),
     _function_item(
         "Redline RPM",
@@ -6463,6 +6490,202 @@ def open_hill_climb_history(start_index=0):
     )
 
 
+# ---------------------------------------------------------------------------------------------
+# Fuel stations (fuelStations.lua): F9 then Shift+F to choose, park, or cancel parking;
+# F9 then Ctrl+Shift+F always opens the list. See docs/lua-fuel-stations.md.
+# ---------------------------------------------------------------------------------------------
+_fuel_rows = []
+_fuel_building = None
+_fuel_pending = False  # the next row set opens the browser
+_fuel_timer = None
+_fuel_target_id = None
+_fuel_target_name = None
+_fuel_in_range = False
+_fuel_parking = False
+FUEL_REPLY_TIMEOUT_S = 2.5  # past the GE side's 1 s wait for the vehicle's tanks
+
+
+def _send_fuel_cmd(command):
+    try:
+        cmd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        cmd_sock.sendto(command.encode("utf-8"), ("127.0.0.1", FUEL_CMD_PORT))
+        cmd_sock.close()
+    except Exception as e:
+        logger.error(f"Failed to send fuel station command via UDP: {e}")
+
+
+def _fuel_cancel_timer():
+    global _fuel_timer
+    if _fuel_timer is not None:
+        try:
+            _fuel_timer.cancel()
+        except Exception:
+            pass
+        _fuel_timer = None
+
+
+def _fuel_arm_timer(seconds=FUEL_REPLY_TIMEOUT_S):
+    global _fuel_timer
+    _fuel_cancel_timer()
+    _fuel_timer = threading.Timer(seconds, _fuel_timed_out)
+    _fuel_timer.daemon = True
+    _fuel_timer.start()
+
+
+def _fuel_timed_out():
+    global _fuel_pending
+    if not _fuel_pending:
+        return
+    _fuel_pending = False
+    say("No response from the game", exclude_from_buffer=True)
+
+
+def _fuel_request_list():
+    global _fuel_pending
+    _fuel_pending = True
+    _fuel_arm_timer()
+    _send_fuel_cmd("LIST")
+
+
+def _fuel_open_browser():
+    """A fresh row set has landed and a browser was asked for (command worker)."""
+    global _fuel_pending
+    if not _fuel_pending:
+        return
+    _fuel_pending = False
+    _fuel_cancel_timer()
+    rows = list(_fuel_rows)
+    lines, data = [], []
+    if _fuel_target_id is not None:
+        lines.append(
+            f"Stop fuel station assistance for {_fuel_target_name or 'the station'}"
+        )
+        data.append(None)
+    for row in rows:
+        lines.append(fuel_stations.row_line(row, UNITS_MODE))
+        data.append(row)
+    if not rows:
+        say("No fuel stations found on this map", exclude_from_buffer=True)
+        if not lines:
+            return
+
+    def choose(_index, _line, row):
+        close_virtual_browser(speak_exit=False)
+        if row is None:
+            _send_fuel_cmd("CANCEL")
+        else:
+            _send_fuel_cmd(f"TARGET:{row['id']}")
+
+    count = len(rows)
+    title = f"Fuel stations, {count}" if count != 1 else "Fuel stations, 1"
+    open_virtual_browser(lines, title=title, on_enter=choose, entry_data=data)
+
+
+def open_fuel_stations(force_list=False):
+    """F9 then Shift+F: park when at the chosen station, cancel parking, or choose one."""
+    if not _world_is_active():
+        say("Fuel stations are only available while driving", exclude_from_buffer=True)
+        return
+    if not force_list:
+        if _fuel_parking:
+            _send_fuel_cmd("PARK_CANCEL")
+            return
+        if _fuel_target_id is not None and _fuel_in_range:
+            _send_fuel_cmd("PARK")
+            return
+    _fuel_request_list()
+
+
+def _fuel_on_event(data):
+    """Keep the little state the key needs, then say what happened (command worker)."""
+    global _fuel_target_id, _fuel_target_name, _fuel_in_range, _fuel_parking
+    kind = data.get("kind")
+    if kind == "target":
+        _fuel_target_id = data.get("id")
+        _fuel_target_name = data.get("station")
+        _fuel_in_range = bool(data.get("here"))
+    elif kind == "in_range":
+        _fuel_in_range = True
+    elif kind == "left_range":
+        _fuel_in_range = False
+    elif kind == "parking":
+        _fuel_parking = True
+    elif kind in ("parked", "park_failed", "park_refused", "park_cancelled"):
+        _fuel_parking = False
+    elif kind == "cancelled":
+        _fuel_target_id = _fuel_target_name = None
+        _fuel_in_range = _fuel_parking = False
+    elif kind == "scan_done":
+        # A new catalogue means a new level (or a reload): the old target is gone on that side.
+        _fuel_target_id = _fuel_target_name = None
+        _fuel_in_range = _fuel_parking = False
+    phrase = fuel_stations.event_phrase(data)
+    if phrase:
+        logger.info(f"Fuel stations: {kind}: {phrase}")
+        say(phrase, source="fuel_stations")
+
+
+def fuel_station_listener(stop_event):
+    """Rows and events from fuelStations.lua (port 4486).
+
+    Rows are swapped in whole on FS_END, like the environment browser's, so a browser never
+    sees a torn list. Events are spoken from the command worker, never from this thread.
+    """
+    global _fuel_rows, _fuel_building
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.bind(("127.0.0.1", FUEL_LISTEN_PORT))
+        sock.settimeout(0.2)
+        logger.info(f"Fuel station listener started on port {FUEL_LISTEN_PORT}")
+        while not stop_event.is_set():
+            try:
+                data, _addr = sock.recvfrom(4096)
+                text = data.decode("utf-8", errors="ignore").strip()
+                if not text:
+                    continue
+                if text == "FS_WAIT":
+                    # Still building the catalogue: say so once and keep waiting.
+                    if _fuel_pending:
+                        _fuel_arm_timer(8.0)
+                        say("Finding fuel stations", exclude_from_buffer=True)
+                    continue
+                if text.startswith("FS_BEGIN:"):
+                    _fuel_building = []
+                    continue
+                if text.startswith("FS_EVENT:"):
+                    try:
+                        _command_dispatch(_fuel_on_event, fuel_stations.parse_event(text))
+                    except ValueError as e:
+                        logger.warning(f"Malformed fuel station event: {e}")
+                    continue
+                if text.startswith("FS:"):
+                    if _fuel_building is None:
+                        continue
+                    try:
+                        _fuel_building.append(fuel_stations.parse_row(text))
+                    except ValueError as e:
+                        logger.warning(f"Malformed fuel station row: {e}")
+                    continue
+                if text == "FS_END":
+                    if _fuel_building is not None:
+                        _fuel_rows = _fuel_building
+                        _fuel_building = None
+                        _command_dispatch(_fuel_open_browser)
+                    continue
+            except socket.timeout:
+                continue
+            except OSError:
+                if stop_event.is_set():
+                    break
+                logger.error("Fuel station listener socket error.")
+    finally:
+        try:
+            sock.close()
+        except Exception:
+            pass
+        logger.info("Fuel station listener stopped.")
+
+
 def _present_hill_climb_result(summary, auto_open):
     if not auto_open or summary.get("status") != "completed":
         return
@@ -6566,6 +6789,8 @@ ROUTE_BEACON_LISTEN_PORT = (
 WHEEL_REPORT_LISTEN_PORT = (
     4485  # UDP port to receive every wheel's position, pressure and brake temperature
 )
+FUEL_LISTEN_PORT = 4486  # UDP port to receive station rows and events from fuelStations.lua
+FUEL_CMD_PORT = 4488  # UDP port to send LIST/TARGET/PARK/CANCEL to fuelStations.lua
 CAMERA_LINEUP_LISTEN_PORT = 4489  # free-camera line-up geometry from cameraLineup.lua
 # (4487 is taken by diagnostic/mcp_server_sim.py.) No command port: the mode, target and
 # mute live on this side, so cameraLineup.lua has nothing to be told.
@@ -8739,6 +8964,13 @@ def _on_next_key_press(event, audio_controller):
         threading.Thread(target=_do_hdump, daemon=True).start()
     elif name == "h":
         say(hdg)
+    elif (
+        name == "f"
+        and _capture_mods["shift"]
+        and not _capture_mods["alt"]
+    ):
+        # Ctrl+Shift+F always lists; Shift+F parks when at the chosen station.
+        open_fuel_stations(force_list=_capture_mods["ctrl"])
     elif name == "f":
         say(f"Fuel {fuel_pct} percent")
     elif name == "g":
@@ -10931,7 +11163,17 @@ def telemetry_loop(audio_controller, host="0.0.0.0", port=4444, stop_event=None)
                         # dispatching. F9 and F11 keep working, which is what makes it look
                         # like a Lua fault rather than a Python one.
                         in_cannon = cannon_active
-                        if not baseline_frame and not in_cannon:
+                        # Sport collapse applies to the tone as well as the speech, so a
+                        # silenced S1 -> S2 step skips the report outright.
+                        if (
+                            not baseline_frame
+                            and not in_cannon
+                            and not gear_report.sport_step_silenced(
+                                gear_str,
+                                last_gear_str,
+                                gear_report_settings["collapse_sport"],
+                            )
+                        ):
                             _report_gear_change(
                                 gear_report.extended_change_phrase(
                                     gear_str,
@@ -12204,6 +12446,11 @@ def _run_engine():
         target=route_beacon_listener, args=(STOP,), daemon=True
     )
     route_beacon_thread.start()
+
+    fuel_station_thread = threading.Thread(
+        target=fuel_station_listener, args=(STOP,), daemon=True
+    )
+    fuel_station_thread.start()
 
     camera_thread = threading.Thread(
         target=camera_listener, args=(audio_controller, STOP), daemon=True

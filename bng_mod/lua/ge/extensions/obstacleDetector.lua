@@ -265,6 +265,13 @@ local function beginSweep(player, playerFwd, playerUp, velocity)
   local travel = directionSign < 0 and -playerFwd or playerFwd
   local pathCentre = rotateVectorAroundAxis(travel, playerUp, centre):normalized()
   local halfWidth = entry and math.max(math.abs(entry.ext.minR), math.abs(entry.ext.maxR)) or 1.0
+  -- Ray heights come from the vehicle's own underside at the travelling end (vehicleGeometry's
+  -- rayProfile), the same figures every raycast in the mod uses. The fixed +/-0.2 m round the
+  -- reference node they replace put a BX's low ray almost on the road surface and a lifted
+  -- truck's both under its bumper. Unresolved geometry keeps those old offsets.
+  local rays = geom and geom.rayProfile and geom.rayProfile(player:getID(), directionSign)
+  local lowU = rays and rays.lowU or LOW_RAY_OFFSET
+  local highU = rays and rays.highU or HIGH_RAY_OFFSET
   local raySpecs = {}
   for _, bearing in ipairs(angles) do
     raySpecs[#raySpecs + 1] = {bearing = bearing, lateralOrigin = 0, kind = "fan"}
@@ -283,6 +290,7 @@ local function beginSweep(player, playerFwd, playerUp, velocity)
     travel = travel, pathCentre = pathCentre,
     pathLeft = playerUp:cross(pathCentre):normalized(),
     halfWidth = halfWidth,
+    lowU = lowU, highU = highU,
     maxRange = maximumRayRange(speed, parking, sensitivityName),
     lowHits = 0, confirmedHits = 0, pathHits = 0, classifiedHits = 0,
   }
@@ -314,8 +322,8 @@ local function performScan()
     local perimeter = perimeterDistance(ctx.ext, ctx.directionSign, bearing)
     local surfaceOrigin = playerPos + rayHorizontal * perimeter
       + ctx.pathLeft * raySpec.lateralOrigin
-    local lowOrigin = surfaceOrigin + playerUp * LOW_RAY_OFFSET
-    local highOrigin = surfaceOrigin + playerUp * HIGH_RAY_OFFSET
+    local lowOrigin = surfaceOrigin + playerUp * ctx.lowU
+    local highOrigin = surfaceOrigin + playerUp * ctx.highU
     local hitLow = castRayStatic(lowOrigin, rayDir, ctx.maxRange)
     if hitLow > 0 and hitLow < ctx.maxRange then
       ctx.lowHits = ctx.lowHits + 1

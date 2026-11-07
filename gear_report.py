@@ -199,6 +199,15 @@ def is_sport(gear_str):
     return s.startswith("S") and (len(s) == 1 or s[1:].isdigit())
 
 
+def sport_step_silenced(gear_str, prev_gear_str, collapse_sport):
+    """True for a sport-to-sport step (S1 -> S2) while sport collapse is on.
+
+    Collapse is one setting for both report modes: speech says "sport" once and the
+    tone plays once, on entry, and neither reports the steps the gearbox takes inside it.
+    """
+    return bool(collapse_sport) and is_sport(gear_str) and is_sport(prev_gear_str)
+
+
 def extended_change_phrase(
     gear_str, prev_gear_str, collapse_sport=False, number_style=DEFAULT_NUMBER_STYLE
 ):

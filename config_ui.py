@@ -662,17 +662,23 @@ class ConfigPanel(wx.ScrolledWindow):
         gear_mode_row.Add(self.choice_gear_mode, 1, wx.EXPAND)
         auto_sizer.Add(gear_mode_row, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 6)
 
-        # Speech options -- shown only while "As speech" is selected.
-        self._gear_speech_sizer = wx.BoxSizer(wx.VERTICAL)
+        # Shared by speech and audio -- shown while either is selected.
+        self._gear_sport_sizer = wx.BoxSizer(wx.VERTICAL)
         self.chk_gear_sport_once = wx.CheckBox(
-            sb_auto, label='Say only "Sport" for sport mode gears'
+            sb_auto, label="Report sport mode only once"
         )
         self.chk_gear_sport_once.SetToolTip(
-            "Say \"Sport\" once when you shift into sport mode, and stay silent while "
-            "the transmission steps through sport 1, sport 2 and so on, as a CVT does "
-            "on its own."
+            "Report sport mode once when you shift into it, as the word \"Sport\" or "
+            "one brighter tone, and stay silent while the transmission steps through "
+            "sport 1, sport 2 and so on, as a CVT does on its own."
         )
-        self._gear_speech_sizer.Add(self.chk_gear_sport_once, 0, wx.BOTTOM, 6)
+        self._gear_sport_sizer.Add(self.chk_gear_sport_once, 0)
+        auto_sizer.Add(
+            self._gear_sport_sizer, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM | wx.EXPAND, 6
+        )
+
+        # Speech options -- shown only while "As speech" is selected.
+        self._gear_speech_sizer = wx.BoxSizer(wx.VERTICAL)
         number_row = wx.BoxSizer(wx.HORIZONTAL)
         lbl_gear_number = wx.StaticText(sb_auto, label="Forward gears:")
         self.choice_gear_number_style = wx.Choice(
@@ -1643,8 +1649,14 @@ class ConfigPanel(wx.ScrolledWindow):
         """Show the speech options or the tone options, whichever the mode uses."""
         mode = self.choice_gear_mode.GetSelection()
         _set_row(
+            self._gear_sport_sizer,
+            (self.chk_gear_sport_once,),
+            mode in (1, 2),
+            self.choice_gear_mode,
+        )
+        _set_row(
             self._gear_speech_sizer,
-            (self.chk_gear_sport_once, self.choice_gear_number_style),
+            (self.choice_gear_number_style,),
             mode == 1,
             self.choice_gear_mode,
         )

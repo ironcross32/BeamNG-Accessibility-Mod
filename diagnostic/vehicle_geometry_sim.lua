@@ -818,7 +818,7 @@ print("12. every listening extension checks its bind, closes on unload, and retr
 do
   local LISTENERS = {
     "audioDebugAccessible", "beamtelAI", "bindingLearn", "cameraInfo", "clickspotAccessible", "consoleAccessible",
-    "environmentAccessible", "implementProximity", "nodeGrabberAccessible", "obstacleDetector",
+    "environmentAccessible", "fuelStations", "implementProximity", "nodeGrabberAccessible", "obstacleDetector",
     "roadDetector", "terrainScanner", "uiToggle", "vehicleBindings", "vehicleInfo",
     "vehicleScanner", "vehicleSlots", "vehicleSpawnerAccessible",
   }

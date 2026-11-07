@@ -43,6 +43,15 @@ parallel probes meet slopes and irregular solid surfaces at different depths; th
 the reported surface gap. A candidate must remain inside half the vehicle width plus 0.75 m from
 the predicted centreline. `castRayStatic` means moving traffic remains outside this detector.
 
+The low/high ray heights come from the vehicle itself: `vehicleGeometry.rayProfile` puts the low
+ray just under the lowest body at the travelling end (the front overhang forward, the rear in
+reverse) and the high ray 0.4 m above it, below the roof. These are measured from the tyre contact
+patch, using the vehicle's own nodes, so stock and modded vehicles alike are covered. The old fixed
+±0.2 m around the reference node put a BX's low ray about 3 cm above the road and a lifted truck's
+both under its bumper. Unresolved geometry still uses ±0.2 m. The fuel-station planner and parking
+look-ahead use the same figures. `diagnostic/obstacle_detector_sim.lua` checks a coupe, a truck and
+a low-roofed body, and runs inside the game.
+
 Driving ray reach is recomputed from speed and the selected advisory TTC, with 0.6 seconds of
 sweep/reaction reserve; it is also never shorter than the emergency stopping-distance reach.
 This prevents highway-speed casts from pinning at a short fixed range. Ctrl+L explicitly reloads

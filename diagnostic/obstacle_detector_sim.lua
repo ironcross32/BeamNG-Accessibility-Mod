@@ -117,4 +117,38 @@ check(packet:match("^1,1,20%.00,255,0%.20,") ~= nil,
 local commas = select(2, packet:gsub(",", ""))
 check(commas == 8, "extended packet must contain nine fields")
 
+-- Ray heights come from the vehicle's own underside (vehicleGeometry.rayProfile), shared with
+-- fuelStations and beamtelFuelPark. Checked against made-up vehicles, so it needs the
+-- extension loaded but no particular car.
+local geom = extensions and extensions.vehicleGeometry
+if geom and geom.debugRayProfile then
+  local fallback = geom.debugRayProfile(nil, 1)
+  check(not fallback.measured and near(fallback.lowU, -0.2) and near(fallback.highU, 0.2),
+    "unresolved geometry must keep the old +/-0.2 m offsets")
+  -- A low coupe: ground 0.17 m under the origin, front overhang 0.15 m off the ground.
+  local coupe = {ext = {maxU = 1.1}, profile = {groundU = -0.17, bodyLowU = -0.02,
+    frontLowU = -0.02, rearLowU = 0.04, wheelRadius = 0.3}}
+  local front = geom.debugRayProfile(coupe, 1)
+  check(near(front.lowLift, 0.13) and near(front.highLift, 0.53),
+    "the low ray must sit just under the front overhang, the high one 0.4 m above it")
+  check(near(front.lowU, -0.04), "ray offsets must be measured from the ground under the tyres")
+  check(near(front.step, 0.12), "a coupe's climbable step is its overhang, not half a wheel")
+  local rear = geom.debugRayProfile(coupe, -1)
+  check(rear.lowLift > front.lowLift, "reversing must use the rear overhang")
+  -- A lifted truck: overhang 0.6 m, big wheels, tall body.
+  local truck = {ext = {maxU = 2.0}, profile = {groundU = -0.6, bodyLowU = 0.0,
+    frontLowU = 0.0, rearLowU = 0.0, wheelRadius = 0.5}}
+  local t = geom.debugRayProfile(truck, 1)
+  check(near(t.lowLift, 0.58) and near(t.step, 0.22),
+    "a truck's rays rise with its bumper and its step is half a tyre")
+  -- A body whose roof is lower than the high ray would be: the high ray stays inside it.
+  local flat = {ext = {maxU = 0.3}, profile = {groundU = -0.1, bodyLowU = 0.0,
+    frontLowU = 0.0, rearLowU = 0.0, wheelRadius = 0.2}}
+  local f = geom.debugRayProfile(flat, 1)
+  check(f.highLift <= 0.35 + 1e-6 and f.highLift >= f.lowLift + 0.15 - 1e-6,
+    "the high ray must stay under the roof and above the low ray")
+else
+  print("vehicleGeometry not loaded: ray profile checks skipped")
+end
+
 print(string.format("obstacle detector simulation: %d checks passed", passed))

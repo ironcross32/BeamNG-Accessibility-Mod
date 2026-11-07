@@ -70,6 +70,23 @@ check(
 check("collapse leaves manual alone", replay(["D", "M1", "M2"], collapse_sport=True)
       == ["drive", "manual 1", "manual 2"])
 
+# 3b. The same collapse silences the tone: only the steps inside sport are dropped,
+#     so audio plays entry and exit exactly where speech speaks them.
+def tone_steps(gears, collapse_sport):
+    prev, out = None, []
+    for g in gears:
+        if not gr.sport_step_silenced(g, prev, collapse_sport):
+            out.append(g)
+        prev = g
+    return out
+
+
+check("tone collapse plays sport once per entry",
+      tone_steps(cvt, True) == ["D", "S1", "D", "S1", "N"], str(tone_steps(cvt, True)))
+check("tone collapse off plays every step", tone_steps(cvt, False) == cvt)
+check("tone collapse leaves manual alone",
+      tone_steps(["D", "M1", "M2"], True) == ["D", "M1", "M2"])
+
 # 4. OutGauge keeps its own encoding.
 check("outgauge", [gr.outgauge_change_phrase(b) for b in (0, 1, 2, 3)]
       == ["reverse", "neutral", "first", "second"])
