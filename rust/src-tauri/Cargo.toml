@@ -1,0 +1,43 @@
+[package]
+name = "beam-app"
+description = "BEAM application shell (Tauri 2): window, commands, events, dialogs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+build = "build.rs"
+
+[lib]
+name = "beam_app"
+path = "src/lib.rs"
+
+[[bin]]
+# The release asset and the updater both expect beamtel.exe.
+name = "beamtel"
+path = "src/main.rs"
+
+[features]
+default = []
+# Embed a manifest with requestedExecutionLevel = requireAdministrator. Off by default
+# so `cargo run` and the tests work from an ordinary shell; release builds turn it on:
+#   cargo build --release -p beam-app --features uac-admin
+uac-admin = []
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+# custom-protocol: always the production asset path (rust/ui embedded in the exe),
+# so a plain `cargo build --release` is a shippable exe. There is no dev server.
+tauri = { workspace = true, features = ["custom-protocol"] }
+serde.workspace = true
+serde_json.workspace = true
+log.workspace = true
+parking_lot.workspace = true
+beam-base.workspace = true
+beam-engine.workspace = true
+windows = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+] }

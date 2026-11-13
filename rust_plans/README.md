@@ -1,4 +1,4 @@
-# BEAM Rust port: plan index and status
+﻿# BEAM Rust port: plan index and status
 
 This directory is the complete plan for porting BEAM's Python application to Rust with a
 Tauri 2 shell and a semantic-HTML interface. It is written so a different model, or a
@@ -51,7 +51,7 @@ Update this table as work lands. One line per workstream from `04-workstreams.md
 
 | ID | Workstream | State | Notes |
 |----|-----------|-------|-------|
-| W0 | Scaffold workspace, Tauri shell, fixture harness, seed modules | not started | |
+| W0 | Scaffold workspace, Tauri shell, fixture harness, seed modules | done | builds, 22 tests pass, window opens; admin-elevated launch not yet checked |
 | B1 | beam-base: config, logger, secretstore, gear_report, AI registry | not started | |
 | B2 | beam-reports: pure report modules | not started | |
 | B3 | beam-road: road guidance, assistant, recorders | not started | |
@@ -70,7 +70,7 @@ Update this table as work lands. One line per workstream from `04-workstreams.md
 | E8 | Vehicle spawner | not started | |
 | E9 | UI bridge (WS 8765, TCP 8766) and MCP server | not started | |
 | E10 | Updater, mod installer | not started | |
-| U1 | Frontend: HTML, CSS, JS | not started | |
+| U1 | Frontend: HTML, CSS, JS | in progress | launched 2026-11-13, runs alongside W0 (touches only `rust/ui/`) |
 | U2 | Tauri backend: commands, events, console, logs menu, dialogs | not started | |
 | I1 | Integration: whole workspace builds, engine wired to shell | not started | |
 | V1 | Parity audits, module by module | not started | |

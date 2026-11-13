@@ -1,0 +1,19 @@
+[package]
+name = "beam-road"
+description = "Road guidance, driving assistant and recorders"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+beam-base.workspace = true
+beam-reports.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+indexmap.workspace = true
+log.workspace = true
+[dev-dependencies]
+beam-testutil.workspace = true
+tempfile.workspace = true

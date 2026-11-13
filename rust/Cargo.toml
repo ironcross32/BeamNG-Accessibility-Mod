@@ -1,0 +1,85 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/beam-base",
+    "crates/beam-reports",
+    "crates/beam-road",
+    "crates/beam-speech",
+    "crates/beam-audio",
+    "crates/beam-engine",
+    "crates/beam-testutil",
+    "src-tauri",
+    "xtask",
+]
+default-members = [
+    "crates/beam-base",
+    "crates/beam-reports",
+    "crates/beam-road",
+    "crates/beam-speech",
+    "crates/beam-audio",
+    "crates/beam-engine",
+    "crates/beam-testutil",
+    "src-tauri",
+    "xtask",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+publish = false
+
+[workspace.dependencies]
+# In-workspace crates
+beam-base = { path = "crates/beam-base" }
+beam-reports = { path = "crates/beam-reports" }
+beam-road = { path = "crates/beam-road" }
+beam-speech = { path = "crates/beam-speech" }
+beam-audio = { path = "crates/beam-audio" }
+beam-engine = { path = "crates/beam-engine" }
+beam-testutil = { path = "crates/beam-testutil" }
+
+# Data
+serde = { version = "1.0.229", features = ["derive"] }
+# preserve_order: dict insertion order is observable (config file, menus, JSON output).
+# float_roundtrip: parse floats exactly as Python does, at a small speed cost.
+serde_json = { version = "1.0.154", features = ["preserve_order", "float_roundtrip"] }
+indexmap = { version = "2.14.2", features = ["serde"] }
+
+# Concurrency and logging
+parking_lot = "0.13.0"
+crossbeam-channel = "0.5.17"
+log = { version = "0.4.35", features = ["std"] }
+
+# DSP
+rustfft = "6.4.1"
+realfft = "3.5.1"
+
+# Archives and images
+zip = { version = "9.5.1", default-features = false, features = ["deflate"] }
+png = "0.18.1"
+
+# Platform
+cpal = "0.18.2"
+windows = "0.62.2"
+libloading = "0.9.1"
+
+# Network
+ureq = { version = "3.5.2", features = ["json"] }
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "net", "sync", "time", "macros", "io-util"] }
+axum = { version = "0.8.9", features = ["ws"] }
+
+# Misc
+base64 = "0.23.1"
+regex = "1.13.1"
+tempfile = "3.27.0"
+
+# Application shell (Tauri 2; do not move to 3.x alphas)
+tauri = { version = "2.12.5", features = [] }
+tauri-build = { version = "2.7.4", features = [] }
+
+[profile.release]
+# Debug info off and LTO thin: the audio callback must meet its deadline in release.
+lto = "thin"
+codegen-units = 4

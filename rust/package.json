@@ -1,0 +1,11 @@
+{
+  "name": "beam-rust",
+  "private": true,
+  "description": "Tauri CLI for the BEAM Rust port. The frontend itself has no build step.",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.4"
+  }
+}

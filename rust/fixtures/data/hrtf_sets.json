@@ -1,0 +1,352 @@
+{
+ "DEFAULT_ELEVATION_DEG": {
+  "bits": 13837309855095848960,
+  "repr": "-3.0"
+ },
+ "DEFAULT_EQUALISE": true,
+ "DEFAULT_HRTF_SET": "mit_kemar",
+ "ELEVATION_MAX_DEG": {
+  "bits": 4621819117588971520,
+  "repr": "10.0"
+ },
+ "ELEVATION_MIN_DEG": {
+  "bits": 13849694754071117824,
+  "repr": "-20.0"
+ },
+ "available": [
+  [
+   "mit_kemar",
+   "MIT KEMAR",
+   "hrtf_mit_kemar.npz"
+  ],
+  [
+   "thk_ku100",
+   "Neumann KU100 (TH Köln)",
+   "hrtf_thk_ku100.npz"
+  ],
+  [
+   "sadie_kemar",
+   "KEMAR (SADIE II, University of York)",
+   "hrtf_sadie_kemar.npz"
+  ]
+ ],
+ "bundled": [
+  [
+   "mit_kemar",
+   "MIT KEMAR",
+   "hrtf_mit_kemar.npz"
+  ],
+  [
+   "thk_ku100",
+   "Neumann KU100 (TH Köln)",
+   "hrtf_thk_ku100.npz"
+  ],
+  [
+   "sadie_kemar",
+   "KEMAR (SADIE II, University of York)",
+   "hrtf_sadie_kemar.npz"
+  ]
+ ],
+ "clamp_elevation": [
+  {
+   "is_float": true,
+   "out": {
+    "bits": 13837309855095848960,
+    "repr": "-3.0"
+   },
+   "value": {
+    "bits": 13837309855095848960,
+    "repr": "-3.0"
+   }
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 0,
+    "repr": "0.0"
+   },
+   "value": 0
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 4617315517961601024,
+    "repr": "5.0"
+   },
+   "value": 5
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 13849694754071117824,
+    "repr": "-20.0"
+   },
+   "value": -20
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 4621819117588971520,
+    "repr": "10.0"
+   },
+   "value": 10
+  },
+  {
+   "is_float": true,
+   "out": {
+    "bits": 13849694754071117824,
+    "repr": "-20.0"
+   },
+   "value": {
+    "bits": 13849694782218615495,
+    "repr": "-20.0001"
+   }
+  },
+  {
+   "is_float": true,
+   "out": {
+    "bits": 4621819117588971520,
+    "repr": "10.0"
+   },
+   "value": {
+    "bits": 4621819173883966862,
+    "repr": "10.0001"
+   }
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 13849694754071117824,
+    "repr": "-20.0"
+   },
+   "value": -100
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 4621819117588971520,
+    "repr": "10.0"
+   },
+   "value": 100
+  },
+  {
+   "is_float": true,
+   "out": {
+    "bits": 9223372036854775808,
+    "repr": "-0.0"
+   },
+   "value": {
+    "bits": 9223372036854775808,
+    "repr": "-0.0"
+   }
+  },
+  {
+   "is_float": true,
+   "out": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   },
+   "value": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   },
+   "value": true
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 0,
+    "repr": "0.0"
+   },
+   "value": false
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 13837309855095848960,
+    "repr": "-3.0"
+   },
+   "value": null
+  },
+  {
+   "is_float": true,
+   "out": {
+    "bits": 13837309855095848960,
+    "repr": "-3.0"
+   },
+   "value": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   }
+  },
+  {
+   "is_float": true,
+   "out": {
+    "bits": 4621819117588971520,
+    "repr": "10.0"
+   },
+   "value": {
+    "bits": 9218868437227405312,
+    "repr": "inf"
+   }
+  },
+  {
+   "is_float": true,
+   "out": {
+    "bits": 13849694754071117824,
+    "repr": "-20.0"
+   },
+   "value": {
+    "bits": 18442240474082181120,
+    "repr": "-inf"
+   }
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 4616752568008179712,
+    "repr": "4.5"
+   },
+   "value": "4.5"
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 13842939354630062080,
+    "repr": "-7.0"
+   },
+   "value": " -7 "
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 13837309855095848960,
+    "repr": "-3.0"
+   },
+   "value": "abc"
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 13837309855095848960,
+    "repr": "-3.0"
+   },
+   "value": ""
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 13837309855095848960,
+    "repr": "-3.0"
+   },
+   "value": "nan"
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 4621819117588971520,
+    "repr": "10.0"
+   },
+   "value": "inf"
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 13849694754071117824,
+    "repr": "-20.0"
+   },
+   "value": "-inf"
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 4621819117588971520,
+    "repr": "10.0"
+   },
+   "value": "1_0"
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 13837309855095848960,
+    "repr": "-3.0"
+   },
+   "value": []
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 13837309855095848960,
+    "repr": "-3.0"
+   },
+   "value": {}
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 13837309855095848960,
+    "repr": "-3.0"
+   },
+   "value": [
+    1
+   ]
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 4621819117588971520,
+    "repr": "10.0"
+   },
+   "value": 9007199254740992
+  },
+  {
+   "is_float": false,
+   "out": {
+    "bits": 13849694754071117824,
+    "repr": "-20.0"
+   },
+   "value": -9007199254740992
+  }
+ ],
+ "resolve": [
+  {
+   "out": "mit_kemar",
+   "set_id": "mit_kemar"
+  },
+  {
+   "out": "thk_ku100",
+   "set_id": "thk_ku100"
+  },
+  {
+   "out": "sadie_kemar",
+   "set_id": "sadie_kemar"
+  },
+  {
+   "out": "mit_kemar",
+   "set_id": ""
+  },
+  {
+   "out": "mit_kemar",
+   "set_id": "MIT_KEMAR"
+  },
+  {
+   "out": "mit_kemar",
+   "set_id": "unknown"
+  },
+  {
+   "out": "mit_kemar",
+   "set_id": "mit_kemar "
+  },
+  {
+   "out": "mit_kemar",
+   "set_id": "hrtf_mit_kemar.npz"
+  }
+ ]
+}

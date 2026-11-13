@@ -1,0 +1,21 @@
+[package]
+name = "beam-audio"
+description = "Procedural audio, HRTF, controller and output callback"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+beam-base.workspace = true
+beam-reports.workspace = true
+cpal.workspace = true
+rustfft.workspace = true
+realfft.workspace = true
+zip.workspace = true
+parking_lot.workspace = true
+log.workspace = true
+serde_json.workspace = true
+[dev-dependencies]
+beam-testutil.workspace = true

@@ -66,6 +66,25 @@ These produce code that compiles, looks right and speaks the wrong number.
 | numpy RNG (`default_rng(seed)`) | PCG64 stream | Not reproduced. See "Noise" below |
 | Integer overflow | None | Use `i64`/`u64`, or checked maths where a wire value is untrusted |
 
+### What the scaffold established (read `rust/README.md` too)
+
+- `beam_base::pyfmt` already has `py_round`, `py_round0`, `try_py_int`, `py_float_str`,
+  `py_g`, `py_f`, `py_mod`, `py_float_parse`, `py_strip`, each with `try_` variants where
+  Python raises. Use them; add to them (with fixtures) rather than writing a local copy.
+- Float `%` is `py_mod`, not `rem_euclid`: Python gives `-0.0 % 360 == 0.0`.
+- `float(text)` on a wire field is `py_float_parse` (underscores, inf/nan, Python's
+  whitespace rules).
+- Where Python raises `ValueError`, return `beam_base::pyerr::ValueError` with the same
+  message, and let the caller do what the Python's `except` did.
+- Fixtures store floats as `{"bits", "repr"}` (`_common.fbits`); read with
+  `beam_testutil::f`, compare with `same_f64`. `beam_testutil::repo_root()` finds the
+  Python and Lua sources for sims that read them.
+- `beam-base` cannot depend on `beam-road`; `route_beacon` keeps a private, fixture-checked
+  copy of `direction_label`. `beam_road::road_guidance::direction_label` is canonical.
+- The app package is `beam-app` (binary `beamtel`); `ui/` is embedded at build time, so a
+  UI change needs a rebuild. Tauri is pinned to 2.x (crates.io also lists a 3.0 alpha).
+- Crate versions are in `rust/Cargo.toml`; note `ureq` is 3.x and `zip` is deflate-only.
+
 ### Noise
 
 A few waveforms are built from seeded numpy noise (the articulation centre click, the

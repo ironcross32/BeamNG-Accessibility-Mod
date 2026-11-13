@@ -1,0 +1,11 @@
+[package]
+name = "beam-testutil"
+description = "Test helpers: locate and load the golden fixtures in rust/fixtures/data"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde_json.workspace = true

@@ -1,0 +1,40 @@
+[package]
+name = "beam-engine"
+description = "The BEAM engine: everything in beamtel.py that is not the window"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+beam-base.workspace = true
+beam-reports.workspace = true
+beam-road.workspace = true
+beam-speech.workspace = true
+beam-audio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+indexmap.workspace = true
+parking_lot.workspace = true
+crossbeam-channel.workspace = true
+log.workspace = true
+regex.workspace = true
+base64.workspace = true
+png.workspace = true
+zip.workspace = true
+ureq.workspace = true
+tokio.workspace = true
+axum.workspace = true
+windows = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Threading",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_HiDpi",
+    "Win32_UI_WindowsAndMessaging",
+] }
+[dev-dependencies]
+beam-testutil.workspace = true
+tempfile.workspace = true
