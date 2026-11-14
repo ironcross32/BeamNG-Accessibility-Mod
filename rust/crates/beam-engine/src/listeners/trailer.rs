@@ -2,9 +2,8 @@
 //!
 //! STUB: signatures fixed by EA (every `pub fn` here is called from another module); bodies to be ported by E3.
 
-use crate::timer::Event;
-use crate::not_ported;
 use crate::state::{State, TRAILER_FULL_DEG, TRAILER_STALE_SEC};
+use crate::timer::Event;
 
 /// `trailer_angle_listener(stop_event)`. Runs until `stop_event` is set.
 pub fn trailer_angle_listener(stop_event: &Event) {

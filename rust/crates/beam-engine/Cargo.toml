@@ -1,4 +1,4 @@
-[package]
+﻿[package]
 name = "beam-engine"
 description = "The BEAM engine: everything in beamtel.py that is not the window"
 version.workspace = true
@@ -12,7 +12,7 @@ beam-base.workspace = true
 beam-reports.workspace = true
 beam-road.workspace = true
 beam-speech.workspace = true
-beam-audio.workspace = true
+# beam-audio.workspace = true  # TEMPORARY: re-enable at integration with compat::beam_audio removed (beam-audio did not compile when EA finished)
 serde.workspace = true
 serde_json.workspace = true
 indexmap.workspace = true

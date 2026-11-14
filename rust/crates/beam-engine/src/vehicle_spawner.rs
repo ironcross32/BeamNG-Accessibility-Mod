@@ -1,4 +1,4 @@
-//! Owner: E8. `vehicle_spawner.py`: the accessible vehicle spawner (F11 modal), placement
+﻿//! Owner: E8. `vehicle_spawner.py`: the accessible vehicle spawner (F11 modal), placement
 //! editor, its own UDP pair (4460/4461) and key handling.
 //!
 //! `init` takes what `_run_engine` injects (beamtel.py:12578-12591). STUB: signatures fixed
@@ -8,7 +8,6 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 
-use crate::not_ported;
 use crate::state::SlotInfo;
 
 /// `say_fn(text, interrupt=True, exclude_from_buffer=False, source="python")`.

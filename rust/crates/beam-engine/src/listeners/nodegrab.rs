@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use crate::compat::beam_audio::controller::AudioController;
 use crate::timer::Event;
-use crate::not_ported;
 
 /// `nodegrab_listener(audio_controller, stop_event)`. Runs until `stop_event` is set.
 pub fn nodegrab_listener(audio_controller: Arc<AudioController>, stop_event: &Event) {
@@ -16,7 +15,11 @@ pub fn nodegrab_listener(audio_controller: Arc<AudioController>, stop_event: &Ev
 
 /// `_send_nodegrab_cmd(command)` (port NODEGRAB_CMD_PORT).
 pub fn send_nodegrab_cmd(command: &str) {
-    crate::net::send_cmd(crate::net::NODEGRAB_CMD_PORT, command, "node grabber command");
+    crate::net::send_cmd(
+        crate::net::NODEGRAB_CMD_PORT,
+        command,
+        "node grabber command",
+    );
 }
 
 /// `toggle_nodegrab_mode(audio_controller)` (F9 Ctrl+N).

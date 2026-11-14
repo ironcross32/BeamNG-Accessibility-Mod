@@ -4,8 +4,6 @@
 //!
 //! STUB: signatures fixed by EA; bodies to be ported by E7.
 
-use crate::not_ported;
-
 /// `warp_cursor_to_viewport(view_x, view_y, view_w=0, view_h=0)`.
 pub fn warp_cursor_to_viewport(view_x: i64, view_y: i64, view_w: i64, view_h: i64) {
     let _ = (view_x, view_y, view_w, view_h);

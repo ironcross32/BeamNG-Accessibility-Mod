@@ -1,4 +1,4 @@
-//! Owner: E5. The generic virtual browser and buffer mode (`beamtel.py:6262-6459`).
+﻿//! Owner: E5. The generic virtual browser and buffer mode (`beamtel.py:6262-6459`).
 //!
 //! Callbacks (`OnEnter`, `OnAdjust`, `OnEscape` in `state`) are always invoked with no
 //! state guard held. Entry data is `serde_json::Value` (Python passes ints, dicts and None).
@@ -8,7 +8,6 @@
 use serde_json::Value;
 
 use crate::keyboard::KeyEvent;
-use crate::not_ported;
 use crate::state::{OnAdjust, OnEnter, OnEscape};
 
 /// The keyword arguments of `open_virtual_browser`.

@@ -25,17 +25,17 @@ use serde::Serialize;
 use serde_json::{Map, Value, json};
 
 use crate::compat::beam_audio::controller::AudioController;
-use crate::compat::beam_base::gear_report::{self, GearReportSettings};
-use crate::compat::beam_reports::camera_lineup::{self, Geometry};
 use crate::compat::beam_reports::drift_speech::DriftAnnouncer;
-use crate::compat::beam_reports::wheel_slip::{self, SlipDetector, SlipResult};
-use crate::compat::beam_road::assistant_diagnostics::AssistantDiagnosticRecorder;
 use crate::compat::beam_road::challenge_results::HillClimbChallengeRecorder;
 use crate::compat::beam_road::driving_assistant::{Callbacks, DrivingAssistant};
-use crate::compat::beam_road::road_diagnostics::RoadDiagnosticRecorder;
 use crate::compat::beam_road::road_guidance::RoadGuidanceFeed;
 use crate::timer::{Event, Timer, monotonic, time_time};
 use crate::units::{has_air_system, has_electric_drive, has_engine_temp};
+use beam_base::gear_report::{self, GearSettings};
+use beam_reports::camera_lineup::{self, Geometry};
+use beam_reports::wheel_slip::{self, SlipDetector, SlipResult};
+use beam_road::assistant_diagnostics::AssistantDiagnosticRecorder;
+use beam_road::road_diagnostics::RoadDiagnosticRecorder;
 
 // ---- Constants that sit in the shared-state section --------------------------------------
 
@@ -431,7 +431,7 @@ pub struct Settings {
     pub announce_speed: bool,
     /// Python keeps whatever the config held (normally an int); see engine-map bug 4.
     pub speed_announce_interval: f64,
-    pub gear_report_settings: GearReportSettings,
+    pub gear_report_settings: GearSettings,
     pub ui_nav_hold_suppression: bool,
     pub ai_describer_provider: String,
     pub ai_describer_settings: Map<String, Value>,
@@ -463,7 +463,10 @@ impl Default for Settings {
             announce_turn_signals: true,
             announce_speed: true,
             speed_announce_interval: 25.0,
-            gear_report_settings: gear_report::settings_from_config(&Map::new()),
+            gear_report_settings: gear_report::settings_from_config(
+                &beam_base::pyval::PyDict::new(),
+            )
+            .expect("gear_report.settings_from_config({}) cannot fail"),
             ui_nav_hold_suppression: true,
             ai_describer_provider: "gemini".to_string(),
             ai_describer_settings: Map::new(),
@@ -978,11 +981,7 @@ pub struct Slots {
     pub target_slot: Option<i64>,
 }
 
-static SLOTS: Mutex<Slots> = Mutex::new(Slots {
-    vehicle_slots: IndexMap::with_hasher(std::hash::RandomState::new()),
-    selected_slots: BTreeSet::new(),
-    target_slot: None,
-});
+static SLOTS: LazyLock<Mutex<Slots>> = LazyLock::new(|| Mutex::new(Slots::default()));
 
 /// `with _slots_lock:`.
 pub fn slots() -> MutexGuard<'static, Slots> {
@@ -1066,6 +1065,28 @@ pub fn driving_assistant() -> &'static DrivingAssistant {
 }
 
 // ---- Snapshot helpers (beamtel.py:4679-4876) ---------------------------------------------
+
+/// beam-road's Python-shaped JSON value as serde_json (NaN/inf floats become null).
+pub fn pyjson_to_json(v: &beam_road::pyjson::Value) -> Value {
+    use beam_road::pyjson::Value as P;
+    match v {
+        P::Null => Value::Null,
+        P::Bool(b) => Value::Bool(*b),
+        P::Int(i) => Value::from(*i),
+        P::BigInt(s) => s
+            .parse::<serde_json::Number>()
+            .map(Value::Number)
+            .unwrap_or(Value::Null),
+        P::Float(x) => jf(*x),
+        P::Str(s) => Value::String(s.clone()),
+        P::List(items) => Value::Array(items.iter().map(pyjson_to_json).collect()),
+        P::Dict(d) => Value::Object(
+            d.iter()
+                .map(|(k, v)| (k.clone(), pyjson_to_json(v)))
+                .collect(),
+        ),
+    }
+}
 
 /// `_world_is_active()` with the state already locked.
 pub fn world_is_active_in(st: &State) -> bool {
@@ -1304,16 +1325,23 @@ pub fn mcp_snapshot_state(sections: Option<&[&str]>) -> Value {
         }
     }
     if on("assistant") {
-        let mut snap = driving_assistant().snapshot();
+        let mut snap = driving_assistant().snapshot_json();
         if let Value::Object(m) = &mut snap {
-            m.insert("diagnostics".into(), assistant_diagnostics().status());
+            m.insert(
+                "diagnostics".into(),
+                pyjson_to_json(&assistant_diagnostics().status()),
+            );
         }
         out.insert("assistant".into(), snap);
     }
     if on("road") {
-        let mut snap = road_guidance_feed().snapshot();
+        let mut snap = road_guidance_feed().snapshot_json();
         let proximity = audio_controller_ref()
-            .map(|c| c.junction_proximity_snapshot())
+            .map(|c| {
+                crate::compat::beam_audio::controller::junction_proximity_snapshot_json(
+                    &c.junction_proximity_snapshot(),
+                )
+            })
             .unwrap_or(Value::Null);
         if let Value::Object(m) = &mut snap {
             m.insert("proximity_audio".into(), proximity);
@@ -1366,8 +1394,18 @@ mod tests {
     fn snapshot_has_every_python_section() {
         let snap = mcp_snapshot_state(None);
         for key in [
-            "telemetry", "position", "implement", "trailer", "dock", "cannon", "scanner",
-            "modes", "liveness", "assistant", "road", "slots",
+            "telemetry",
+            "position",
+            "implement",
+            "trailer",
+            "dock",
+            "cannon",
+            "scanner",
+            "modes",
+            "liveness",
+            "assistant",
+            "road",
+            "slots",
         ] {
             assert!(snap.get(key).is_some(), "missing {key}");
         }

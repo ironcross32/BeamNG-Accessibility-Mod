@@ -1,4 +1,4 @@
-//! Owner: E7. Screen capture shared by the AI Describer and the MCP screenshot tool
+﻿//! Owner: E7. Screen capture shared by the AI Describer and the MCP screenshot tool
 //! (`beamtel.py:9436-9601`): `_send_ui_command`, `_find_game_window`, `_raise_game_window`,
 //! `_window_region`, `capture_scene_png`. Holds `state::CAPTURE_LOCK` across the sequence.
 //!
@@ -7,7 +7,6 @@
 use serde_json::{Value, json};
 
 use crate::net::{UI_TOGGLE_CMD_PORT, send_cmd};
-use crate::not_ported;
 
 pub const UI_HIDE_SETTLE_S: f64 = 0.2;
 pub const GAME_FOCUS_SETTLE_S: f64 = 0.6;

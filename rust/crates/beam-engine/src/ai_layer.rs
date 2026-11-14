@@ -1,4 +1,4 @@
-//! Owner: E7. The F10 AI layer (`beamtel.py:5344-5390, 9366-9445, 9704-10315`):
+﻿//! Owner: E7. The F10 AI layer (`beamtel.py:5344-5390, 9366-9445, 9704-10315`):
 //! `_F10_HELP`, `_send_ai_command`, the driving assistant's callbacks, slots selection,
 //! presets, AI status readouts, `_on_ai_key_press`, `_start_ai_capture`.
 //!
@@ -12,7 +12,6 @@ use serde_json::Value;
 use crate::f9_commands::HelpKey;
 use crate::keyboard::KeyEvent;
 use crate::net::{AI_CMD_PORT, SLOT_CMD_PORT_OUT, send_cmd};
-use crate::not_ported;
 
 /// `_F10_HELP` (including the generated digit rows), in the Python's insertion order.
 pub static F10_HELP: LazyLock<IndexMap<HelpKey, String>> = LazyLock::new(IndexMap::new);
@@ -28,7 +27,7 @@ pub fn send_slot_command(cmd: &str) {
 }
 
 /// `_assistant_cue(kind, choices=())`, the driving assistant's cue callback.
-pub fn assistant_cue(kind: &str, choices: &[Value]) {
+pub fn assistant_cue(kind: &str, choices: &[String]) {
     let _ = (kind, choices);
     not_ported!("ai_layer::assistant_cue");
 }

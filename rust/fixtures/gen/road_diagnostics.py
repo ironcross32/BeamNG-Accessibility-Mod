@@ -148,17 +148,17 @@ def recorder_case(rnd):
             rec = rd.RoadDiagnosticRecorder(tmp, clock=lambda: clock[0], wall_clock=lambda: wall[0])
             label = rnd.choice(["hill / climb", "", "--x--", "Ünïcode label", "a" * 60])
             start = rec.start(label)
-            script.append({"op": "start", "label": label, "out": json.dumps(start).replace(tmp.replace("\\", "\\\\"), "<DIR>")})
+            script.append({"clock": fbits(clock[0]), "wall": fbits(wall[0]), "op": "start", "label": label, "out": json.dumps(start).replace(tmp.replace("\\", "\\\\"), "<DIR>")})
             for row in rows:
                 clock[0] += 0.05
                 wall[0] += 0.05
                 if row["kind"] == "marker":
                     note = row.get("note") if isinstance(row.get("note"), str) else "note é"
                     out = rec.mark(note)
-                    script.append({"op": "mark", "note": note, "out": json.dumps(out).replace(tmp.replace("\\", "\\\\"), "<DIR>")})
+                    script.append({"clock": fbits(clock[0]), "wall": fbits(wall[0]), "op": "mark", "note": note, "out": json.dumps(out).replace(tmp.replace("\\", "\\\\"), "<DIR>")})
                 elif row["kind"] == "sample":
                     ok = rec.record(row["road"], row["telemetry"], row["audio"])
-                    script.append({"op": "record", "road": json.dumps(row["road"]),
+                    script.append({"clock": fbits(clock[0]), "wall": fbits(wall[0]), "op": "record", "road": json.dumps(row["road"]),
                                    "telemetry": json.dumps(row["telemetry"]),
                                    "audio": json.dumps(row["audio"]), "out": ok})
             clock[0] += 0.05
@@ -168,7 +168,7 @@ def recorder_case(rnd):
             for name in names:
                 with open(os.path.join(tmp, name), "rb") as fh:
                     files[name] = fh.read().decode("utf-8").replace(tmp.replace("\\", "\\\\"), "<DIR>")
-            script.append({"op": "stop", "out": json.dumps(summary).replace(tmp.replace("\\", "\\\\"), "<DIR>")})
+            script.append({"clock": fbits(clock[0]), "wall": fbits(wall[0]), "op": "stop", "out": json.dumps(summary).replace(tmp.replace("\\", "\\\\"), "<DIR>")})
     return {"clock0": fbits(100.0), "wall0": fbits(1788480000.25), "script": script, "files": files}
 
 

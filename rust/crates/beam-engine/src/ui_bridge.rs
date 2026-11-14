@@ -10,8 +10,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use parking_lot::RwLock;
 use serde_json::Value;
 
-use crate::not_ported;
-
 /// The speak function the bridge calls (`speak_func(text, interrupt=True)`).
 pub type SpeakFunc = Arc<dyn Fn(&str, bool) + Send + Sync>;
 /// `stop()` returned by `start_server_in_thread`.

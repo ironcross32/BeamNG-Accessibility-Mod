@@ -5,10 +5,9 @@
 use std::sync::Arc;
 
 use crate::compat::beam_audio::controller::AudioController;
-use crate::timer::Event;
-use crate::not_ported;
-use beam_base::pyerr::ValueError;
 use crate::state::State;
+use crate::timer::Event;
+use beam_base::pyerr::ValueError;
 
 /// `parse_obstacle_packet(text)`'s result.
 #[derive(Debug, Clone, PartialEq)]
@@ -36,7 +35,11 @@ pub fn obstacle_listener(audio_controller: Arc<AudioController>, stop_event: &Ev
 
 /// `_send_obstacle_command(command)` (port OBSTACLE_CMD_PORT).
 pub fn send_obstacle_command(command: &str) -> bool {
-    crate::net::send_cmd(crate::net::OBSTACLE_CMD_PORT, command, "obstacle detector command")
+    crate::net::send_cmd(
+        crate::net::OBSTACLE_CMD_PORT,
+        command,
+        "obstacle detector command",
+    )
 }
 
 /// `_push_obstacle_state(force=False, gear=None)`. Called with `state_lock` held by the telemetry loop.

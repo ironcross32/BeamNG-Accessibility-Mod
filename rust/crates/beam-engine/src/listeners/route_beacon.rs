@@ -5,9 +5,8 @@
 use std::sync::Arc;
 
 use crate::compat::beam_audio::controller::AudioController;
-use crate::timer::Event;
-use crate::not_ported;
 use crate::state::{ROUTE_STALE_SEC, State};
+use crate::timer::Event;
 
 /// `route_beacon_listener(stop_event)`. Runs until `stop_event` is set.
 pub fn route_beacon_listener(stop_event: &Event) {

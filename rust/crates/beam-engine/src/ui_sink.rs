@@ -141,7 +141,9 @@ impl UiSink for RecordingSink {
         self.events.lock().push(UiEvent::Log(line.to_string()));
     }
     fn console_message(&self, record: &str) {
-        self.events.lock().push(UiEvent::Console(record.to_string()));
+        self.events
+            .lock()
+            .push(UiEvent::Console(record.to_string()));
     }
     fn message_box(&self, msg: &MessageBox) -> Answer {
         self.events.lock().push(UiEvent::MessageBox(msg.clone()));
@@ -164,8 +166,7 @@ impl UiSink for RecordingSink {
     }
 }
 
-static SINK: LazyLock<RwLock<Arc<dyn UiSink>>> =
-    LazyLock::new(|| RwLock::new(Arc::new(NullSink)));
+static SINK: LazyLock<RwLock<Arc<dyn UiSink>>> = LazyLock::new(|| RwLock::new(Arc::new(NullSink)));
 
 /// Install the window's sink (U2, at setup). Replaces the previous one.
 pub fn set_ui_sink(sink: Arc<dyn UiSink>) {

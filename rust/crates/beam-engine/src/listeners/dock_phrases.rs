@@ -1,8 +1,7 @@
-//! Owner: E3. Implement, dock, ramp and cannon phrasing and their constants (`beamtel.py:1480-2115`). Pure functions over `state::DockReading`, `state::RampSelf`, `state::CannonShot`..
+﻿//! Owner: E3. Implement, dock, ramp and cannon phrasing and their constants (`beamtel.py:1480-2115`). Pure functions over `state::DockReading`, `state::RampSelf`, `state::CannonShot`..
 //!
 //! STUB: signatures fixed by EA (every `pub fn` here is called from another module); bodies to be ported by E3.
 
-use crate::not_ported;
 use crate::state::{CannonShot, DockReading, RampSelf};
 
 pub const IMPL_DOCK_LEVEL_M: f64 = 0.05;

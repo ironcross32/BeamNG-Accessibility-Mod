@@ -1,4 +1,4 @@
-//! Owner: E5. Status metrics and rows, function items, the controller accessibility menu
+﻿//! Owner: E5. Status metrics and rows, function items, the controller accessibility menu
 //! navigator and status mode (`beamtel.py:5411-5974, 6036-6260`).
 //!
 //! `STATUS_METRICS` and `FUNCTION_ITEMS` are catalogs of closures. In Rust the closures take
@@ -11,7 +11,6 @@
 use std::sync::Arc;
 
 use crate::keyboard::KeyEvent;
-use crate::not_ported;
 use crate::state::State;
 use crate::units::PyVal;
 

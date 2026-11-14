@@ -1,4 +1,4 @@
-//! Owner: E4. The accessible developer console's engine half (`beamtel.py:6806-6898`):
+﻿//! Owner: E4. The accessible developer console's engine half (`beamtel.py:6806-6898`):
 //! command history persistence, the MCP console tap, `send_console_command` and the
 //! console listener. Records go to the window through `UiSink::console_message`
 //! (`wx.CallAfter(console_frame.on_console_message, text)`); U2 parses them.
@@ -11,7 +11,6 @@ use std::sync::Arc;
 use parking_lot::RwLock;
 
 use crate::net::{CONSOLE_CMD_PORT, send_cmd};
-use crate::not_ported;
 use crate::timer::Event;
 
 /// `CONSOLE_HISTORY_MAX`.

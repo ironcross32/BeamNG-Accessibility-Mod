@@ -59,7 +59,7 @@ Update this table as work lands. One line per workstream from `04-workstreams.md
 | AH | beam-audio: hrtf, terrain scan render, waveform generators | in progress | |
 | AA | beam-audio: controller state, API, device, callback skeleton | done | split in `audio-callback-split.md`; crate builds once AH lands `waveforms.rs`; scanner diag hookup and device run untested |
 | A1-A3 | beam-audio: callback voices | not started | split decided by AA |
-| EA | beam-engine: skeleton, shared state, say(), units, engine start | in progress | |
+| EA | beam-engine: skeleton, shared state, say(), units, engine start | done | 20 tests; `engine-map.md` covers all 848 top-level statements. beam-audio dependency is commented out in beam-engine/Cargo.toml with stand-ins in `compat.rs` until AH lands waveforms: undo at I1 |
 | E1 | Telemetry decode and telemetry loop | not started | |
 | E2 | Listeners A: scanner, obstacle, road, hill climb, fuel | not started | |
 | E3 | Implement, dock, ramp, cannon, terrain scan, line-up, trailer, wheel, beacon | not started | |

@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use crate::compat::beam_audio::controller::AudioController;
 use crate::timer::Event;
-use crate::not_ported;
 
 /// `implement_listener(audio_controller, stop_event)`. Runs until `stop_event` is set.
 pub fn implement_listener(audio_controller: Arc<AudioController>, stop_event: &Event) {
@@ -16,5 +15,9 @@ pub fn implement_listener(audio_controller: Arc<AudioController>, stop_event: &E
 
 /// `_send_implement_cmd(command)` (port IMPLEMENT_CMD_PORT).
 pub fn send_implement_cmd(command: &str) {
-    crate::net::send_cmd(crate::net::IMPLEMENT_CMD_PORT, command, "implement proximity command");
+    crate::net::send_cmd(
+        crate::net::IMPLEMENT_CMD_PORT,
+        command,
+        "implement proximity command",
+    );
 }

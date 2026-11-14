@@ -5,9 +5,8 @@
 use std::sync::Arc;
 
 use crate::compat::beam_audio::controller::AudioController;
-use crate::timer::Event;
-use crate::not_ported;
 use crate::state::State;
+use crate::timer::Event;
 
 /// `scanner_listener(audio_controller, stop_event)`. Runs until `stop_event` is set.
 pub fn scanner_listener(audio_controller: Arc<AudioController>, stop_event: &Event) {

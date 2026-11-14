@@ -1,4 +1,4 @@
-# beamtel.py -> beam-engine: the engine map
+﻿# beamtel.py -> beam-engine: the engine map
 
 Written by EA. Every top-level statement of `beamtel.py` (12,677 lines on `rust-port`) is in
 the table at the bottom: its line, kind, Python name, the Rust module it goes to, and the
@@ -102,8 +102,18 @@ let active = state().scanner.scan_mode_active;
   `RecordingSink` for tests.
 * `engine`: `run_engine`, `apply_live_config`, `config_watcher`, `broadcast_ui_settings`,
   `LaunchGate`, the Shift check, the game launch, the shutdown sequence, signals.
-* `compat`: TEMPORARY shims for every item of another crate that the engine calls, at the
-  path the naming rule gives the real item. Delete at integration (see the file's header).
+* `compat`: TEMPORARY shims, only for the items whose real crate could not be used when EA
+  finished: `AudioController` (beam-audio did not compile; the shim copies the real
+  signatures, and **beam-engine's dependency on beam-audio is commented out in its
+  Cargo.toml until integration**), and `DrivingAssistant`, `RoadGuidanceFeed`,
+  `HillClimbChallengeRecorder`, `DriftAnnouncer` (real types exist; their constructors and
+  typed snapshots need adapters in `state.rs`). Everything else (config, gear_report,
+  secretstore, ai_registry, road_guidance functions, wheel_report, wheel_slip, camera_lineup,
+  audio_debug, fuel_stations, induction_report, poi_guidance, assistant_route, the diagnostic
+  recorders, beam-speech) is called from the real crates directly. Wave-2 agents: call real
+  crates, and use `crate::compat::beam_audio::controller::AudioController` for audio until
+  integration swaps the path. `state::pyjson_to_json` converts beam-road's Python-shaped JSON.
+* `engine::after_main_loop` calls `beam_speech::speech::atexit()` once on exit.
 
 ## 3. The command senders
 
@@ -251,9 +261,7 @@ balance:
 2. `ui_listener` and `console_listener` end on **any** `OSError` from `recvfrom`
    (`except OSError: break`), including a datagram larger than the buffer (WSAEMSGSIZE) or
    WSAECONNRESET. Toasts / the console then stop for the session.
-3. `_run_engine` reads `cfg.get("beamng_renderer", "d3d")`, a key that is not in either
-   `DEFAULT_CONFIG` and has no UI control, so the launch always passes `-gfx dx11` unless the
-   file was hand-edited to `"vulkan"`.
+3. The loading "ready" cue is demoted by its own protection window: `_finish_loading_settle` sets `_speech_protected_until` and then calls `say(..., source="loading_lifecycle")`, which the protection check turns into `interrupt=False`. Harmless (it queues), but probably not intended. (`beamng_renderer` is read with a `"d3d"` default and is absent from beamtel's `DEFAULT_CONFIG`; the configurator writes it, so that is not a bug.)
 4. `speed_announce_interval` and `scanner_distance_callout_interval` are taken from the config
    uncoerced. A non-number there raises `TypeError` in `get_speed_bucket` inside the
    telemetry loop (killing the engine thread, and with it the app's telemetry) or in the
@@ -830,10 +838,10 @@ Kinds: `def`, `class`, `global` (module-level assignment; one row per name bound
 | 5041 | global | `audio_controller_ref` | state | EA |
 | 5044 | global | `_vehicle_spawner` | state | EA |
 | 5049-5057 | stmt | `try: import keyboard (KEYBOARD_OK)` | keyboard/mod.rs (KEYBOARD_OK, command worker) | E5 |
-| 5059 | global | `next_key_timer` | keyboard/mod.rs (KEYBOARD_OK, command worker) | E5 |
+| 5059 | global | `next_key_timer` | state (State::kb) | E5 |
 | 5060 | global | `command_timeout_sec` | keyboard/mod.rs (KEYBOARD_OK, command worker) | E5 |
-| 5061 | global | `_capture_mods` | keyboard/mod.rs (KEYBOARD_OK, command worker) | E5 |
-| 5063 | global | `_input_help_mode` | keyboard/mod.rs (KEYBOARD_OK, command worker) | E5 |
+| 5061 | global | `_capture_mods` | state (State::kb) | E5/E6 |
+| 5063 | global | `_input_help_mode` | state (State::kb) | E5/E6/E7 |
 | 5086 | global | `_command_queue` | keyboard/mod.rs (KEYBOARD_OK, command worker) | E5 |
 | 5087 | global | `_command_worker_thread` | keyboard/mod.rs (KEYBOARD_OK, command worker) | E5 |
 | 5090-5101 | class | `_SynthKeyEvent` | keyboard/mod.rs (KEYBOARD_OK, command worker) | E5 |

@@ -158,7 +158,9 @@ impl UdpListener {
         bufsize: usize,
     ) -> io::Result<UdpListener> {
         let sock = UdpSocket::bind((host, port))?;
-        sock.set_read_timeout(Some(secs(timeout_s).max(std::time::Duration::from_millis(1))))?;
+        sock.set_read_timeout(Some(
+            secs(timeout_s).max(std::time::Duration::from_millis(1)),
+        ))?;
         Ok(UdpListener {
             sock,
             buf: vec![0u8; bufsize.max(1)],
@@ -174,7 +176,12 @@ impl UdpListener {
     pub fn recv(&mut self) -> Recv<'_> {
         match self.sock.recv_from(&mut self.buf) {
             Ok((n, addr)) => Recv::Data(&self.buf[..n], addr),
-            Err(e) if matches!(e.kind(), io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut) => {
+            Err(e)
+                if matches!(
+                    e.kind(),
+                    io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut
+                ) =>
+            {
                 Recv::Timeout
             }
             Err(e) => Recv::Error(e),

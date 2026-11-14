@@ -1,4 +1,4 @@
-﻿//! Owner: EA. Speech output (`beamtel.py:153-170, 299-502`): `say()`, the replay buffer,
+//! Owner: EA. Speech output (`beamtel.py:153-170, 299-502`): `say()`, the replay buffer,
 //! the speech tap, the speech log file and the loading lifecycle.
 //!
 //! None of this lives in `state::State`, because `say()` is called while `state_lock` is
@@ -19,8 +19,8 @@ use regex::Regex;
 use serde::Serialize;
 use serde_json::Value;
 
-use beam_speech::speech;
 use crate::timer::{Timer, local_hms_millis, monotonic, time_time};
+use beam_speech::speech;
 
 /// `SPEECH_BUFFER = deque(maxlen=100)`: what the user can replay.
 pub const SPEECH_BUFFER_MAXLEN: usize = 100;
@@ -90,9 +90,8 @@ type SpeakFn = Box<dyn Fn(&str, bool) + Send + Sync>;
 /// Test seam: replaces `speech.speak` (sims patch it the same way in Python).
 static SPEAK_OVERRIDE: RwLock<Option<SpeakFn>> = RwLock::new(None);
 
-static TABLE_POINTER: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)^table:\s*0x[0-9a-f]+$").expect("static regex")
-});
+static TABLE_POINTER: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?i)^table:\s*0x[0-9a-f]+$").expect("static regex"));
 
 /// `SPEECH_LOG_PATH`.
 pub fn speech_log_path() -> PathBuf {
@@ -358,7 +357,10 @@ fn say_normalized(normalized: &str, interrupt: bool, exclude_from_buffer: bool, 
 
     // Background threads must not cut through a protected vehicle-name announcement.
     // Command context always interrupts normally, as does UI navigation speech.
-    if interrupt && !command_context() && source != "ui_bridge" && monotonic() < speech_protected_until()
+    if interrupt
+        && !command_context()
+        && source != "ui_bridge"
+        && monotonic() < speech_protected_until()
     {
         interrupt = false;
     }
@@ -461,7 +463,11 @@ pub fn get_speech_log(
     if let Some(n) = last_n.filter(|n| *n != 0) {
         // entries[-n:]
         let len = entries.len() as i64;
-        let start = if n > 0 { (len - n).max(0) } else { (-n).min(len) };
+        let start = if n > 0 {
+            (len - n).max(0)
+        } else {
+            (-n).min(len)
+        };
         entries = entries.split_off(start as usize);
     }
     SpeechLog {
@@ -628,14 +634,20 @@ mod tests {
                 .collect();
             assert_eq!(Value::Array(got_spoken), c["spoken"], "{name}: spoken");
             assert_eq!(Value::Array(tap_view()), c["tap"], "{name}: tap");
-            let buf: Vec<Value> = speech_buffer_snapshot().into_iter().map(Value::from).collect();
+            let buf: Vec<Value> = speech_buffer_snapshot()
+                .into_iter()
+                .map(Value::from)
+                .collect();
             assert_eq!(Value::Array(buf), c["buffer"], "{name}: buffer");
         }
         reset_for_tests();
         for i in 0..105 {
             say_plain(&format!("line {i}"));
         }
-        let buf: Vec<Value> = speech_buffer_snapshot().into_iter().map(Value::from).collect();
+        let buf: Vec<Value> = speech_buffer_snapshot()
+            .into_iter()
+            .map(Value::from)
+            .collect();
         assert_eq!(Value::Array(buf), fx["buffer_overflow"]);
         assert_eq!(speech_buffer_recent(1).as_deref(), Some("line 104"));
         assert_eq!(speech_buffer_recent(101), None);
@@ -654,7 +666,9 @@ mod tests {
             last_n,
             q.get("source").and_then(Value::as_str),
             q.get("contains").and_then(Value::as_str),
-            q.get("spoken_only").and_then(Value::as_bool).unwrap_or(false),
+            q.get("spoken_only")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
         )
     }
 
@@ -679,7 +693,11 @@ mod tests {
         for i in 0..30u64 {
             let text = format!("Entry {i} {}", if i % 3 == 0 { "Alpha" } else { "beta" });
             let source = if i % 2 == 0 { "python" } else { "ui_bridge" };
-            let reason = if i % 7 != 0 { None } else { Some("loading_suppressed") };
+            let reason = if i % 7 != 0 {
+                None
+            } else {
+                Some("loading_suppressed")
+            };
             speech_tap_record(&text, source, i % 4 != 0, i % 5 == 0, i % 7 != 0, reason);
         }
         let all = get_speech_log(None, Some(0), None, None, false);
@@ -728,7 +746,9 @@ mod tests {
         let got = spoken.lock().clone();
         assert_eq!(
             got,
-            vec![("Loading".to_string(), true), ("Pickup".to_string(), true)]
+            // The ready cue is demoted by the protection window it has just opened itself,
+            // exactly as in the Python (protect, then say).
+            vec![("Loading".to_string(), true), ("Pickup".to_string(), false)]
         );
         assert!(speech_protected_until() > monotonic());
         let log = get_speech_log(None, Some(0), None, None, false);

@@ -41,8 +41,7 @@ pub const TELEMETRY_HAS_ENGINE_TEMP: i64 = 1 << 7;
 pub const TELEMETRY_HAS_ELECTRIC: i64 = 1 << 8;
 pub const TELEMETRY_HAS_AIR: i64 = 1 << 9;
 
-static UNITS_MODE: LazyLock<RwLock<String>> =
-    LazyLock::new(|| RwLock::new("imperial".to_string()));
+static UNITS_MODE: LazyLock<RwLock<String>> = LazyLock::new(|| RwLock::new("imperial".to_string()));
 
 /// The `UNITS_MODE` global ("imperial" or "metric"; whatever the config said, in fact).
 pub fn units_mode() -> String {
@@ -384,7 +383,11 @@ mod tests {
                 let (val, unit) = got.unwrap_or_else(|_| panic!("{case}: Rust panicked"));
                 assert_eq!(unit, out["unit"].as_str().unwrap(), "{case}");
                 check_val(&case, &val, &out["val"]);
-                assert_eq!(format!("{val} {unit}"), out["text"].as_str().unwrap(), "{case}");
+                assert_eq!(
+                    format!("{val} {unit}"),
+                    out["text"].as_str().unwrap(),
+                    "{case}"
+                );
             }
         }
         std::panic::set_hook(prev);
@@ -434,9 +437,21 @@ mod tests {
             st.tel.last_odometer_m = f(&c["odo"]);
             let case = format!("{c}");
             assert_eq!(has_air_system(&st), c["air"].as_bool().unwrap(), "{case}");
-            assert_eq!(has_stored_mileage(&st), c["mileage"].as_bool().unwrap(), "{case}");
-            assert_eq!(has_engine_temp(&st), c["engine_temp"].as_bool().unwrap(), "{case}");
-            assert_eq!(has_electric_drive(&st), c["electric"].as_bool().unwrap(), "{case}");
+            assert_eq!(
+                has_stored_mileage(&st),
+                c["mileage"].as_bool().unwrap(),
+                "{case}"
+            );
+            assert_eq!(
+                has_engine_temp(&st),
+                c["engine_temp"].as_bool().unwrap(),
+                "{case}"
+            );
+            assert_eq!(
+                has_electric_drive(&st),
+                c["electric"].as_bool().unwrap(),
+                "{case}"
+            );
         }
         set_units_mode("imperial");
         let flips: Vec<String> = (0..3)

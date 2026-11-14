@@ -1,4 +1,4 @@
-//! Owner: E4. The browsers built on listener data (`beamtel.py:7545-7570, 7603-8256`):
+﻿//! Owner: E4. The browsers built on listener data (`beamtel.py:7545-7570, 7603-8256`):
 //! vehicle bindings, vehicle information and page text (with their bounded waits), the
 //! environment browser (edits, timeout, refresh), the forced-induction and ambient
 //! temperature readouts, the audio-debug engine and sound-library browsers, and the
@@ -7,7 +7,6 @@
 //! STUB: signatures fixed by EA; bodies to be ported by E4.
 
 use crate::net::{AUDIO_DEBUG_CMD_PORT, ENV_CMD_PORT, send_cmd};
-use crate::not_ported;
 
 /// A `(code, sentence)` failure, as `request_vehicle_info` / `request_page_text` return it.
 pub type Failure = (String, String);

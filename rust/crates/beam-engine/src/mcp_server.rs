@@ -9,7 +9,6 @@ use indexmap::IndexMap;
 use serde_json::Value;
 
 use crate::f9_commands::HelpKey;
-use crate::not_ported;
 use crate::speech_out::SpeechLog;
 
 pub const HOST: &str = "127.0.0.1";
@@ -18,8 +17,9 @@ pub const DEFAULT_PORT: u16 = 4481;
 /// `say_fn(text, interrupt=True)`.
 pub type SayFn = Arc<dyn Fn(&str, bool) + Send + Sync>;
 /// `get_speech_log_fn(since_seq, last_n, source, contains, spoken_only)`.
-pub type SpeechLogFn =
-    Arc<dyn Fn(Option<i64>, Option<i64>, Option<&str>, Option<&str>, bool) -> SpeechLog + Send + Sync>;
+pub type SpeechLogFn = Arc<
+    dyn Fn(Option<i64>, Option<i64>, Option<&str>, Option<&str>, bool) -> SpeechLog + Send + Sync,
+>;
 /// `snapshot_state_fn(sections)`.
 pub type SnapshotFn = Arc<dyn Fn(Option<&[&str]>) -> Value + Send + Sync>;
 /// `load_config_fn()`.

@@ -3,13 +3,16 @@
 //! STUB: signatures fixed by EA (every `pub fn` here is called from another module); bodies to be ported by E4.
 
 use crate::timer::Event;
-use crate::not_ported;
 
 pub const BINDING_LEARN_KEEPALIVE_S: f64 = 1.0;
 
 /// `_send_binding_learn_cmd(command)` (port BINDING_LEARN_CMD_PORT).
 pub fn send_binding_learn_cmd(command: &str) {
-    crate::net::send_cmd(crate::net::BINDING_LEARN_CMD_PORT, command, "binding learn command");
+    crate::net::send_cmd(
+        crate::net::BINDING_LEARN_CMD_PORT,
+        command,
+        "binding learn command",
+    );
 }
 
 /// `toggle_binding_learn_mode()` (F9 Shift+B).

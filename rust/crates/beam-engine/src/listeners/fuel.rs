@@ -1,9 +1,8 @@
-//! Owner: E2. Fuel stations: listener, timers, browser, events and the key (`beamtel.py:6497-6690`).
+﻿//! Owner: E2. Fuel stations: listener, timers, browser, events and the key (`beamtel.py:6497-6690`).
 //!
 //! STUB: signatures fixed by EA (every `pub fn` here is called from another module); bodies to be ported by E2.
 
 use crate::timer::Event;
-use crate::not_ported;
 
 pub const FUEL_REPLY_TIMEOUT_S: f64 = 2.5;
 

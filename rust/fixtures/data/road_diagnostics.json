@@ -1005,186 +1005,402 @@
    },
    "script": [
     {
+     "clock": {
+      "bits": 4636737291354636288,
+      "repr": "100.0"
+     },
      "label": "--x--",
      "op": "start",
-     "out": "{\"active\": true, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"elapsed_s\": 0.0, \"samples\": 0, \"markers\": 0}"
+     "out": "{\"active\": true, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"elapsed_s\": 0.0, \"samples\": 0, \"markers\": 0}",
+     "wall": {
+      "bits": 4745288236812730368,
+      "repr": "1788480000.25"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636744328229054054,
+      "repr": "100.1"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -5.291527727061048, \"severity\": null}, \"diagnostic\": {\"edgeId\": 7, \"activeBefore\": true, \"targetSide\": -1, \"targetError\": 0.9177346537209781, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": 0.30469955873967436, \"headingError\": -3.4464649064554997, \"correctionBearing\": 6.350669478149843, \"withinLateral\": true, \"withinHeading\": false, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": -0.8239520603588528, \"steering\": 0.8658429038815179, \"contactMaterials\": \"11:DIRT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 60.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 3.0, \"steering_input\": -0.10983732123135503, \"steering\": null, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 24.97514276887437, \"wheel_min_ms\": 8.812594356151267, \"travel_bearing_deg\": null}"
+     "telemetry": "{\"position\": {\"x\": 60.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 3.0, \"steering_input\": -0.10983732123135503, \"steering\": null, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 24.97514276887437, \"wheel_min_ms\": 8.812594356151267, \"travel_bearing_deg\": null}",
+     "wall": {
+      "bits": 4745288236813149798,
+      "repr": "1788480000.35"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636747846666262937,
+      "repr": "100.14999999999999"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 5.757599329460064, \"severity\": \"0.4\", \"phase\": \"unwind\"}, \"diagnostic\": {\"edgeId\": null, \"activeBefore\": true, \"targetSide\": null, \"targetError\": -0.42246134519891143, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": 0.9050439822016145, \"headingError\": -4.322932132093056, \"correctionBearing\": 4.936849313461256, \"withinLateral\": true, \"withinHeading\": false, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": 0.8196828699059291, \"steering\": 0.01887871625508697, \"contactMaterials\": \" 12:GRAVEL \"}}",
-     "telemetry": "{\"position\": {\"x\": 60.5, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 0.0, \"steering_input\": -0.7738925208460445, \"steering\": 0.33923286134709096, \"throttle\": 1.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 9.49006645406047, \"wheel_min_ms\": 4.770044243726727, \"travel_bearing_deg\": -170.0}"
+     "telemetry": "{\"position\": {\"x\": 60.5, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 0.0, \"steering_input\": -0.7738925208460445, \"steering\": 0.33923286134709096, \"throttle\": 1.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 9.49006645406047, \"wheel_min_ms\": 4.770044243726727, \"travel_bearing_deg\": -170.0}",
+     "wall": {
+      "bits": 4745288236813359513,
+      "repr": "1788480000.3999999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636751365103471820,
+      "repr": "100.19999999999999"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -16.539463610162617, \"severity\": 0.0, \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": null, \"activeBefore\": false, \"targetSide\": 1, \"targetError\": -1.0791573812834985, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": -0.44149080656191364, \"headingError\": -3.446015098279571, \"correctionBearing\": null, \"withinLateral\": true, \"withinHeading\": false, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": -0.3093480779495763, \"steering\": -0.597373190959388, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 62.5, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 0.0, \"steering_input\": 0.3930052319147508, \"steering\": null, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 12.798328914602585, \"wheel_min_ms\": 9.122706874955053, \"travel_bearing_deg\": -170.0}"
+     "telemetry": "{\"position\": {\"x\": 62.5, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 0.0, \"steering_input\": 0.3930052319147508, \"steering\": null, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 12.798328914602585, \"wheel_min_ms\": 9.122706874955053, \"travel_bearing_deg\": -170.0}",
+     "wall": {
+      "bits": 4745288236813569228,
+      "repr": "1788480000.4499998"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636754883540680703,
+      "repr": "100.24999999999999"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": null, \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 29.238173780977526, \"severity\": null, \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": \"c|d\", \"activeBefore\": true, \"targetSide\": -1, \"targetError\": 0.30908014631825065, \"targetTolerance\": null, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": -0.3788699817284782, \"headingError\": 0.9895221185683205, \"correctionBearing\": null, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": null, \"steering\": -0.7156234089601428, \"contactMaterials\": \"10:ASPHALT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 64.5, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": 0.0, \"steering_input\": null, \"steering\": null, \"throttle\": 0.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 3.253159325123753, \"wheel_min_ms\": 6.255990149653147, \"travel_bearing_deg\": 20.0}"
+     "telemetry": "{\"position\": {\"x\": 64.5, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": 0.0, \"steering_input\": null, \"steering\": null, \"throttle\": 0.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 3.253159325123753, \"wheel_min_ms\": 6.255990149653147, \"travel_bearing_deg\": 20.0}",
+     "wall": {
+      "bits": 4745288236813778943,
+      "repr": "1788480000.4999998"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636758401977889586,
+      "repr": "100.29999999999998"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -6.218467863003706, \"severity\": 0.6, \"phase\": null}, \"diagnostic\": {\"edgeId\": \"c|d\", \"activeBefore\": false, \"targetSide\": null, \"targetError\": 1.6189333256242109, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": 0.7084165977259802, \"headingError\": 1.080858382634231, \"correctionBearing\": null, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": true, \"steeringInput\": -0.6424850911435893, \"steering\": 0.8456556555272301, \"contactMaterials\": null}}",
-     "telemetry": "{\"position\": {\"x\": 65.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": null, \"steering_input\": 0.951050715741588, \"steering\": null, \"throttle\": 0.5, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 23.27654026154376, \"wheel_min_ms\": 4.278440582649042, \"travel_bearing_deg\": null}"
+     "telemetry": "{\"position\": {\"x\": 65.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": null, \"steering_input\": 0.951050715741588, \"steering\": null, \"throttle\": 0.5, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 23.27654026154376, \"wheel_min_ms\": 4.278440582649042, \"travel_bearing_deg\": null}",
+     "wall": {
+      "bits": 4745288236813988658,
+      "repr": "1788480000.5499997"
+     }
     },
     {
+     "clock": {
+      "bits": 4636761920415098469,
+      "repr": "100.34999999999998"
+     },
      "note": "note",
      "op": "mark",
-     "out": "{\"active\": true, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"elapsed_s\": 0.3, \"samples\": 5, \"markers\": 1}"
+     "out": "{\"active\": true, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"elapsed_s\": 0.3, \"samples\": 5, \"markers\": 1}",
+     "wall": {
+      "bits": 4745288236814198373,
+      "repr": "1788480000.5999997"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636765438852307352,
+      "repr": "100.39999999999998"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 29.069626018378813, \"severity\": 0.1, \"phase\": 5}, \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": true, \"targetSide\": -1, \"targetError\": -0.10018196173602067, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": 0.4796156741771207, \"headingError\": -8.873450876335887, \"correctionBearing\": null, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": true, \"steeringInput\": -0.0045591541883800435, \"steering\": 0.05034659388512441, \"contactMaterials\": \"11:DIRT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 67.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": 10.0, \"steering_input\": null, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": true, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 67.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": 10.0, \"steering_input\": null, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": true, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236814408088,
+      "repr": "1788480000.6499996"
+     }
     },
     {
      "audio": "null",
+     "clock": {
+      "bits": 4636768957289516235,
+      "repr": "100.44999999999997"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -8.590831270438336, \"severity\": null, \"phase\": \"idle\"}, \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": true, \"targetSide\": null, \"targetError\": -1.7012036442735026, \"targetTolerance\": null, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": 0.3871641331623541, \"headingError\": -4.8069750623311585, \"correctionBearing\": -14.970510479527178, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": true, \"steeringInput\": 0.9817780103109375, \"steering\": -0.1952233052957857, \"contactMaterials\": \" 12:GRAVEL \"}}",
-     "telemetry": "{\"position\": {\"x\": 67.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 3.0, \"steering_input\": -0.2995882783221704, \"steering\": 0.7139983894215893, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 67.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 3.0, \"steering_input\": -0.2995882783221704, \"steering\": 0.7139983894215893, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236814617803,
+      "repr": "1788480000.6999996"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636772475726725118,
+      "repr": "100.49999999999997"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -25.73767199602949, \"severity\": 0.1, \"phase\": null}, \"diagnostic\": {\"edgeId\": \"c|d\", \"activeBefore\": false, \"targetSide\": 1, \"targetError\": 0.871140615852787, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": -0.9788709664954005, \"headingError\": 8.290921935202501, \"correctionBearing\": null, \"withinLateral\": true, \"withinHeading\": false, \"withinLateralSpeed\": true, \"settledCandidate\": true, \"steeringInput\": 0.14453435102960466, \"steering\": null, \"contactMaterials\": null}}",
-     "telemetry": "{\"position\": {\"x\": 68.5, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 3.0, \"steering_input\": null, \"steering\": null, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 68.5, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 3.0, \"steering_input\": null, \"steering\": null, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236814827518,
+      "repr": "1788480000.7499995"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636775994163934001,
+      "repr": "100.54999999999997"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 4.414423973233681, \"severity\": 0.0, \"phase\": \"idle\"}, \"diagnostic\": {}}",
-     "telemetry": "{\"position\": {\"x\": 70.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.3849286903297646, \"steering\": -0.24075099432668123, \"throttle\": 0.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 70.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.3849286903297646, \"steering\": -0.24075099432668123, \"throttle\": 0.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236815037233,
+      "repr": "1788480000.7999995"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636779512601142884,
+      "repr": "100.59999999999997"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -26.461152837217167, \"severity\": 0.1}, \"diagnostic\": {\"edgeId\": \"c|d\", \"activeBefore\": false, \"targetSide\": 1, \"targetError\": 1.7896522953365452, \"targetTolerance\": null, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": 0.5876999827596636, \"headingError\": 9.314424672644257, \"correctionBearing\": 18.827113929553775, \"withinLateral\": false, \"withinHeading\": false, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": 0.6434942680140574, \"steering\": 0.12030684559040195, \"contactMaterials\": null}}",
-     "telemetry": "{\"position\": {\"x\": 72.5, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": 3.0, \"steering_input\": 0.2515343291354595, \"steering\": -0.44900423543943635, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 3.5591510610922223, \"wheel_min_ms\": 11.803439016607472, \"travel_bearing_deg\": null}"
+     "telemetry": "{\"position\": {\"x\": 72.5, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": 3.0, \"steering_input\": 0.2515343291354595, \"steering\": -0.44900423543943635, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 3.5591510610922223, \"wheel_min_ms\": 11.803439016607472, \"travel_bearing_deg\": null}",
+     "wall": {
+      "bits": 4745288236815246948,
+      "repr": "1788480000.8499994"
+     }
     },
     {
      "audio": "null",
+     "clock": {
+      "bits": 4636783031038351767,
+      "repr": "100.64999999999996"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -5.005634789945258, \"severity\": \"0.4\", \"phase\": \"unwind\"}, \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": false, \"targetSide\": null, \"targetError\": -1.3646435462333604, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": -0.23555066042952166, \"headingError\": 8.676255309496607, \"correctionBearing\": null, \"withinLateral\": false, \"withinHeading\": false, \"withinLateralSpeed\": true, \"settledCandidate\": true, \"steeringInput\": -0.3752841730460459, \"steering\": -0.18160233316112473, \"contactMaterials\": \" 12:GRAVEL \"}}",
-     "telemetry": "{\"position\": {\"x\": 74.5, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.646643573563531, \"steering\": 0.0811271435213834, \"throttle\": null, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": null}"
+     "telemetry": "{\"position\": {\"x\": 74.5, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.646643573563531, \"steering\": 0.0811271435213834, \"throttle\": null, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": null}",
+     "wall": {
+      "bits": 4745288236815456663,
+      "repr": "1788480000.8999994"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636786549475560650,
+      "repr": "100.69999999999996"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -22.125579131527914, \"severity\": 0.6, \"phase\": null}, \"diagnostic\": {\"edgeId\": \"a|b\", \"activeBefore\": true, \"targetSide\": -1, \"targetError\": 1.4325720137778606, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": -0.9108461945271655, \"headingError\": 6.162211182807454, \"correctionBearing\": null, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": true, \"steeringInput\": 0.349533179704409, \"steering\": -0.24588719074310328, \"contactMaterials\": \" 12:GRAVEL \"}}",
-     "telemetry": "{\"position\": {\"x\": 75.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": 15.0, \"steering_input\": -0.24173684136950446, \"steering\": null, \"throttle\": 0.5, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 75.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": 15.0, \"steering_input\": -0.24173684136950446, \"steering\": null, \"throttle\": 0.5, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236815666378,
+      "repr": "1788480000.9499993"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636790067912769533,
+      "repr": "100.74999999999996"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 2.4016705431208862, \"severity\": \"0.4\", \"phase\": \"unwind\"}, \"diagnostic\": {\"edgeId\": \"a|b\", \"activeBefore\": true, \"targetSide\": -1, \"targetError\": -1.308639396194522, \"targetTolerance\": null, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": -0.9996208052782907, \"headingError\": -4.105942245319887, \"correctionBearing\": null, \"withinLateral\": false, \"withinHeading\": false, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": 0.37798127480634136, \"steering\": 0.6664491249312761, \"contactMaterials\": \"11:DIRT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": null, \"steering_input\": -0.18797345281454048, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": null, \"steering_input\": -0.18797345281454048, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236815876093,
+      "repr": "1788480000.9999993"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636793586349978416,
+      "repr": "100.79999999999995"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 25.547375537052822, \"severity\": 0.0, \"phase\": null}, \"diagnostic\": {\"edgeId\": \"a|b\", \"activeBefore\": true, \"targetSide\": null, \"targetError\": 1.507317426086694, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": 0.7726762130899398, \"headingError\": -5.891706485694039, \"correctionBearing\": 5.942507191896951, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": -0.4996151655237815, \"steering\": -0.217111523010854, \"contactMaterials\": \"10:ASPHALT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 77.5, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 10.0, \"steering_input\": null, \"steering\": null, \"throttle\": 0.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 77.5, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 10.0, \"steering_input\": null, \"steering\": null, \"throttle\": 0.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236816085808,
+      "repr": "1788480001.0499992"
+     }
     },
     {
      "audio": "null",
+     "clock": {
+      "bits": 4636797104787187299,
+      "repr": "100.84999999999995"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -18.525047286020964, \"severity\": 0.6, \"phase\": null}, \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": true, \"targetSide\": null, \"targetError\": 0.7966754906925688, \"targetTolerance\": null, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": -0.7750098879630931, \"headingError\": 4.5925053198670795, \"correctionBearing\": null, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": 0.7035627732542458, \"steering\": null, \"contactMaterials\": \"10:ASPHALT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 79.5, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": null, \"steering_input\": 0.25957622640843026, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": true, \"pitch_rad\": null}"
+     "telemetry": "{\"position\": {\"x\": 79.5, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": null, \"steering_input\": 0.25957622640843026, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": true, \"pitch_rad\": null}",
+     "wall": {
+      "bits": 4745288236816295523,
+      "repr": "1788480001.0999992"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636800623224396182,
+      "repr": "100.89999999999995"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": 24.463726960531048, \"severity\": null, \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": false, \"targetSide\": -1, \"targetError\": -1.2496116401326054, \"targetTolerance\": null, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": 0.46481820259776674, \"headingError\": 6.120555989221483, \"correctionBearing\": null, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": 0.8767493210646364, \"steering\": 0.581552745655816, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 139.5, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 3.0, \"steering_input\": 0.09682410513801565, \"steering\": 0.6756330197682408, \"throttle\": null, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 5.629523887424992, \"wheel_min_ms\": 8.834848439201524, \"travel_bearing_deg\": null}"
+     "telemetry": "{\"position\": {\"x\": 139.5, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 3.0, \"steering_input\": 0.09682410513801565, \"steering\": 0.6756330197682408, \"throttle\": null, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 5.629523887424992, \"wheel_min_ms\": 8.834848439201524, \"travel_bearing_deg\": null}",
+     "wall": {
+      "bits": 4745288236816505238,
+      "repr": "1788480001.1499991"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636804141661605065,
+      "repr": "100.94999999999995"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"diagnostic\": {\"edgeId\": \"c|d\", \"activeBefore\": false, \"targetSide\": null, \"targetError\": -1.440708510870349, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": 0.25459595886736897, \"headingError\": -9.1429272933249, \"correctionBearing\": -9.109977694893189, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": true, \"steeringInput\": null, \"steering\": null, \"contactMaterials\": \"11:DIRT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 140.0, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 0.0, \"steering_input\": null, \"steering\": null, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 12.600960995260593, \"wheel_min_ms\": 6.388779088488398, \"travel_bearing_deg\": null}"
+     "telemetry": "{\"position\": {\"x\": 140.0, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 0.0, \"steering_input\": null, \"steering\": null, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 12.600960995260593, \"wheel_min_ms\": 6.388779088488398, \"travel_bearing_deg\": null}",
+     "wall": {
+      "bits": 4745288236816714953,
+      "repr": "1788480001.199999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636807660098813948,
+      "repr": "100.99999999999994"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": 28.5713534550934, \"severity\": 0.6, \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": \"c|d\", \"activeBefore\": false, \"targetSide\": null, \"targetError\": -1.2042511455669684, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": 0.2211517338662532, \"headingError\": -4.243145946627638, \"correctionBearing\": 11.995056983669553, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": -0.34991649184970375, \"steering\": 0.601770148928259, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 140.5, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.5490761964321318, \"steering\": null, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": null}"
+     "telemetry": "{\"position\": {\"x\": 140.5, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.5490761964321318, \"steering\": null, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": null}",
+     "wall": {
+      "bits": 4745288236816924668,
+      "repr": "1788480001.249999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636811178536022831,
+      "repr": "101.04999999999994"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -25.607930822458265, \"severity\": 0.1, \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": true, \"targetSide\": 1, \"targetError\": -1.1983287103250384, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": -0.8962627946016122, \"headingError\": 1.982477712569219, \"correctionBearing\": null, \"withinLateral\": false, \"withinHeading\": false, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": null, \"steering\": -0.7533320087685782, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 200.5, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 3.0, \"steering_input\": null, \"steering\": null, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {\"x\": 200.5, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 3.0, \"steering_input\": null, \"steering\": null, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236817134383,
+      "repr": "1788480001.299999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636814696973231714,
+      "repr": "101.09999999999994"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 20.551702627756278, \"severity\": null, \"phase\": \"correct\"}}",
-     "telemetry": "{\"position\": {\"x\": 201.5, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.4605657239245169, \"steering\": 0.2628669502662331, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 0.2904403857918292, \"wheel_min_ms\": 4.935305807941723, \"travel_bearing_deg\": 0.0}"
+     "telemetry": "{\"position\": {\"x\": 201.5, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.4605657239245169, \"steering\": 0.2628669502662331, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 0.2904403857918292, \"wheel_min_ms\": 4.935305807941723, \"travel_bearing_deg\": 0.0}",
+     "wall": {
+      "bits": 4745288236817344098,
+      "repr": "1788480001.349999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636818215410440597,
+      "repr": "101.14999999999993"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -15.519816134915498, \"severity\": \"0.4\", \"phase\": \"correct\"}, \"diagnostic\": {}}",
-     "telemetry": "{\"position\": {\"x\": 202.0, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 3.0, \"steering_input\": null, \"steering\": null, \"throttle\": 0.5, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null}"
+     "telemetry": "{\"position\": {\"x\": 202.0, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 3.0, \"steering_input\": null, \"steering\": null, \"throttle\": 0.5, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null}",
+     "wall": {
+      "bits": 4745288236817553813,
+      "repr": "1788480001.399999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636821733847649480,
+      "repr": "101.19999999999993"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"offRoad\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -20.609534914463758, \"severity\": 0.1, \"phase\": 5}, \"diagnostic\": {\"edgeId\": 7, \"activeBefore\": true, \"targetSide\": null, \"targetError\": 1.004157553260447, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": -0.18209911544674395, \"headingError\": 4.204885271187546, \"correctionBearing\": -9.88417326751588, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": null, \"steering\": null, \"contactMaterials\": \" 12:GRAVEL \"}}",
-     "telemetry": "{\"position\": {\"x\": 204.0, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 10.0, \"steering_input\": 0.32623711337436156, \"steering\": null, \"throttle\": 0.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 204.0, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 10.0, \"steering_input\": 0.32623711337436156, \"steering\": null, \"throttle\": 0.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236817763528,
+      "repr": "1788480001.4499989"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636825252284858363,
+      "repr": "101.24999999999993"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -7.549187325801206, \"severity\": 0.1, \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": 7, \"activeBefore\": false, \"targetSide\": null, \"targetError\": -1.4833205076313583, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": 0.9848016563468092, \"headingError\": 3.1815104120040676, \"correctionBearing\": null, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": true, \"steeringInput\": 0.8793558307441154, \"steering\": -0.5340908424352901, \"contactMaterials\": null}}",
-     "telemetry": "{\"position\": {\"x\": 206.0, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": null, \"steering_input\": -0.24105108435965072, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 206.0, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": null, \"steering_input\": -0.24105108435965072, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236817973243,
+      "repr": "1788480001.4999988"
+     }
     },
     {
      "audio": "null",
+     "clock": {
+      "bits": 4636828770722067246,
+      "repr": "101.29999999999993"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": false, \"targetSide\": -1, \"targetError\": -0.33362529949108, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": 0.6438988206340195, \"headingError\": -8.491302456461332, \"correctionBearing\": null, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": -0.990736466626646, \"steering\": -0.9843957425659537, \"contactMaterials\": \"11:DIRT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 208.0, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 3.0, \"steering_input\": 0.4754767498525099, \"steering\": 0.1035062816317911, \"throttle\": 1.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null}"
+     "telemetry": "{\"position\": {\"x\": 208.0, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 3.0, \"steering_input\": 0.4754767498525099, \"steering\": 0.1035062816317911, \"throttle\": 1.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null}",
+     "wall": {
+      "bits": 4745288236818182958,
+      "repr": "1788480001.5499988"
+     }
     },
     {
+     "clock": {
+      "bits": 4636835807596485012,
+      "repr": "101.39999999999992"
+     },
      "op": "stop",
-     "out": "{\"schema\": 1, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"samples\": 24, \"duration_s\": 1.3, \"distance_travelled_m\": 32.76, \"drive\": {\"start_z_m\": 51.5, \"end_z_m\": 50.0, \"min_ground_speed_mps\": 0.0, \"max_ground_speed_mps\": 20.0, \"max_throttle\": 1.0, \"max_brake\": 0.8, \"traction_control_samples\": 2, \"elevation_change_m\": -1.5}, \"road_state_samples\": {\"dormant\": 8, \"3\": 5, \"onRoad\": 9, \"null\": 1, \"offRoad\": 1}, \"markers\": [{\"t\": 0.35, \"note\": \"note\"}], \"navigation_edges\": [\"7\", \"a|b\", \"c|d\"], \"diagnostic_startup_samples_skipped\": 0, \"correction\": {\"samples\": 14, \"episodes\": [{\"start_s\": 0.1, \"side\": -1, \"max_severity\": 0.4, \"end_s\": 0.2, \"duration_s\": 0.1, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 1}, {\"start_s\": 0.25, \"side\": -1, \"max_severity\": 0.0, \"end_s\": 0.3, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.4, \"side\": -1, \"max_severity\": 0.1, \"end_s\": 0.5, \"duration_s\": 0.1, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 1}, {\"start_s\": 0.55, \"side\": null, \"max_severity\": 0.0, \"end_s\": 0.6, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.7, \"side\": -1, \"max_severity\": 0.6, \"end_s\": 0.9, \"duration_s\": 0.2, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 2}, {\"start_s\": 1.05, \"side\": 1, \"max_severity\": 0.4, \"end_s\": 1.25, \"duration_s\": 0.2, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 1}], \"settled_packets_s\": [], \"settled_audio_triggers_s\": [], \"repeated_settled\": [], \"eligible_samples\": 13, \"within_lateral_ratio\": 0.462, \"within_heading_ratio\": 0.538, \"within_lateral_speed_ratio\": 0.462, \"all_settled_conditions_ratio\": 0.231, \"longest_settled_candidate_run_samples\": 2, \"steering_reversals\": 4, \"steering_source_samples\": {\"lua_vehicle\": 17, \"telemetry\": 2}, \"correction_bearing_reversals\": 1, \"target_crossings\": 4, \"settled_band\": {\"min_lateral_tolerance_m\": 0.9, \"max_lateral_tolerance_m\": 1.125, \"heading_tolerance_deg\": 6.0, \"min_lateral_speed_tolerance_mps\": 0.5, \"max_lateral_speed_tolerance_mps\": 0.6}}, \"slip\": {\"episodes\": [{\"start_s\": 0.1, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 24.975, \"samples\": 3, \"during_correction\": true, \"end_s\": 0.25, \"duration_s\": 0.15}, {\"start_s\": 0.3, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 15.777, \"samples\": 3, \"during_correction\": true, \"end_s\": 0.5, \"duration_s\": 0.2}, {\"start_s\": 0.65, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 10.0, \"samples\": 2, \"during_correction\": true, \"end_s\": 0.75, \"duration_s\": 0.1}, {\"start_s\": 1.1, \"kind\": \"lockup\", \"max_magnitude_mps\": 17.0, \"samples\": 3, \"during_correction\": true, \"end_s\": 1.25, \"duration_s\": 0.15}], \"correction_overlap_samples\": 9}, \"contact_materials\": {\"sample_sets\": {\"10:ASPHALT,30:RUBBER\": 3, \"11:DIRT,30:RUBBER\": 5, \"12:GRAVEL\": 5}, \"changes\": [{\"t\": 0.15, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": 51.5, \"road_state\": 3}, {\"t\": 0.25, \"from\": \"12:GRAVEL\", \"to\": \"10:ASPHALT,30:RUBBER\", \"z_m\": null, \"road_state\": null}, {\"t\": 0.4, \"from\": \"10:ASPHALT,30:RUBBER\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": 51.5, \"road_state\": \"onRoad\"}, {\"t\": 0.45, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": 50.0, \"road_state\": \"dormant\"}, {\"t\": 0.75, \"from\": \"12:GRAVEL\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": null, \"road_state\": \"dormant\"}, {\"t\": 0.8, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"10:ASPHALT,30:RUBBER\", \"z_m\": 51.5, \"road_state\": 3}, {\"t\": 0.95, \"from\": \"10:ASPHALT,30:RUBBER\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": null, \"road_state\": \"onRoad\"}, {\"t\": 1.2, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": 51.5, \"road_state\": \"offRoad\"}, {\"t\": 1.3, \"from\": \"12:GRAVEL\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": 50.0, \"road_state\": \"onRoad\"}]}, \"max_absolute\": {\"target_error_m\": 1.79, \"lateral_speed_mps\": 1.0, \"heading_error_deg\": 9.314, \"correction_bearing_deg\": 18.827, \"steering_input\": 0.991, \"applied_steering\": 0.984, \"raw_slip_mps\": 24.975, \"vehicle_pitch_deg\": 22.918}, \"assessment_flags\": [\"6 correction episode(s) did not settle\", \"4 steering reversals occurred during correction\", \"the vehicle crossed the lane target 4 times\", \"4 sustained slip episode(s) overlapped lane correction\"], \"summary_path\": \"<DIR>\\\\road_guidance_20260904_083005_x.summary.json\"}"
+     "out": "{\"schema\": 1, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"samples\": 24, \"duration_s\": 1.3, \"distance_travelled_m\": 32.76, \"drive\": {\"start_z_m\": 51.5, \"end_z_m\": 50.0, \"min_ground_speed_mps\": 0.0, \"max_ground_speed_mps\": 20.0, \"max_throttle\": 1.0, \"max_brake\": 0.8, \"traction_control_samples\": 2, \"elevation_change_m\": -1.5}, \"road_state_samples\": {\"dormant\": 8, \"3\": 5, \"onRoad\": 9, \"null\": 1, \"offRoad\": 1}, \"markers\": [{\"t\": 0.35, \"note\": \"note\"}], \"navigation_edges\": [\"7\", \"a|b\", \"c|d\"], \"diagnostic_startup_samples_skipped\": 0, \"correction\": {\"samples\": 14, \"episodes\": [{\"start_s\": 0.1, \"side\": -1, \"max_severity\": 0.4, \"end_s\": 0.2, \"duration_s\": 0.1, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 1}, {\"start_s\": 0.25, \"side\": -1, \"max_severity\": 0.0, \"end_s\": 0.3, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.4, \"side\": -1, \"max_severity\": 0.1, \"end_s\": 0.5, \"duration_s\": 0.1, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 1}, {\"start_s\": 0.55, \"side\": null, \"max_severity\": 0.0, \"end_s\": 0.6, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.7, \"side\": -1, \"max_severity\": 0.6, \"end_s\": 0.9, \"duration_s\": 0.2, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 2}, {\"start_s\": 1.05, \"side\": 1, \"max_severity\": 0.4, \"end_s\": 1.25, \"duration_s\": 0.2, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 1}], \"settled_packets_s\": [], \"settled_audio_triggers_s\": [], \"repeated_settled\": [], \"eligible_samples\": 13, \"within_lateral_ratio\": 0.462, \"within_heading_ratio\": 0.538, \"within_lateral_speed_ratio\": 0.462, \"all_settled_conditions_ratio\": 0.231, \"longest_settled_candidate_run_samples\": 2, \"steering_reversals\": 4, \"steering_source_samples\": {\"lua_vehicle\": 17, \"telemetry\": 2}, \"correction_bearing_reversals\": 1, \"target_crossings\": 4, \"settled_band\": {\"min_lateral_tolerance_m\": 0.9, \"max_lateral_tolerance_m\": 1.125, \"heading_tolerance_deg\": 6.0, \"min_lateral_speed_tolerance_mps\": 0.5, \"max_lateral_speed_tolerance_mps\": 0.6}}, \"slip\": {\"episodes\": [{\"start_s\": 0.1, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 24.975, \"samples\": 3, \"during_correction\": true, \"end_s\": 0.25, \"duration_s\": 0.15}, {\"start_s\": 0.3, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 15.777, \"samples\": 3, \"during_correction\": true, \"end_s\": 0.5, \"duration_s\": 0.2}, {\"start_s\": 0.65, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 10.0, \"samples\": 2, \"during_correction\": true, \"end_s\": 0.75, \"duration_s\": 0.1}, {\"start_s\": 1.1, \"kind\": \"lockup\", \"max_magnitude_mps\": 17.0, \"samples\": 3, \"during_correction\": true, \"end_s\": 1.25, \"duration_s\": 0.15}], \"correction_overlap_samples\": 9}, \"contact_materials\": {\"sample_sets\": {\"10:ASPHALT,30:RUBBER\": 3, \"11:DIRT,30:RUBBER\": 5, \"12:GRAVEL\": 5}, \"changes\": [{\"t\": 0.15, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": 51.5, \"road_state\": 3}, {\"t\": 0.25, \"from\": \"12:GRAVEL\", \"to\": \"10:ASPHALT,30:RUBBER\", \"z_m\": null, \"road_state\": null}, {\"t\": 0.4, \"from\": \"10:ASPHALT,30:RUBBER\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": 51.5, \"road_state\": \"onRoad\"}, {\"t\": 0.45, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": 50.0, \"road_state\": \"dormant\"}, {\"t\": 0.75, \"from\": \"12:GRAVEL\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": null, \"road_state\": \"dormant\"}, {\"t\": 0.8, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"10:ASPHALT,30:RUBBER\", \"z_m\": 51.5, \"road_state\": 3}, {\"t\": 0.95, \"from\": \"10:ASPHALT,30:RUBBER\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": null, \"road_state\": \"onRoad\"}, {\"t\": 1.2, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": 51.5, \"road_state\": \"offRoad\"}, {\"t\": 1.3, \"from\": \"12:GRAVEL\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": 50.0, \"road_state\": \"onRoad\"}]}, \"max_absolute\": {\"target_error_m\": 1.79, \"lateral_speed_mps\": 1.0, \"heading_error_deg\": 9.314, \"correction_bearing_deg\": 18.827, \"steering_input\": 0.991, \"applied_steering\": 0.984, \"raw_slip_mps\": 24.975, \"vehicle_pitch_deg\": 22.918}, \"assessment_flags\": [\"6 correction episode(s) did not settle\", \"4 steering reversals occurred during correction\", \"the vehicle crossed the lane target 4 times\", \"4 sustained slip episode(s) overlapped lane correction\"], \"summary_path\": \"<DIR>\\\\road_guidance_20260904_083005_x.summary.json\"}",
+     "wall": {
+      "bits": 4745288236818392673,
+      "repr": "1788480001.5999987"
+     }
     }
    ],
    "wall0": {
@@ -1203,184 +1419,400 @@
    },
    "script": [
     {
+     "clock": {
+      "bits": 4636737291354636288,
+      "repr": "100.0"
+     },
      "label": "--x--",
      "op": "start",
-     "out": "{\"active\": true, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"elapsed_s\": 0.0, \"samples\": 0, \"markers\": 0}"
+     "out": "{\"active\": true, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"elapsed_s\": 0.0, \"samples\": 0, \"markers\": 0}",
+     "wall": {
+      "bits": 4745288236812730368,
+      "repr": "1788480000.25"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636740809791845171,
+      "repr": "100.05"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"diagnostic\": {\"edgeId\": \"c|d\", \"activeBefore\": true, \"targetSide\": 1, \"targetError\": 1.931038506910034, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": 0.919535105372419, \"headingError\": 8.257034192242052, \"correctionBearing\": -8.137206008902433, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": null, \"steering\": 0.5913123420106718, \"contactMaterials\": null}}",
-     "telemetry": "{\"position\": {\"x\": 2.0, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 3.0, \"steering_input\": -0.405313470045634, \"steering\": 0.9809696619344315, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": true, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 2.0, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 3.0, \"steering_input\": -0.405313470045634, \"steering\": 0.9809696619344315, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": true, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236812940083,
+      "repr": "1788480000.3"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636744328229054054,
+      "repr": "100.1"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": null, \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 13.941618599108843, \"severity\": 0.0, \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": 7, \"activeBefore\": true, \"targetSide\": 1, \"targetError\": 0.27447554012486153, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": -0.23773413620294792, \"headingError\": 8.976052708365131, \"correctionBearing\": -3.297994854390595, \"withinLateral\": true, \"withinHeading\": false, \"withinLateralSpeed\": false, \"settledCandidate\": true, \"steeringInput\": 0.5136404539269146, \"steering\": null, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 2.5, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 3.0, \"steering_input\": 0.31637417775342525, \"steering\": null, \"throttle\": 0.0, \"brake\": 0.0, \"traction_control_active\": true, \"pitch_rad\": null, \"wheel_max_driven_ms\": 14.866075599259046, \"wheel_min_ms\": 9.816042812895855, \"travel_bearing_deg\": 20.0}"
+     "telemetry": "{\"position\": {\"x\": 2.5, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 3.0, \"steering_input\": 0.31637417775342525, \"steering\": null, \"throttle\": 0.0, \"brake\": 0.0, \"traction_control_active\": true, \"pitch_rad\": null, \"wheel_max_driven_ms\": 14.866075599259046, \"wheel_min_ms\": 9.816042812895855, \"travel_bearing_deg\": 20.0}",
+     "wall": {
+      "bits": 4745288236813149798,
+      "repr": "1788480000.35"
+     }
     },
     {
      "audio": "{\"settled_triggered\": true}",
+     "clock": {
+      "bits": 4636747846666262937,
+      "repr": "100.14999999999999"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": null}",
-     "telemetry": "{\"position\": {\"x\": 3.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.29141589049079775, \"steering\": 0.17836963972282716, \"throttle\": 0.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 15.858984428998296, \"wheel_min_ms\": 5.110679419041677, \"travel_bearing_deg\": -170.0}"
+     "telemetry": "{\"position\": {\"x\": 3.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.29141589049079775, \"steering\": 0.17836963972282716, \"throttle\": 0.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 15.858984428998296, \"wheel_min_ms\": 5.110679419041677, \"travel_bearing_deg\": -170.0}",
+     "wall": {
+      "bits": 4745288236813359513,
+      "repr": "1788480000.3999999"
+     }
     },
     {
      "audio": "{\"settled_triggered\": true}",
+     "clock": {
+      "bits": 4636751365103471820,
+      "repr": "100.19999999999999"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": false, \"settled\": true, \"bearing\": 15.952161775614357, \"severity\": 0.1, \"phase\": null}}",
-     "telemetry": "{\"position\": {\"x\": 4.0, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 0.0, \"steering_input\": null, \"steering\": 0.7745153406047129, \"throttle\": 0.0, \"brake\": 0.0, \"traction_control_active\": true, \"pitch_rad\": null}"
+     "telemetry": "{\"position\": {\"x\": 4.0, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 0.0, \"steering_input\": null, \"steering\": 0.7745153406047129, \"throttle\": 0.0, \"brake\": 0.0, \"traction_control_active\": true, \"pitch_rad\": null}",
+     "wall": {
+      "bits": 4745288236813569228,
+      "repr": "1788480000.4499998"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636754883540680703,
+      "repr": "100.24999999999999"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 28.15667190434244, \"severity\": 0.1, \"phase\": \"idle\"}}",
-     "telemetry": "{\"position\": {\"x\": 6.0, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 3.0, \"steering_input\": 0.35937097383615013, \"steering\": null, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 6.0, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 3.0, \"steering_input\": 0.35937097383615013, \"steering\": null, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236813778943,
+      "repr": "1788480000.4999998"
+     }
     },
     {
+     "clock": {
+      "bits": 4636758401977889586,
+      "repr": "100.29999999999998"
+     },
      "note": "note é",
      "op": "mark",
-     "out": "{\"active\": true, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"elapsed_s\": 0.3, \"samples\": 5, \"markers\": 1}"
+     "out": "{\"active\": true, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"elapsed_s\": 0.3, \"samples\": 5, \"markers\": 1}",
+     "wall": {
+      "bits": 4745288236813988658,
+      "repr": "1788480000.5499997"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636761920415098469,
+      "repr": "100.34999999999998"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": 28.603888089199984, \"severity\": 0.0, \"phase\": \"unwind\"}, \"diagnostic\": {}}",
-     "telemetry": "{\"position\": {\"x\": 6.5, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 3.0, \"steering_input\": -0.1335986716007036, \"steering\": null, \"throttle\": 0.5, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": null}"
+     "telemetry": "{\"position\": {\"x\": 6.5, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 3.0, \"steering_input\": -0.1335986716007036, \"steering\": null, \"throttle\": 0.5, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": null}",
+     "wall": {
+      "bits": 4745288236814198373,
+      "repr": "1788480000.5999997"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636765438852307352,
+      "repr": "100.39999999999998"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"diagnostic\": {\"edgeId\": 7, \"activeBefore\": false, \"targetSide\": 1, \"targetError\": -0.06812927059450136, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": 0.1587833258617546, \"headingError\": 5.901518419667152, \"correctionBearing\": 6.406771456016877, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": true, \"steeringInput\": -0.6063253030778284, \"steering\": 0.6172930476958742, \"contactMaterials\": null}}",
-     "telemetry": "{\"position\": {\"x\": 7.0, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 3.0, \"steering_input\": -0.40523071721371706, \"steering\": -0.5116592397592907, \"throttle\": 0.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 1.9253813176693724, \"wheel_min_ms\": 0.03912078495687732, \"travel_bearing_deg\": -170.0}"
+     "telemetry": "{\"position\": {\"x\": 7.0, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 3.0, \"steering_input\": -0.40523071721371706, \"steering\": -0.5116592397592907, \"throttle\": 0.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 1.9253813176693724, \"wheel_min_ms\": 0.03912078495687732, \"travel_bearing_deg\": -170.0}",
+     "wall": {
+      "bits": 4745288236814408088,
+      "repr": "1788480000.6499996"
+     }
     },
     {
      "audio": "null",
+     "clock": {
+      "bits": 4636768957289516235,
+      "repr": "100.44999999999997"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": false, \"settled\": true, \"bearing\": 15.944656926236853, \"severity\": 0.0, \"phase\": 5}, \"diagnostic\": {\"edgeId\": null, \"activeBefore\": true, \"targetSide\": null, \"targetError\": 0.35746676590261695, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": 0.7848468954231558, \"headingError\": -6.077825406432074, \"correctionBearing\": null, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": true, \"steeringInput\": 0.11473560445188213, \"steering\": 0.29018475545534383, \"contactMaterials\": \" 12:GRAVEL \"}}",
-     "telemetry": "{\"position\": {}, \"ground_speed_ms\": null, \"wheel_speed_ms\": null, \"steering_input\": null, \"steering\": null, \"throttle\": 0.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 4.141438721314991, \"wheel_min_ms\": 7.04789169678744, \"travel_bearing_deg\": 20.0}"
+     "telemetry": "{\"position\": {}, \"ground_speed_ms\": null, \"wheel_speed_ms\": null, \"steering_input\": null, \"steering\": null, \"throttle\": 0.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 4.141438721314991, \"wheel_min_ms\": 7.04789169678744, \"travel_bearing_deg\": 20.0}",
+     "wall": {
+      "bits": 4745288236814617803,
+      "repr": "1788480000.6999996"
+     }
     },
     {
+     "clock": {
+      "bits": 4636772475726725118,
+      "repr": "100.49999999999997"
+     },
      "note": "note é",
      "op": "mark",
-     "out": "{\"active\": true, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"elapsed_s\": 0.5, \"samples\": 8, \"markers\": 2}"
+     "out": "{\"active\": true, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"elapsed_s\": 0.5, \"samples\": 8, \"markers\": 2}",
+     "wall": {
+      "bits": 4745288236814827518,
+      "repr": "1788480000.7499995"
+     }
     },
     {
      "audio": "null",
+     "clock": {
+      "bits": 4636775994163934001,
+      "repr": "100.54999999999997"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -17.010304174925185, \"severity\": \"0.4\", \"phase\": null}}",
-     "telemetry": "{\"position\": {\"x\": 11.0, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 0.0, \"steering_input\": -0.7448595371029232, \"steering\": 0.022613826102239054, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 3.9114132831533284, \"wheel_min_ms\": 5.363509265223935, \"travel_bearing_deg\": null}"
+     "telemetry": "{\"position\": {\"x\": 11.0, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 0.0, \"steering_input\": -0.7448595371029232, \"steering\": 0.022613826102239054, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 3.9114132831533284, \"wheel_min_ms\": 5.363509265223935, \"travel_bearing_deg\": null}",
+     "wall": {
+      "bits": 4745288236815037233,
+      "repr": "1788480000.7999995"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636779512601142884,
+      "repr": "100.59999999999997"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 15.25219238004739, \"severity\": 0.6, \"phase\": null}, \"diagnostic\": {\"edgeId\": \"a|b\", \"activeBefore\": true, \"targetSide\": null, \"targetError\": 1.5518577030881713, \"targetTolerance\": null, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": -0.7450497238186702, \"headingError\": 2.470101755535083, \"correctionBearing\": -7.81423595608441, \"withinLateral\": false, \"withinHeading\": false, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": null, \"steering\": -0.014228036870991723, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 13.0, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.6706070335442003, \"steering\": 0.0842654349651073, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {\"x\": 13.0, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.6706070335442003, \"steering\": 0.0842654349651073, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236815246948,
+      "repr": "1788480000.8499994"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636783031038351767,
+      "repr": "100.64999999999996"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"diagnostic\": {\"edgeId\": \"a|b\", \"activeBefore\": false, \"targetSide\": -1, \"targetError\": -1.8483163361402348, \"targetTolerance\": null, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": 0.6616061318222191, \"headingError\": -4.874012343135297, \"correctionBearing\": null, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": 0.2976231273950385, \"steering\": 0.1824563665780803, \"contactMaterials\": \"11:DIRT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 15.0, \"steering_input\": 0.7886462949296646, \"steering\": 0.16241797581054374, \"throttle\": 0.5, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 15.0, \"steering_input\": 0.7886462949296646, \"steering\": 0.16241797581054374, \"throttle\": 0.5, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236815456663,
+      "repr": "1788480000.8999994"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636786549475560650,
+      "repr": "100.69999999999996"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": null, \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -16.863612070221983, \"severity\": 0.6, \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": null, \"activeBefore\": true, \"targetSide\": -1, \"targetError\": 1.9714159104911264, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": -0.5224908759942672, \"headingError\": 2.3628909108101777, \"correctionBearing\": null, \"withinLateral\": false, \"withinHeading\": false, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": null, \"steering\": null, \"contactMaterials\": null}}",
-     "telemetry": "{\"position\": {\"x\": 133.0, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 15.0, \"steering_input\": 0.476966590757655, \"steering\": null, \"throttle\": 0.5, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 133.0, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 15.0, \"steering_input\": 0.476966590757655, \"steering\": null, \"throttle\": 0.5, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236815666378,
+      "repr": "1788480000.9499993"
+     }
     },
     {
      "audio": "{\"settled_triggered\": true}",
+     "clock": {
+      "bits": 4636790067912769533,
+      "repr": "100.74999999999996"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": false, \"settled\": true, \"bearing\": 20.064418964644908, \"severity\": \"0.4\", \"phase\": 5}, \"diagnostic\": {\"edgeId\": \"a|b\", \"activeBefore\": true, \"targetSide\": -1, \"targetError\": 1.236641094633871, \"targetTolerance\": null, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": -0.21443826048353443, \"headingError\": 4.352821272976771, \"correctionBearing\": -12.732151259992293, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": null, \"steering\": -0.8074990211367998, \"contactMaterials\": null}}",
-     "telemetry": "{\"position\": {\"x\": 135.0, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 10.0, \"steering_input\": 0.03736369444870502, \"steering\": 0.48491517599518574, \"throttle\": null, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 135.0, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 10.0, \"steering_input\": 0.03736369444870502, \"steering\": 0.48491517599518574, \"throttle\": null, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236815876093,
+      "repr": "1788480000.9999993"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636793586349978416,
+      "repr": "100.79999999999995"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": 22.15150071269646, \"severity\": \"0.4\"}, \"diagnostic\": {\"edgeId\": \"c|d\", \"activeBefore\": false, \"targetSide\": -1, \"targetError\": 1.0907929684733437, \"targetTolerance\": null, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": 0.5535129920954356, \"headingError\": 8.760924953277023, \"correctionBearing\": 1.7205530472643176, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": true, \"steeringInput\": 0.11187783266349194, \"steering\": null, \"contactMaterials\": \"10:ASPHALT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 195.0, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": null, \"steering_input\": 0.7288532607030416, \"steering\": 0.8972395287895247, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 12.514001881175455, \"wheel_min_ms\": 7.857602493406192, \"travel_bearing_deg\": null}"
+     "telemetry": "{\"position\": {\"x\": 195.0, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": null, \"steering_input\": 0.7288532607030416, \"steering\": 0.8972395287895247, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 12.514001881175455, \"wheel_min_ms\": 7.857602493406192, \"travel_bearing_deg\": null}",
+     "wall": {
+      "bits": 4745288236816085808,
+      "repr": "1788480001.0499992"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636797104787187299,
+      "repr": "100.84999999999995"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": null, \"correction\": {\"active\": false, \"settled\": false, \"bearing\": 13.005383529978815, \"severity\": 0.6, \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": \"c|d\", \"activeBefore\": false, \"targetSide\": -1, \"targetError\": -1.8215371202120068, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": 0.3014527942974099, \"headingError\": 3.898271449252084, \"correctionBearing\": null, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": true, \"steeringInput\": 0.1539301832270079, \"steering\": null, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 197.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 0.0, \"steering_input\": null, \"steering\": -0.9839400886609704, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 22.307473157490023, \"wheel_min_ms\": 10.942559393995934, \"travel_bearing_deg\": null}"
+     "telemetry": "{\"position\": {\"x\": 197.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 0.0, \"steering_input\": null, \"steering\": -0.9839400886609704, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 22.307473157490023, \"wheel_min_ms\": 10.942559393995934, \"travel_bearing_deg\": null}",
+     "wall": {
+      "bits": 4745288236816295523,
+      "repr": "1788480001.0999992"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636800623224396182,
+      "repr": "100.89999999999995"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -18.097346266595764, \"severity\": 0.1, \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": null, \"activeBefore\": true, \"targetSide\": 1, \"targetError\": -1.0419896839301623, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": -0.5919725970217404, \"headingError\": 0.9727164353265536, \"correctionBearing\": 1.640648989207243, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": -0.8468368774407202, \"steering\": null, \"contactMaterials\": null}}",
-     "telemetry": "{\"position\": {\"x\": 198.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 0.0, \"steering_input\": -0.1415640400338194, \"steering\": 0.36130629107599144, \"throttle\": 0.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 7.183239509956069, \"wheel_min_ms\": 0.311470397337938, \"travel_bearing_deg\": -170.0}"
+     "telemetry": "{\"position\": {\"x\": 198.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 0.0, \"steering_input\": -0.1415640400338194, \"steering\": 0.36130629107599144, \"throttle\": 0.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 7.183239509956069, \"wheel_min_ms\": 0.311470397337938, \"travel_bearing_deg\": -170.0}",
+     "wall": {
+      "bits": 4745288236816505238,
+      "repr": "1788480001.1499991"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636804141661605065,
+      "repr": "100.94999999999995"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": null, \"correction\": {\"active\": false, \"settled\": false, \"bearing\": 20.21523849894188, \"severity\": 0.0, \"phase\": null}, \"diagnostic\": {\"edgeId\": null, \"activeBefore\": false, \"targetSide\": -1, \"targetError\": 1.6984614477145477, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": 0.978707651891102, \"headingError\": -7.6490195584849, \"correctionBearing\": 8.185918058365253, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": 0.1831478388286496, \"steering\": null, \"contactMaterials\": null}}",
-     "telemetry": "{\"position\": {\"x\": 200.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": 0.0, \"steering_input\": -0.5500064325762597, \"steering\": null, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {\"x\": 200.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": 0.0, \"steering_input\": -0.5500064325762597, \"steering\": null, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236816714953,
+      "repr": "1788480001.199999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636807660098813948,
+      "repr": "100.99999999999994"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -4.68319606712123, \"severity\": 0.6, \"phase\": 5}, \"diagnostic\": {\"edgeId\": 7, \"activeBefore\": true, \"targetSide\": -1, \"targetError\": -0.22354648361948026, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": 0.5692131378766572, \"headingError\": 2.056939738854499, \"correctionBearing\": 3.99059759861348, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": 0.5366853536349181, \"steering\": -0.5977029588711578, \"contactMaterials\": \"11:DIRT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 202.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": null, \"steering_input\": 0.09346531496527266, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {\"x\": 202.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": null, \"steering_input\": 0.09346531496527266, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236816924668,
+      "repr": "1788480001.249999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636811178536022831,
+      "repr": "101.04999999999994"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 26.816967446803098, \"severity\": null, \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": \"a|b\", \"activeBefore\": true, \"targetSide\": null, \"targetError\": -1.7994066048655344, \"targetTolerance\": null, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": 0.6862100174679309, \"headingError\": 9.894122650648164, \"correctionBearing\": null, \"withinLateral\": false, \"withinHeading\": false, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": 0.004603511774716074, \"steering\": -0.6387073861298092, \"contactMaterials\": \" 12:GRAVEL \"}}",
-     "telemetry": "{\"position\": {\"x\": 202.5, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": null, \"steering_input\": 0.33709264762983837, \"steering\": -0.3305385133510754, \"throttle\": 0.5, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 8.449608399152877, \"wheel_min_ms\": 3.381824048143436, \"travel_bearing_deg\": 0.0}"
+     "telemetry": "{\"position\": {\"x\": 202.5, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": null, \"steering_input\": 0.33709264762983837, \"steering\": -0.3305385133510754, \"throttle\": 0.5, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 8.449608399152877, \"wheel_min_ms\": 3.381824048143436, \"travel_bearing_deg\": 0.0}",
+     "wall": {
+      "bits": 4745288236817134383,
+      "repr": "1788480001.299999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636814696973231714,
+      "repr": "101.09999999999994"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": 25.35676789212541, \"severity\": null, \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": false, \"targetSide\": -1, \"targetError\": 0.8745549859826056, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": -0.41339577060005506, \"headingError\": 5.5750392073614226, \"correctionBearing\": 5.906519237639515, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": -0.8170052459106394, \"steering\": 0.27015852373781857, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 204.5, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 10.0, \"steering_input\": null, \"steering\": null, \"throttle\": null, \"brake\": 0.0, \"traction_control_active\": true, \"pitch_rad\": null}"
+     "telemetry": "{\"position\": {\"x\": 204.5, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 10.0, \"steering_input\": null, \"steering\": null, \"throttle\": null, \"brake\": 0.0, \"traction_control_active\": true, \"pitch_rad\": null}",
+     "wall": {
+      "bits": 4745288236817344098,
+      "repr": "1788480001.349999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636818215410440597,
+      "repr": "101.14999999999993"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 26.51565867296577, \"severity\": 0.0, \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": \"c|d\", \"activeBefore\": true, \"targetSide\": 1, \"targetError\": 0.7707514152318344, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": 0.1978637814483959, \"headingError\": -9.269206644150021, \"correctionBearing\": 1.1277569462480486, \"withinLateral\": true, \"withinHeading\": false, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": null, \"steering\": null, \"contactMaterials\": null}}",
-     "telemetry": "{\"position\": {}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.3906312458986956, \"steering\": null, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": null}"
+     "telemetry": "{\"position\": {}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.3906312458986956, \"steering\": null, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": null}",
+     "wall": {
+      "bits": 4745288236817553813,
+      "repr": "1788480001.399999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636821733847649480,
+      "repr": "101.19999999999993"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"offRoad\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -2.4829562850827323, \"severity\": 0.1, \"phase\": \"unwind\"}, \"diagnostic\": {\"edgeId\": 7, \"activeBefore\": false, \"targetSide\": 1, \"targetError\": -1.7019410829322088, \"targetTolerance\": null, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": 0.5250918116592205, \"headingError\": 5.795358351915139, \"correctionBearing\": null, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": 0.751796445613611, \"steering\": -0.7945461412486061, \"contactMaterials\": \" 12:GRAVEL \"}}",
-     "telemetry": "{\"position\": {\"x\": 265.5, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.3492638820340135, \"steering\": null, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 265.5, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.3492638820340135, \"steering\": null, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236817763528,
+      "repr": "1788480001.4499989"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636825252284858363,
+      "repr": "101.24999999999993"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"offRoad\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": 24.152557794593022, \"severity\": 0.1, \"phase\": \"unwind\"}}",
-     "telemetry": "{\"position\": {\"x\": 266.0, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 10.0, \"steering_input\": null, \"steering\": -0.3254912162192294, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {\"x\": 266.0, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 10.0, \"steering_input\": null, \"steering\": -0.3254912162192294, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236817973243,
+      "repr": "1788480001.4999988"
+     }
     },
     {
+     "clock": {
+      "bits": 4636832289159276129,
+      "repr": "101.34999999999992"
+     },
      "op": "stop",
-     "out": "{\"schema\": 1, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"samples\": 23, \"duration_s\": 1.25, \"distance_travelled_m\": 25.8, \"drive\": {\"start_z_m\": 50.0, \"end_z_m\": 51.5, \"min_ground_speed_mps\": 0.0, \"max_ground_speed_mps\": 20.0, \"max_throttle\": 1.0, \"max_brake\": 0.8, \"traction_control_samples\": 4, \"elevation_change_m\": 1.5}, \"road_state_samples\": {\"3\": 5, \"null\": 5, \"onRoad\": 6, \"dormant\": 5, \"offRoad\": 2}, \"markers\": [{\"t\": 0.3, \"note\": \"note \\u00e9\"}, {\"t\": 0.5, \"note\": \"note \\u00e9\"}], \"navigation_edges\": [\"7\", \"a|b\", \"c|d\"], \"diagnostic_startup_samples_skipped\": 0, \"correction\": {\"samples\": 9, \"episodes\": [{\"start_s\": 0.1, \"side\": 1, \"max_severity\": 0.0, \"end_s\": 0.15, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.25, \"side\": null, \"max_severity\": 0.1, \"end_s\": 0.35, \"duration_s\": 0.1, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.55, \"side\": null, \"max_severity\": 0.6, \"end_s\": 0.65, \"duration_s\": 0.1, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.7, \"side\": -1, \"max_severity\": 0.6, \"end_s\": 0.75, \"duration_s\": 0.05, \"outcome\": \"settled\", \"phase_transitions\": 0}, {\"start_s\": 0.9, \"side\": 1, \"max_severity\": 0.1, \"end_s\": 0.95, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 1.0, \"side\": -1, \"max_severity\": 0.6, \"end_s\": 1.1, \"duration_s\": 0.1, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 1}, {\"start_s\": 1.15, \"side\": 1, \"max_severity\": 0.0, \"end_s\": 1.2, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}], \"settled_packets_s\": [0.2, 0.45, 0.75], \"settled_audio_triggers_s\": [0.15, 0.2, 0.75], \"repeated_settled\": [{\"first_s\": 0.15, \"second_s\": 0.2, \"interval_s\": 0.05}, {\"first_s\": 0.2, \"second_s\": 0.75, \"interval_s\": 0.55}], \"eligible_samples\": 10, \"within_lateral_ratio\": 0.5, \"within_heading_ratio\": 0.5, \"within_lateral_speed_ratio\": 0.2, \"all_settled_conditions_ratio\": 0.2, \"longest_settled_candidate_run_samples\": 2, \"steering_reversals\": 0, \"steering_source_samples\": {\"lua_vehicle\": 10, \"telemetry\": 7}, \"correction_bearing_reversals\": 0, \"target_crossings\": 0, \"settled_band\": {\"min_lateral_tolerance_m\": 0.9, \"max_lateral_tolerance_m\": 1.125, \"heading_tolerance_deg\": 6.0, \"min_lateral_speed_tolerance_mps\": 0.5, \"max_lateral_speed_tolerance_mps\": 0.6}}, \"slip\": {\"episodes\": [{\"start_s\": 0.05, \"kind\": \"lockup\", \"max_magnitude_mps\": 17.0, \"samples\": 4, \"during_correction\": true, \"end_s\": 0.25, \"duration_s\": 0.2}, {\"start_s\": 0.4, \"kind\": \"lockup\", \"max_magnitude_mps\": 19.657, \"samples\": 2, \"during_correction\": false, \"end_s\": 0.55, \"duration_s\": 0.15}, {\"start_s\": 0.65, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 5.0, \"samples\": 2, \"during_correction\": true, \"end_s\": 0.75, \"duration_s\": 0.1}, {\"start_s\": 0.8, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 22.308, \"samples\": 4, \"during_correction\": true, \"end_s\": 1.0, \"duration_s\": 0.2}], \"correction_overlap_samples\": 4}, \"contact_materials\": {\"sample_sets\": {\"10:ASPHALT,30:RUBBER\": 1, \"11:DIRT,30:RUBBER\": 2, \"12:GRAVEL\": 3}, \"changes\": [{\"t\": 0.65, \"from\": \"12:GRAVEL\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": null, \"road_state\": 3}, {\"t\": 0.8, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"10:ASPHALT,30:RUBBER\", \"z_m\": null, \"road_state\": \"dormant\"}, {\"t\": 1.0, \"from\": \"10:ASPHALT,30:RUBBER\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": 51.5, \"road_state\": 3}, {\"t\": 1.05, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": null, \"road_state\": \"dormant\"}]}, \"max_absolute\": {\"target_error_m\": 1.971, \"lateral_speed_mps\": 0.979, \"heading_error_deg\": 9.894, \"correction_bearing_deg\": 12.732, \"steering_input\": 0.847, \"applied_steering\": 0.984, \"raw_slip_mps\": 22.308, \"vehicle_pitch_deg\": 22.918}, \"assessment_flags\": [\"2 settled-tone retrigger(s) within 3 seconds\", \"6 correction episode(s) did not settle\", \"3 sustained slip episode(s) overlapped lane correction\", \"1 sample(s) lacked Lua diagnostic fields\"], \"summary_path\": \"<DIR>\\\\road_guidance_20260904_083005_x.summary.json\"}"
+     "out": "{\"schema\": 1, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"samples\": 23, \"duration_s\": 1.25, \"distance_travelled_m\": 25.8, \"drive\": {\"start_z_m\": 50.0, \"end_z_m\": 51.5, \"min_ground_speed_mps\": 0.0, \"max_ground_speed_mps\": 20.0, \"max_throttle\": 1.0, \"max_brake\": 0.8, \"traction_control_samples\": 4, \"elevation_change_m\": 1.5}, \"road_state_samples\": {\"3\": 5, \"null\": 5, \"onRoad\": 6, \"dormant\": 5, \"offRoad\": 2}, \"markers\": [{\"t\": 0.3, \"note\": \"note \\u00e9\"}, {\"t\": 0.5, \"note\": \"note \\u00e9\"}], \"navigation_edges\": [\"7\", \"a|b\", \"c|d\"], \"diagnostic_startup_samples_skipped\": 0, \"correction\": {\"samples\": 9, \"episodes\": [{\"start_s\": 0.1, \"side\": 1, \"max_severity\": 0.0, \"end_s\": 0.15, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.25, \"side\": null, \"max_severity\": 0.1, \"end_s\": 0.35, \"duration_s\": 0.1, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.55, \"side\": null, \"max_severity\": 0.6, \"end_s\": 0.65, \"duration_s\": 0.1, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.7, \"side\": -1, \"max_severity\": 0.6, \"end_s\": 0.75, \"duration_s\": 0.05, \"outcome\": \"settled\", \"phase_transitions\": 0}, {\"start_s\": 0.9, \"side\": 1, \"max_severity\": 0.1, \"end_s\": 0.95, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 1.0, \"side\": -1, \"max_severity\": 0.6, \"end_s\": 1.1, \"duration_s\": 0.1, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 1}, {\"start_s\": 1.15, \"side\": 1, \"max_severity\": 0.0, \"end_s\": 1.2, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}], \"settled_packets_s\": [0.2, 0.45, 0.75], \"settled_audio_triggers_s\": [0.15, 0.2, 0.75], \"repeated_settled\": [{\"first_s\": 0.15, \"second_s\": 0.2, \"interval_s\": 0.05}, {\"first_s\": 0.2, \"second_s\": 0.75, \"interval_s\": 0.55}], \"eligible_samples\": 10, \"within_lateral_ratio\": 0.5, \"within_heading_ratio\": 0.5, \"within_lateral_speed_ratio\": 0.2, \"all_settled_conditions_ratio\": 0.2, \"longest_settled_candidate_run_samples\": 2, \"steering_reversals\": 0, \"steering_source_samples\": {\"lua_vehicle\": 10, \"telemetry\": 7}, \"correction_bearing_reversals\": 0, \"target_crossings\": 0, \"settled_band\": {\"min_lateral_tolerance_m\": 0.9, \"max_lateral_tolerance_m\": 1.125, \"heading_tolerance_deg\": 6.0, \"min_lateral_speed_tolerance_mps\": 0.5, \"max_lateral_speed_tolerance_mps\": 0.6}}, \"slip\": {\"episodes\": [{\"start_s\": 0.05, \"kind\": \"lockup\", \"max_magnitude_mps\": 17.0, \"samples\": 4, \"during_correction\": true, \"end_s\": 0.25, \"duration_s\": 0.2}, {\"start_s\": 0.4, \"kind\": \"lockup\", \"max_magnitude_mps\": 19.657, \"samples\": 2, \"during_correction\": false, \"end_s\": 0.55, \"duration_s\": 0.15}, {\"start_s\": 0.65, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 5.0, \"samples\": 2, \"during_correction\": true, \"end_s\": 0.75, \"duration_s\": 0.1}, {\"start_s\": 0.8, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 22.308, \"samples\": 4, \"during_correction\": true, \"end_s\": 1.0, \"duration_s\": 0.2}], \"correction_overlap_samples\": 4}, \"contact_materials\": {\"sample_sets\": {\"10:ASPHALT,30:RUBBER\": 1, \"11:DIRT,30:RUBBER\": 2, \"12:GRAVEL\": 3}, \"changes\": [{\"t\": 0.65, \"from\": \"12:GRAVEL\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": null, \"road_state\": 3}, {\"t\": 0.8, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"10:ASPHALT,30:RUBBER\", \"z_m\": null, \"road_state\": \"dormant\"}, {\"t\": 1.0, \"from\": \"10:ASPHALT,30:RUBBER\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": 51.5, \"road_state\": 3}, {\"t\": 1.05, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": null, \"road_state\": \"dormant\"}]}, \"max_absolute\": {\"target_error_m\": 1.971, \"lateral_speed_mps\": 0.979, \"heading_error_deg\": 9.894, \"correction_bearing_deg\": 12.732, \"steering_input\": 0.847, \"applied_steering\": 0.984, \"raw_slip_mps\": 22.308, \"vehicle_pitch_deg\": 22.918}, \"assessment_flags\": [\"2 settled-tone retrigger(s) within 3 seconds\", \"6 correction episode(s) did not settle\", \"3 sustained slip episode(s) overlapped lane correction\", \"1 sample(s) lacked Lua diagnostic fields\"], \"summary_path\": \"<DIR>\\\\road_guidance_20260904_083005_x.summary.json\"}",
+     "wall": {
+      "bits": 4745288236818182958,
+      "repr": "1788480001.5499988"
+     }
     }
    ],
    "wall0": {
@@ -1399,188 +1831,404 @@
    },
    "script": [
     {
+     "clock": {
+      "bits": 4636737291354636288,
+      "repr": "100.0"
+     },
      "label": "",
      "op": "start",
-     "out": "{\"active\": true, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_hill-climb.ndjson\", \"elapsed_s\": 0.0, \"samples\": 0, \"markers\": 0}"
+     "out": "{\"active\": true, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_hill-climb.ndjson\", \"elapsed_s\": 0.0, \"samples\": 0, \"markers\": 0}",
+     "wall": {
+      "bits": 4745288236812730368,
+      "repr": "1788480000.25"
+     }
     },
     {
      "audio": "{\"settled_triggered\": true}",
+     "clock": {
+      "bits": 4636740809791845171,
+      "repr": "100.05"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"offRoad\", \"correction\": {\"active\": false, \"settled\": true, \"bearing\": -17.457412750550194, \"severity\": 0.1, \"phase\": \"idle\"}, \"diagnostic\": {\"edgeId\": null, \"activeBefore\": true, \"targetSide\": 1, \"targetError\": -0.8595894601001564, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": 0.1306457041350606, \"headingError\": -2.964461590114693, \"correctionBearing\": null, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": true, \"steeringInput\": -0.8960812268552287, \"steering\": null, \"contactMaterials\": null}}",
-     "telemetry": "{\"position\": {\"x\": 1.0, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.7337171105407061, \"steering\": null, \"throttle\": 0.5, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 17.924392817683263, \"wheel_min_ms\": 10.822971482177122, \"travel_bearing_deg\": 0.0}"
+     "telemetry": "{\"position\": {\"x\": 1.0, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.7337171105407061, \"steering\": null, \"throttle\": 0.5, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 17.924392817683263, \"wheel_min_ms\": 10.822971482177122, \"travel_bearing_deg\": 0.0}",
+     "wall": {
+      "bits": 4745288236812940083,
+      "repr": "1788480000.3"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636744328229054054,
+      "repr": "100.1"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 17.884093897990375, \"severity\": 0.1, \"phase\": null}, \"diagnostic\": {}}",
-     "telemetry": "{\"position\": {\"x\": 2.0, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 3.0, \"steering_input\": -0.3973606899074522, \"steering\": null, \"throttle\": null, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 6.252144721158562, \"wheel_min_ms\": 1.5511955208642, \"travel_bearing_deg\": -170.0}"
+     "telemetry": "{\"position\": {\"x\": 2.0, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 3.0, \"steering_input\": -0.3973606899074522, \"steering\": null, \"throttle\": null, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 6.252144721158562, \"wheel_min_ms\": 1.5511955208642, \"travel_bearing_deg\": -170.0}",
+     "wall": {
+      "bits": 4745288236813149798,
+      "repr": "1788480000.35"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636747846666262937,
+      "repr": "100.14999999999999"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 16.79196330040275, \"severity\": \"0.4\", \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": true, \"targetSide\": -1, \"targetError\": 0.7512482028164147, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": 0.06345213375362868, \"headingError\": 4.5869378953601565, \"correctionBearing\": null, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": -0.6083405739065781, \"steering\": null, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 4.0, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 10.0, \"steering_input\": null, \"steering\": null, \"throttle\": 0.5, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {\"x\": 4.0, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 10.0, \"steering_input\": null, \"steering\": null, \"throttle\": 0.5, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236813359513,
+      "repr": "1788480000.3999999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636751365103471820,
+      "repr": "100.19999999999999"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": 28.405053704617004, \"severity\": 0.1}, \"diagnostic\": {}}",
-     "telemetry": "{\"position\": {\"x\": 5.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": null, \"steering_input\": -0.33562743296668307, \"steering\": -0.4503788170680598, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {\"x\": 5.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": null, \"steering_input\": -0.33562743296668307, \"steering\": -0.4503788170680598, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236813569228,
+      "repr": "1788480000.4499998"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636754883540680703,
+      "repr": "100.24999999999999"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 15.748365124720827, \"severity\": 0.0, \"phase\": \"unwind\"}, \"diagnostic\": {\"edgeId\": 7, \"activeBefore\": true, \"targetSide\": 1, \"targetError\": -0.02431549161957447, \"targetTolerance\": null, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": 0.7540836466142058, \"headingError\": -0.16729664685413148, \"correctionBearing\": null, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": 0.08539709965059239, \"steering\": 0.6168204261738022, \"contactMaterials\": \"11:DIRT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 65.0, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 3.0, \"steering_input\": 0.2941048637690844, \"steering\": -0.7047287363323518, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": true, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 14.790728127760358, \"wheel_min_ms\": 11.904800488809618, \"travel_bearing_deg\": 0.0}"
+     "telemetry": "{\"position\": {\"x\": 65.0, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 3.0, \"steering_input\": 0.2941048637690844, \"steering\": -0.7047287363323518, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": true, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 14.790728127760358, \"wheel_min_ms\": 11.904800488809618, \"travel_bearing_deg\": 0.0}",
+     "wall": {
+      "bits": 4745288236813778943,
+      "repr": "1788480000.4999998"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636758401977889586,
+      "repr": "100.29999999999998"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": 22.159563915423682, \"severity\": null}}",
-     "telemetry": "{\"position\": {\"x\": 67.0, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": null, \"steering_input\": 0.20288753134473847, \"steering\": null, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 7.564264194371531, \"wheel_min_ms\": 2.316036492007571, \"travel_bearing_deg\": null}"
+     "telemetry": "{\"position\": {\"x\": 67.0, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": null, \"steering_input\": 0.20288753134473847, \"steering\": null, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 7.564264194371531, \"wheel_min_ms\": 2.316036492007571, \"travel_bearing_deg\": null}",
+     "wall": {
+      "bits": 4745288236813988658,
+      "repr": "1788480000.5499997"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636761920415098469,
+      "repr": "100.34999999999998"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -10.494739259304009, \"severity\": \"0.4\", \"phase\": \"unwind\"}}",
-     "telemetry": "{\"position\": {\"x\": 67.5, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": null, \"steering_input\": 0.25288123326801015, \"steering\": -0.017387532357393987, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 21.3533050170835, \"wheel_min_ms\": 6.6876622837128625, \"travel_bearing_deg\": -170.0}"
+     "telemetry": "{\"position\": {\"x\": 67.5, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": null, \"steering_input\": 0.25288123326801015, \"steering\": -0.017387532357393987, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 21.3533050170835, \"wheel_min_ms\": 6.6876622837128625, \"travel_bearing_deg\": -170.0}",
+     "wall": {
+      "bits": 4745288236814198373,
+      "repr": "1788480000.5999997"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636765438852307352,
+      "repr": "100.39999999999998"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\"}",
-     "telemetry": "{\"position\": {\"x\": 127.5, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.40514299612285765, \"steering\": -0.7523811656672081, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": true, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 24.73506775450304, \"wheel_min_ms\": 3.6006241385019817, \"travel_bearing_deg\": 20.0}"
+     "telemetry": "{\"position\": {\"x\": 127.5, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.40514299612285765, \"steering\": -0.7523811656672081, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": true, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 24.73506775450304, \"wheel_min_ms\": 3.6006241385019817, \"travel_bearing_deg\": 20.0}",
+     "wall": {
+      "bits": 4745288236814408088,
+      "repr": "1788480000.6499996"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636768957289516235,
+      "repr": "100.44999999999997"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": false, \"settled\": false, \"bearing\": 4.218348851074872, \"severity\": 0.0, \"phase\": \"unwind\"}, \"diagnostic\": {\"edgeId\": null, \"activeBefore\": false, \"targetSide\": 1, \"targetError\": 1.447068483731464, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": -0.720813399682783, \"headingError\": -9.298121047551861, \"correctionBearing\": -1.8943214850689216, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": true, \"steeringInput\": -0.14807684321828618, \"steering\": -0.1826133158896821, \"contactMaterials\": \" 12:GRAVEL \"}}",
-     "telemetry": "{\"position\": {\"x\": 128.5, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.7661039121543758, \"steering\": null, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {\"x\": 128.5, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.7661039121543758, \"steering\": null, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236814617803,
+      "repr": "1788480000.6999996"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636772475726725118,
+      "repr": "100.49999999999997"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": null, \"correction\": {\"active\": false, \"settled\": true, \"bearing\": 23.643460257985012, \"severity\": null}, \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": true, \"targetSide\": -1, \"targetError\": -1.1195645621306318, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": -0.3300721229052137, \"headingError\": -9.238731706995205, \"correctionBearing\": 13.872062189931611, \"withinLateral\": false, \"withinHeading\": false, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": -0.13074748104620526, \"steering\": -0.5499845045288296, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 130.5, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 0.0, \"steering_input\": -0.3157567138760704, \"steering\": 0.0031624976494561974, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 14.490158522615538, \"wheel_min_ms\": 9.463083975834525, \"travel_bearing_deg\": -170.0}"
+     "telemetry": "{\"position\": {\"x\": 130.5, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 0.0, \"steering_input\": -0.3157567138760704, \"steering\": 0.0031624976494561974, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 14.490158522615538, \"wheel_min_ms\": 9.463083975834525, \"travel_bearing_deg\": -170.0}",
+     "wall": {
+      "bits": 4745288236814827518,
+      "repr": "1788480000.7499995"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636775994163934001,
+      "repr": "100.54999999999997"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -14.32777300582844, \"severity\": 0.0, \"phase\": \"idle\"}, \"diagnostic\": {\"edgeId\": null, \"activeBefore\": false, \"targetSide\": -1, \"targetError\": -0.5125575363736314, \"targetTolerance\": null, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": -0.12755343633094895, \"headingError\": -7.768260516033236, \"correctionBearing\": -11.224341772868671, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": -0.3373681052349238, \"steering\": null, \"contactMaterials\": null}}",
-     "telemetry": "{\"position\": {\"x\": 132.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 3.0, \"steering_input\": 0.03500586957763119, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 0.8946415921353867, \"wheel_min_ms\": 10.355378636776779, \"travel_bearing_deg\": 0.0}"
+     "telemetry": "{\"position\": {\"x\": 132.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 3.0, \"steering_input\": 0.03500586957763119, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 0.8946415921353867, \"wheel_min_ms\": 10.355378636776779, \"travel_bearing_deg\": 0.0}",
+     "wall": {
+      "bits": 4745288236815037233,
+      "repr": "1788480000.7999995"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636779512601142884,
+      "repr": "100.59999999999997"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -25.235252587870765, \"severity\": 0.0, \"phase\": \"unwind\"}, \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": false, \"targetSide\": 1, \"targetError\": -0.7738340010148561, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": -0.755200081518344, \"headingError\": -4.20336977846246, \"correctionBearing\": -0.5143349801405641, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": true, \"steeringInput\": 0.2673483349845227, \"steering\": 0.39904557610777713, \"contactMaterials\": \" 12:GRAVEL \"}}",
-     "telemetry": "{\"position\": {\"x\": 134.5, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": 15.0, \"steering_input\": null, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 134.5, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": 15.0, \"steering_input\": null, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236815246948,
+      "repr": "1788480000.8499994"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636783031038351767,
+      "repr": "100.64999999999996"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": 4.454622495985731, \"severity\": null, \"phase\": \"idle\"}, \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": false, \"targetSide\": null, \"targetError\": 1.9076138182625852, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": 0.7599629833095192, \"headingError\": -4.8805185010385355, \"correctionBearing\": -18.486287530476314, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": true, \"steeringInput\": -0.898337330207784, \"steering\": -0.08619913562964077, \"contactMaterials\": \"11:DIRT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 135.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.4666579900462622, \"steering\": 0.9306369310527898, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {\"x\": 135.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.4666579900462622, \"steering\": 0.9306369310527898, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236815456663,
+      "repr": "1788480000.8999994"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636786549475560650,
+      "repr": "100.69999999999996"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -17.710713397967076, \"severity\": \"0.4\", \"phase\": null}, \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": true, \"targetSide\": null, \"targetError\": -0.7372813097110624, \"targetTolerance\": null, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": -0.06237725433614427, \"headingError\": -4.166834369035925, \"correctionBearing\": -6.746407499379149, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": 0.8637845776890531, \"steering\": -0.2986981707846239, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 10.0, \"steering_input\": 0.5302408047895617, \"steering\": -0.36484346266027856, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": null}"
+     "telemetry": "{\"position\": {}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 10.0, \"steering_input\": 0.5302408047895617, \"steering\": -0.36484346266027856, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": null}",
+     "wall": {
+      "bits": 4745288236815666378,
+      "repr": "1788480000.9499993"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636790067912769533,
+      "repr": "100.74999999999996"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -15.785945547362054, \"severity\": 0.6, \"phase\": \"correct\"}}",
-     "telemetry": "{\"position\": {\"x\": 196.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 15.0, \"steering_input\": null, \"steering\": null, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 196.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 15.0, \"steering_input\": null, \"steering\": null, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236815876093,
+      "repr": "1788480000.9999993"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636793586349978416,
+      "repr": "100.79999999999995"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": null, \"correction\": {\"active\": false, \"settled\": true, \"bearing\": -5.257608313637721, \"severity\": null, \"phase\": \"unwind\"}, \"diagnostic\": {\"edgeId\": \"a|b\", \"activeBefore\": true, \"targetSide\": null, \"targetError\": -0.5763154593972595, \"targetTolerance\": null, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": -0.08219454598007303, \"headingError\": -7.047902648679109, \"correctionBearing\": null, \"withinLateral\": true, \"withinHeading\": false, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": null, \"steering\": 0.665689220348926, \"contactMaterials\": null}}",
-     "telemetry": "{\"position\": {}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.8692570743309811, \"steering\": -0.5852424718515792, \"throttle\": null, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 12.861923450708954, \"wheel_min_ms\": 2.3122187859481502, \"travel_bearing_deg\": null}"
+     "telemetry": "{\"position\": {}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.8692570743309811, \"steering\": -0.5852424718515792, \"throttle\": null, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 12.861923450708954, \"wheel_min_ms\": 2.3122187859481502, \"travel_bearing_deg\": null}",
+     "wall": {
+      "bits": 4745288236816085808,
+      "repr": "1788480001.0499992"
+     }
     },
     {
      "audio": "null",
+     "clock": {
+      "bits": 4636797104787187299,
+      "repr": "100.84999999999995"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\"}",
-     "telemetry": "{\"position\": {\"x\": 198.5, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 15.0, \"steering_input\": 0.7340219884425327, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {\"x\": 198.5, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 15.0, \"steering_input\": 0.7340219884425327, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236816295523,
+      "repr": "1788480001.0999992"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636800623224396182,
+      "repr": "100.89999999999995"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"offRoad\", \"correction\": {\"active\": false, \"settled\": true, \"bearing\": -15.627406435887849, \"severity\": 0.6, \"phase\": null}}",
-     "telemetry": "{\"position\": {\"x\": 258.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 15.0, \"steering_input\": null, \"steering\": -0.27042821329476663, \"throttle\": 1.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 4.2209908350220395, \"wheel_min_ms\": 8.069653730661276, \"travel_bearing_deg\": -170.0}"
+     "telemetry": "{\"position\": {\"x\": 258.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 15.0, \"steering_input\": null, \"steering\": -0.27042821329476663, \"throttle\": 1.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 4.2209908350220395, \"wheel_min_ms\": 8.069653730661276, \"travel_bearing_deg\": -170.0}",
+     "wall": {
+      "bits": 4745288236816505238,
+      "repr": "1788480001.1499991"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636804141661605065,
+      "repr": "100.94999999999995"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -8.16069113881689, \"severity\": \"0.4\", \"phase\": \"idle\"}, \"diagnostic\": {\"edgeId\": null, \"activeBefore\": true, \"targetSide\": -1, \"targetError\": -1.6199629405215976, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": -0.14709337473778694, \"headingError\": 7.512107124472866, \"correctionBearing\": -16.322895178939092, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": true, \"steeringInput\": -0.250970963456814, \"steering\": 0.14498909053573716, \"contactMaterials\": \" 12:GRAVEL \"}}",
-     "telemetry": "{\"position\": {\"x\": 259.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.7857075918560423, \"steering\": null, \"throttle\": null, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 259.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.7857075918560423, \"steering\": null, \"throttle\": null, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236816714953,
+      "repr": "1788480001.199999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636807660098813948,
+      "repr": "100.99999999999994"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 7.4480627476124255, \"severity\": 0.6, \"phase\": \"idle\"}, \"diagnostic\": {\"edgeId\": null, \"activeBefore\": true, \"targetSide\": 1, \"targetError\": -0.2881910770253171, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": -0.9887081637913786, \"headingError\": -2.819648341658773, \"correctionBearing\": -1.2042811346487667, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": -0.1451310159518362, \"steering\": null, \"contactMaterials\": \"11:DIRT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 260.5, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 3.0, \"steering_input\": -0.012504656926023872, \"steering\": -0.5569034213633162, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 19.099079383698083, \"wheel_min_ms\": 9.10854961177865, \"travel_bearing_deg\": 20.0}"
+     "telemetry": "{\"position\": {\"x\": 260.5, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 3.0, \"steering_input\": -0.012504656926023872, \"steering\": -0.5569034213633162, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 19.099079383698083, \"wheel_min_ms\": 9.10854961177865, \"travel_bearing_deg\": 20.0}",
+     "wall": {
+      "bits": 4745288236816924668,
+      "repr": "1788480001.249999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636811178536022831,
+      "repr": "101.04999999999994"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -29.03571036178618, \"severity\": 0.0, \"phase\": null}, \"diagnostic\": {\"edgeId\": \"c|d\", \"activeBefore\": false, \"targetSide\": -1, \"targetError\": 1.2038723014210428, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": -0.17251488143948412, \"headingError\": 1.6529612848759978, \"correctionBearing\": null, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": 0.1794521978211514, \"steering\": -0.6497357151875423, \"contactMaterials\": \"11:DIRT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 261.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": null, \"wheel_speed_ms\": null, \"steering_input\": 0.6888323399636542, \"steering\": -0.7067831114556247, \"throttle\": 0.5, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 17.013783637398017, \"wheel_min_ms\": 3.595574352395494, \"travel_bearing_deg\": -170.0}"
+     "telemetry": "{\"position\": {\"x\": 261.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": null, \"wheel_speed_ms\": null, \"steering_input\": 0.6888323399636542, \"steering\": -0.7067831114556247, \"throttle\": 0.5, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 17.013783637398017, \"wheel_min_ms\": 3.595574352395494, \"travel_bearing_deg\": -170.0}",
+     "wall": {
+      "bits": 4745288236817134383,
+      "repr": "1788480001.299999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636814696973231714,
+      "repr": "101.09999999999994"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -26.950966251484967, \"severity\": 0.6, \"phase\": 5}}",
-     "telemetry": "{\"position\": {\"x\": 262.5, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.030587056070718877, \"steering\": 0.7295435120977043, \"throttle\": null, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 262.5, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.030587056070718877, \"steering\": 0.7295435120977043, \"throttle\": null, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236817344098,
+      "repr": "1788480001.349999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636818215410440597,
+      "repr": "101.14999999999993"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": 20.32245086903385, \"severity\": 0.0, \"phase\": \"unwind\"}, \"diagnostic\": {\"edgeId\": 7, \"activeBefore\": false, \"targetSide\": null, \"targetError\": -1.0988896033692113, \"targetTolerance\": null, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": -0.30948554484386315, \"headingError\": -3.324200111853921, \"correctionBearing\": null, \"withinLateral\": true, \"withinHeading\": false, \"withinLateralSpeed\": true, \"settledCandidate\": true, \"steeringInput\": -0.19371122951951514, \"steering\": -0.11228185539767055, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 263.5, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.20686721320224888, \"steering\": null, \"throttle\": 0.5, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 9.693588343348653, \"wheel_min_ms\": 3.567268616874874, \"travel_bearing_deg\": null}"
+     "telemetry": "{\"position\": {\"x\": 263.5, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 15.0, \"steering_input\": -0.20686721320224888, \"steering\": null, \"throttle\": 0.5, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 9.693588343348653, \"wheel_min_ms\": 3.567268616874874, \"travel_bearing_deg\": null}",
+     "wall": {
+      "bits": 4745288236817553813,
+      "repr": "1788480001.399999"
+     }
     },
     {
      "audio": "{\"settled_triggered\": true}",
+     "clock": {
+      "bits": 4636821733847649480,
+      "repr": "101.19999999999993"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": null, \"correction\": {\"active\": false, \"settled\": true, \"bearing\": -25.99630784283071, \"severity\": 0.1, \"phase\": \"unwind\"}}",
-     "telemetry": "{\"position\": {\"x\": 264.0, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.8711331353524723, \"steering\": null, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {\"x\": 264.0, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.8711331353524723, \"steering\": null, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236817763528,
+      "repr": "1788480001.4499989"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636825252284858363,
+      "repr": "101.24999999999993"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"offRoad\", \"diagnostic\": {\"edgeId\": 7, \"activeBefore\": true, \"targetSide\": null, \"targetError\": 0.8417970518526103, \"targetTolerance\": null, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": 0.7733112991612952, \"headingError\": 2.3731738399238296, \"correctionBearing\": -13.87637014175144, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": true, \"steeringInput\": null, \"steering\": -0.28303911812203064, \"contactMaterials\": \" 12:GRAVEL \"}}",
-     "telemetry": "{\"position\": {\"x\": 324.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 0.0, \"steering_input\": 0.49931629925678966, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {\"x\": 324.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 0.0, \"steering_input\": 0.49931629925678966, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236817973243,
+      "repr": "1788480001.4999988"
+     }
     },
     {
+     "clock": {
+      "bits": 4636828770722067246,
+      "repr": "101.29999999999993"
+     },
      "op": "stop",
-     "out": "{\"schema\": 1, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_hill-climb.ndjson\", \"samples\": 25, \"duration_s\": 1.25, \"distance_travelled_m\": 25.46, \"drive\": {\"start_z_m\": 51.5, \"end_z_m\": 50.0, \"min_ground_speed_mps\": 0.0, \"max_ground_speed_mps\": 20.0, \"max_throttle\": 1.0, \"max_brake\": 0.8, \"traction_control_samples\": 2, \"elevation_change_m\": -1.5}, \"road_state_samples\": {\"offRoad\": 3, \"onRoad\": 7, \"dormant\": 7, \"3\": 5, \"null\": 3}, \"markers\": [], \"navigation_edges\": [\"7\", \"a|b\", \"c|d\"], \"diagnostic_startup_samples_skipped\": 0, \"correction\": {\"samples\": 7, \"episodes\": [{\"start_s\": 0.1, \"side\": null, \"max_severity\": 0.4, \"end_s\": 0.2, \"duration_s\": 0.1, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 1}, {\"start_s\": 0.25, \"side\": 1, \"max_severity\": 0.0, \"end_s\": 0.3, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.7, \"side\": null, \"max_severity\": 0.4, \"end_s\": 0.75, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.95, \"side\": -1, \"max_severity\": 0.6, \"end_s\": 1.05, \"duration_s\": 0.1, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 1.1, \"side\": null, \"max_severity\": 0.6, \"end_s\": 1.15, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}], \"settled_packets_s\": [0.05, 0.5, 0.8, 0.9, 1.2], \"settled_audio_triggers_s\": [0.05, 1.2], \"repeated_settled\": [{\"first_s\": 0.05, \"second_s\": 1.2, \"interval_s\": 1.15}], \"eligible_samples\": 10, \"within_lateral_ratio\": 0.7, \"within_heading_ratio\": 0.7, \"within_lateral_speed_ratio\": 0.5, \"all_settled_conditions_ratio\": 0.3, \"longest_settled_candidate_run_samples\": 1, \"steering_reversals\": 1, \"steering_source_samples\": {\"lua_vehicle\": 11, \"telemetry\": 6}, \"correction_bearing_reversals\": 0, \"target_crossings\": 0, \"settled_band\": {\"min_lateral_tolerance_m\": 0.9, \"max_lateral_tolerance_m\": 1.125, \"heading_tolerance_deg\": 6.0, \"min_lateral_speed_tolerance_mps\": 0.5, \"max_lateral_speed_tolerance_mps\": 0.6}}, \"slip\": {\"episodes\": [{\"start_s\": 0.05, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 16.924, \"samples\": 2, \"during_correction\": true, \"end_s\": 0.15, \"duration_s\": 0.1}, {\"start_s\": 0.2, \"kind\": \"lockup\", \"max_magnitude_mps\": 16.429, \"samples\": 9, \"during_correction\": true, \"end_s\": 0.65, \"duration_s\": 0.45}, {\"start_s\": 1.0, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 17.014, \"samples\": 4, \"during_correction\": true, \"end_s\": 1.2, \"duration_s\": 0.2}], \"correction_overlap_samples\": 5}, \"contact_materials\": {\"sample_sets\": {\"11:DIRT,30:RUBBER\": 4, \"12:GRAVEL\": 4}, \"changes\": [{\"t\": 0.45, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": null, \"road_state\": 3}, {\"t\": 0.65, \"from\": \"12:GRAVEL\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": null, \"road_state\": \"onRoad\"}, {\"t\": 0.95, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": 50.0, \"road_state\": \"onRoad\"}, {\"t\": 1.0, \"from\": \"12:GRAVEL\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": 50.0, \"road_state\": \"onRoad\"}, {\"t\": 1.25, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": null, \"road_state\": \"offRoad\"}]}, \"max_absolute\": {\"target_error_m\": 1.908, \"lateral_speed_mps\": 0.989, \"heading_error_deg\": 9.298, \"correction_bearing_deg\": 18.486, \"steering_input\": 0.898, \"applied_steering\": 0.896, \"raw_slip_mps\": 17.014, \"vehicle_pitch_deg\": 22.918}, \"assessment_flags\": [\"1 settled-tone retrigger(s) within 3 seconds\", \"5 correction episode(s) did not settle\", \"3 sustained slip episode(s) overlapped lane correction\", \"1 sample(s) lacked Lua diagnostic fields\"], \"summary_path\": \"<DIR>\\\\road_guidance_20260904_083005_hill-climb.summary.json\"}"
+     "out": "{\"schema\": 1, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_hill-climb.ndjson\", \"samples\": 25, \"duration_s\": 1.25, \"distance_travelled_m\": 25.46, \"drive\": {\"start_z_m\": 51.5, \"end_z_m\": 50.0, \"min_ground_speed_mps\": 0.0, \"max_ground_speed_mps\": 20.0, \"max_throttle\": 1.0, \"max_brake\": 0.8, \"traction_control_samples\": 2, \"elevation_change_m\": -1.5}, \"road_state_samples\": {\"offRoad\": 3, \"onRoad\": 7, \"dormant\": 7, \"3\": 5, \"null\": 3}, \"markers\": [], \"navigation_edges\": [\"7\", \"a|b\", \"c|d\"], \"diagnostic_startup_samples_skipped\": 0, \"correction\": {\"samples\": 7, \"episodes\": [{\"start_s\": 0.1, \"side\": null, \"max_severity\": 0.4, \"end_s\": 0.2, \"duration_s\": 0.1, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 1}, {\"start_s\": 0.25, \"side\": 1, \"max_severity\": 0.0, \"end_s\": 0.3, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.7, \"side\": null, \"max_severity\": 0.4, \"end_s\": 0.75, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.95, \"side\": -1, \"max_severity\": 0.6, \"end_s\": 1.05, \"duration_s\": 0.1, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 1.1, \"side\": null, \"max_severity\": 0.6, \"end_s\": 1.15, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}], \"settled_packets_s\": [0.05, 0.5, 0.8, 0.9, 1.2], \"settled_audio_triggers_s\": [0.05, 1.2], \"repeated_settled\": [{\"first_s\": 0.05, \"second_s\": 1.2, \"interval_s\": 1.15}], \"eligible_samples\": 10, \"within_lateral_ratio\": 0.7, \"within_heading_ratio\": 0.7, \"within_lateral_speed_ratio\": 0.5, \"all_settled_conditions_ratio\": 0.3, \"longest_settled_candidate_run_samples\": 1, \"steering_reversals\": 1, \"steering_source_samples\": {\"lua_vehicle\": 11, \"telemetry\": 6}, \"correction_bearing_reversals\": 0, \"target_crossings\": 0, \"settled_band\": {\"min_lateral_tolerance_m\": 0.9, \"max_lateral_tolerance_m\": 1.125, \"heading_tolerance_deg\": 6.0, \"min_lateral_speed_tolerance_mps\": 0.5, \"max_lateral_speed_tolerance_mps\": 0.6}}, \"slip\": {\"episodes\": [{\"start_s\": 0.05, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 16.924, \"samples\": 2, \"during_correction\": true, \"end_s\": 0.15, \"duration_s\": 0.1}, {\"start_s\": 0.2, \"kind\": \"lockup\", \"max_magnitude_mps\": 16.429, \"samples\": 9, \"during_correction\": true, \"end_s\": 0.65, \"duration_s\": 0.45}, {\"start_s\": 1.0, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 17.014, \"samples\": 4, \"during_correction\": true, \"end_s\": 1.2, \"duration_s\": 0.2}], \"correction_overlap_samples\": 5}, \"contact_materials\": {\"sample_sets\": {\"11:DIRT,30:RUBBER\": 4, \"12:GRAVEL\": 4}, \"changes\": [{\"t\": 0.45, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": null, \"road_state\": 3}, {\"t\": 0.65, \"from\": \"12:GRAVEL\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": null, \"road_state\": \"onRoad\"}, {\"t\": 0.95, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": 50.0, \"road_state\": \"onRoad\"}, {\"t\": 1.0, \"from\": \"12:GRAVEL\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": 50.0, \"road_state\": \"onRoad\"}, {\"t\": 1.25, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": null, \"road_state\": \"offRoad\"}]}, \"max_absolute\": {\"target_error_m\": 1.908, \"lateral_speed_mps\": 0.989, \"heading_error_deg\": 9.298, \"correction_bearing_deg\": 18.486, \"steering_input\": 0.898, \"applied_steering\": 0.896, \"raw_slip_mps\": 17.014, \"vehicle_pitch_deg\": 22.918}, \"assessment_flags\": [\"1 settled-tone retrigger(s) within 3 seconds\", \"5 correction episode(s) did not settle\", \"3 sustained slip episode(s) overlapped lane correction\", \"1 sample(s) lacked Lua diagnostic fields\"], \"summary_path\": \"<DIR>\\\\road_guidance_20260904_083005_hill-climb.summary.json\"}",
+     "wall": {
+      "bits": 4745288236817973243,
+      "repr": "1788480001.4999988"
+     }
     }
    ],
    "wall0": {
@@ -1599,186 +2247,402 @@
    },
    "script": [
     {
+     "clock": {
+      "bits": 4636737291354636288,
+      "repr": "100.0"
+     },
      "label": "--x--",
      "op": "start",
-     "out": "{\"active\": true, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"elapsed_s\": 0.0, \"samples\": 0, \"markers\": 0}"
+     "out": "{\"active\": true, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"elapsed_s\": 0.0, \"samples\": 0, \"markers\": 0}",
+     "wall": {
+      "bits": 4745288236812730368,
+      "repr": "1788480000.25"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636740809791845171,
+      "repr": "100.05"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": false, \"targetSide\": -1, \"targetError\": 0.9708477019529034, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": -0.37515372096137045, \"headingError\": 1.8717427903883248, \"correctionBearing\": null, \"withinLateral\": true, \"withinHeading\": false, \"withinLateralSpeed\": false, \"settledCandidate\": true, \"steeringInput\": 0.48713637766633267, \"steering\": null, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 0.5, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 15.0, \"steering_input\": 0.7549713666990152, \"steering\": -0.6956307055067392, \"throttle\": null, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 23.28888943692518, \"wheel_min_ms\": 10.48512090785792, \"travel_bearing_deg\": 0.0}"
+     "telemetry": "{\"position\": {\"x\": 0.5, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 15.0, \"steering_input\": 0.7549713666990152, \"steering\": -0.6956307055067392, \"throttle\": null, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 23.28888943692518, \"wheel_min_ms\": 10.48512090785792, \"travel_bearing_deg\": 0.0}",
+     "wall": {
+      "bits": 4745288236812940083,
+      "repr": "1788480000.3"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636744328229054054,
+      "repr": "100.1"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -26.202659993383584, \"severity\": 0.0, \"phase\": null}}",
-     "telemetry": "{\"position\": {\"x\": 1.0, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": 15.0, \"steering_input\": -0.30931432653580804, \"steering\": -0.7047518307471532, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {\"x\": 1.0, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": 15.0, \"steering_input\": -0.30931432653580804, \"steering\": -0.7047518307471532, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236813149798,
+      "repr": "1788480000.35"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636747846666262937,
+      "repr": "100.14999999999999"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 5.256979298722044, \"severity\": 0.0, \"phase\": 5}, \"diagnostic\": {\"edgeId\": 7, \"activeBefore\": true, \"targetSide\": -1, \"targetError\": -0.5596000862319439, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": 0.4903976254809217, \"headingError\": 1.6407461967126817, \"correctionBearing\": 10.88496570494086, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": -0.08034895608005765, \"steering\": 0.6937763414965967, \"contactMaterials\": \"11:DIRT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": null, \"steering_input\": -0.07912526078078042, \"steering\": null, \"throttle\": null, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 0.955304752579178, \"wheel_min_ms\": 4.307592025213138, \"travel_bearing_deg\": -170.0}"
+     "telemetry": "{\"position\": {}, \"ground_speed_ms\": \"7.5\", \"wheel_speed_ms\": null, \"steering_input\": -0.07912526078078042, \"steering\": null, \"throttle\": null, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 0.955304752579178, \"wheel_min_ms\": 4.307592025213138, \"travel_bearing_deg\": -170.0}",
+     "wall": {
+      "bits": 4745288236813359513,
+      "repr": "1788480000.3999999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636751365103471820,
+      "repr": "100.19999999999999"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"diagnostic\": {\"edgeId\": \"c|d\", \"activeBefore\": true, \"targetSide\": null, \"targetError\": 1.657498342871377, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": 0.7991887485775324, \"headingError\": 5.024293743623209, \"correctionBearing\": -0.25300030475081314, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": -0.6862998646602825, \"steering\": 0.969171028507605, \"contactMaterials\": \" 12:GRAVEL \"}}",
-     "telemetry": "{\"position\": {\"x\": 3.5, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.4411190039544659, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 4.965615051538497, \"wheel_min_ms\": 7.263808664203054, \"travel_bearing_deg\": 20.0}"
+     "telemetry": "{\"position\": {\"x\": 3.5, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.4411190039544659, \"steering\": null, \"throttle\": 1.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 4.965615051538497, \"wheel_min_ms\": 7.263808664203054, \"travel_bearing_deg\": 20.0}",
+     "wall": {
+      "bits": 4745288236813569228,
+      "repr": "1788480000.4499998"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636754883540680703,
+      "repr": "100.24999999999999"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -16.64089803213482, \"severity\": null, \"phase\": \"unwind\"}, \"diagnostic\": {\"edgeId\": \"c|d\", \"activeBefore\": false, \"targetSide\": -1, \"targetError\": -1.8291774538376377, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": 0.26171173557439675, \"headingError\": -1.0218710472181858, \"correctionBearing\": -17.877148694428993, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": 0.9070377052745837, \"steering\": null, \"contactMaterials\": \"11:DIRT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 63.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 0.0, \"steering_input\": 0.23304211379297257, \"steering\": -0.5441688369990565, \"throttle\": 0.5, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null}"
+     "telemetry": "{\"position\": {\"x\": 63.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 0.0, \"steering_input\": 0.23304211379297257, \"steering\": -0.5441688369990565, \"throttle\": 0.5, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null}",
+     "wall": {
+      "bits": 4745288236813778943,
+      "repr": "1788480000.4999998"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636758401977889586,
+      "repr": "100.29999999999998"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 19.054723471190208, \"severity\": \"0.4\", \"phase\": null}, \"diagnostic\": {\"edgeId\": \"c|d\", \"activeBefore\": true, \"targetSide\": -1, \"targetError\": -0.7324859902704102, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": 0.38167947094299337, \"headingError\": 4.438884402394127, \"correctionBearing\": null, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": 0.9799345352982451, \"steering\": null, \"contactMaterials\": null}}",
-     "telemetry": "{\"position\": {\"x\": 64.0, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 0.0, \"steering_input\": null, \"steering\": -0.2848604141849933, \"throttle\": 0.5, \"brake\": 0.0, \"traction_control_active\": true, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 64.0, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 0.0, \"steering_input\": null, \"steering\": -0.2848604141849933, \"throttle\": 0.5, \"brake\": 0.0, \"traction_control_active\": true, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236813988658,
+      "repr": "1788480000.5499997"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636761920415098469,
+      "repr": "100.34999999999998"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -4.4008085159012325, \"severity\": 0.6, \"phase\": \"unwind\"}, \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": false, \"targetSide\": null, \"targetError\": -1.5827202140334844, \"targetTolerance\": null, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": -0.5206265780044634, \"headingError\": 1.504694141675614, \"correctionBearing\": 8.168582490130415, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": -0.34166486338566315, \"steering\": null, \"contactMaterials\": null}}",
-     "telemetry": "{\"position\": {\"x\": 66.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 0.0, \"steering_input\": 0.5950949967631329, \"steering\": -0.13573324398713216, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": true, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 2.8821599748165756, \"wheel_min_ms\": 0.1350879233573692, \"travel_bearing_deg\": 0.0}"
+     "telemetry": "{\"position\": {\"x\": 66.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 0.0, \"steering_input\": 0.5950949967631329, \"steering\": -0.13573324398713216, \"throttle\": 0.0, \"brake\": 0.8, \"traction_control_active\": true, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 2.8821599748165756, \"wheel_min_ms\": 0.1350879233573692, \"travel_bearing_deg\": 0.0}",
+     "wall": {
+      "bits": 4745288236814198373,
+      "repr": "1788480000.5999997"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636765438852307352,
+      "repr": "100.39999999999998"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": true, \"targetSide\": -1, \"targetError\": -1.2918044150293513, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": -0.9029682831582704, \"headingError\": 7.213126606328551, \"correctionBearing\": 12.921153168432731, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": -0.6021170439381904, \"steering\": null, \"contactMaterials\": \"10:ASPHALT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 66.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 10.0, \"steering_input\": 0.9135951309643966, \"steering\": 0.44308158165449774, \"throttle\": 0.5, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 4.663864762724959, \"wheel_min_ms\": 5.899831871658398, \"travel_bearing_deg\": -170.0}"
+     "telemetry": "{\"position\": {\"x\": 66.5, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 10.0, \"steering_input\": 0.9135951309643966, \"steering\": 0.44308158165449774, \"throttle\": 0.5, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 4.663864762724959, \"wheel_min_ms\": 5.899831871658398, \"travel_bearing_deg\": -170.0}",
+     "wall": {
+      "bits": 4745288236814408088,
+      "repr": "1788480000.6499996"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636768957289516235,
+      "repr": "100.44999999999997"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": 10.42156462662625, \"severity\": 0.6, \"phase\": 5}, \"diagnostic\": {\"edgeId\": 7, \"activeBefore\": false, \"targetSide\": 1, \"targetError\": 0.26146581557582316, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": 0.8054998211044215, \"headingError\": -2.159997564261311, \"correctionBearing\": -17.07092010987328, \"withinLateral\": true, \"withinHeading\": false, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": -0.9285512607477806, \"steering\": null, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 67.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 0.0, \"steering_input\": -0.7916997327783608, \"steering\": null, \"throttle\": null, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 11.626608277009101, \"wheel_min_ms\": 2.7770836988060092, \"travel_bearing_deg\": -170.0}"
+     "telemetry": "{\"position\": {\"x\": 67.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 0.0, \"steering_input\": -0.7916997327783608, \"steering\": null, \"throttle\": null, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 11.626608277009101, \"wheel_min_ms\": 2.7770836988060092, \"travel_bearing_deg\": -170.0}",
+     "wall": {
+      "bits": 4745288236814617803,
+      "repr": "1788480000.6999996"
+     }
     },
     {
      "audio": "{\"settled_triggered\": true}",
+     "clock": {
+      "bits": 4636772475726725118,
+      "repr": "100.49999999999997"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"offRoad\", \"correction\": {\"active\": false, \"settled\": true, \"bearing\": -5.883701816772202, \"severity\": 0.6, \"phase\": \"unwind\"}}",
-     "telemetry": "{\"position\": {\"x\": 68.0, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 3.0, \"steering_input\": null, \"steering\": 0.979054189238153, \"throttle\": 1.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {\"x\": 68.0, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 3.0, \"steering_input\": null, \"steering\": 0.979054189238153, \"throttle\": 1.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236814827518,
+      "repr": "1788480000.7499995"
+     }
     },
     {
      "audio": "null",
+     "clock": {
+      "bits": 4636775994163934001,
+      "repr": "100.54999999999997"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -26.558805300281044, \"severity\": 0.6, \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": null, \"activeBefore\": false, \"targetSide\": -1, \"targetError\": 0.8959779322033983, \"targetTolerance\": null, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": -0.40171398979771267, \"headingError\": -0.636979495075046, \"correctionBearing\": 16.607930830987662, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": -0.4242433624618722, \"steering\": 0.8155462064595236, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 70.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": null, \"steering_input\": 0.6470064908556785, \"steering\": 0.7915116422610415, \"throttle\": null, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 70.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": null, \"steering_input\": 0.6470064908556785, \"steering\": 0.7915116422610415, \"throttle\": null, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236815037233,
+      "repr": "1788480000.7999995"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636779512601142884,
+      "repr": "100.59999999999997"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -12.427098711783792, \"severity\": null, \"phase\": null}}",
-     "telemetry": "{\"position\": {}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 3.0, \"steering_input\": null, \"steering\": 0.38084966175737667, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1}"
+     "telemetry": "{\"position\": {}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 3.0, \"steering_input\": null, \"steering\": 0.38084966175737667, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1}",
+     "wall": {
+      "bits": 4745288236815246948,
+      "repr": "1788480000.8499994"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636783031038351767,
+      "repr": "100.64999999999996"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -19.58175442969418, \"severity\": null, \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": \"a|b\", \"activeBefore\": false, \"targetSide\": null, \"targetError\": -1.8292333507492406, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": -0.6095213811323907, \"headingError\": -1.7437769603304574, \"correctionBearing\": null, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": true, \"steeringInput\": 0.7574153569125619, \"steering\": -0.29050763397824864, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 71.5, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.025683358168893777, \"steering\": null, \"throttle\": null, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 17.72716812438985, \"wheel_min_ms\": 3.8463247872054596, \"travel_bearing_deg\": 20.0}"
+     "telemetry": "{\"position\": {\"x\": 71.5, \"y\": 1.0, \"z\": 50.0}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.025683358168893777, \"steering\": null, \"throttle\": null, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 17.72716812438985, \"wheel_min_ms\": 3.8463247872054596, \"travel_bearing_deg\": 20.0}",
+     "wall": {
+      "bits": 4745288236815456663,
+      "repr": "1788480000.8999994"
+     }
     },
     {
+     "clock": {
+      "bits": 4636786549475560650,
+      "repr": "100.69999999999996"
+     },
      "note": "note é",
      "op": "mark",
-     "out": "{\"active\": true, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"elapsed_s\": 0.7, \"samples\": 13, \"markers\": 1}"
+     "out": "{\"active\": true, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"elapsed_s\": 0.7, \"samples\": 13, \"markers\": 1}",
+     "wall": {
+      "bits": 4745288236815666378,
+      "repr": "1788480000.9499993"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636790067912769533,
+      "repr": "100.74999999999996"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -16.694102347224238, \"severity\": \"0.4\", \"phase\": null}, \"diagnostic\": {\"edgeId\": 7, \"activeBefore\": true, \"targetSide\": 1, \"targetError\": -1.1250070574137356, \"targetTolerance\": null, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": -0.21416454242091532, \"headingError\": -4.617362069139599, \"correctionBearing\": -19.051255671053077, \"withinLateral\": false, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": false, \"steeringInput\": -0.9589695994090046, \"steering\": 0.72095216402703, \"contactMaterials\": \" 12:GRAVEL \"}}",
-     "telemetry": "{\"position\": {\"x\": 72.5, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 0.0, \"steering_input\": 0.7349203720157671, \"steering\": null, \"throttle\": 0.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 16.45425182696459, \"wheel_min_ms\": 5.843464513944481, \"travel_bearing_deg\": 0.0}"
+     "telemetry": "{\"position\": {\"x\": 72.5, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 0.0, \"wheel_speed_ms\": 0.0, \"steering_input\": 0.7349203720157671, \"steering\": null, \"throttle\": 0.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 16.45425182696459, \"wheel_min_ms\": 5.843464513944481, \"travel_bearing_deg\": 0.0}",
+     "wall": {
+      "bits": 4745288236815876093,
+      "repr": "1788480000.9999993"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636793586349978416,
+      "repr": "100.79999999999995"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": 2.6868365509687493, \"severity\": null, \"phase\": \"idle\"}}",
-     "telemetry": "{\"position\": {\"x\": 73.5, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 3.0, \"steering_input\": 0.6186637425111958, \"steering\": null, \"throttle\": 0.5, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 3.172390054315452, \"wheel_min_ms\": 11.321851081442269, \"travel_bearing_deg\": null}"
+     "telemetry": "{\"position\": {\"x\": 73.5, \"y\": 1.0, \"z\": null}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 3.0, \"steering_input\": 0.6186637425111958, \"steering\": null, \"throttle\": 0.5, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": -0.1, \"wheel_max_driven_ms\": 3.172390054315452, \"wheel_min_ms\": 11.321851081442269, \"travel_bearing_deg\": null}",
+     "wall": {
+      "bits": 4745288236816085808,
+      "repr": "1788480001.0499992"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636797104787187299,
+      "repr": "100.84999999999995"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -9.238932068044615, \"severity\": 0.1, \"phase\": \"unwind\"}, \"diagnostic\": {\"edgeId\": \"c|d\", \"activeBefore\": false, \"targetSide\": null, \"targetError\": -0.49499835224773436, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": -0.057321895609530715, \"headingError\": 7.018939895625053, \"correctionBearing\": -2.8353931548305624, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": false, \"settledCandidate\": true, \"steeringInput\": -0.5697943463572746, \"steering\": -0.020176575726086332, \"contactMaterials\": \"11:DIRT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 74.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 15.0, \"steering_input\": 0.0751309063581842, \"steering\": 0.12056654267913536, \"throttle\": 0.5, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 20.749568611721138, \"wheel_min_ms\": 3.668104289350972, \"travel_bearing_deg\": -170.0}"
+     "telemetry": "{\"position\": {\"x\": 74.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 15.0, \"steering_input\": 0.0751309063581842, \"steering\": 0.12056654267913536, \"throttle\": 0.5, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": 0.4, \"wheel_max_driven_ms\": 20.749568611721138, \"wheel_min_ms\": 3.668104289350972, \"travel_bearing_deg\": -170.0}",
+     "wall": {
+      "bits": 4745288236816295523,
+      "repr": "1788480001.0999992"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636800623224396182,
+      "repr": "100.89999999999995"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 20.18530549086148, \"severity\": 0.6, \"phase\": \"correct\"}}",
-     "telemetry": "{\"position\": {\"x\": 75.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 15.0, \"steering_input\": 0.8796888190107346, \"steering\": 0.10731397457112934, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 75.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 10.0, \"wheel_speed_ms\": 15.0, \"steering_input\": 0.8796888190107346, \"steering\": 0.10731397457112934, \"throttle\": null, \"brake\": 0.8, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236816505238,
+      "repr": "1788480001.1499991"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636804141661605065,
+      "repr": "100.94999999999995"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 18.150963234925044, \"severity\": 0.6, \"phase\": null}, \"diagnostic\": {\"edgeId\": null, \"activeBefore\": true, \"targetSide\": -1, \"targetError\": 0.15494660000142035, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": 0.9278206119408652, \"headingError\": -8.61022232327649, \"correctionBearing\": null, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": true, \"steeringInput\": -0.865968282717761, \"steering\": -0.18866272733255474, \"contactMaterials\": \"11:DIRT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 135.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 0.0, \"steering_input\": -0.9754571994956773, \"steering\": 0.5928686356780088, \"throttle\": 0.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 9.032306156912037, \"wheel_min_ms\": 5.560318536449769, \"travel_bearing_deg\": null}"
+     "telemetry": "{\"position\": {\"x\": 135.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 0.0, \"steering_input\": -0.9754571994956773, \"steering\": 0.5928686356780088, \"throttle\": 0.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 9.032306156912037, \"wheel_min_ms\": 5.560318536449769, \"travel_bearing_deg\": null}",
+     "wall": {
+      "bits": 4745288236816714953,
+      "repr": "1788480001.199999"
+     }
     },
     {
      "audio": "{\"settled_triggered\": true}",
+     "clock": {
+      "bits": 4636807660098813948,
+      "repr": "100.99999999999994"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"dormant\", \"correction\": {\"active\": false, \"settled\": true, \"bearing\": 11.630782749245789, \"severity\": 0.0, \"phase\": 5}, \"diagnostic\": {}}",
-     "telemetry": "{\"position\": {\"x\": 136.0, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 10.0, \"steering_input\": 0.9383668234889107, \"steering\": 0.2573657539951262, \"throttle\": null, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4}"
+     "telemetry": "{\"position\": {\"x\": 136.0, \"y\": 0.0, \"z\": 50.0}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": 10.0, \"steering_input\": 0.9383668234889107, \"steering\": 0.2573657539951262, \"throttle\": null, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": 0.4}",
+     "wall": {
+      "bits": 4745288236816924668,
+      "repr": "1788480001.249999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636811178536022831,
+      "repr": "101.04999999999994"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": true, \"settled\": false, \"bearing\": -2.6894465390580535, \"severity\": \"0.4\", \"phase\": \"correct\"}, \"diagnostic\": {\"edgeId\": null, \"activeBefore\": true, \"targetSide\": -1, \"targetError\": -0.465679665450236, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": -0.34764665431909725, \"headingError\": -9.18996652478607, \"correctionBearing\": 6.384029614552887, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": 0.7690973121923144, \"steering\": 0.6232751831042993, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 137.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.6418984370426721, \"steering\": null, \"throttle\": 0.5, \"brake\": null, \"traction_control_active\": true, \"pitch_rad\": null}"
+     "telemetry": "{\"position\": {\"x\": 137.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": 1.0, \"wheel_speed_ms\": 10.0, \"steering_input\": -0.6418984370426721, \"steering\": null, \"throttle\": 0.5, \"brake\": null, \"traction_control_active\": true, \"pitch_rad\": null}",
+     "wall": {
+      "bits": 4745288236817134383,
+      "repr": "1788480001.299999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636814696973231714,
+      "repr": "101.09999999999994"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"offRoad\", \"diagnostic\": {\"edgeId\": 7, \"activeBefore\": false, \"targetSide\": 1, \"targetError\": -0.8666185132079254, \"targetTolerance\": 1.125, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.6, \"lateralSpeed\": -0.4923123184979292, \"headingError\": 9.648285446010384, \"correctionBearing\": 5.906977994938085, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": false, \"steeringInput\": -0.6161723825518406, \"steering\": null, \"contactMaterials\": \"11:DIRT,30:RUBBER\"}}",
-     "telemetry": "{\"position\": {\"x\": 138.0, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": null, \"steering_input\": -0.17164576656703745, \"steering\": -0.510251241897443, \"throttle\": 1.0, \"brake\": 0.0, \"traction_control_active\": true, \"pitch_rad\": null}"
+     "telemetry": "{\"position\": {\"x\": 138.0, \"y\": 0.0, \"z\": 51.5}, \"ground_speed_ms\": 5.0, \"wheel_speed_ms\": null, \"steering_input\": -0.17164576656703745, \"steering\": -0.510251241897443, \"throttle\": 1.0, \"brake\": 0.0, \"traction_control_active\": true, \"pitch_rad\": null}",
+     "wall": {
+      "bits": 4745288236817344098,
+      "repr": "1788480001.349999"
+     }
     },
     {
      "audio": "{\"settled_triggered\": true}",
+     "clock": {
+      "bits": 4636818215410440597,
+      "repr": "101.14999999999993"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": false, \"settled\": true, \"bearing\": -28.680425874282346, \"severity\": null}, \"diagnostic\": {\"edgeId\": \"c|d\", \"activeBefore\": true, \"targetSide\": -1, \"targetError\": -1.596404889638095, \"targetTolerance\": null, \"settledHeadingTolerance\": null, \"settledLateralSpeedTolerance\": 0.5, \"lateralSpeed\": 0.012804686391848064, \"headingError\": -0.027860018310120083, \"correctionBearing\": null, \"withinLateral\": false, \"withinHeading\": false, \"withinLateralSpeed\": true, \"settledCandidate\": true, \"steeringInput\": -0.32957084988263974, \"steering\": 0.057908633201066095, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 140.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 3.0, \"steering_input\": -0.2628681764494465, \"steering\": 0.18366079111017353, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": null}"
+     "telemetry": "{\"position\": {\"x\": 140.0, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": 20.0, \"wheel_speed_ms\": 3.0, \"steering_input\": -0.2628681764494465, \"steering\": 0.18366079111017353, \"throttle\": 1.0, \"brake\": null, \"traction_control_active\": false, \"pitch_rad\": null}",
+     "wall": {
+      "bits": 4745288236817553813,
+      "repr": "1788480001.399999"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636821733847649480,
+      "repr": "101.19999999999993"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": 3, \"correction\": {\"active\": true, \"settled\": false, \"bearing\": 10.822625489719428, \"severity\": \"0.4\", \"phase\": null}, \"diagnostic\": {}}",
-     "telemetry": "{\"position\": {\"x\": 141.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 0.0, \"steering_input\": null, \"steering\": -0.2892126453556396, \"throttle\": 0.5, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 20.746191587805875, \"wheel_min_ms\": 3.566285757961022, \"travel_bearing_deg\": 20.0}"
+     "telemetry": "{\"position\": {\"x\": 141.0, \"y\": 0.0, \"z\": null}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 0.0, \"steering_input\": null, \"steering\": -0.2892126453556396, \"throttle\": 0.5, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 20.746191587805875, \"wheel_min_ms\": 3.566285757961022, \"travel_bearing_deg\": 20.0}",
+     "wall": {
+      "bits": 4745288236817763528,
+      "repr": "1788480001.4499989"
+     }
     },
     {
      "audio": "{}",
+     "clock": {
+      "bits": 4636825252284858363,
+      "repr": "101.24999999999993"
+     },
      "op": "record",
      "out": true,
      "road": "{\"state\": \"onRoad\", \"correction\": {\"active\": false, \"settled\": false, \"bearing\": -24.92904076726181, \"severity\": \"0.4\"}, \"diagnostic\": {\"edgeId\": \"\", \"activeBefore\": false, \"targetSide\": null, \"targetError\": 0.7432870450173232, \"targetTolerance\": 0.9, \"settledHeadingTolerance\": 6.0, \"settledLateralSpeedTolerance\": null, \"lateralSpeed\": -0.7375375934398767, \"headingError\": -8.484595666317812, \"correctionBearing\": -14.303507937564856, \"withinLateral\": true, \"withinHeading\": true, \"withinLateralSpeed\": true, \"settledCandidate\": true, \"steeringInput\": 0.6476037027531254, \"steering\": 0.9161074505983013, \"contactMaterials\": \"\"}}",
-     "telemetry": "{\"position\": {\"x\": 141.5, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 0.0, \"steering_input\": 0.005407603243147818, \"steering\": null, \"throttle\": 0.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 1.2264764633416303, \"wheel_min_ms\": 5.901384136541461, \"travel_bearing_deg\": 0.0}"
+     "telemetry": "{\"position\": {\"x\": 141.5, \"y\": 1.0, \"z\": 51.5}, \"ground_speed_ms\": null, \"wheel_speed_ms\": 0.0, \"steering_input\": 0.005407603243147818, \"steering\": null, \"throttle\": 0.0, \"brake\": 0.0, \"traction_control_active\": false, \"pitch_rad\": null, \"wheel_max_driven_ms\": 1.2264764633416303, \"wheel_min_ms\": 5.901384136541461, \"travel_bearing_deg\": 0.0}",
+     "wall": {
+      "bits": 4745288236817973243,
+      "repr": "1788480001.4999988"
+     }
     },
     {
+     "clock": {
+      "bits": 4636832289159276129,
+      "repr": "101.34999999999992"
+     },
      "op": "stop",
-     "out": "{\"schema\": 1, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"samples\": 24, \"duration_s\": 1.25, \"distance_travelled_m\": 26.18, \"drive\": {\"start_z_m\": 51.5, \"end_z_m\": 51.5, \"min_ground_speed_mps\": 0.0, \"max_ground_speed_mps\": 20.0, \"max_throttle\": 1.0, \"max_brake\": 0.8, \"traction_control_samples\": 4, \"elevation_change_m\": 0.0}, \"road_state_samples\": {\"onRoad\": 12, \"3\": 6, \"dormant\": 4, \"offRoad\": 2}, \"markers\": [{\"t\": 0.7, \"note\": \"note \\u00e9\"}], \"navigation_edges\": [\"7\", \"a|b\", \"c|d\"], \"diagnostic_startup_samples_skipped\": 0, \"correction\": {\"samples\": 8, \"episodes\": [{\"start_s\": 0.15, \"side\": -1, \"max_severity\": 0.0, \"end_s\": 0.2, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.3, \"side\": -1, \"max_severity\": 0.4, \"end_s\": 0.35, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.6, \"side\": null, \"max_severity\": 0.0, \"end_s\": 0.65, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.75, \"side\": 1, \"max_severity\": 0.4, \"end_s\": 0.8, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.9, \"side\": null, \"max_severity\": 0.6, \"end_s\": 1.0, \"duration_s\": 0.1, \"outcome\": \"settled\", \"phase_transitions\": 1}, {\"start_s\": 1.05, \"side\": -1, \"max_severity\": 0.4, \"end_s\": 1.1, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 1.2, \"side\": null, \"max_severity\": 0.4, \"end_s\": 1.25, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}], \"settled_packets_s\": [0.5, 1.0, 1.15], \"settled_audio_triggers_s\": [0.5, 1.0, 1.15], \"repeated_settled\": [{\"first_s\": 0.5, \"second_s\": 1.0, \"interval_s\": 0.5}, {\"first_s\": 1.0, \"second_s\": 1.15, \"interval_s\": 0.15}], \"eligible_samples\": 10, \"within_lateral_ratio\": 0.4, \"within_heading_ratio\": 0.7, \"within_lateral_speed_ratio\": 0.4, \"all_settled_conditions_ratio\": 0.2, \"longest_settled_candidate_run_samples\": 1, \"steering_reversals\": 1, \"steering_source_samples\": {\"lua_vehicle\": 10, \"telemetry\": 12}, \"correction_bearing_reversals\": 0, \"target_crossings\": 0, \"settled_band\": {\"min_lateral_tolerance_m\": 0.9, \"max_lateral_tolerance_m\": 1.125, \"heading_tolerance_deg\": 6.0, \"min_lateral_speed_tolerance_mps\": 0.5, \"max_lateral_speed_tolerance_mps\": 0.6}}, \"slip\": {\"episodes\": [{\"start_s\": 0.05, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 22.289, \"samples\": 4, \"during_correction\": true, \"end_s\": 0.25, \"duration_s\": 0.2}, {\"start_s\": 0.3, \"kind\": \"lockup\", \"max_magnitude_mps\": 17.0, \"samples\": 5, \"during_correction\": true, \"end_s\": 0.55, \"duration_s\": 0.25}, {\"start_s\": 0.65, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 19.765, \"samples\": 7, \"during_correction\": true, \"end_s\": 1.05, \"duration_s\": 0.4}, {\"start_s\": 1.1, \"kind\": \"lockup\", \"max_magnitude_mps\": 20.746, \"samples\": 3, \"during_correction\": true, \"end_s\": 1.25, \"duration_s\": 0.15}], \"correction_overlap_samples\": 6}, \"contact_materials\": {\"sample_sets\": {\"10:ASPHALT,30:RUBBER\": 1, \"11:DIRT,30:RUBBER\": 5, \"12:GRAVEL\": 2}, \"changes\": [{\"t\": 0.2, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": null, \"road_state\": \"onRoad\"}, {\"t\": 0.25, \"from\": \"12:GRAVEL\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": 50.0, \"road_state\": \"onRoad\"}, {\"t\": 0.4, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"10:ASPHALT,30:RUBBER\", \"z_m\": 50.0, \"road_state\": 3}, {\"t\": 0.75, \"from\": \"10:ASPHALT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": 51.5, \"road_state\": \"dormant\"}, {\"t\": 0.85, \"from\": \"12:GRAVEL\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": 51.5, \"road_state\": \"onRoad\"}]}, \"max_absolute\": {\"target_error_m\": 1.829, \"lateral_speed_mps\": 0.928, \"heading_error_deg\": 9.648, \"correction_bearing_deg\": 19.051, \"steering_input\": 0.98, \"applied_steering\": 0.979, \"raw_slip_mps\": 22.289, \"vehicle_pitch_deg\": 22.918}, \"assessment_flags\": [\"2 settled-tone retrigger(s) within 3 seconds\", \"6 correction episode(s) did not settle\", \"4 sustained slip episode(s) overlapped lane correction\", \"3 sample(s) lacked Lua diagnostic fields\"], \"summary_path\": \"<DIR>\\\\road_guidance_20260904_083005_x.summary.json\"}"
+     "out": "{\"schema\": 1, \"path\": \"<DIR>\\\\road_guidance_20260904_083005_x.ndjson\", \"samples\": 24, \"duration_s\": 1.25, \"distance_travelled_m\": 26.18, \"drive\": {\"start_z_m\": 51.5, \"end_z_m\": 51.5, \"min_ground_speed_mps\": 0.0, \"max_ground_speed_mps\": 20.0, \"max_throttle\": 1.0, \"max_brake\": 0.8, \"traction_control_samples\": 4, \"elevation_change_m\": 0.0}, \"road_state_samples\": {\"onRoad\": 12, \"3\": 6, \"dormant\": 4, \"offRoad\": 2}, \"markers\": [{\"t\": 0.7, \"note\": \"note \\u00e9\"}], \"navigation_edges\": [\"7\", \"a|b\", \"c|d\"], \"diagnostic_startup_samples_skipped\": 0, \"correction\": {\"samples\": 8, \"episodes\": [{\"start_s\": 0.15, \"side\": -1, \"max_severity\": 0.0, \"end_s\": 0.2, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.3, \"side\": -1, \"max_severity\": 0.4, \"end_s\": 0.35, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.6, \"side\": null, \"max_severity\": 0.0, \"end_s\": 0.65, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.75, \"side\": 1, \"max_severity\": 0.4, \"end_s\": 0.8, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 0.9, \"side\": null, \"max_severity\": 0.6, \"end_s\": 1.0, \"duration_s\": 0.1, \"outcome\": \"settled\", \"phase_transitions\": 1}, {\"start_s\": 1.05, \"side\": -1, \"max_severity\": 0.4, \"end_s\": 1.1, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}, {\"start_s\": 1.2, \"side\": null, \"max_severity\": 0.4, \"end_s\": 1.25, \"duration_s\": 0.05, \"outcome\": \"cleared_without_settling\", \"phase_transitions\": 0}], \"settled_packets_s\": [0.5, 1.0, 1.15], \"settled_audio_triggers_s\": [0.5, 1.0, 1.15], \"repeated_settled\": [{\"first_s\": 0.5, \"second_s\": 1.0, \"interval_s\": 0.5}, {\"first_s\": 1.0, \"second_s\": 1.15, \"interval_s\": 0.15}], \"eligible_samples\": 10, \"within_lateral_ratio\": 0.4, \"within_heading_ratio\": 0.7, \"within_lateral_speed_ratio\": 0.4, \"all_settled_conditions_ratio\": 0.2, \"longest_settled_candidate_run_samples\": 1, \"steering_reversals\": 1, \"steering_source_samples\": {\"lua_vehicle\": 10, \"telemetry\": 12}, \"correction_bearing_reversals\": 0, \"target_crossings\": 0, \"settled_band\": {\"min_lateral_tolerance_m\": 0.9, \"max_lateral_tolerance_m\": 1.125, \"heading_tolerance_deg\": 6.0, \"min_lateral_speed_tolerance_mps\": 0.5, \"max_lateral_speed_tolerance_mps\": 0.6}}, \"slip\": {\"episodes\": [{\"start_s\": 0.05, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 22.289, \"samples\": 4, \"during_correction\": true, \"end_s\": 0.25, \"duration_s\": 0.2}, {\"start_s\": 0.3, \"kind\": \"lockup\", \"max_magnitude_mps\": 17.0, \"samples\": 5, \"during_correction\": true, \"end_s\": 0.55, \"duration_s\": 0.25}, {\"start_s\": 0.65, \"kind\": \"wheelspin\", \"max_magnitude_mps\": 19.765, \"samples\": 7, \"during_correction\": true, \"end_s\": 1.05, \"duration_s\": 0.4}, {\"start_s\": 1.1, \"kind\": \"lockup\", \"max_magnitude_mps\": 20.746, \"samples\": 3, \"during_correction\": true, \"end_s\": 1.25, \"duration_s\": 0.15}], \"correction_overlap_samples\": 6}, \"contact_materials\": {\"sample_sets\": {\"10:ASPHALT,30:RUBBER\": 1, \"11:DIRT,30:RUBBER\": 5, \"12:GRAVEL\": 2}, \"changes\": [{\"t\": 0.2, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": null, \"road_state\": \"onRoad\"}, {\"t\": 0.25, \"from\": \"12:GRAVEL\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": 50.0, \"road_state\": \"onRoad\"}, {\"t\": 0.4, \"from\": \"11:DIRT,30:RUBBER\", \"to\": \"10:ASPHALT,30:RUBBER\", \"z_m\": 50.0, \"road_state\": 3}, {\"t\": 0.75, \"from\": \"10:ASPHALT,30:RUBBER\", \"to\": \"12:GRAVEL\", \"z_m\": 51.5, \"road_state\": \"dormant\"}, {\"t\": 0.85, \"from\": \"12:GRAVEL\", \"to\": \"11:DIRT,30:RUBBER\", \"z_m\": 51.5, \"road_state\": \"onRoad\"}]}, \"max_absolute\": {\"target_error_m\": 1.829, \"lateral_speed_mps\": 0.928, \"heading_error_deg\": 9.648, \"correction_bearing_deg\": 19.051, \"steering_input\": 0.98, \"applied_steering\": 0.979, \"raw_slip_mps\": 22.289, \"vehicle_pitch_deg\": 22.918}, \"assessment_flags\": [\"2 settled-tone retrigger(s) within 3 seconds\", \"6 correction episode(s) did not settle\", \"4 sustained slip episode(s) overlapped lane correction\", \"3 sample(s) lacked Lua diagnostic fields\"], \"summary_path\": \"<DIR>\\\\road_guidance_20260904_083005_x.summary.json\"}",
+     "wall": {
+      "bits": 4745288236818182958,
+      "repr": "1788480001.5499988"
+     }
     }
    ],
    "wall0": {

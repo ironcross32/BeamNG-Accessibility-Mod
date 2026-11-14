@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use crate::compat::beam_audio::controller::AudioController;
 use crate::timer::Event;
-use crate::not_ported;
 
 /// `terrain_scan_listener(audio_controller, stop_event)`. Runs until `stop_event` is set.
 pub fn terrain_scan_listener(audio_controller: Arc<AudioController>, stop_event: &Event) {
@@ -16,7 +15,11 @@ pub fn terrain_scan_listener(audio_controller: Arc<AudioController>, stop_event:
 
 /// `_send_scan_cmd(command)` (port TERRAIN_SCAN_CMD_PORT).
 pub fn send_scan_cmd(command: &str) {
-    crate::net::send_cmd(crate::net::TERRAIN_SCAN_CMD_PORT, command, "terrain scan command");
+    crate::net::send_cmd(
+        crate::net::TERRAIN_SCAN_CMD_PORT,
+        command,
+        "terrain scan command",
+    );
 }
 
 /// `trigger_terrain_scan_driving_only()`.

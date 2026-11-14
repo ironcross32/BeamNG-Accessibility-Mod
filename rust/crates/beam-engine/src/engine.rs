@@ -32,14 +32,17 @@ use serde_json::{Map, Value, json};
 
 use crate::compat::ConfigMap;
 use crate::compat::beam_audio::controller::AudioController;
-use crate::compat::beam_base::config::{default_config, load_config};
-use crate::compat::beam_base::gear_report;
-use crate::compat::beam_road::assistant_route::suppressed_toast;
 use crate::listeners;
-use crate::state::{self, State, drift_announcer, driving_assistant, hill_climb_challenge, road_diagnostics, state};
+use crate::state::{
+    self, State, drift_announcer, driving_assistant, hill_climb_challenge, road_diagnostics, state,
+};
 use crate::timer::{Event, STOP, Timer, spawn_daemon};
 use crate::ui_sink::UiSink;
 use crate::{browsers, console, keyboard, menus, speech_out, ui_bridge, units, updater};
+use beam_base::config::{default_config_engine, load_config_engine};
+use beam_base::gear_report;
+use beam_base::pyval::{from_json_map, to_json_map};
+use beam_road::assistant_route::suppressed_toast;
 
 // ---- Launch gate ---------------------------------------------------------------------------
 
@@ -102,10 +105,10 @@ impl updater::Gate for LaunchGate {
 pub fn install_signal_handlers() {
     #[cfg(windows)]
     {
-        use windows::Win32::Foundation::BOOL;
         use windows::Win32::System::Console::{
             CTRL_BREAK_EVENT, CTRL_C_EVENT, SetConsoleCtrlHandler,
         };
+        use windows::core::BOOL;
         unsafe extern "system" fn handler(ctrl: u32) -> BOOL {
             if ctrl == CTRL_C_EVENT || ctrl == CTRL_BREAK_EVENT {
                 STOP.set();
@@ -138,12 +141,41 @@ pub fn on_dom_dump_received(lines: Vec<String>) {
         Ok(())
     });
     match result {
-        Ok(()) => log::info!("DOM dump written to {} ({} lines)", path.display(), lines.len()),
+        Ok(()) => log::info!(
+            "DOM dump written to {} ({} lines)",
+            path.display(),
+            lines.len()
+        ),
         Err(e) => log::error!("Failed to write DOM dump: {e}"),
     }
 }
 
 // ---- Config helpers (Python's cfg.get / bool / int / float) -----------------------------------
+
+/// beamtel.py `load_config()`, as JSON. The real loader reports only I/O failures it could
+/// not recover from; those fall back to the defaults for this call, as Python's OSError path does.
+pub fn load_config() -> ConfigMap {
+    match load_config_engine() {
+        Ok(d) => to_json_map(&d),
+        Err(e) => {
+            log::warn!("Config could not be loaded ({e}); using defaults.");
+            to_json_map(&default_config_engine())
+        }
+    }
+}
+
+/// `gear_report.settings_from_config(cfg)`; panics where Python raises.
+fn gear_settings(cfg: &ConfigMap) -> gear_report::GearSettings {
+    gear_report::settings_from_config(&from_json_map(cfg))
+        .unwrap_or_else(|e| panic!("gear_report.settings_from_config: {e:?}"))
+}
+
+/// `audio_controller.apply_config(cfg)`; panics where Python raises.
+fn apply_audio_config(ac: &Arc<AudioController>, cfg: &ConfigMap) {
+    if let Err(e) = ac.apply_config(&from_json_map(cfg)) {
+        panic!("AudioController.apply_config: {e:?}");
+    }
+}
 
 /// Python truthiness of a config value.
 pub fn py_truthy(v: &Value) -> bool {
@@ -182,7 +214,9 @@ fn py_int_value(v: &Value, key: &str) -> i64 {
             .unwrap_or_else(|| units::py_int(n.as_f64().unwrap_or(f64::NAN))),
         Value::String(s) => beam_base::pyfmt::py_strip(s)
             .parse::<i64>()
-            .unwrap_or_else(|_| panic!("ValueError: invalid literal for int() with base 10: {s:?} ({key})")),
+            .unwrap_or_else(|_| {
+                panic!("ValueError: invalid literal for int() with base 10: {s:?} ({key})")
+            }),
         _ => panic!("TypeError: int() argument must be a string or a number ({key})"),
     }
 }
@@ -192,8 +226,9 @@ fn py_float_value(v: &Value, key: &str) -> f64 {
     match v {
         Value::Bool(b) => *b as i64 as f64,
         Value::Number(n) => n.as_f64().unwrap_or(f64::NAN),
-        Value::String(s) => beam_base::pyfmt::py_float_parse(s)
-            .unwrap_or_else(|| panic!("ValueError: could not convert string to float: {s:?} ({key})")),
+        Value::String(s) => beam_base::pyfmt::py_float_parse(s).unwrap_or_else(|| {
+            panic!("ValueError: could not convert string to float: {s:?} ({key})")
+        }),
         _ => panic!("TypeError: float() argument must be a string or a real number ({key})"),
     }
 }
@@ -223,7 +258,7 @@ mod log {
 /// `{k: cfg.get(k, DEFAULT_CONFIG.get(k)) for k in DEFAULT_CONFIG if k.startswith("ai_describer_")}`.
 fn ai_describer_settings_from(cfg: &ConfigMap) -> Map<String, Value> {
     let mut out = Map::new();
-    for (k, dv) in default_config() {
+    for (k, dv) in to_json_map(&default_config_engine()) {
         if k.starts_with("ai_describer_") {
             let v = cfg.get(&k).cloned().unwrap_or(dv);
             out.insert(k, v);
@@ -239,9 +274,13 @@ fn apply_startup_settings(st: &mut State, cfg: &ConfigMap) {
     s.oil_chime_enabled = get_bool(cfg, "oil_chime_enabled", true);
     s.announce_turn_signals = get_bool(cfg, "announce_turn_signals", true);
     s.announce_speed = get_bool(cfg, "announce_speed", true);
-    s.speed_announce_interval =
-        get_number_or_keep(cfg, "speed_announce_interval", 25.0, s.speed_announce_interval);
-    s.gear_report_settings = gear_report::settings_from_config(cfg);
+    s.speed_announce_interval = get_number_or_keep(
+        cfg,
+        "speed_announce_interval",
+        25.0,
+        s.speed_announce_interval,
+    );
+    s.gear_report_settings = gear_settings(cfg);
     s.announce_clickspot_actions = get_bool(cfg, "announce_clickspot_actions", false);
     s.scanner_distance_callout_enabled = get_bool(cfg, "scanner_distance_callout_enabled", false);
     s.scanner_distance_callout_interval = get_number_or_keep(
@@ -283,9 +322,13 @@ fn apply_live_settings(st: &mut State, cfg: &ConfigMap) {
     let s = &mut st.cfg;
     s.announce_turn_signals = get_bool(cfg, "announce_turn_signals", true);
     s.announce_speed = get_bool(cfg, "announce_speed", true);
-    s.speed_announce_interval =
-        get_number_or_keep(cfg, "speed_announce_interval", 25.0, s.speed_announce_interval);
-    s.gear_report_settings = gear_report::settings_from_config(cfg);
+    s.speed_announce_interval = get_number_or_keep(
+        cfg,
+        "speed_announce_interval",
+        25.0,
+        s.speed_announce_interval,
+    );
+    s.gear_report_settings = gear_settings(cfg);
     s.announce_clickspot_actions = get_bool(cfg, "announce_clickspot_actions", false);
     s.scanner_distance_callout_enabled = get_bool(cfg, "scanner_distance_callout_enabled", false);
     s.scanner_distance_callout_interval = get_number_or_keep(
@@ -340,10 +383,10 @@ pub fn apply_live_config(audio_controller: Option<Arc<AudioController>>) {
         apply_live_settings(&mut st, &cfg);
     }
     if let Some(ac) = &audio_controller {
-        ac.apply_config(&cfg);
+        apply_audio_config(ac, &cfg);
         // Outside state_lock: loading a set reads and resamples a file.
         ac.select_hrtf_set(
-            cfg.get("hrtf_set").and_then(Value::as_str),
+            cfg.get("hrtf_set").and_then(Value::as_str).unwrap_or(""),
             &beam_base::paths::hrtf_base_dir(),
             cfg.get("hrtf_elevation_deg").and_then(Value::as_f64),
             cfg.get("hrtf_equalise").and_then(Value::as_bool),
@@ -398,7 +441,9 @@ fn tasklist_stdout() -> Result<String, String> {
         .ok()
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| r"C:\Windows".to_string());
-    let exe = PathBuf::from(system_root).join("System32").join("tasklist.exe");
+    let exe = PathBuf::from(system_root)
+        .join("System32")
+        .join("tasklist.exe");
     let mut cmd = std::process::Command::new(&exe);
     cmd.args(["/FI", "IMAGENAME eq BeamNG.drive.x64.exe", "/NH"])
         .stdin(std::process::Stdio::null())
@@ -448,7 +493,15 @@ fn steam_install_path(reg_path: &str) -> Option<String> {
     let mut size: u32 = 0;
     // SAFETY: first call only asks for the size; all pointers are valid for the call.
     let r = unsafe {
-        RegGetValueW(HKEY_LOCAL_MACHINE, &sub, &name, RRF_RT_REG_SZ, None, None, Some(&mut size))
+        RegGetValueW(
+            HKEY_LOCAL_MACHINE,
+            &sub,
+            &name,
+            RRF_RT_REG_SZ,
+            None,
+            None,
+            Some(&mut size),
+        )
     };
     if r.is_err() || size == 0 {
         return None;
@@ -527,8 +580,8 @@ pub fn run_engine() {
         log::info!("Speech backend: {}", speech::describe_capabilities());
     }
 
-    let audio_controller = Arc::new(AudioController::new());
-    audio_controller.apply_config(&cfg);
+    let audio_controller = AudioController::new();
+    apply_audio_config(&audio_controller, &cfg);
     audio_controller.start();
     state::set_audio_controller_ref(Some(Arc::clone(&audio_controller)));
 
@@ -540,33 +593,38 @@ pub fn run_engine() {
 
     start_listener("config-watcher", || config_watcher(&STOP));
 
-    hill_climb_challenge().set_finalize_callback(Box::new(|summary, auto_open| {
+    hill_climb_challenge().set_finalize_callback(Some(Arc::new(|summary, auto_open| {
         listeners::hill_climb::hill_climb_finalized(summary, auto_open)
-    }));
-    let ws_stop = match ui_bridge::start_server_in_thread(Arc::new(|text: &str, interrupt: bool| {
-        let da = driving_assistant();
-        let following = da
-            .snapshot()
-            .get("following_route")
-            .is_some_and(py_truthy);
-        if !suppressed_toast(text, following, da.seconds_since_arrival()) {
-            speech_out::say(text, interrupt, false, "ui_bridge");
-        }
-    })) {
-        Ok(stop) => Some(stop),
-        Err(e) => {
-            log::error!("Failed to start NVDA WS/HTTP bridge: {e}");
-            None
-        }
-    };
+    })));
+    let ws_stop =
+        match ui_bridge::start_server_in_thread(Arc::new(|text: &str, interrupt: bool| {
+            let da = driving_assistant();
+            let following = da
+                .snapshot_json()
+                .get("following_route")
+                .is_some_and(py_truthy);
+            if !suppressed_toast(text, following, da.seconds_since_arrival()) {
+                speech_out::say(text, interrupt, false, "ui_bridge");
+            }
+        })) {
+            Ok(stop) => Some(stop),
+            Err(e) => {
+                log::error!("Failed to start NVDA WS/HTTP bridge: {e}");
+                None
+            }
+        };
 
     ui_bridge::register_dom_dump_callback(Arc::new(on_dom_dump_received));
     ui_bridge::register_loading_state_callback(Arc::new(speech_out::on_loading_state_changed));
     ui_bridge::register_settings_request_callback(Arc::new(broadcast_ui_settings));
     ui_bridge::register_screen_context_callback(Arc::new(browsers::on_screen_context));
     ui_bridge::register_page_text_callback(Arc::new(browsers::on_page_text));
-    ui_bridge::register_challenge_event_callback(Arc::new(listeners::hill_climb::on_hill_climb_event));
-    ui_bridge::register_drift_event_callback(Arc::new(|data: &Value| drift_announcer().handle(data)));
+    ui_bridge::register_challenge_event_callback(Arc::new(
+        listeners::hill_climb::on_hill_climb_event,
+    ));
+    ui_bridge::register_drift_event_callback(Arc::new(|data: &Value| {
+        drift_announcer().handle(data)
+    }));
 
     // Wait for the updater's answer before touching the game; the timeout is the failure path.
     if !LAUNCH_GATE.wait_secs(LAUNCH_GATE_TIMEOUT_S) {
@@ -588,34 +646,56 @@ pub fn run_engine() {
     let ac = || Arc::clone(&audio_controller);
     start_listener("ui-listener", || ui_toast::ui_listener(&STOP));
     let a = ac();
-    start_listener("scanner-listener", move || scanner::scanner_listener(a, &STOP));
+    start_listener("scanner-listener", move || {
+        scanner::scanner_listener(a, &STOP)
+    });
     start_listener("driving-assistant", || driving_assistant().run(&STOP));
-    start_listener("scanner-callout", || scanner::scanner_callout_thread_fn(&STOP));
+    start_listener("scanner-callout", || {
+        scanner::scanner_callout_thread_fn(&STOP)
+    });
     let a = ac();
-    start_listener("obstacle-listener", move || obstacle::obstacle_listener(a, &STOP));
+    start_listener("obstacle-listener", move || {
+        obstacle::obstacle_listener(a, &STOP)
+    });
     let a = ac();
     start_listener("road-listener", move || road::road_listener(a, &STOP));
     let a = ac();
-    start_listener("implement-listener", move || implement::implement_listener(a, &STOP));
+    start_listener("implement-listener", move || {
+        implement::implement_listener(a, &STOP)
+    });
     let a = ac();
     start_listener("terrain-scan-listener", move || {
         terrain_scan::terrain_scan_listener(a, &STOP)
     });
-    start_listener("cannon-shot-listener", || cannon::cannon_shot_listener(&STOP));
-    start_listener("trailer-angle-listener", || trailer::trailer_angle_listener(&STOP));
+    start_listener("cannon-shot-listener", || {
+        cannon::cannon_shot_listener(&STOP)
+    });
+    start_listener("trailer-angle-listener", || {
+        trailer::trailer_angle_listener(&STOP)
+    });
     let a = ac();
     start_listener("camera-lineup-listener", move || {
         lineup::camera_lineup_listener(a, &STOP)
     });
-    start_listener("wheel-report-listener", || wheel_report::wheel_report_listener(&STOP));
-    start_listener("route-beacon-listener", || route_beacon::route_beacon_listener(&STOP));
-    start_listener("fuel-station-listener", || fuel::fuel_station_listener(&STOP));
+    start_listener("wheel-report-listener", || {
+        wheel_report::wheel_report_listener(&STOP)
+    });
+    start_listener("route-beacon-listener", || {
+        route_beacon::route_beacon_listener(&STOP)
+    });
+    start_listener("fuel-station-listener", || {
+        fuel::fuel_station_listener(&STOP)
+    });
     let a = ac();
     start_listener("camera-listener", move || camera::camera_listener(a, &STOP));
     let a = ac();
-    start_listener("nodegrab-listener", move || nodegrab::nodegrab_listener(a, &STOP));
+    start_listener("nodegrab-listener", move || {
+        nodegrab::nodegrab_listener(a, &STOP)
+    });
     let a = ac();
-    start_listener("clickspot-listener", move || clickspot::clickspot_listener(a, &STOP));
+    start_listener("clickspot-listener", move || {
+        clickspot::clickspot_listener(a, &STOP)
+    });
     start_listener("bindings-listener", || {
         vehicle_bindings::vehicle_bindings_listener(&STOP)
     });
@@ -627,9 +707,15 @@ pub fn run_engine() {
     start_listener("binding-learn-keepalive", || {
         binding_learn::binding_learn_keepalive_thread_fn(&STOP)
     });
-    start_listener("environment-listener", || environment::environment_listener(&STOP));
-    start_listener("audio-debug-listener", || audio_debug::audio_debug_listener(&STOP));
-    start_listener("vehicle-info-listener", || vehicle_info::vehicle_info_listener(&STOP));
+    start_listener("environment-listener", || {
+        environment::environment_listener(&STOP)
+    });
+    start_listener("audio-debug-listener", || {
+        audio_debug::audio_debug_listener(&STOP)
+    });
+    start_listener("vehicle-info-listener", || {
+        vehicle_info::vehicle_info_listener(&STOP)
+    });
     // beamtel may have started after the level loaded.
     browsers::send_env_cmd("REQUEST");
     start_listener("slot-listener", || slots::slot_listener(&STOP));
@@ -640,15 +726,17 @@ pub fn run_engine() {
     // MCP automation server, off by default; a failure to bind only logs.
     let mut mcp_stop: Option<Box<dyn FnOnce() + Send>> = None;
     if get_bool(&cfg, "mcp_server_enabled", false) {
-        let started = catch_unwind(AssertUnwindSafe(|| -> Result<Box<dyn FnOnce() + Send>, String> {
-            crate::mcp_server::init(mcp_deps());
-            console::register_console_tap(Some(Arc::new(crate::mcp_server::console_tap)));
-            let port = cfg
-                .get("mcp_server_port")
-                .map(|v| py_int_value(v, "mcp_server_port"))
-                .unwrap_or(4481);
-            crate::mcp_server::start(u16::try_from(port).map_err(|e| e.to_string())?)
-        }));
+        let started = catch_unwind(AssertUnwindSafe(
+            || -> Result<Box<dyn FnOnce() + Send>, String> {
+                crate::mcp_server::init(mcp_deps());
+                console::register_console_tap(Some(Arc::new(crate::mcp_server::console_tap)));
+                let port = cfg
+                    .get("mcp_server_port")
+                    .map(|v| py_int_value(v, "mcp_server_port"))
+                    .unwrap_or(4481);
+                crate::mcp_server::start(u16::try_from(port).map_err(|e| e.to_string())?)
+            },
+        ));
         match started {
             Ok(Ok(stop)) => mcp_stop = Some(stop),
             Ok(Err(e)) => log::error!("Failed to start MCP server: {e}"),
@@ -663,7 +751,9 @@ pub fn run_engine() {
             is_focused_fn: Arc::new(crate::win_util::is_beamng_focused),
             get_slots_fn: Arc::new(|| state::slots().vehicle_slots.clone()),
             close_others_fn: Arc::new(|| keyboard::release_arrow_owners("vehicle spawner opened")),
-            ping_fn: Arc::new(move |rung, az, pitch| spawner_ac.trigger_placement_ping(rung, az, pitch)),
+            ping_fn: Arc::new(move |rung, az, pitch| {
+                spawner_ac.trigger_placement_ping(rung, az, pitch)
+            }),
             request_info_fn: Arc::new(browsers::request_vehicle_info),
         });
         crate::vehicle_spawner::start();
@@ -680,8 +770,12 @@ pub fn run_engine() {
     if hill_climb_challenge().is_capturing() {
         listeners::road::send_road_command("CAPTURE_OFF");
     }
-    hill_climb_challenge().shutdown();
-    if road_diagnostics().status().get("active").is_some_and(py_truthy) {
+    let _ = hill_climb_challenge().shutdown();
+    if road_diagnostics()
+        .status()
+        .get("active")
+        .is_some_and(|v| v.truthy())
+    {
         listeners::road::send_road_command("DIAG_OFF");
         let _ = road_diagnostics().stop();
     }
@@ -803,7 +897,10 @@ mod tests {
         assert_eq!(st.cfg.compass_click_interval_deg, 30.0);
         assert_eq!(st.cfg.compass_highlight_nth_click, 6);
         assert_eq!(st.cfg.speed_announce_interval, 25.0);
-        assert_eq!(st.cfg.ai_describer_settings["ai_describer_model"], json!("m"));
+        assert_eq!(
+            st.cfg.ai_describer_settings["ai_describer_model"],
+            json!("m")
+        );
         assert_eq!(
             st.cfg.ai_describer_settings["ai_describer_openai_model"],
             json!("gpt-5.6-terra")

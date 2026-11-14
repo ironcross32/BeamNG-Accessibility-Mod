@@ -1,4 +1,4 @@
-//! Owner: E7. The AI Describer: `_ai_describe_worker` and `_trigger_ai_describe`
+﻿//! Owner: E7. The AI Describer: `_ai_describe_worker` and `_trigger_ai_describe`
 //! (`beamtel.py:9604-9701`), plus the non-registry half of `ai_describer.py` (capture,
 //! the Gemini and OpenAI request builders, key validation, the description log). The
 //! registry half is `beam_base::ai_registry` (B1).
@@ -9,7 +9,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::compat::beam_audio::controller::AudioController;
-use crate::not_ported;
 
 /// `ai_describer.LOG_PATH` (`ai_descriptions.log` in the config directory).
 pub fn log_path() -> PathBuf {

@@ -1,4 +1,4 @@
-//! Owner: E3. Free-camera line-up guide: listener, key layer, toggle (`beamtel.py:2200-2371`).
+﻿//! Owner: E3. Free-camera line-up guide: listener, key layer, toggle (`beamtel.py:2200-2371`).
 //!
 //! STUB: signatures fixed by EA (every `pub fn` here is called from another module); bodies to be ported by E3.
 
@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use crate::compat::beam_audio::controller::AudioController;
 use crate::timer::Event;
-use crate::not_ported;
 
 pub const LINEUP_STALE_S: f64 = 0.5;
 

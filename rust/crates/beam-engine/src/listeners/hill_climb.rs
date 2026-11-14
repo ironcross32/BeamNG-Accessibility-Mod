@@ -2,10 +2,12 @@
 //!
 //! STUB: signatures fixed by EA (every `pub fn` here is called from another module); bodies to be ported by E2.
 
-use crate::not_ported;
-
 /// `open_hill_climb_report(summary, return_to_history=None, announce_interrupt=True)`.
-pub fn open_hill_climb_report(summary: serde_json::Value, return_to_history: Option<i64>, announce_interrupt: bool) {
+pub fn open_hill_climb_report(
+    summary: serde_json::Value,
+    return_to_history: Option<i64>,
+    announce_interrupt: bool,
+) {
     let _ = (summary, return_to_history, announce_interrupt);
     not_ported!("open_hill_climb_report");
 }

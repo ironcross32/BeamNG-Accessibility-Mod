@@ -2,9 +2,8 @@
 //!
 //! STUB: signatures fixed by EA (every `pub fn` here is called from another module); bodies to be ported by E4.
 
-use crate::timer::Event;
-use crate::not_ported;
 use crate::state::EnvRow;
+use crate::timer::Event;
 
 /// `environment_listener(stop_event)`. Runs until `stop_event` is set.
 pub fn environment_listener(stop_event: &Event) {

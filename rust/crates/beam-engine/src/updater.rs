@@ -1,10 +1,9 @@
-//! Owner: E10. `updater.py`: check, download, validate, stage, the helper `.cmd`, the
+﻿//! Owner: E10. `updater.py`: check, download, validate, stage, the helper `.cmd`, the
 //! pending flag, `NullGate`, and the startup/manual flow. Prompts and progress go through
 //! `ui_sink::UiSink`.
 //!
 //! STUB: signatures fixed by EA; bodies to be ported by E10.
 
-use crate::not_ported;
 use crate::ui_sink::UiSink;
 
 /// `APP_VERSION` (must equal the release tag; read by the window title too).

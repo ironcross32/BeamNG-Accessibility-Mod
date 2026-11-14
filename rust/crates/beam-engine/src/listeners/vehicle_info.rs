@@ -3,7 +3,6 @@
 //! STUB: signatures fixed by EA (every `pub fn` here is called from another module); bodies to be ported by E4.
 
 use crate::timer::Event;
-use crate::not_ported;
 
 /// `vehicle_info_listener(stop_event)`. Runs until `stop_event` is set.
 pub fn vehicle_info_listener(stop_event: &Event) {
@@ -13,5 +12,9 @@ pub fn vehicle_info_listener(stop_event: &Event) {
 
 /// `_send_vehicle_info_cmd(command)` (port VEHICLE_INFO_CMD_PORT).
 pub fn send_vehicle_info_cmd(command: &str) {
-    crate::net::send_cmd(crate::net::VEHICLE_INFO_CMD_PORT, command, "vehicle info command");
+    crate::net::send_cmd(
+        crate::net::VEHICLE_INFO_CMD_PORT,
+        command,
+        "vehicle info command",
+    );
 }

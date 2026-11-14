@@ -1,0 +1,2944 @@
+{
+ "scripts": [
+  {
+   "files": {
+    "20260904T030408-678910Z-driving-assistant.ndjson": "{\"kind\": \"start\", \"schema\": 1, \"seq\": 1, \"t\": 0.0}\r\n{\"kind\": \"route\", \"data\": {\"turn\": \"left\"}, \"seq\": 2, \"t\": 0.05}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": {\"id\": \"junction:T\", \"distance\": 120.0, \"speed\": 20.0, \"action\": \"approach\", \"source\": \"junctionBoundary\", \"signedDistance\": 120.0, \"kind\": \"\", \"privateEntry\": \"\"}, \"speedLimit\": 13.9, \"signal\": null, \"audio\": {\"active\": false, \"mode\": \"pulse\"}}, \"seq\": 3, \"t\": 0.29}\r\n{\"kind\": \"say\", \"message\": \"Gate ahead é\", \"seq\": 4, \"t\": 1.5}\r\n{\"kind\": \"error\", \"data\": {\"detail\": \"boom\"}, \"seq\": 5, \"t\": 2.29}\r\n{\"message\": \"no kind\", \"seq\": 6, \"t\": 3.29}\r\n{\"kind\": \"diagnostic\", \"sequence\": 5, \"data\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"seq\": 7, \"t\": 3.39}\r\n{\"kind\": \"diagnostic\", \"sequence\": 4, \"data\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"seq\": 8, \"t\": 3.59}\r\n{\"kind\": \"junction\", \"message\": \"left,right\", \"seq\": 9, \"t\": 3.64}\r\n{\"message\": \"no kind\", \"seq\": 10, \"t\": 3.74}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"offRoad\", \"proximity\": null, \"speedLimit\": null, \"signal\": null, \"audio\": null}, \"seq\": 11, \"t\": 3.84}\r\n{\"kind\": \"marker\", \"note\": \"note\", \"seq\": 12, \"t\": 4.23}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": {\"id\": \"junction:T\", \"distance\": 120.0, \"speed\": 20.0, \"action\": \"approach\", \"source\": \"junctionBoundary\", \"signedDistance\": 120.0, \"kind\": \"\", \"privateEntry\": \"\"}, \"speedLimit\": 13.9, \"signal\": null, \"audio\": {\"active\": false, \"mode\": \"pulse\"}}, \"seq\": 13, \"t\": 4.28}\r\n{\"kind\": \"diagnostic\", \"sequence\": 3, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"seq\": 14, \"t\": 6.25}\r\n{\"message\": \"no kind\", \"seq\": 15, \"t\": 6.35}\r\n{\"kind\": \"diagnostic\", \"sequence\": 6, \"data\": null, \"seq\": 16, \"t\": 6.55}\r\n{\"kind\": \"stop\", \"seq\": 17, \"t\": 6.97}\r\n",
+    "20260904T030453-679045Z-driving-assistant.ndjson": "{\"kind\": \"start\", \"schema\": 1, \"seq\": 18, \"t\": 0.0}\r\n{\"kind\": \"stop\", \"seq\": 19, \"t\": 0.19}\r\n",
+    "20260904T030457-679057Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson": "{\"kind\": \"start\", \"schema\": 1, \"seq\": 20, \"t\": 0.0}\r\n{\"message\": \"no kind\", \"seq\": 21, \"t\": 0.05}\r\n{\"kind\": \"say\", \"message\": \"Gate ahead é\", \"seq\": 22, \"t\": 0.1}\r\n{\"kind\": \"diagnostic\", \"sequence\": 6, \"data\": null, \"seq\": 23, \"t\": 0.4}\r\n{\"kind\": \"marker\", \"note\": \"\", \"seq\": 24, \"t\": 0.71}\r\n{\"kind\": \"marker\", \"note\": \"note\", \"seq\": 25, \"t\": 0.92}\r\n{\"kind\": \"stop\", \"seq\": 26, \"t\": 0.92}\r\n"
+   },
+   "ops": [
+    {
+     "action": "mark",
+     "clock": 500.2,
+     "limit": 1,
+     "note": "5",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "no assistant recording is active"
+     },
+     "stamp": 1000003,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 500.40999999999997,
+     "op": "review",
+     "res": {
+      "err": "ValueError",
+      "msg": "session must be a bare .ndjson file name"
+     },
+     "session": "x.txt",
+     "stamp": 2000006,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 500.46,
+     "label": null,
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 3000009,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 500.51,
+     "event": "{\"kind\": \"route\", \"data\": {\"turn\": \"left\"}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 4000012,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "status",
+     "clock": 500.7,
+     "limit": 1,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 5000015,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 500.75,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 6000018,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 3, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 500.96,
+     "limit": "-5",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [], \"next_seq\": 3, \"truncated_before\": null}"
+     },
+     "since": "3",
+     "stamp": 7000021,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 3, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 501.96,
+     "event": "{\"kind\": \"say\", \"message\": \"Gate ahead \\u00e9\", \"seq\": 99, \"t\": -1}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 8000024,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 4, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 502.15999999999997,
+     "op": "review",
+     "res": {
+      "ok": "{\"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"samples\": 0, \"road_samples\": 1, \"automatic_choices_observed\": 0, \"events\": [{\"kind\": \"say\", \"message\": \"Gate ahead \\u00e9\", \"seq\": 4, \"t\": 1.5}], \"event_count\": 1}"
+     },
+     "session": null,
+     "stamp": 9000027,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 4, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 502.34999999999997,
+     "op": "review",
+     "res": {
+      "ok": "{\"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"samples\": 0, \"road_samples\": 1, \"automatic_choices_observed\": 0, \"events\": [{\"kind\": \"say\", \"message\": \"Gate ahead \\u00e9\", \"seq\": 4, \"t\": 1.5}], \"event_count\": 1}"
+     },
+     "session": null,
+     "stamp": 10000030,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 4, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "status",
+     "clock": 502.54999999999995,
+     "limit": 20,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 4, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 11000033,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 4, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 502.74999999999994,
+     "event": "{\"kind\": \"error\", \"data\": {\"detail\": \"boom\"}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 12000036,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 5, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 503.74999999999994,
+     "event": "{\"message\": \"no kind\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 13000039,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 6, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 503.84999999999997,
+     "event": "{\"kind\": \"diagnostic\", \"sequence\": 5, \"data\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 14000042,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 7, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 0.0, \"error\": null}"
+    },
+    {
+     "clock": 504.04999999999995,
+     "event": "{\"kind\": \"diagnostic\", \"sequence\": 4, \"data\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 15000045,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 8, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 0.0, \"error\": null}"
+    },
+    {
+     "clock": 504.09999999999997,
+     "event": "{\"kind\": \"junction\", \"message\": \"left,right\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 16000048,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 9, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 0.05, \"error\": null}"
+    },
+    {
+     "clock": 504.2,
+     "event": "{\"message\": \"no kind\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 17000051,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 10, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 0.15, \"error\": null}"
+    },
+    {
+     "clock": 504.25,
+     "limit": "1",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [{\"message\": \"no kind\", \"seq\": 6, \"t\": 3.29}], \"next_seq\": 6, \"truncated_before\": null}"
+     },
+     "since": "\"5\"",
+     "stamp": 18000054,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 10, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 0.2, \"error\": null}"
+    },
+    {
+     "audio": "null",
+     "clock": 504.3,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"offRoad\"}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 19000057,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 11, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 0.25, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 504.5,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"offRoad\"}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 20000060,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 11, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 0.45, \"error\": null}"
+    },
+    {
+     "action": "mark",
+     "clock": 504.69,
+     "limit": 1,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 12, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 0.64, \"error\": null}"
+     },
+     "stamp": 21000063,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 12, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 0.64, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 504.74,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 22000066,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 13, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 0.69, \"error\": null}"
+    },
+    {
+     "clock": 504.95,
+     "limit": "100",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [{\"kind\": \"start\", \"schema\": 1, \"seq\": 1, \"t\": 0.0}, {\"kind\": \"route\", \"data\": {\"turn\": \"left\"}, \"seq\": 2, \"t\": 0.05}, {\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": {\"id\": \"junction:T\", \"distance\": 120.0, \"speed\": 20.0, \"action\": \"approach\", \"source\": \"junctionBoundary\", \"signedDistance\": 120.0, \"kind\": \"\", \"privateEntry\": \"\"}, \"speedLimit\": 13.9, \"signal\": null, \"audio\": {\"active\": false, \"mode\": \"pulse\"}}, \"seq\": 3, \"t\": 0.29}, {\"kind\": \"say\", \"message\": \"Gate ahead \\u00e9\", \"seq\": 4, \"t\": 1.5}, {\"kind\": \"error\", \"data\": {\"detail\": \"boom\"}, \"seq\": 5, \"t\": 2.29}, {\"message\": \"no kind\", \"seq\": 6, \"t\": 3.29}, {\"kind\": \"diagnostic\", \"sequence\": 5, \"data\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"seq\": 7, \"t\": 3.39}, {\"kind\": \"diagnostic\", \"sequence\": 4, \"data\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"seq\": 8, \"t\": 3.59}, {\"kind\": \"junction\", \"message\": \"left,right\", \"seq\": 9, \"t\": 3.64}, {\"message\": \"no kind\", \"seq\": 10, \"t\": 3.74}, {\"kind\": \"road\", \"data\": {\"state\": \"offRoad\", \"proximity\": null, \"speedLimit\": null, \"signal\": null, \"audio\": null}, \"seq\": 11, \"t\": 3.84}, {\"kind\": \"marker\", \"note\": \"note\", \"seq\": 12, \"t\": 4.23}, {\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": {\"id\": \"junction:T\", \"distance\": 120.0, \"speed\": 20.0, \"action\": \"approach\", \"source\": \"junctionBoundary\", \"signedDistance\": 120.0, \"kind\": \"\", \"privateEntry\": \"\"}, \"speedLimit\": 13.9, \"signal\": null, \"audio\": {\"active\": false, \"mode\": \"pulse\"}}, \"seq\": 13, \"t\": 4.28}], \"next_seq\": 13, \"truncated_before\": null}"
+     },
+     "since": "0",
+     "stamp": 23000069,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 13, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 0.9, \"error\": null}"
+    },
+    {
+     "clock": 505.0,
+     "label": "",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 13, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 0.95, \"error\": null}"
+     },
+     "stamp": 24000072,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 13, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 0.95, \"error\": null}"
+    },
+    {
+     "action": "bogus",
+     "clock": 505.2,
+     "limit": 20,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "action must be start, stop, status, read, mark, review, or list"
+     },
+     "stamp": 25000075,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 13, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 1.15, \"error\": null}"
+    },
+    {
+     "action": "bogus",
+     "clock": 505.40999999999997,
+     "limit": 20,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "action must be start, stop, status, read, mark, review, or list"
+     },
+     "stamp": 26000078,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 13, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 1.36, \"error\": null}"
+    },
+    {
+     "action": "read",
+     "clock": 506.40999999999997,
+     "limit": 1,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "ok": "{\"records\": [{\"kind\": \"start\", \"schema\": 1, \"seq\": 1, \"t\": 0.0}], \"next_seq\": 1, \"truncated_before\": null}"
+     },
+     "stamp": 27000081,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 13, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 2.36, \"error\": null}"
+    },
+    {
+     "clock": 506.60999999999996,
+     "op": "review",
+     "res": {
+      "err": "FileNotFoundError",
+      "msg": "[Errno 2] No such file or directory: 'C:\\\\Users\\\\bcros\\\\AppData\\\\Local\\\\Temp\\\\tmpnnchsfga\\\\missing.ndjson'"
+     },
+     "session": "missing.ndjson",
+     "stamp": 28000084,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 13, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 2.56, \"error\": null}"
+    },
+    {
+     "clock": 506.71,
+     "event": "{\"kind\": \"diagnostic\", \"token\": \"abc\", \"sequence\": 3, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 29000087,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 14, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.0, \"error\": null}"
+    },
+    {
+     "clock": 506.81,
+     "event": "{\"message\": \"no kind\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 30000090,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 15, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.1, \"error\": null}"
+    },
+    {
+     "clock": 507.01,
+     "event": "{\"kind\": \"diagnostic\", \"sequence\": 6, \"data\": null}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 31000093,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 16, \"latest\": null, \"sample_age_s\": 0.0, \"error\": null}"
+    },
+    {
+     "clock": 507.21999999999997,
+     "op": "review",
+     "res": {
+      "err": "ValueError",
+      "msg": "session must be a bare .ndjson file name"
+     },
+     "session": "C:a.ndjson",
+     "stamp": 32000096,
+     "status": "{\"recording\": true, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 16, \"latest\": null, \"sample_age_s\": 0.21, \"error\": null}"
+    },
+    {
+     "clock": 507.42999999999995,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 0.42, \"error\": null}"
+     },
+     "stamp": 33000099,
+     "status": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 0.42, \"error\": null}"
+    },
+    {
+     "clock": 507.61999999999995,
+     "event": "{\"kind\": \"diagnostic\", \"sequence\": 5, \"data\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 34000102,
+     "status": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 0.61, \"error\": null}"
+    },
+    {
+     "clock": 507.80999999999995,
+     "event": "{\"kind\": \"error\", \"data\": {\"detail\": \"boom\"}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 35000105,
+     "status": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 0.8, \"error\": null}"
+    },
+    {
+     "clock": 507.99999999999994,
+     "op": "review",
+     "res": {
+      "err": "ValueError",
+      "msg": "session must be a bare .ndjson file name"
+     },
+     "session": "C:a.ndjson",
+     "stamp": 36000108,
+     "status": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 0.99, \"error\": null}"
+    },
+    {
+     "clock": 508.04999999999995,
+     "event": "{\"kind\": \"error\", \"data\": {\"detail\": \"boom\"}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 37000111,
+     "status": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 1.04, \"error\": null}"
+    },
+    {
+     "action": "mark",
+     "clock": 508.09999999999997,
+     "limit": 1,
+     "note": "5",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "no assistant recording is active"
+     },
+     "stamp": 38000114,
+     "status": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 1.09, \"error\": null}"
+    },
+    {
+     "clock": 508.15,
+     "event": "{\"kind\": \"alive\", \"active\": true}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 39000117,
+     "status": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 1.14, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 508.2,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"offRoad\"}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 40000120,
+     "status": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 1.19, \"error\": null}"
+    },
+    {
+     "action": "list",
+     "clock": 509.2,
+     "limit": 20,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "ok": "{\"sessions\": [\"20260904T030408-678910Z-driving-assistant.ndjson\"]}"
+     },
+     "stamp": 41000123,
+     "status": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 2.19, \"error\": null}"
+    },
+    {
+     "clock": 509.3,
+     "event": "{\"kind\": \"off\", \"message\": \"Driving assistant off\", \"value\": NaN}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 42000126,
+     "status": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 2.29, \"error\": null}"
+    },
+    {
+     "audio": "null",
+     "clock": 509.35,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"signalStatus\":\"available\",\"signal\":{\"id\":\"s\",\"kind\":\"stopSign\",\"state\":\"stop\",\"phase\":\"near\",\"distance\":8}}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 43000129,
+     "status": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 2.34, \"error\": null}"
+    },
+    {
+     "clock": 509.54,
+     "op": "review",
+     "res": {
+      "err": "FileNotFoundError",
+      "msg": "[Errno 2] No such file or directory: 'C:\\\\Users\\\\bcros\\\\AppData\\\\Local\\\\Temp\\\\tmpnnchsfga\\\\missing.ndjson'"
+     },
+     "session": "missing.ndjson",
+     "stamp": 44000132,
+     "status": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 2.53, \"error\": null}"
+    },
+    {
+     "clock": 509.64000000000004,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 2.63, \"error\": null}"
+     },
+     "stamp": 45000135,
+     "status": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 2.63, \"error\": null}"
+    },
+    {
+     "clock": 510.64000000000004,
+     "limit": "-5",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [{\"kind\": \"start\", \"schema\": 1, \"seq\": 1, \"t\": 0.0}], \"next_seq\": 1, \"truncated_before\": null}"
+     },
+     "since": "0",
+     "stamp": 46000138,
+     "status": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 3.63, \"error\": null}"
+    },
+    {
+     "action": "read",
+     "clock": 510.84000000000003,
+     "limit": 1,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "ok": "{\"records\": [{\"kind\": \"start\", \"schema\": 1, \"seq\": 1, \"t\": 0.0}], \"next_seq\": 1, \"truncated_before\": null}"
+     },
+     "stamp": 47000141,
+     "status": "{\"recording\": false, \"session\": \"20260904T030408-678910Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": 3.83, \"error\": null}"
+    },
+    {
+     "clock": 511.03000000000003,
+     "label": null,
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030453-679045Z-driving-assistant.ndjson\", \"last_seq\": 18, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 48000144,
+     "status": "{\"recording\": true, \"session\": \"20260904T030453-679045Z-driving-assistant.ndjson\", \"last_seq\": 18, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 511.22,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": \"20260904T030453-679045Z-driving-assistant.ndjson\", \"last_seq\": 19, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 49000147,
+     "status": "{\"recording\": false, \"session\": \"20260904T030453-679045Z-driving-assistant.ndjson\", \"last_seq\": 19, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "bogus",
+     "clock": 511.42,
+     "limit": 20,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "action must be start, stop, status, read, mark, review, or list"
+     },
+     "stamp": 50000150,
+     "status": "{\"recording\": false, \"session\": \"20260904T030453-679045Z-driving-assistant.ndjson\", \"last_seq\": 19, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 511.52000000000004,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 51000153,
+     "status": "{\"recording\": false, \"session\": \"20260904T030453-679045Z-driving-assistant.ndjson\", \"last_seq\": 19, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 511.73,
+     "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030457-679057Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 20, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 52000156,
+     "status": "{\"recording\": true, \"session\": \"20260904T030457-679057Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 20, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 511.78000000000003,
+     "event": "{\"message\": \"no kind\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 53000159,
+     "status": "{\"recording\": true, \"session\": \"20260904T030457-679057Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 21, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 511.83000000000004,
+     "event": "{\"kind\": \"say\", \"message\": \"Gate ahead \\u00e9\", \"seq\": 99, \"t\": -1}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 54000162,
+     "status": "{\"recording\": true, \"session\": \"20260904T030457-679057Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 22, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "status",
+     "clock": 511.93000000000006,
+     "limit": 20,
+     "note": "5",
+     "op": "control",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030457-679057Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 22, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 55000165,
+     "status": "{\"recording\": true, \"session\": \"20260904T030457-679057Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 22, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 512.1300000000001,
+     "event": "{\"kind\": \"diagnostic\", \"sequence\": 6, \"data\": null}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 56000168,
+     "status": "{\"recording\": true, \"session\": \"20260904T030457-679057Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 23, \"latest\": null, \"sample_age_s\": 0.0, \"error\": null}"
+    },
+    {
+     "clock": 512.3400000000001,
+     "op": "review",
+     "res": {
+      "ok": "{\"session\": \"20260904T030457-679057Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"samples\": 1, \"road_samples\": 0, \"automatic_choices_observed\": 0, \"events\": [{\"message\": \"no kind\", \"seq\": 21, \"t\": 0.05}, {\"kind\": \"say\", \"message\": \"Gate ahead \\u00e9\", \"seq\": 22, \"t\": 0.1}], \"event_count\": 2}"
+     },
+     "session": null,
+     "stamp": 57000171,
+     "status": "{\"recording\": true, \"session\": \"20260904T030457-679057Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 23, \"latest\": null, \"sample_age_s\": 0.21, \"error\": null}"
+    },
+    {
+     "action": "mark",
+     "clock": 512.4400000000002,
+     "limit": 20,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030457-679057Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 24, \"latest\": null, \"sample_age_s\": 0.31, \"error\": null}"
+     },
+     "stamp": 58000174,
+     "status": "{\"recording\": true, \"session\": \"20260904T030457-679057Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 24, \"latest\": null, \"sample_age_s\": 0.31, \"error\": null}"
+    },
+    {
+     "action": "mark",
+     "clock": 512.6500000000002,
+     "limit": 20,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030457-679057Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 25, \"latest\": null, \"sample_age_s\": 0.52, \"error\": null}"
+     },
+     "stamp": 59000177,
+     "status": "{\"recording\": true, \"session\": \"20260904T030457-679057Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 25, \"latest\": null, \"sample_age_s\": 0.52, \"error\": null}"
+    }
+   ]
+  },
+  {
+   "files": {
+    "20260904T030411-678919Z-test.ndjson": "{\"kind\": \"start\", \"schema\": 1, \"seq\": 1, \"t\": 0.0}\r\n{\"kind\": \"error\", \"data\": {\"detail\": \"boom\"}, \"seq\": 2, \"t\": 0.19}\r\n{\"kind\": \"route\", \"data\": {\"turn\": \"left\"}, \"seq\": 3, \"t\": 0.39}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": {\"id\": \"junction:T\", \"distance\": 120.0, \"speed\": 20.0, \"action\": \"approach\", \"source\": \"junctionBoundary\", \"signedDistance\": 120.0, \"kind\": \"\", \"privateEntry\": \"\"}, \"speedLimit\": 13.9, \"signal\": null, \"audio\": null}, \"seq\": 4, \"t\": 0.8}\r\n{\"kind\": \"alive\", \"active\": true, \"seq\": 5, \"t\": 1.2}\r\n{\"message\": \"no kind\", \"seq\": 6, \"t\": 2.2}\r\n{\"kind\": \"off\", \"message\": \"Driving assistant off\", \"value\": NaN, \"seq\": 7, \"t\": 2.39}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": null, \"speedLimit\": null, \"signal\": {\"id\": \"s\", \"kind\": \"stopSign\", \"state\": \"stop\", \"phase\": \"near\", \"distance\": 8.0, \"groupId\": \"s\", \"preview\": false}, \"audio\": {\"active\": false, \"mode\": \"pulse\"}}, \"seq\": 8, \"t\": 2.59}\r\n{\"kind\": \"stop\", \"seq\": 9, \"t\": 2.69}\r\n"
+   },
+   "ops": [
+    {
+     "clock": 500.21,
+     "limit": "1000",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [], \"next_seq\": 5, \"truncated_before\": null}"
+     },
+     "since": "\"5\"",
+     "stamp": 1000003,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "null",
+     "clock": 500.40999999999997,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 2000006,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "null",
+     "clock": 500.51,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"offRoad\"}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 3000009,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "bogus",
+     "clock": 500.7,
+     "limit": 1,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "action must be start, stop, status, read, mark, review, or list"
+     },
+     "stamp": 4000012,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "list",
+     "clock": 500.75,
+     "limit": 20,
+     "note": "5",
+     "op": "control",
+     "res": {
+      "ok": "{\"sessions\": []}"
+     },
+     "stamp": 5000015,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 501.75,
+     "label": "test",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 6000018,
+     "status": "{\"recording\": true, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 501.94,
+     "event": "{\"kind\": \"error\", \"data\": {\"detail\": \"boom\"}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 7000021,
+     "status": "{\"recording\": true, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 502.14,
+     "event": "{\"kind\": \"route\", \"data\": {\"turn\": \"left\"}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 8000024,
+     "status": "{\"recording\": true, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 3, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "bogus",
+     "clock": 502.24,
+     "limit": 20,
+     "note": "5",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "action must be start, stop, status, read, mark, review, or list"
+     },
+     "stamp": 9000027,
+     "status": "{\"recording\": true, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 3, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 502.45,
+     "limit": "\"3\"",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [{\"kind\": \"start\", \"schema\": 1, \"seq\": 1, \"t\": 0.0}, {\"kind\": \"error\", \"data\": {\"detail\": \"boom\"}, \"seq\": 2, \"t\": 0.19}, {\"kind\": \"route\", \"data\": {\"turn\": \"left\"}, \"seq\": 3, \"t\": 0.39}], \"next_seq\": 3, \"truncated_before\": null}"
+     },
+     "since": "0",
+     "stamp": 10000030,
+     "status": "{\"recording\": true, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 3, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "null",
+     "clock": 502.55,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 11000033,
+     "status": "{\"recording\": true, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 4, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "bogus",
+     "clock": 502.74,
+     "limit": 20,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "action must be start, stop, status, read, mark, review, or list"
+     },
+     "stamp": 12000036,
+     "status": "{\"recording\": true, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 4, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 502.95,
+     "event": "{\"kind\": \"alive\", \"active\": true}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 13000039,
+     "status": "{\"recording\": true, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 5, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 503.95,
+     "event": "{\"message\": \"no kind\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 14000042,
+     "status": "{\"recording\": true, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 6, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 504.14,
+     "event": "{\"kind\": \"off\", \"message\": \"Driving assistant off\", \"value\": NaN}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 15000045,
+     "status": "{\"recording\": true, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 7, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 504.34,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"signalStatus\":\"available\",\"signal\":{\"id\":\"s\",\"kind\":\"stopSign\",\"state\":\"stop\",\"phase\":\"near\",\"distance\":8}}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 16000048,
+     "status": "{\"recording\": true, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 8, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 504.44,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 17000051,
+     "status": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 505.44,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"signalStatus\":\"available\",\"signal\":{\"id\":\"s\",\"kind\":\"stopSign\",\"state\":\"stop\",\"phase\":\"near\",\"distance\":8}}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 18000054,
+     "status": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 505.64,
+     "event": "{\"kind\": \"route\", \"data\": {\"turn\": \"left\"}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 19000057,
+     "status": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 505.69,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"signalStatus\":\"available\",\"signal\":{\"id\":\"s\",\"kind\":\"stopSign\",\"state\":\"stop\",\"phase\":\"near\",\"distance\":8}}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 20000060,
+     "status": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 505.89,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 21000063,
+     "status": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "mark",
+     "clock": 506.09999999999997,
+     "limit": 20,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "no assistant recording is active"
+     },
+     "stamp": 22000066,
+     "status": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 506.2,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 23000069,
+     "status": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 506.3,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 24000072,
+     "status": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "mark",
+     "clock": 507.3,
+     "limit": 20,
+     "note": "5",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "no assistant recording is active"
+     },
+     "stamp": 25000075,
+     "status": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 507.5,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"signalStatus\":\"available\",\"signal\":{\"id\":\"s\",\"kind\":\"stopSign\",\"state\":\"stop\",\"phase\":\"near\",\"distance\":8}}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 26000078,
+     "status": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 507.7,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 27000081,
+     "status": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "read",
+     "clock": 508.7,
+     "limit": 20,
+     "note": "5",
+     "op": "control",
+     "res": {
+      "ok": "{\"records\": [{\"kind\": \"start\", \"schema\": 1, \"seq\": 1, \"t\": 0.0}, {\"kind\": \"error\", \"data\": {\"detail\": \"boom\"}, \"seq\": 2, \"t\": 0.19}, {\"kind\": \"route\", \"data\": {\"turn\": \"left\"}, \"seq\": 3, \"t\": 0.39}, {\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": {\"id\": \"junction:T\", \"distance\": 120.0, \"speed\": 20.0, \"action\": \"approach\", \"source\": \"junctionBoundary\", \"signedDistance\": 120.0, \"kind\": \"\", \"privateEntry\": \"\"}, \"speedLimit\": 13.9, \"signal\": null, \"audio\": null}, \"seq\": 4, \"t\": 0.8}, {\"kind\": \"alive\", \"active\": true, \"seq\": 5, \"t\": 1.2}, {\"message\": \"no kind\", \"seq\": 6, \"t\": 2.2}, {\"kind\": \"off\", \"message\": \"Driving assistant off\", \"value\": NaN, \"seq\": 7, \"t\": 2.39}, {\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": null, \"speedLimit\": null, \"signal\": {\"id\": \"s\", \"kind\": \"stopSign\", \"state\": \"stop\", \"phase\": \"near\", \"distance\": 8.0, \"groupId\": \"s\", \"preview\": false}, \"audio\": {\"active\": false, \"mode\": \"pulse\"}}, \"seq\": 8, \"t\": 2.59}, {\"kind\": \"stop\", \"seq\": 9, \"t\": 2.69}], \"next_seq\": 9, \"truncated_before\": null}"
+     },
+     "stamp": 28000084,
+     "status": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 508.89,
+     "limit": "\"3\"",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [{\"kind\": \"start\", \"schema\": 1, \"seq\": 1, \"t\": 0.0}, {\"kind\": \"error\", \"data\": {\"detail\": \"boom\"}, \"seq\": 2, \"t\": 0.19}, {\"kind\": \"route\", \"data\": {\"turn\": \"left\"}, \"seq\": 3, \"t\": 0.39}], \"next_seq\": 3, \"truncated_before\": 1}"
+     },
+     "since": "-1",
+     "stamp": 29000087,
+     "status": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 508.94,
+     "event": "{\"kind\": \"diagnostic\", \"sequence\": 6, \"data\": null}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 30000090,
+     "status": "{\"recording\": false, \"session\": \"20260904T030411-678919Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    }
+   ]
+  },
+  {
+   "files": {},
+   "ops": [
+    {
+     "clock": 500.05,
+     "event": "{\"kind\": \"diagnostic\", \"sequence\": 4, \"data\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 1000003,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 501.05,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 2000006,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 501.25,
+     "op": "review",
+     "res": {
+      "err": "FileNotFoundError",
+      "msg": "[Errno 2] No such file or directory: 'C:\\\\Users\\\\bcros\\\\AppData\\\\Local\\\\Temp\\\\tmptwi5pih_\\\\missing.ndjson'"
+     },
+     "session": "missing.ndjson",
+     "stamp": 3000009,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 501.3,
+     "event": "{\"kind\": \"say\", \"message\": \"Gate ahead \\u00e9\", \"seq\": 99, \"t\": -1}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 4000012,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "read",
+     "clock": 501.49,
+     "limit": 1,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "ok": "{\"records\": [], \"next_seq\": 0, \"truncated_before\": null}"
+     },
+     "stamp": 5000015,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "list",
+     "clock": 501.68,
+     "limit": 1,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "ok": "{\"sessions\": []}"
+     },
+     "stamp": 6000018,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 501.87,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 7000021,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 501.97,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 8000024,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 502.07000000000005,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 9000027,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "null",
+     "clock": 502.12000000000006,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 10000030,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "status",
+     "clock": 502.1700000000001,
+     "limit": 1,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 11000033,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 502.38000000000005,
+     "op": "review",
+     "res": {
+      "ok": "{\"session\": null, \"samples\": 0, \"events\": []}"
+     },
+     "session": null,
+     "stamp": 12000036,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 502.59000000000003,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 13000039,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 502.79,
+     "event": "{\"message\": \"no kind\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 14000042,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "null",
+     "clock": 502.99,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 15000045,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 503.09000000000003,
+     "event": "{\"kind\": \"route\", \"data\": {\"turn\": \"left\"}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 16000048,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 503.29,
+     "event": "{\"kind\": \"diagnostic\", \"sequence\": 4, \"data\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 17000051,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 503.34000000000003,
+     "event": "{\"kind\": \"route\", \"data\": {\"turn\": \"left\"}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 18000054,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "status",
+     "clock": 503.54,
+     "limit": 20,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 19000057,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 504.54,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 20000060,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 504.74,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 21000063,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "bogus",
+     "clock": 504.93,
+     "limit": 1,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "action must be start, stop, status, read, mark, review, or list"
+     },
+     "stamp": 22000066,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 505.14,
+     "event": "{\"kind\": \"on\", \"token\": \"abc\", \"sequence\": 1, \"vehicle\": 42, \"message\": \"Driving assistant on\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 23000069,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "read",
+     "clock": 506.14,
+     "limit": 1,
+     "note": "5",
+     "op": "control",
+     "res": {
+      "ok": "{\"records\": [], \"next_seq\": 0, \"truncated_before\": null}"
+     },
+     "stamp": 24000072,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 507.14,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"offRoad\"}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 25000075,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 507.33,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 26000078,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "mark",
+     "clock": 507.53,
+     "limit": 1,
+     "note": "5",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "no assistant recording is active"
+     },
+     "stamp": 27000081,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 508.53,
+     "limit": "0",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [], \"next_seq\": 0, \"truncated_before\": null}"
+     },
+     "since": "null",
+     "stamp": 28000084,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "null",
+     "clock": 509.53,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 29000087,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "list",
+     "clock": 509.71999999999997,
+     "limit": 20,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "ok": "{\"sessions\": []}"
+     },
+     "stamp": 30000090,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 510.71999999999997,
+     "op": "review",
+     "res": {
+      "err": "ValueError",
+      "msg": "session must be a bare .ndjson file name"
+     },
+     "session": "../escape.ndjson",
+     "stamp": 31000093,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "status",
+     "clock": 510.92999999999995,
+     "limit": 1,
+     "note": "5",
+     "op": "control",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 32000096,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 510.97999999999996,
+     "event": "{\"kind\": \"say\", \"message\": \"Gate ahead \\u00e9\", \"seq\": 99, \"t\": -1}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 33000099,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 511.97999999999996,
+     "op": "review",
+     "res": {
+      "err": "ValueError",
+      "msg": "session must be a bare .ndjson file name"
+     },
+     "session": "x.txt",
+     "stamp": 34000102,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 512.17,
+     "event": "{\"message\": \"no kind\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 35000105,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    }
+   ]
+  },
+  {
+   "files": {
+    "20260904T030417-678937Z-driving-assistant.ndjson": "{\"kind\": \"start\", \"schema\": 1, \"seq\": 1, \"t\": 0.0}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": null, \"speedLimit\": null, \"signal\": {\"id\": \"s\", \"kind\": \"stopSign\", \"state\": \"stop\", \"phase\": \"near\", \"distance\": 8.0, \"groupId\": \"s\", \"preview\": false}, \"audio\": {\"active\": true}}, \"seq\": 2, \"t\": 0.19}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": null, \"speedLimit\": null, \"signal\": {\"id\": \"s\", \"kind\": \"stopSign\", \"state\": \"stop\", \"phase\": \"near\", \"distance\": 8.0, \"groupId\": \"s\", \"preview\": false}, \"audio\": {\"active\": true}}, \"seq\": 3, \"t\": 0.63}\r\n{\"kind\": \"on\", \"sequence\": 1, \"vehicle\": 42, \"message\": \"Driving assistant on\", \"seq\": 4, \"t\": 0.83}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": {\"id\": \"junction:T\", \"distance\": 120.0, \"speed\": 20.0, \"action\": \"approach\", \"source\": \"junctionBoundary\", \"signedDistance\": 120.0, \"kind\": \"\", \"privateEntry\": \"\"}, \"speedLimit\": 13.9, \"signal\": null, \"audio\": {\"active\": false, \"mode\": \"pulse\"}}, \"seq\": 5, \"t\": 0.93}\r\n{\"kind\": \"alive\", \"active\": true, \"seq\": 6, \"t\": 2.03}\r\n{\"kind\": \"error\", \"data\": {\"detail\": \"boom\"}, \"seq\": 7, \"t\": 3.03}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": {\"id\": \"junction:T\", \"distance\": 120.0, \"speed\": 20.0, \"action\": \"approach\", \"source\": \"junctionBoundary\", \"signedDistance\": 120.0, \"kind\": \"\", \"privateEntry\": \"\"}, \"speedLimit\": 13.9, \"signal\": null, \"audio\": {\"active\": true}}, \"seq\": 8, \"t\": 3.23}\r\n{\"kind\": \"off\", \"message\": \"Driving assistant off\", \"value\": NaN, \"seq\": 9, \"t\": 4.33}\r\n{\"message\": \"no kind\", \"seq\": 10, \"t\": 4.72}\r\n{\"kind\": \"off\", \"message\": \"Driving assistant off\", \"value\": NaN, \"seq\": 11, \"t\": 5.18}\r\n{\"kind\": \"diagnostic\", \"sequence\": 3, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"seq\": 12, \"t\": 5.28}\r\n{\"kind\": \"diagnostic\", \"sequence\": 5, \"data\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"seq\": 13, \"t\": 5.33}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": null, \"speedLimit\": null, \"signal\": {\"id\": \"s\", \"kind\": \"stopSign\", \"state\": \"stop\", \"phase\": \"near\", \"distance\": 8.0, \"groupId\": \"s\", \"preview\": false}, \"audio\": null}, \"seq\": 14, \"t\": 6.73}\r\n{\"kind\": \"diagnostic\", \"sequence\": 2, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"seq\": 15, \"t\": 6.93}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": {\"id\": \"junction:T\", \"distance\": 120.0, \"speed\": 20.0, \"action\": \"approach\", \"source\": \"junctionBoundary\", \"signedDistance\": 120.0, \"kind\": \"\", \"privateEntry\": \"\"}, \"speedLimit\": 13.9, \"signal\": null, \"audio\": {\"active\": true}}, \"seq\": 16, \"t\": 7.12}\r\n{\"kind\": \"stop\", \"seq\": 17, \"t\": 7.22}\r\n"
+   },
+   "ops": [
+    {
+     "action": "mark",
+     "clock": 501.0,
+     "limit": 1,
+     "note": "5",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "no assistant recording is active"
+     },
+     "stamp": 1000003,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 501.21,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"signalStatus\":\"available\",\"signal\":{\"id\":\"s\",\"kind\":\"stopSign\",\"state\":\"stop\",\"phase\":\"near\",\"distance\":8}}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 2000006,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 501.31,
+     "event": "{\"kind\": \"diagnostic\", \"token\": \"abc\", \"sequence\": 3, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 3000009,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 501.52,
+     "event": "{\"kind\": \"on\", \"token\": \"abc\", \"sequence\": 1, \"vehicle\": 42, \"message\": \"Driving assistant on\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 4000012,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 501.72999999999996,
+     "event": "{\"kind\": \"diagnostic\", \"token\": \"abc\", \"sequence\": 3, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 5000015,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "mark",
+     "clock": 501.78,
+     "limit": 1,
+     "note": "5",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "no assistant recording is active"
+     },
+     "stamp": 6000018,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 501.83,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"signalStatus\":\"available\",\"signal\":{\"id\":\"s\",\"kind\":\"stopSign\",\"state\":\"stop\",\"phase\":\"near\",\"distance\":8}}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 7000021,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 502.83,
+     "limit": "0",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [], \"next_seq\": 10, \"truncated_before\": null}"
+     },
+     "since": "10",
+     "stamp": 8000024,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 503.03,
+     "limit": "2",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [], \"next_seq\": 10, \"truncated_before\": null}"
+     },
+     "since": "10",
+     "stamp": 9000027,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 503.13,
+     "limit": "1000",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [], \"next_seq\": 0, \"truncated_before\": null}"
+     },
+     "since": "null",
+     "stamp": 10000030,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 503.18,
+     "limit": "-5",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [], \"next_seq\": -1, \"truncated_before\": null}"
+     },
+     "since": "-1",
+     "stamp": 11000033,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 503.39,
+     "label": null,
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 12000036,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 503.58,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"signalStatus\":\"available\",\"signal\":{\"id\":\"s\",\"kind\":\"stopSign\",\"state\":\"stop\",\"phase\":\"near\",\"distance\":8}}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 13000039,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "bogus",
+     "clock": 503.77,
+     "limit": 20,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "action must be start, stop, status, read, mark, review, or list"
+     },
+     "stamp": 14000042,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "list",
+     "clock": 503.96999999999997,
+     "limit": 1,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "ok": "{\"sessions\": [\"20260904T030417-678937Z-driving-assistant.ndjson\"]}"
+     },
+     "stamp": 15000045,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 504.02,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"signalStatus\":\"available\",\"signal\":{\"id\":\"s\",\"kind\":\"stopSign\",\"state\":\"stop\",\"phase\":\"near\",\"distance\":8}}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 16000048,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 3, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 504.12,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"offRoad\"}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 17000051,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 3, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 504.22,
+     "event": "{\"kind\": \"on\", \"token\": \"abc\", \"sequence\": 1, \"vehicle\": 42, \"message\": \"Driving assistant on\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 18000054,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 4, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 504.32000000000005,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 19000057,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 5, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 504.4200000000001,
+     "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 5, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 20000060,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 5, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 505.4200000000001,
+     "event": "{\"kind\": \"alive\", \"active\": true}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 21000063,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 6, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 506.4200000000001,
+     "event": "{\"kind\": \"error\", \"data\": {\"detail\": \"boom\"}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 22000066,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 7, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 506.62000000000006,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 23000069,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 8, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 507.62000000000006,
+     "limit": "-5",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [], \"next_seq\": 10, \"truncated_before\": null}"
+     },
+     "since": "10",
+     "stamp": 24000072,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 8, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 507.7200000000001,
+     "event": "{\"kind\": \"off\", \"message\": \"Driving assistant off\", \"value\": NaN}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 25000075,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 507.9100000000001,
+     "label": "drive / junction é",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 26000078,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 508.11000000000007,
+     "event": "{\"message\": \"no kind\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 27000081,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 10, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 508.31000000000006,
+     "limit": "1000",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [{\"kind\": \"alive\", \"active\": true, \"seq\": 6, \"t\": 2.03}, {\"kind\": \"error\", \"data\": {\"detail\": \"boom\"}, \"seq\": 7, \"t\": 3.03}, {\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": {\"id\": \"junction:T\", \"distance\": 120.0, \"speed\": 20.0, \"action\": \"approach\", \"source\": \"junctionBoundary\", \"signedDistance\": 120.0, \"kind\": \"\", \"privateEntry\": \"\"}, \"speedLimit\": 13.9, \"signal\": null, \"audio\": {\"active\": true}}, \"seq\": 8, \"t\": 3.23}, {\"kind\": \"off\", \"message\": \"Driving assistant off\", \"value\": NaN, \"seq\": 9, \"t\": 4.33}, {\"message\": \"no kind\", \"seq\": 10, \"t\": 4.72}], \"next_seq\": 10, \"truncated_before\": null}"
+     },
+     "since": "\"5\"",
+     "stamp": 28000084,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 10, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 508.52000000000004,
+     "limit": "-5",
+     "op": "read",
+     "res": {
+      "err": "ValueError",
+      "msg": "invalid literal for int() with base 10: 'x'"
+     },
+     "since": "\"x\"",
+     "stamp": 29000087,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 10, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 508.57000000000005,
+     "event": "{\"kind\": \"off\", \"message\": \"Driving assistant off\", \"value\": NaN}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 30000090,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 11, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 508.6700000000001,
+     "event": "{\"kind\": \"diagnostic\", \"token\": \"abc\", \"sequence\": 3, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 31000093,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 12, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.0, \"error\": null}"
+    },
+    {
+     "clock": 508.7200000000001,
+     "event": "{\"kind\": \"diagnostic\", \"sequence\": 5, \"data\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 32000096,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 13, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 0.0, \"error\": null}"
+    },
+    {
+     "clock": 508.93000000000006,
+     "op": "review",
+     "res": {
+      "err": "ValueError",
+      "msg": "session must be a bare .ndjson file name"
+     },
+     "session": "../escape.ndjson",
+     "stamp": 33000099,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 13, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 0.21, \"error\": null}"
+    },
+    {
+     "action": "read",
+     "clock": 509.93000000000006,
+     "limit": 1,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "ok": "{\"records\": [{\"kind\": \"start\", \"schema\": 1, \"seq\": 1, \"t\": 0.0}], \"next_seq\": 1, \"truncated_before\": null}"
+     },
+     "stamp": 34000102,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 13, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 1.21, \"error\": null}"
+    },
+    {
+     "audio": "null",
+     "clock": 510.12000000000006,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"signalStatus\":\"available\",\"signal\":{\"id\":\"s\",\"kind\":\"stopSign\",\"state\":\"stop\",\"phase\":\"near\",\"distance\":8}}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 35000105,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 14, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 1.4, \"error\": null}"
+    },
+    {
+     "clock": 510.32000000000005,
+     "event": "{\"kind\": \"diagnostic\", \"token\": \"abc\", \"sequence\": 2, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 36000108,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 15, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.0, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 510.51000000000005,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 37000111,
+     "status": "{\"recording\": true, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 16, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.19, \"error\": null}"
+    },
+    {
+     "clock": 510.61000000000007,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.29, \"error\": null}"
+     },
+     "stamp": 38000114,
+     "status": "{\"recording\": false, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.29, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 510.81000000000006,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 39000117,
+     "status": "{\"recording\": false, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.49, \"error\": null}"
+    },
+    {
+     "clock": 511.00000000000006,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.68, \"error\": null}"
+     },
+     "stamp": 40000120,
+     "status": "{\"recording\": false, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.68, \"error\": null}"
+    },
+    {
+     "clock": 511.19000000000005,
+     "event": "{\"kind\": \"diagnostic\", \"token\": \"abc\", \"sequence\": 2, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 41000123,
+     "status": "{\"recording\": false, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.87, \"error\": null}"
+    },
+    {
+     "clock": 511.2900000000001,
+     "event": "{\"kind\": \"diagnostic\", \"sequence\": 6, \"data\": null}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 42000126,
+     "status": "{\"recording\": false, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.97, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 511.4800000000001,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 43000129,
+     "status": "{\"recording\": false, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 1.16, \"error\": null}"
+    },
+    {
+     "action": "mark",
+     "clock": 511.68000000000006,
+     "limit": 20,
+     "note": "5",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "no assistant recording is active"
+     },
+     "stamp": 44000132,
+     "status": "{\"recording\": false, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 1.36, \"error\": null}"
+    },
+    {
+     "clock": 511.88000000000005,
+     "event": "{\"kind\": \"alive\", \"active\": true}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 45000135,
+     "status": "{\"recording\": false, \"session\": \"20260904T030417-678937Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 1.56, \"error\": null}"
+    }
+   ]
+  },
+  {
+   "files": {
+    "20260904T030420-678946Z-test.ndjson": "{\"kind\": \"start\", \"schema\": 1, \"seq\": 1, \"t\": 0.0}\r\n{\"kind\": \"stop\", \"seq\": 2, \"t\": 2.59}\r\n",
+    "20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson": "{\"kind\": \"start\", \"schema\": 1, \"seq\": 3, \"t\": 0.0}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"offRoad\", \"proximity\": null, \"speedLimit\": null, \"signal\": null, \"audio\": {\"active\": true}}, \"seq\": 4, \"t\": 0.38}\r\n{\"kind\": \"marker\", \"note\": \"\", \"seq\": 5, \"t\": 0.59}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"offRoad\", \"proximity\": null, \"speedLimit\": null, \"signal\": null, \"audio\": null}, \"seq\": 6, \"t\": 0.64}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"offRoad\", \"proximity\": null, \"speedLimit\": null, \"signal\": null, \"audio\": {\"active\": true}}, \"seq\": 7, \"t\": 1.23}\r\n{\"kind\": \"stop\", \"seq\": 8, \"t\": 1.62}\r\n",
+    "20260904T030451-679039Z-test.ndjson": "{\"kind\": \"start\", \"schema\": 1, \"seq\": 9, \"t\": 0.0}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": null, \"speedLimit\": null, \"signal\": {\"id\": \"s\", \"kind\": \"stopSign\", \"state\": \"stop\", \"phase\": \"near\", \"distance\": 8.0, \"groupId\": \"s\", \"preview\": false}, \"audio\": {\"active\": true}}, \"seq\": 10, \"t\": 0.51}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"offRoad\", \"proximity\": null, \"speedLimit\": null, \"signal\": null, \"audio\": {\"active\": true}}, \"seq\": 11, \"t\": 1.51}\r\n{\"kind\": \"diagnostic\", \"sequence\": 4, \"data\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"seq\": 12, \"t\": 1.56}\r\n{\"kind\": \"diagnostic\", \"sequence\": 2, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"seq\": 13, \"t\": 1.81}\r\n{\"kind\": \"junction\", \"message\": \"left,right\", \"seq\": 14, \"t\": 2.81}\r\n{\"kind\": \"stop\", \"seq\": 15, \"t\": 3.02}\r\n",
+    "20260904T030501-679069Z-driving-assistant.ndjson": "{\"kind\": \"start\", \"schema\": 1, \"seq\": 16, \"t\": 0.0}\r\n{\"kind\": \"on\", \"sequence\": 1, \"vehicle\": 42, \"message\": \"Driving assistant on\", \"seq\": 17, \"t\": 0.05}\r\n{\"kind\": \"stop\", \"seq\": 18, \"t\": 0.05}\r\n"
+   },
+   "ops": [
+    {
+     "clock": 500.2,
+     "op": "review",
+     "res": {
+      "err": "FileNotFoundError",
+      "msg": "[Errno 2] No such file or directory: 'C:\\\\Users\\\\bcros\\\\AppData\\\\Local\\\\Temp\\\\tmp0zerv9t0\\\\missing.ndjson'"
+     },
+     "session": "missing.ndjson",
+     "stamp": 1000003,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 500.40999999999997,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 2000006,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 500.59999999999997,
+     "event": "{\"kind\": \"error\", \"data\": {\"detail\": \"boom\"}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 3000009,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "mark",
+     "clock": 500.80999999999995,
+     "limit": 20,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "no assistant recording is active"
+     },
+     "stamp": 4000012,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 500.99999999999994,
+     "event": "{\"kind\": \"say\", \"message\": \"Gate ahead \\u00e9\", \"seq\": 99, \"t\": -1}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 5000015,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 501.04999999999995,
+     "limit": "-5",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [], \"next_seq\": 3, \"truncated_before\": null}"
+     },
+     "since": "3",
+     "stamp": 6000018,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 501.25999999999993,
+     "event": "{\"kind\": \"diagnostic\", \"token\": \"abc\", \"sequence\": 3, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 7000021,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 501.4599999999999,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"signalStatus\":\"available\",\"signal\":{\"id\":\"s\",\"kind\":\"stopSign\",\"state\":\"stop\",\"phase\":\"near\",\"distance\":8}}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 8000024,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 501.6499999999999,
+     "event": "{\"kind\": \"diagnostic\", \"token\": \"abc\", \"sequence\": 2, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 9000027,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "null",
+     "clock": 501.8599999999999,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"offRoad\"}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 10000030,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 501.9099999999999,
+     "limit": "-5",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [], \"next_seq\": -1, \"truncated_before\": null}"
+     },
+     "since": "-1",
+     "stamp": 11000033,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "status",
+     "clock": 502.00999999999993,
+     "limit": 20,
+     "note": "5",
+     "op": "control",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 12000036,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "status",
+     "clock": 502.2199999999999,
+     "limit": 20,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 13000039,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "bogus",
+     "clock": 502.4199999999999,
+     "limit": 1,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "action must be start, stop, status, read, mark, review, or list"
+     },
+     "stamp": 14000042,
+     "status": "{\"recording\": false, \"session\": null, \"last_seq\": 0, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 502.6099999999999,
+     "label": "test",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 15000045,
+     "status": "{\"recording\": true, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "list",
+     "clock": 502.8099999999999,
+     "limit": 20,
+     "note": "5",
+     "op": "control",
+     "res": {
+      "ok": "{\"sessions\": [\"20260904T030420-678946Z-test.ndjson\"]}"
+     },
+     "stamp": 16000048,
+     "status": "{\"recording\": true, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 503.0099999999999,
+     "limit": "100",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [{\"kind\": \"start\", \"schema\": 1, \"seq\": 1, \"t\": 0.0}], \"next_seq\": 1, \"truncated_before\": 1}"
+     },
+     "since": "-1",
+     "stamp": 17000051,
+     "status": "{\"recording\": true, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 503.1999999999999,
+     "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 18000054,
+     "status": "{\"recording\": true, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "bogus",
+     "clock": 503.3899999999999,
+     "limit": 20,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "action must be start, stop, status, read, mark, review, or list"
+     },
+     "stamp": 19000057,
+     "status": "{\"recording\": true, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 503.59999999999985,
+     "limit": "1",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [], \"next_seq\": 5, \"truncated_before\": null}"
+     },
+     "since": "\"5\"",
+     "stamp": 20000060,
+     "status": "{\"recording\": true, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 503.78999999999985,
+     "label": "",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 21000063,
+     "status": "{\"recording\": true, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 504.78999999999985,
+     "label": "drive / junction é",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 22000066,
+     "status": "{\"recording\": true, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "status",
+     "clock": 504.99999999999983,
+     "limit": 1,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 23000069,
+     "status": "{\"recording\": true, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 505.1999999999998,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 24000072,
+     "status": "{\"recording\": false, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "list",
+     "clock": 505.3899999999998,
+     "limit": 20,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "ok": "{\"sessions\": [\"20260904T030420-678946Z-test.ndjson\"]}"
+     },
+     "stamp": 25000075,
+     "status": "{\"recording\": false, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 505.48999999999984,
+     "event": "{\"kind\": \"diagnostic\", \"token\": \"abc\", \"sequence\": 3, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 26000078,
+     "status": "{\"recording\": false, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 505.6999999999998,
+     "event": "{\"kind\": \"diagnostic\", \"sequence\": 5, \"data\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 27000081,
+     "status": "{\"recording\": false, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "null",
+     "clock": 505.8999999999998,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"signalStatus\":\"available\",\"signal\":{\"id\":\"s\",\"kind\":\"stopSign\",\"state\":\"stop\",\"phase\":\"near\",\"distance\":8}}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 28000084,
+     "status": "{\"recording\": false, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 506.0899999999998,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"signalStatus\":\"available\",\"signal\":{\"id\":\"s\",\"kind\":\"stopSign\",\"state\":\"stop\",\"phase\":\"near\",\"distance\":8}}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 29000087,
+     "status": "{\"recording\": false, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 506.2999999999998,
+     "event": "{\"kind\": \"diagnostic\", \"sequence\": 6, \"data\": null}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 30000090,
+     "status": "{\"recording\": false, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 507.2999999999998,
+     "event": "{\"kind\": \"error\", \"data\": {\"detail\": \"boom\"}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 31000093,
+     "status": "{\"recording\": false, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "bogus",
+     "clock": 507.3999999999998,
+     "limit": 20,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "action must be start, stop, status, read, mark, review, or list"
+     },
+     "stamp": 32000096,
+     "status": "{\"recording\": false, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 507.5899999999998,
+     "event": "{\"message\": \"no kind\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 33000099,
+     "status": "{\"recording\": false, \"session\": \"20260904T030420-678946Z-test.ndjson\", \"last_seq\": 2, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 507.7799999999998,
+     "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 3, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 34000102,
+     "status": "{\"recording\": true, \"session\": \"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 3, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "list",
+     "clock": 507.9699999999998,
+     "limit": 1,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "ok": "{\"sessions\": [\"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\"]}"
+     },
+     "stamp": 35000105,
+     "status": "{\"recording\": true, \"session\": \"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 3, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 508.1599999999998,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"offRoad\"}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 36000108,
+     "status": "{\"recording\": true, \"session\": \"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 4, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "mark",
+     "clock": 508.3699999999998,
+     "limit": 1,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 5, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 37000111,
+     "status": "{\"recording\": true, \"session\": \"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 5, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "null",
+     "clock": 508.4199999999998,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"offRoad\"}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 38000114,
+     "status": "{\"recording\": true, \"session\": \"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 6, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 508.6099999999998,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"offRoad\"}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 39000117,
+     "status": "{\"recording\": true, \"session\": \"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 6, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "list",
+     "clock": 508.7999999999998,
+     "limit": 1,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "ok": "{\"sessions\": [\"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\"]}"
+     },
+     "stamp": 40000120,
+     "status": "{\"recording\": true, \"session\": \"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 6, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 509.00999999999976,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"offRoad\"}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 41000123,
+     "status": "{\"recording\": true, \"session\": \"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 7, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "null",
+     "clock": 509.20999999999975,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 42000126,
+     "status": "{\"recording\": true, \"session\": \"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 7, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 509.39999999999975,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": \"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 8, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 43000129,
+     "status": "{\"recording\": false, \"session\": \"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 8, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 510.39999999999975,
+     "event": "{\"message\": \"no kind\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 44000132,
+     "status": "{\"recording\": false, \"session\": \"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 8, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "status",
+     "clock": 511.39999999999975,
+     "limit": 1,
+     "note": "5",
+     "op": "control",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": \"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 8, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 45000135,
+     "status": "{\"recording\": false, \"session\": \"20260904T030439-679003Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 8, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 511.58999999999975,
+     "label": "test",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030451-679039Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 46000138,
+     "status": "{\"recording\": true, \"session\": \"20260904T030451-679039Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 511.68999999999977,
+     "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030451-679039Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 47000141,
+     "status": "{\"recording\": true, \"session\": \"20260904T030451-679039Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 511.88999999999976,
+     "op": "review",
+     "res": {
+      "err": "ValueError",
+      "msg": "session must be a bare .ndjson file name"
+     },
+     "session": "C:a.ndjson",
+     "stamp": 48000144,
+     "status": "{\"recording\": true, \"session\": \"20260904T030451-679039Z-test.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 512.0999999999998,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"signalStatus\":\"available\",\"signal\":{\"id\":\"s\",\"kind\":\"stopSign\",\"state\":\"stop\",\"phase\":\"near\",\"distance\":8}}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 49000147,
+     "status": "{\"recording\": true, \"session\": \"20260904T030451-679039Z-test.ndjson\", \"last_seq\": 10, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 513.0999999999998,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"offRoad\"}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 50000150,
+     "status": "{\"recording\": true, \"session\": \"20260904T030451-679039Z-test.ndjson\", \"last_seq\": 11, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 513.1499999999997,
+     "event": "{\"kind\": \"diagnostic\", \"sequence\": 4, \"data\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 51000153,
+     "status": "{\"recording\": true, \"session\": \"20260904T030451-679039Z-test.ndjson\", \"last_seq\": 12, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 0.0, \"error\": null}"
+    },
+    {
+     "clock": 513.1999999999997,
+     "limit": "1",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [{\"kind\": \"start\", \"schema\": 1, \"seq\": 9, \"t\": 0.0}], \"next_seq\": 9, \"truncated_before\": 9}"
+     },
+     "since": "-1",
+     "stamp": 52000156,
+     "status": "{\"recording\": true, \"session\": \"20260904T030451-679039Z-test.ndjson\", \"last_seq\": 12, \"latest\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}, \"sample_age_s\": 0.05, \"error\": null}"
+    },
+    {
+     "clock": 513.3999999999997,
+     "event": "{\"kind\": \"diagnostic\", \"token\": \"abc\", \"sequence\": 2, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 53000159,
+     "status": "{\"recording\": true, \"session\": \"20260904T030451-679039Z-test.ndjson\", \"last_seq\": 13, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.0, \"error\": null}"
+    },
+    {
+     "clock": 514.3999999999997,
+     "event": "{\"kind\": \"junction\", \"message\": \"left,right\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 54000162,
+     "status": "{\"recording\": true, \"session\": \"20260904T030451-679039Z-test.ndjson\", \"last_seq\": 14, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 1.0, \"error\": null}"
+    },
+    {
+     "clock": 514.6099999999998,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": \"20260904T030451-679039Z-test.ndjson\", \"last_seq\": 15, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 1.21, \"error\": null}"
+     },
+     "stamp": 55000165,
+     "status": "{\"recording\": false, \"session\": \"20260904T030451-679039Z-test.ndjson\", \"last_seq\": 15, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 1.21, \"error\": null}"
+    },
+    {
+     "clock": 514.8099999999998,
+     "label": "",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030501-679069Z-driving-assistant.ndjson\", \"last_seq\": 16, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 56000168,
+     "status": "{\"recording\": true, \"session\": \"20260904T030501-679069Z-driving-assistant.ndjson\", \"last_seq\": 16, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 514.8599999999998,
+     "event": "{\"kind\": \"on\", \"token\": \"abc\", \"sequence\": 1, \"vehicle\": 42, \"message\": \"Driving assistant on\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 57000171,
+     "status": "{\"recording\": true, \"session\": \"20260904T030501-679069Z-driving-assistant.ndjson\", \"last_seq\": 17, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    }
+   ]
+  },
+  {
+   "files": {
+    "20260904T030406-678904Z-driving-assistant.ndjson": "{\"kind\": \"start\", \"schema\": 1, \"seq\": 1, \"t\": 0.0}\r\n{\"kind\": \"diagnostic\", \"sequence\": 2, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"seq\": 2, \"t\": 1.15}\r\n{\"kind\": \"diagnostic\", \"sequence\": 5, \"data\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"seq\": 3, \"t\": 1.36}\r\n{\"kind\": \"say\", \"message\": \"Gate ahead é\", \"seq\": 4, \"t\": 1.57}\r\n{\"kind\": \"stop\", \"seq\": 5, \"t\": 1.76}\r\n",
+    "20260904T030422-678952Z-driving-assistant.ndjson": "{\"kind\": \"start\", \"schema\": 1, \"seq\": 6, \"t\": 0.0}\r\n{\"kind\": \"route\", \"data\": {\"turn\": \"left\"}, \"seq\": 7, \"t\": 0.29}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"offRoad\", \"proximity\": null, \"speedLimit\": null, \"signal\": null, \"audio\": null}, \"seq\": 8, \"t\": 1.48}\r\n{\"kind\": \"junction\", \"message\": \"left,right\", \"seq\": 9, \"t\": 2.48}\r\n{\"kind\": \"diagnostic\", \"sequence\": 3, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"seq\": 10, \"t\": 2.58}\r\n{\"kind\": \"stop\", \"seq\": 11, \"t\": 2.68}\r\n",
+    "20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson": "{\"kind\": \"start\", \"schema\": 1, \"seq\": 12, \"t\": 0.0}\r\n{\"kind\": \"route\", \"data\": {\"turn\": \"left\"}, \"seq\": 13, \"t\": 1.0}\r\n{\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": {\"id\": \"junction:T\", \"distance\": 120.0, \"speed\": 20.0, \"action\": \"approach\", \"source\": \"junctionBoundary\", \"signedDistance\": 120.0, \"kind\": \"\", \"privateEntry\": \"\"}, \"speedLimit\": 13.9, \"signal\": null, \"audio\": {\"active\": false, \"mode\": \"pulse\"}}, \"seq\": 14, \"t\": 1.2}\r\n{\"kind\": \"stop\", \"seq\": 15, \"t\": 2.36}\r\n"
+   },
+   "ops": [
+    {
+     "clock": 500.21,
+     "label": "",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 1000003,
+     "status": "{\"recording\": true, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 500.26,
+     "op": "review",
+     "res": {
+      "ok": "{\"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"samples\": 0, \"road_samples\": 0, \"automatic_choices_observed\": 0, \"events\": [], \"event_count\": 0}"
+     },
+     "session": null,
+     "stamp": 2000006,
+     "status": "{\"recording\": true, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "read",
+     "clock": 501.26,
+     "limit": 20,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "ok": "{\"records\": [{\"kind\": \"start\", \"schema\": 1, \"seq\": 1, \"t\": 0.0}], \"next_seq\": 1, \"truncated_before\": null}"
+     },
+     "stamp": 3000009,
+     "status": "{\"recording\": true, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 1, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 501.36,
+     "event": "{\"kind\": \"diagnostic\", \"token\": \"abc\", \"sequence\": 2, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 4000012,
+     "status": "{\"recording\": true, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 2, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.0, \"error\": null}"
+    },
+    {
+     "clock": 501.57,
+     "event": "{\"kind\": \"diagnostic\", \"sequence\": 5, \"data\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 5000015,
+     "status": "{\"recording\": true, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 3, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 0.0, \"error\": null}"
+    },
+    {
+     "clock": 501.78,
+     "event": "{\"kind\": \"say\", \"message\": \"Gate ahead \\u00e9\", \"seq\": 99, \"t\": -1}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 6000018,
+     "status": "{\"recording\": true, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 4, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 0.21, \"error\": null}"
+    },
+    {
+     "clock": 501.96999999999997,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 5, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 0.4, \"error\": null}"
+     },
+     "stamp": 7000021,
+     "status": "{\"recording\": false, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 5, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 0.4, \"error\": null}"
+    },
+    {
+     "clock": 502.15999999999997,
+     "op": "review",
+     "res": {
+      "ok": "{\"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"samples\": 2, \"road_samples\": 0, \"automatic_choices_observed\": 1, \"events\": [{\"kind\": \"say\", \"message\": \"Gate ahead \\u00e9\", \"seq\": 4, \"t\": 1.57}], \"event_count\": 1}"
+     },
+     "session": null,
+     "stamp": 8000024,
+     "status": "{\"recording\": false, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 5, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 0.59, \"error\": null}"
+    },
+    {
+     "clock": 502.34999999999997,
+     "event": "{\"kind\": \"diagnostic\", \"sequence\": 4, \"data\": {\"vehicle\": {\"locked\": \"j2\", \"chosen\": \"right\", \"automatic\": false}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 9000027,
+     "status": "{\"recording\": false, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 5, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 0.78, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 502.45,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"offRoad\"}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 10000030,
+     "status": "{\"recording\": false, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 5, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 0.88, \"error\": null}"
+    },
+    {
+     "clock": 502.64,
+     "event": "{\"kind\": \"off\", \"message\": \"Driving assistant off\", \"value\": NaN}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 11000033,
+     "status": "{\"recording\": false, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 5, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 1.07, \"error\": null}"
+    },
+    {
+     "clock": 502.84999999999997,
+     "limit": "2",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [], \"next_seq\": 5, \"truncated_before\": null}"
+     },
+     "since": "\"5\"",
+     "stamp": 12000036,
+     "status": "{\"recording\": false, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 5, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 1.28, \"error\": null}"
+    },
+    {
+     "audio": "null",
+     "clock": 502.9,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 13000039,
+     "status": "{\"recording\": false, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 5, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 1.33, \"error\": null}"
+    },
+    {
+     "clock": 503.10999999999996,
+     "op": "review",
+     "res": {
+      "err": "ValueError",
+      "msg": "session must be a bare .ndjson file name"
+     },
+     "session": "C:a.ndjson",
+     "stamp": 14000042,
+     "status": "{\"recording\": false, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 5, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 1.54, \"error\": null}"
+    },
+    {
+     "clock": 504.10999999999996,
+     "event": "{\"kind\": \"error\", \"data\": {\"detail\": \"boom\"}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 15000045,
+     "status": "{\"recording\": false, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 5, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 2.54, \"error\": null}"
+    },
+    {
+     "clock": 504.29999999999995,
+     "event": "{\"kind\": \"route\", \"data\": {\"turn\": \"left\"}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 16000048,
+     "status": "{\"recording\": false, \"session\": \"20260904T030406-678904Z-driving-assistant.ndjson\", \"last_seq\": 5, \"latest\": {\"vehicle\": {\"locked\": null, \"chosen\": \"x\", \"automatic\": true}}, \"sample_age_s\": 2.73, \"error\": null}"
+    },
+    {
+     "clock": 505.29999999999995,
+     "label": null,
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 6, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 17000051,
+     "status": "{\"recording\": true, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 6, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 505.4,
+     "limit": "0",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [{\"kind\": \"start\", \"schema\": 1, \"seq\": 6, \"t\": 0.0}], \"next_seq\": 6, \"truncated_before\": null}"
+     },
+     "since": "\"5\"",
+     "stamp": 18000054,
+     "status": "{\"recording\": true, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 6, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 505.59,
+     "event": "{\"kind\": \"route\", \"data\": {\"turn\": \"left\"}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 19000057,
+     "status": "{\"recording\": true, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 7, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 506.59,
+     "label": null,
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 7, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 20000060,
+     "status": "{\"recording\": true, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 7, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "null",
+     "clock": 506.78,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"offRoad\"}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 21000063,
+     "status": "{\"recording\": true, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 8, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 507.78,
+     "event": "{\"kind\": \"junction\", \"message\": \"left,right\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 22000066,
+     "status": "{\"recording\": true, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 9, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 507.88,
+     "event": "{\"kind\": \"diagnostic\", \"token\": \"abc\", \"sequence\": 3, \"data\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 23000069,
+     "status": "{\"recording\": true, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 10, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.0, \"error\": null}"
+    },
+    {
+     "clock": 507.98,
+     "op": "stop",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 11, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.1, \"error\": null}"
+     },
+     "stamp": 24000072,
+     "status": "{\"recording\": false, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 11, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.1, \"error\": null}"
+    },
+    {
+     "action": "bogus",
+     "clock": 508.03000000000003,
+     "limit": 1,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "err": "ValueError",
+      "msg": "action must be start, stop, status, read, mark, review, or list"
+     },
+     "stamp": 25000075,
+     "status": "{\"recording\": false, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 11, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.15, \"error\": null}"
+    },
+    {
+     "action": "status",
+     "clock": 508.22,
+     "limit": 20,
+     "note": "null",
+     "op": "control",
+     "res": {
+      "ok": "{\"recording\": false, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 11, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.34, \"error\": null}"
+     },
+     "stamp": 26000078,
+     "status": "{\"recording\": false, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 11, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.34, \"error\": null}"
+    },
+    {
+     "clock": 508.42,
+     "event": "{\"kind\": \"junction\", \"message\": \"left,right\"}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 27000081,
+     "status": "{\"recording\": false, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 11, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.54, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 508.63,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 28000084,
+     "status": "{\"recording\": false, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 11, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.75, \"error\": null}"
+    },
+    {
+     "clock": 508.84,
+     "event": "{\"kind\": \"off\", \"message\": \"Driving assistant off\", \"value\": NaN}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 29000087,
+     "status": "{\"recording\": false, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 11, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 0.96, \"error\": null}"
+    },
+    {
+     "clock": 509.84,
+     "op": "review",
+     "res": {
+      "ok": "{\"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"samples\": 1, \"road_samples\": 1, \"automatic_choices_observed\": 1, \"events\": [{\"kind\": \"junction\", \"message\": \"left,right\", \"seq\": 9, \"t\": 2.48}], \"event_count\": 1}"
+     },
+     "session": null,
+     "stamp": 30000090,
+     "status": "{\"recording\": false, \"session\": \"20260904T030422-678952Z-driving-assistant.ndjson\", \"last_seq\": 11, \"latest\": {\"vehicle\": {\"locked\": \"j1\", \"chosen\": \"left\", \"automatic\": true}}, \"sample_age_s\": 1.96, \"error\": null}"
+    },
+    {
+     "clock": 510.03999999999996,
+     "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 12, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 31000093,
+     "status": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 12, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 511.03999999999996,
+     "event": "{\"kind\": \"route\", \"data\": {\"turn\": \"left\"}}",
+     "op": "record",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 32000096,
+     "status": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 13, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": false, \"mode\": \"pulse\"}",
+     "clock": 511.23999999999995,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 33000099,
+     "status": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 14, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "{\"active\": true}",
+     "clock": 511.34,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"onRoad\",\"proximity\":{\"id\":\"junction:T\",\"distance\":120,\"speed\":20,\"action\":\"approach\",\"source\":\"junctionBoundary\"},\"speedLimit\":13.9}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 34000102,
+     "status": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 14, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "audio": "null",
+     "clock": 511.39,
+     "op": "record_road",
+     "packet": "R2|{\"state\":\"offRoad\"}",
+     "res": {
+      "ok": "null"
+     },
+     "stamp": 35000105,
+     "status": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 14, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 511.44,
+     "op": "review",
+     "res": {
+      "ok": "{\"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"samples\": 0, \"road_samples\": 1, \"automatic_choices_observed\": 0, \"events\": [], \"event_count\": 0}"
+     },
+     "session": null,
+     "stamp": 36000108,
+     "status": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 14, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 511.49,
+     "op": "review",
+     "res": {
+      "err": "FileNotFoundError",
+      "msg": "[Errno 2] No such file or directory: 'C:\\\\Users\\\\bcros\\\\AppData\\\\Local\\\\Temp\\\\tmp_gq4fh26\\\\missing.ndjson'"
+     },
+     "session": "missing.ndjson",
+     "stamp": 37000111,
+     "status": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 14, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 511.7,
+     "label": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 14, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 38000114,
+     "status": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 14, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "read",
+     "clock": 511.9,
+     "limit": 1,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "ok": "{\"records\": [{\"kind\": \"start\", \"schema\": 1, \"seq\": 12, \"t\": 0.0}], \"next_seq\": 12, \"truncated_before\": 12}"
+     },
+     "stamp": 39000117,
+     "status": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 14, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 512.09,
+     "label": "test",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 14, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 40000120,
+     "status": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 14, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 512.3000000000001,
+     "limit": "0",
+     "op": "read",
+     "res": {
+      "ok": "{\"records\": [{\"kind\": \"start\", \"schema\": 1, \"seq\": 12, \"t\": 0.0}], \"next_seq\": 12, \"truncated_before\": 12}"
+     },
+     "since": "0",
+     "stamp": 41000123,
+     "status": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 14, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "clock": 512.35,
+     "label": "test",
+     "op": "start",
+     "res": {
+      "ok": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 14, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+     },
+     "stamp": 42000126,
+     "status": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 14, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    },
+    {
+     "action": "read",
+     "clock": 512.4,
+     "limit": 20,
+     "note": "\"note\"",
+     "op": "control",
+     "res": {
+      "ok": "{\"records\": [{\"kind\": \"start\", \"schema\": 1, \"seq\": 12, \"t\": 0.0}, {\"kind\": \"route\", \"data\": {\"turn\": \"left\"}, \"seq\": 13, \"t\": 1.0}, {\"kind\": \"road\", \"data\": {\"state\": \"onRoad\", \"proximity\": {\"id\": \"junction:T\", \"distance\": 120.0, \"speed\": 20.0, \"action\": \"approach\", \"source\": \"junctionBoundary\", \"signedDistance\": 120.0, \"kind\": \"\", \"privateEntry\": \"\"}, \"speedLimit\": 13.9, \"signal\": null, \"audio\": {\"active\": false, \"mode\": \"pulse\"}}, \"seq\": 14, \"t\": 1.2}], \"next_seq\": 14, \"truncated_before\": 12}"
+     },
+     "stamp": 43000129,
+     "status": "{\"recording\": true, \"session\": \"20260904T030436-678994Z-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.ndjson\", \"last_seq\": 14, \"latest\": null, \"sample_age_s\": null, \"error\": null}"
+    }
+   ]
+  }
+ ]
+}

@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use crate::compat::beam_audio::controller::AudioController;
 use crate::timer::Event;
-use crate::not_ported;
 
 /// `road_listener(audio_controller, stop_event)`. Runs until `stop_event` is set.
 pub fn road_listener(audio_controller: Arc<AudioController>, stop_event: &Event) {
@@ -25,14 +24,23 @@ pub fn send_road_configuration() {
 }
 
 /// `assistant_diagnostic_control(action="status", **kwargs)` (MCP). `Err` is the RuntimeError text.
-pub fn assistant_diagnostic_control(action: &str, kwargs: &serde_json::Value) -> Result<serde_json::Value, String> {
+pub fn assistant_diagnostic_control(
+    action: &str,
+    kwargs: &serde_json::Value,
+) -> Result<serde_json::Value, String> {
     let _ = (action, kwargs);
     not_ported!("assistant_diagnostic_control");
     Ok(serde_json::Value::Null)
 }
 
 /// `road_diagnostic_control(action, label, session, note, limit=20)` (MCP). `Err` is the RuntimeError/ValueError text.
-pub fn road_diagnostic_control(action: &str, label: Option<&str>, session: Option<&str>, note: Option<&str>, limit: i64) -> Result<serde_json::Value, String> {
+pub fn road_diagnostic_control(
+    action: &str,
+    label: Option<&str>,
+    session: Option<&str>,
+    note: Option<&str>,
+    limit: i64,
+) -> Result<serde_json::Value, String> {
     let _ = (action, label, session, note, limit);
     not_ported!("road_diagnostic_control");
     Ok(serde_json::Value::Null)
