@@ -55,7 +55,7 @@ Update this table as work lands. One line per workstream from `04-workstreams.md
 | B1 | beam-base: config, logger, secretstore, gear_report, AI registry | in progress | |
 | B2 | beam-reports: pure report modules | in progress | |
 | B3 | beam-road: road guidance, assistant, recorders | in progress | |
-| S1 | beam-speech: Prism FFI and speech | in progress | |
+| S1 | beam-speech: Prism FFI and speech | done | 29 tests; matches Python backend/voice listing on this machine; app must call `speech::atexit()` on exit; ship `prism.dll` beside the exe |
 | AH | beam-audio: hrtf, terrain scan render, waveform generators | in progress | |
 | AA | beam-audio: controller state, API, device, callback skeleton | in progress | |
 | A1-A3 | beam-audio: callback voices | not started | split decided by AA |
