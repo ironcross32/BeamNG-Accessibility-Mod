@@ -116,10 +116,7 @@ impl AssistantDiagnosticRecorder {
             ),
             ("audio", audio_state),
         ]);
-        self.record_locked(
-            &mut s,
-            &dict_of([("kind", "road".into()), ("data", data)]),
-        );
+        self.record_locked(&mut s, &dict_of([("kind", "road".into()), ("data", data)]));
     }
 
     /// Record one event dict (the decoded assistant datagram, or one built here).
@@ -195,11 +192,11 @@ impl AssistantDiagnosticRecorder {
             return Ok(self.status_locked(&s));
         }
         std::fs::create_dir_all(&self.directory)?;
-        let label = label.filter(|l| !l.is_empty()).unwrap_or("driving-assistant");
+        let label = label
+            .filter(|l| !l.is_empty())
+            .unwrap_or("driving-assistant");
         let label = pyjson::take_chars(
-            &pyjson::sub_runs(label, |c| {
-                c.is_ascii_alphanumeric() || c == '_' || c == '-'
-            }),
+            &pyjson::sub_runs(label, |c| c.is_ascii_alphanumeric() || c == '_' || c == '-'),
             60,
         );
         let stamp = (self.utc_now)().strftime("%Y%m%dT%H%M%S-%fZ");
@@ -369,10 +366,7 @@ impl AssistantDiagnosticRecorder {
                 } else {
                     String::new()
                 };
-                self.record(&dict_of([
-                    ("kind", "marker".into()),
-                    ("note", note.into()),
-                ]));
+                self.record(&dict_of([("kind", "marker".into()), ("note", note.into())]));
                 Ok(self.status())
             }
             "status" => Ok(self.status()),

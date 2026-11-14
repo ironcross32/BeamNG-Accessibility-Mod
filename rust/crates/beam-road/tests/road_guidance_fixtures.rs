@@ -13,7 +13,12 @@ fn check(failures: Vec<String>, total: usize) {
         "{} of {} cases failed:\n{}",
         failures.len(),
         total,
-        failures.iter().take(40).cloned().collect::<Vec<_>>().join("\n")
+        failures
+            .iter()
+            .take(40)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join("\n")
     );
 }
 
@@ -34,7 +39,10 @@ fn same_outcome<E: std::fmt::Display>(got: &Result<String, E>, case: &serde_json
 fn constants() {
     let fx = load("road_guidance");
     assert_eq!(R2_PREFIX, s(&fx["constants"]["R2_PREFIX"]));
-    assert!(same_f64(R2_STALE_SECONDS, f(&fx["constants"]["R2_STALE_SECONDS"])));
+    assert!(same_f64(
+        R2_STALE_SECONDS,
+        f(&fx["constants"]["R2_STALE_SECONDS"])
+    ));
 }
 
 #[test]
@@ -47,9 +55,7 @@ fn parse_r2_packet_matches_python() {
         let got = parse_r2_packet(text);
         let ok = match (&got, case.get("ok")) {
             (Ok(p), Some(want)) => py_dumps(&p.to_value()) == s(want),
-            (Err(e), None) => {
-                e.type_name() == s(&case["err"]) && e.message() == s(&case["msg"])
-            }
+            (Err(e), None) => e.type_name() == s(&case["err"]) && e.message() == s(&case["msg"]),
             _ => false,
         };
         if !ok {
@@ -76,7 +82,9 @@ fn direction_labels_and_lists_match_python() {
             case["u_turn"].as_bool().unwrap(),
         );
         if copy != got {
-            failures.push(format!("route_beacon copy disagrees at {b:?}: {copy:?} vs {got:?}"));
+            failures.push(format!(
+                "route_beacon copy disagrees at {b:?}: {copy:?} vs {got:?}"
+            ));
         }
     }
     for case in cases(&fx, "lists") {
@@ -84,7 +92,9 @@ fn direction_labels_and_lists_match_python() {
         let conj = s(&case["conjunction"]);
         let a = direction_list(&bs, conj);
         let b = road_direction_list(&bs, conj);
-        if !same_outcome(&a, &case["direction_list"]) || !same_outcome(&b, &case["road_direction_list"]) {
+        if !same_outcome(&a, &case["direction_list"])
+            || !same_outcome(&b, &case["road_direction_list"])
+        {
             failures.push(format!("lists {bs:?} {conj}: {a:?} / {b:?}, want {case}"));
         }
     }
@@ -152,7 +162,9 @@ fn phrases_match_python() {
             .as_array()
             .map(|a| (s(&a[0]).to_string(), a[1].as_bool().unwrap()));
         if got != want {
-            failures.push(format!("parse_surface_packet({text:?}) = {got:?}, want {want:?}"));
+            failures.push(format!(
+                "parse_surface_packet({text:?}) = {got:?}, want {want:?}"
+            ));
         }
         if let Some((w, r)) = &got
             && surface_phrase(w, *r) != if *r { format!("{w} road") } else { w.clone() }
@@ -164,7 +176,9 @@ fn phrases_match_python() {
         let v = case["speed"].as_object().map(|_| f(&case["speed"]));
         let got = map_speed_limit_phrase(v, s(&case["units"]), s(&case["label"]));
         if got != s(&case["out"]) {
-            failures.push(format!("map_speed_limit_phrase({v:?}) = {got:?}, want {case}"));
+            failures.push(format!(
+                "map_speed_limit_phrase({v:?}) = {got:?}, want {case}"
+            ));
         }
     }
     check(failures, 1);
@@ -175,7 +189,10 @@ fn events_value(e: &R2Events) -> Value {
         ("orientation", e.orientation.into()),
         (
             "junction",
-            e.junction.as_ref().map(|j| j.to_value()).unwrap_or(Value::Null),
+            e.junction
+                .as_ref()
+                .map(|j| j.to_value())
+                .unwrap_or(Value::Null),
         ),
         (
             "signal",
@@ -206,7 +223,8 @@ fn feed_script_matches_python() {
     let all = cases(&fx, "feed");
     let now = Arc::new(AtomicU64::new(0f64.to_bits()));
     let clock_now = now.clone();
-    let feed = RoadGuidanceFeed::with_clock(move || f64::from_bits(clock_now.load(Ordering::SeqCst)));
+    let feed =
+        RoadGuidanceFeed::with_clock(move || f64::from_bits(clock_now.load(Ordering::SeqCst)));
     let mut failures = Vec::new();
     for (n, op) in all.iter().enumerate() {
         let t = f(&op["now"]);
@@ -221,13 +239,8 @@ fn feed_script_matches_python() {
                     .map(|b| b.as_bool().unwrap())
                     .collect();
                 let explicit = op["explicit"].as_bool().unwrap();
-                let ev = feed.accept_r2(
-                    &packet,
-                    explicit.then_some(t),
-                    flags[0],
-                    flags[1],
-                    flags[2],
-                );
+                let ev =
+                    feed.accept_r2(&packet, explicit.then_some(t), flags[0], flags[1], flags[2]);
                 let got = py_dumps(&events_value(&ev));
                 if got != s(&op["out"]) {
                     failures.push(format!("op {n} accept_r2: got {got}, want {}", op["out"]));

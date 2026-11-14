@@ -131,7 +131,10 @@ mod tests {
 
     #[test]
     fn paths() {
-        assert_eq!(py_path(Path::new("C:/a//b/./c/")), PathBuf::from(r"C:\a\b\c"));
+        assert_eq!(
+            py_path(Path::new("C:/a//b/./c/")),
+            PathBuf::from(r"C:\a\b\c")
+        );
         assert_eq!(
             with_suffix(Path::new(r"d\x.ndjson"), ".summary.json"),
             PathBuf::from(r"d\x.summary.json")

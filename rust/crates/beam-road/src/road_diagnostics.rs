@@ -89,11 +89,9 @@ fn to_pyvalue(v: &Value) -> PyValue {
         Value::Float(f) => PyValue::Float(*f),
         Value::Str(s) => PyValue::Str(s.clone()),
         Value::List(l) => PyValue::List(l.iter().map(to_pyvalue).collect()),
-        Value::Dict(d) => PyValue::Dict(
-            d.iter()
-                .map(|(k, v)| (k.clone(), to_pyvalue(v)))
-                .collect(),
-        ),
+        Value::Dict(d) => {
+            PyValue::Dict(d.iter().map(|(k, v)| (k.clone(), to_pyvalue(v))).collect())
+        }
     }
 }
 
@@ -485,10 +483,7 @@ pub fn analyze_records(records: &[Value], path: Option<&str>) -> Result<Value, P
                 last_bearing_sign = bearing_sign;
             }
 
-            let target_sign = sign(
-                diag_truthy.and_then(|d| finite(d.get("targetError"))),
-                0.05,
-            );
+            let target_sign = sign(diag_truthy.and_then(|d| finite(d.get("targetError"))), 0.05);
             if target_sign != 0 && last_target_sign != 0 && target_sign != last_target_sign {
                 target_crossings += 1;
             }
@@ -614,8 +609,14 @@ pub fn analyze_records(records: &[Value], path: Option<&str>) -> Result<Value, P
         ("min_lateral_tolerance_m", round_opt(band_min_lat, 3)),
         ("max_lateral_tolerance_m", round_opt(band_max_lat, 3)),
         ("heading_tolerance_deg", round_opt(band_heading, 3)),
-        ("min_lateral_speed_tolerance_mps", round_opt(band_min_speed, 3)),
-        ("max_lateral_speed_tolerance_mps", round_opt(band_max_speed, 3)),
+        (
+            "min_lateral_speed_tolerance_mps",
+            round_opt(band_min_speed, 3),
+        ),
+        (
+            "max_lateral_speed_tolerance_mps",
+            round_opt(band_max_speed, 3),
+        ),
     ]);
 
     let mut flags: Vec<String> = Vec::new();
@@ -876,9 +877,7 @@ impl RoadDiagnosticRecorder {
         }
         std::fs::create_dir_all(&self.directory)?;
         let label = label.filter(|l| !l.is_empty()).unwrap_or("hill-climb");
-        let subbed = pyjson::sub_runs(label, |c| {
-            c.is_ascii_alphanumeric() || c == '_' || c == '-'
-        });
+        let subbed = pyjson::sub_runs(label, |c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
         let mut safe = pyjson::take_chars(pyjson::strip_chars(&subbed, &['-']), 48);
         if safe.is_empty() {
             safe = "hill-climb".to_string();

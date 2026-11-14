@@ -355,10 +355,7 @@ pub fn unhashable(v: &Value) -> PyErr {
 }
 
 fn no_get(v: &Value) -> PyErr {
-    PyErr::AttributeError(format!(
-        "'{}' object has no attribute 'get'",
-        v.type_name()
-    ))
+    PyErr::AttributeError(format!("'{}' object has no attribute 'get'", v.type_name()))
 }
 
 /// `x or {}` followed by `.get(key)`: the common recorder idiom. A falsy `x` gives
@@ -586,7 +583,10 @@ struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     fn err(&self, what: &str) -> JsonDecodeError {
-        JsonDecodeError(format!("{what}: char {}", self.text[..self.i].chars().count()))
+        JsonDecodeError(format!(
+            "{what}: char {}",
+            self.text[..self.i].chars().count()
+        ))
     }
 
     fn ws(&mut self) {

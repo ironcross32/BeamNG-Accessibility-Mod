@@ -126,11 +126,9 @@ impl DateTime {
     /// (a naive datetime is read as UTC).
     pub fn to_unix_micros(&self) -> i64 {
         let days = days_from_civil(self.year as i64, self.month, self.day);
-        let secs = days * 86_400
-            + self.hour as i64 * 3600
-            + self.minute as i64 * 60
-            + self.second as i64
-            - self.offset_s.unwrap_or(0) as i64;
+        let secs =
+            days * 86_400 + self.hour as i64 * 3600 + self.minute as i64 * 60 + self.second as i64
+                - self.offset_s.unwrap_or(0) as i64;
         secs * 1_000_000 + self.micro as i64
     }
 
@@ -303,8 +301,9 @@ impl DateTime {
     pub fn astimezone_local(&self) -> Result<(DateTime, String), PyErr> {
         let utc_micros = self.to_unix_micros();
         let ts = utc_micros.div_euclid(1_000_000);
-        // The CRT's localtime_s accepts 0..=32535215999 (to 3000-12-31 23:59:59).
-        if !(0..=32_535_215_999).contains(&ts) {
+        // The UCRT's localtime_s accepts -12 h ..= 3000-12-31 23:59:59 + 13 h
+        // (_MIN_LOCAL_TIME, _MAX__TIME64_T + _MAX_LOCAL_TIME).
+        if !(-43_200..=32_535_215_999 + 46_800).contains(&ts) {
             return Err(PyErr::OSError("[Errno 22] Invalid argument".to_string()));
         }
         let (offset, name) = imp::local_offset(ts).unwrap_or((0, "UTC".to_string()));
@@ -403,14 +402,12 @@ mod imp {
         let mut tzi = TIME_ZONE_INFORMATION::default();
         // SAFETY: GetTimeZoneInformation fills a valid TIME_ZONE_INFORMATION.
         let _ = unsafe { GetTimeZoneInformation(&mut tzi) };
-        let local_secs = super::days_from_civil(
-            local.wYear as i64,
-            local.wMonth as u32,
-            local.wDay as u32,
-        ) * 86_400
-            + local.wHour as i64 * 3600
-            + local.wMinute as i64 * 60
-            + local.wSecond as i64;
+        let local_secs =
+            super::days_from_civil(local.wYear as i64, local.wMonth as u32, local.wDay as u32)
+                * 86_400
+                + local.wHour as i64 * 3600
+                + local.wMinute as i64 * 60
+                + local.wSecond as i64;
         let offset = (local_secs - ts) as i32;
         let dst_offset = -(tzi.Bias + tzi.DaylightBias) * 60;
         let is_dst = tzi.DaylightDate.wMonth != 0

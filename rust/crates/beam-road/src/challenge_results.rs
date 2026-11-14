@@ -20,8 +20,8 @@ use parking_lot::Mutex;
 
 use crate::pyfs::{self, glob_sorted, path_str, with_suffix};
 use crate::pyjson::{
-    self, Dict, DumpOpts, PyErr, Value, dict, dict_of, finite, get_or_empty, or_empty_dict,
-    py_max, py_min,
+    self, Dict, DumpOpts, PyErr, Value, dict, dict_of, finite, get_or_empty, or_empty_dict, py_max,
+    py_min,
 };
 use crate::pytime::{self, DateTime};
 use crate::road_diagnostics::{classification_value, classify, round_opt};
@@ -710,7 +710,10 @@ impl HillClimbChallengeRecorder {
             let Ok(data) = pyjson::loads(&text) else {
                 continue;
             };
-            if !data.py_get("status")?.is_some_and(|s| s.eq_str("completed")) {
+            if !data
+                .py_get("status")?
+                .is_some_and(|s| s.eq_str("completed"))
+            {
                 continue;
             }
             let value = finite(get_or_empty(data.get("statistics"), "official_time_s")?);
@@ -800,9 +803,8 @@ impl HillClimbChallengeRecorder {
         let callback = self.inner.finalize_callback.lock().clone();
         if let Some(cb) = callback {
             // Python swallows any exception from the callback.
-            let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                cb(&summary, auto_open)
-            }));
+            let _ =
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| cb(&summary, auto_open)));
         }
     }
 
@@ -867,7 +869,10 @@ impl HillClimbChallengeRecorder {
         let Value::Dict(ev) = event else {
             return Ok(None);
         };
-        if !ev.get("challenge_id").is_some_and(|c| c.eq_str(CHALLENGE_ID)) {
+        if !ev
+            .get("challenge_id")
+            .is_some_and(|c| c.eq_str(CHALLENGE_ID))
+        {
             return Ok(None);
         }
         let kind = match ev.get("event") {
@@ -997,13 +1002,12 @@ impl HillClimbChallengeRecorder {
         } else {
             status.py_str()
         };
-        let best = if get_or_empty(summary.get("personal_best"), "new_best")?
-            .is_some_and(Value::truthy)
-        {
-            ", new personal best"
-        } else {
-            ""
-        };
+        let best =
+            if get_or_empty(summary.get("personal_best"), "new_best")?.is_some_and(Value::truthy) {
+                ", new personal best"
+            } else {
+                ""
+            };
         Ok(format!("{stamp}, {time_text}{best}"))
     }
 
@@ -1026,7 +1030,10 @@ impl HillClimbChallengeRecorder {
                 "Finished, {}",
                 format_local_datetime(summary.get("ended_utc"))?
             ),
-            format!("Official time, {}", format_time(stats.get("official_time_s"))),
+            format!(
+                "Official time, {}",
+                format_time(stats.get("official_time_s"))
+            ),
             format!("Driving time, {}", format_time(stats.get("raw_time_s"))),
             format!("Penalty time, {}", format_time(stats.get("penalty_s"))),
         ];
@@ -1075,9 +1082,15 @@ impl HillClimbChallengeRecorder {
             format!("Stopped time, {}", format_time(d("stopped_s"))),
             format!("Time on asphalt, {}", format_time(d("asphalt_s"))),
             format!("Time off asphalt, {}", format_time(d("off_asphalt_s"))),
-            format!("Rumble strip contact, {}", format_time(d("rumble_contact_s"))),
+            format!(
+                "Rumble strip contact, {}",
+                format_time(d("rumble_contact_s"))
+            ),
             format!("Gravel contact, {}", format_time(d("gravel_contact_s"))),
-            format!("Navigation on-road time, {}", format_time(d("nav_on_road_s"))),
+            format!(
+                "Navigation on-road time, {}",
+                format_time(d("nav_on_road_s"))
+            ),
             format!(
                 "Navigation off-road time, {}",
                 format_time(d("nav_off_road_s"))

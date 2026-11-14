@@ -340,11 +340,7 @@ fn nonneg(x: f64) -> f64 {
 }
 
 /// `_short_array`: BeamNG's Lua `jsonEncode` writes an empty array as `{}`.
-fn short_array<'a>(
-    value: &'a Value,
-    field: &str,
-    max_items: usize,
-) -> Result<&'a [Value], PyErr> {
+fn short_array<'a>(value: &'a Value, field: &str, max_items: usize) -> Result<&'a [Value], PyErr> {
     if let Value::Dict(d) = value
         && d.is_empty()
     {
@@ -369,7 +365,7 @@ fn present<'a>(d: &'a Dict, key: &str) -> Option<&'a Value> {
     d.get(key).filter(|v| !v.is_null())
 }
 
-fn short_str<'a>(value: Option<&'a Value>, max: usize) -> Option<&'a str> {
+fn short_str(value: Option<&Value>, max: usize) -> Option<&str> {
     match value {
         Some(Value::Str(s)) if char_len(s) <= max => Some(s),
         _ => None,
@@ -395,7 +391,10 @@ pub fn parse_r2_packet(text: &str) -> Result<R2Packet, PyErr> {
     if !in_set(state_value, STATES)? {
         return Err(verr("invalid road state"));
     }
-    let state = state_value.and_then(Value::as_str).unwrap_or("").to_string();
+    let state = state_value
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
     let one_way = match packet.get("oneWay") {
         None => false,
         Some(Value::Bool(b)) => *b,
@@ -441,7 +440,10 @@ pub fn parse_r2_packet(text: &str) -> Result<R2Packet, PyErr> {
                 Some(_) => return Err(verr("correction.settled must be boolean")),
             };
             let zero = Value::Float(0.0);
-            let bearing = bearing_of(Some(c.get("bearing").unwrap_or(&zero)), "correction.bearing")?;
+            let bearing = bearing_of(
+                Some(c.get("bearing").unwrap_or(&zero)),
+                "correction.bearing",
+            )?;
             let severity = finite_number(
                 Some(c.get("severity").unwrap_or(&zero)),
                 "correction.severity",
@@ -751,7 +753,11 @@ fn joined(items: &[String], conjunction: &str) -> String {
         0 => String::new(),
         1 => items[0].clone(),
         2 => format!("{} {conjunction} {}", items[0], items[1]),
-        n => format!("{}, {conjunction} {}", items[..n - 1].join(", "), items[n - 1]),
+        n => format!(
+            "{}, {conjunction} {}",
+            items[..n - 1].join(", "),
+            items[n - 1]
+        ),
     }
 }
 
@@ -914,7 +920,14 @@ pub fn map_speed_limit_phrase(speed_ms: Option<f64>, units: &str, label: &str) -
     let Some(speed_ms) = speed_ms else {
         return format!("{label} unavailable.");
     };
-    let value = py_round0(speed_ms * if units == "imperial" { 2.2369362920544 } else { 3.6 });
+    let value = py_round0(
+        speed_ms
+            * if units == "imperial" {
+                2.2369362920544
+            } else {
+                3.6
+            },
+    );
     let unit = if units == "imperial" {
         "mph"
     } else {

@@ -276,7 +276,10 @@ impl RouteCallouts {
     }
 
     fn now_distance(report: &Value) -> Result<f64, PyErr> {
-        Ok(py_max(NOW_MIN_M, float_or_zero(report, "speed")? * NOW_SECONDS))
+        Ok(py_max(
+            NOW_MIN_M,
+            float_or_zero(report, "speed")? * NOW_SECONDS,
+        ))
     }
 
     fn continue_phrase(&mut self, report: &Value, distance: f64) -> Result<String, PyErr> {
@@ -285,7 +288,10 @@ impl RouteCallouts {
             if distance <= Self::now_distance(report)? {
                 self.now_said = true;
                 self.callouts.clear();
-                return Ok(format!("{} now", capitalised(&turn_instruction_value(turn)?)));
+                return Ok(format!(
+                    "{} now",
+                    capitalised(&turn_instruction_value(turn)?)
+                ));
             }
             return Ok(format!(
                 "Continue {}, then {}",
@@ -313,9 +319,7 @@ impl RouteCallouts {
         let total = spoken_distance(float_or_zero(report, "destDistance")?, &units);
         let mut parts = vec![format!("Route set. {total} by road.")];
         if report.get("offRoad").is_some_and(Value::truthy) {
-            parts.push(
-                "Destination is off the road. Going to the closest road point.".to_string(),
-            );
+            parts.push("Destination is off the road. Going to the closest road point.".to_string());
         }
         parts.push(self.continue_phrase(report, distance)?);
         Ok(parts.join(" "))

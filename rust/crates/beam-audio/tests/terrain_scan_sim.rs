@@ -25,7 +25,11 @@ impl Checks {
         println!(
             "   {label}: {}{}",
             if ok { "OK" } else { "FAIL" },
-            if d.is_empty() { String::new() } else { format!(" - {d}") }
+            if d.is_empty() {
+                String::new()
+            } else {
+                format!(" - {d}")
+            }
         );
         if !ok {
             self.failures.push(label.to_string());
@@ -102,12 +106,18 @@ fn render_pois(samples: &[ScanSample], objects: &[ScanObject], pois: &[ScanPoi])
 }
 
 fn channel(buf: &Buf, ch: usize, from: usize) -> Vec<f64> {
-    buf[from.min(buf.len())..].iter().map(|f| f[ch] as f64).collect()
+    buf[from.min(buf.len())..]
+        .iter()
+        .map(|f| f[ch] as f64)
+        .collect()
 }
 
 fn energy_after(buf: &Buf, t_s: f64) -> f64 {
     let i = (SR * t_s) as usize;
-    buf[i..].iter().map(|f| (f[0].abs() + f[1].abs()) as f64).sum()
+    buf[i..]
+        .iter()
+        .map(|f| (f[0].abs() + f[1].abs()) as f64)
+        .sum()
 }
 
 fn first_onset(buf: &Buf) -> Option<usize> {
@@ -119,7 +129,10 @@ fn first_onset(buf: &Buf) -> Option<usize> {
 }
 
 fn spectrum(wave: &[f64]) -> (Vec<f64>, Vec<f64>) {
-    let spec: Vec<f64> = dsp::rfft(wave, wave.len()).iter().map(|z| z.norm()).collect();
+    let spec: Vec<f64> = dsp::rfft(wave, wave.len())
+        .iter()
+        .map(|z| z.norm())
+        .collect();
     (spec, dsp::rfftfreq(wave.len(), 1.0 / SR))
 }
 
@@ -208,7 +221,9 @@ fn count_events(w: &[f32]) -> usize {
 
 #[test]
 fn terrain_scan_sim() {
-    let mut c = Checks { failures: Vec::new() };
+    let mut c = Checks {
+        failures: Vec::new(),
+    };
     let c_hz = SCAN_MIDDLE_C_HZ;
     let mut ring_ms: Option<f64> = None;
 
@@ -220,7 +235,10 @@ fn terrain_scan_sim() {
         format!("{:.3} Hz", scan_pitch_hz(0.0, 0.0)),
     );
     let buf = render(&flat_scan(Some(0.0), 200.0), &[], SCAN_MAX_RANGE_M);
-    let seg: Vec<f64> = buf[SRU..(SR * 2.5) as usize].iter().map(|f| f[0] as f64).collect();
+    let seg: Vec<f64> = buf[SRU..(SR * 2.5) as usize]
+        .iter()
+        .map(|f| f[0] as f64)
+        .collect();
     let pk = peak_hz(&seg);
     c.check(
         "the rendered flat cloud peaks at middle C",
@@ -259,7 +277,11 @@ fn terrain_scan_sim() {
     c.check(
         "the pitch pins rather than wrapping past the clamp",
         scan_step_from_dz(1e6) == lim && scan_step_from_dz(-1e6) == -lim,
-        format!("steps {}..{}", scan_step_from_dz(-1e6), scan_step_from_dz(1e6)),
+        format!(
+            "steps {}..{}",
+            scan_step_from_dz(-1e6),
+            scan_step_from_dz(1e6)
+        ),
     );
     println!();
 
@@ -278,7 +300,11 @@ fn terrain_scan_sim() {
         format!("{cents:.3} cents"),
     );
     let f4 = scan_pitch_hz(SCAN_M_PER_OCTAVE * 5.0 / 12.0, 0.0);
-    c.check("the fourth is exactly 4:3", approx(f4 / c_hz, 4.0 / 3.0, 1e-12), "");
+    c.check(
+        "the fourth is exactly 4:3",
+        approx(f4 / c_hz, 4.0 / 3.0, 1e-12),
+        "",
+    );
     println!();
 
     // =========================================================================================
@@ -347,7 +373,11 @@ fn terrain_scan_sim() {
     c.check(
         "deeper water is monotonically lower",
         freqs.windows(2).all(|p| p[1] <= p[0] + 1e-12),
-        format!("{:.1} Hz at the surface -> {:.1} Hz at 40 m", freqs[0], freqs[freqs.len() - 1]),
+        format!(
+            "{:.1} Hz at the surface -> {:.1} Hz at 40 m",
+            freqs[0],
+            freqs[freqs.len() - 1]
+        ),
     );
     let wc = centroid_hz(&wide(&scan_water_grain(c_hz, SR)));
     let tc = centroid_hz(&wide(&scan_terrain_grain(c_hz, SR, SCAN_PAVED)));
@@ -382,7 +412,11 @@ fn terrain_scan_sim() {
         format!("centroid gap {:.0} Hz", zero_water_c - dry_rendered_c),
     );
     let oc = centroid_hz(&wide(&scan_object_ping(c_hz * 2.0, SR, "v")));
-    c.check("the object ping is brighter still", oc > wc, format!("centroid {oc:.0} Hz"));
+    c.check(
+        "the object ping is brighter still",
+        oc > wc,
+        format!("centroid {oc:.0} Hz"),
+    );
     println!();
 
     // =========================================================================================
@@ -397,7 +431,11 @@ fn terrain_scan_sim() {
     let b = render(&dense, &objs, 200.0);
     let peak = max_abs_buf(&b);
     let ceiling = 10.0f64.powf(SCAN_TERRAIN_DB / 20.0) + 10.0f64.powf(SCAN_REF_PING_DB / 20.0);
-    c.check("a dense scan stays well under full scale", peak < 0.999, format!("peak {peak:.4}"));
+    c.check(
+        "a dense scan stays well under full scale",
+        peak < 0.999,
+        format!("peak {peak:.4}"),
+    );
     c.check(
         "...and under the cloud level plus the ping level",
         peak <= ceiling + 1e-6,
@@ -458,7 +496,10 @@ fn terrain_scan_sim() {
         format!("energy {e_flat:.1}"),
     );
     let mixed = render(
-        &[sample(0.0, 20.0, Some(0.0), None, None), sample(0.0, 120.0, None, None, None)],
+        &[
+            sample(0.0, 20.0, Some(0.0), None, None),
+            sample(0.0, 120.0, None, None, None),
+        ],
         &[],
         200.0,
     );
@@ -474,7 +515,8 @@ fn terrain_scan_sim() {
     let left = render(&[sample(45.0, 100.0, Some(0.0), None, None)], &[], 200.0);
     let right = render(&[sample(-45.0, 100.0, Some(0.0), None, None)], &[], 200.0);
     let lo = (SR * (SCAN_REF_LEAD_S + 0.1)) as usize;
-    let sum_abs = |buf: &Buf, ch: usize| -> f64 { channel(buf, ch, lo).iter().map(|v| v.abs()).sum() };
+    let sum_abs =
+        |buf: &Buf, ch: usize| -> f64 { channel(buf, ch, lo).iter().map(|v| v.abs()).sum() };
     let (el, er) = (sum_abs(&left, 0), sum_abs(&left, 1));
     c.check(
         "a bearing of +45 is louder on the LEFT",
@@ -487,7 +529,11 @@ fn terrain_scan_sim() {
         rr > rl * 1.3,
         format!("L {rl:.1} vs R {rr:.1}"),
     );
-    c.check("the two are mirror images", approx(el, rr, 1e-3) && approx(er, rl, 1e-3), "");
+    c.check(
+        "the two are mirror images",
+        approx(el, rr, 1e-3) && approx(er, rl, 1e-3),
+        "",
+    );
     println!();
 
     // =========================================================================================
@@ -495,7 +541,11 @@ fn terrain_scan_sim() {
     match std::fs::read_to_string(lua_path()) {
         Ok(src) => {
             let m = lua_local(&src, "SCAN_MAX_RANGE_M", digits_dot);
-            c.check("terrainScanner.lua declares SCAN_MAX_RANGE_M", m.is_some(), "");
+            c.check(
+                "terrainScanner.lua declares SCAN_MAX_RANGE_M",
+                m.is_some(),
+                "",
+            );
             if let Some(m) = &m {
                 let v: f64 = m.parse().unwrap_or(f64::NAN);
                 c.check(
@@ -508,7 +558,9 @@ fn terrain_scan_sim() {
             let rm = lua_local(&src, "SCAN_RINGS", digits);
             c.check(
                 "the grid is declared and is a half circle worth of spokes",
-                bm.is_some() && rm.is_some() && bm.as_deref().unwrap().parse::<i64>().unwrap_or(0) >= 8,
+                bm.is_some()
+                    && rm.is_some()
+                    && bm.as_deref().unwrap().parse::<i64>().unwrap_or(0) >= 8,
                 format!(
                     "{} x {}",
                     bm.as_deref().unwrap_or("?"),
@@ -521,7 +573,8 @@ fn terrain_scan_sim() {
                 "",
             );
             let primary_ray = "local h = rayAt(p.x, p.y, SCAN_RAY_TOP_Z)";
-            let heightmap_fallback = "if h == nil then h = heightmapAt(p.x, p.y, scan.origin.z) end";
+            let heightmap_fallback =
+                "if h == nil then h = heightmapAt(p.x, p.y, scan.origin.z) end";
             c.check(
                 "visible-surface raycasts precede the TerrainBlock fallback",
                 matches!((src.find(primary_ray), src.find(heightmap_fallback)), (Some(a), Some(b)) if a < b),
@@ -603,7 +656,11 @@ fn terrain_scan_sim() {
     };
     let oenv = flat_top_envelope((SR * 90.0 / 1000.0) as usize, 8.0);
     let gl = genv[grain_n - 1];
-    c.check("the grain envelope ends at exactly zero", gl == 0.0, format!("{gl:?}"));
+    c.check(
+        "the grain envelope ends at exactly zero",
+        gl == 0.0,
+        format!("{gl:?}"),
+    );
     let slope = (genv[grain_n - 1] - genv[grain_n - 2]).abs();
     c.check(
         "...and arrives there with zero SLOPE, which is what makes a taper unnecessary",
@@ -627,7 +684,10 @@ fn terrain_scan_sim() {
         format!("{:.3}", oenv[oenv.len() / 2]),
     );
     let max_diff = |e: &[f64], from: usize| -> f64 {
-        e[from..].windows(2).map(|p| (p[1] - p[0]).abs()).fold(0.0, f64::max)
+        e[from..]
+            .windows(2)
+            .map(|p| (p[1] - p[0]).abs())
+            .fold(0.0, f64::max)
     };
     let new_slope = max_diff(&genv, (0.8 * grain_n as f64) as usize);
     let old_slope = max_diff(&oenv, (0.8 * oenv.len() as f64) as usize);
@@ -638,7 +698,11 @@ fn terrain_scan_sim() {
     );
     let centroid_t = |e: &[f64]| -> f64 {
         let e2: Vec<f64> = e.iter().map(|v| v * v).collect();
-        let num: f64 = e2.iter().enumerate().map(|(i, v)| v * (i as f64 / SR)).sum();
+        let num: f64 = e2
+            .iter()
+            .enumerate()
+            .map(|(i, v)| v * (i as f64 / SR))
+            .sum();
         num / e2.iter().sum::<f64>()
     };
     let cen_new = centroid_t(&genv);
@@ -657,7 +721,11 @@ fn terrain_scan_sim() {
     c.check(
         "...and is EARLIER than the old flat-topped grain's, not later",
         cen_new < cen_old,
-        format!("new {:.1} ms vs old {:.1} ms", cen_new * 1000.0, cen_old * 1000.0),
+        format!(
+            "new {:.1} ms vs old {:.1} ms",
+            cen_new * 1000.0,
+            cen_old * 1000.0
+        ),
     );
     match std::fs::read_to_string(lua_path())
         .ok()
@@ -681,11 +749,19 @@ fn terrain_scan_sim() {
         }
         None => c.check("the ring spacing is readable from the mod", false, ""),
     }
-    let renv = scan_envelope((SR * SCAN_REF_PING_MS / 1000.0) as usize, SR, SCAN_REF_RELEASE_MS);
+    let renv = scan_envelope(
+        (SR * SCAN_REF_PING_MS / 1000.0) as usize,
+        SR,
+        SCAN_REF_RELEASE_MS,
+    );
     c.check(
         "the reference ping keeps a sustained body and only its RELEASE is cubic",
         renv[renv.len() / 3] > 0.99 && renv[renv.len() - 1] == 0.0,
-        format!("third {:.3}, end {:?}", renv[renv.len() / 3], renv[renv.len() - 1]),
+        format!(
+            "third {:.3}, end {:?}",
+            renv[renv.len() / 3],
+            renv[renv.len() - 1]
+        ),
     );
     println!();
 
@@ -701,7 +777,9 @@ fn terrain_scan_sim() {
     let cen = |name: &str| centroid_hz(g(name));
     c.check(
         "brightness is ordered loose < grass < paved",
-        cen("dirt") < cen("grass") && cen("gravel") < cen("grass") && cen("grass") < cen(SCAN_PAVED),
+        cen("dirt") < cen("grass")
+            && cen("gravel") < cen("grass")
+            && cen("grass") < cen(SCAN_PAVED),
         fams.iter()
             .map(|f| format!("{f} {:.2}", cen(f) / f0))
             .collect::<Vec<_>>()
@@ -710,7 +788,10 @@ fn terrain_scan_sim() {
     c.check(
         "...and the loose pair is a clear tier below grass, not a rounding error",
         cen("grass") - cen("dirt").max(cen("gravel")) > 0.05 * f0,
-        format!("gap {:.3} f0", (cen("grass") - cen("dirt").max(cen("gravel"))) / f0),
+        format!(
+            "gap {:.3} f0",
+            (cen("grass") - cen("dirt").max(cen("gravel"))) / f0
+        ),
     );
     let water_c = centroid_hz(&wide(&scan_water_grain(f0, SR)));
     c.check(
@@ -746,7 +827,10 @@ fn terrain_scan_sim() {
         v_side > d_side + 3.0,
         format!("gravel {v_side:.1} dB vs dirt {d_side:.1} dB"),
     );
-    let (pp, gp) = (partial_db(g(SCAN_PAVED), lower), partial_db(g("grass"), lower));
+    let (pp, gp) = (
+        partial_db(g(SCAN_PAVED), lower),
+        partial_db(g("grass"), lower),
+    );
     c.check(
         "...and neither paved nor grass has anything there, which is what tells THEM apart",
         pp < -40.0 && gp < -40.0,
@@ -793,7 +877,11 @@ fn terrain_scan_sim() {
         let mut rels = Vec::new();
         for fam in ["grass", "dirt", "gravel", "ice"] {
             let n = (SR * SCAN_GRAIN_MS / 1000.0) as usize;
-            let mult = if fam == "ice" { SCAN_ICE_ATTACK_MULT } else { 1.0 };
+            let mult = if fam == "ice" {
+                SCAN_ICE_ATTACK_MULT
+            } else {
+                1.0
+            };
             let t = dsp::arange_div(n, SR);
             let raw: Vec<f64> = scan_family_wave(hz, &t, SR, fam)
                 .iter()
@@ -829,7 +917,11 @@ fn terrain_scan_sim() {
         absent_4 == paved_5,
         "",
     );
-    c.check("an explicit empty family renders as paved, bit for bit", none_5 == paved_5, "");
+    c.check(
+        "an explicit empty family renders as paved, bit for bit",
+        none_5 == paved_5,
+        "",
+    );
     c.check(
         "a family name from a NEWER mod half renders as paved rather than raising",
         unknown == paved_5,
@@ -863,7 +955,11 @@ fn terrain_scan_sim() {
     println!("16. a POI is two events, and it cannot be read as two cells");
     let doub = scan_poi_doublet(scan_pitch_hz(0.0, SCAN_POI_OCTAVE), SR);
     let onsets_n = count_events(&doub);
-    c.check("the doublet is exactly two events", onsets_n == 2, format!("{onsets_n} onsets"));
+    c.check(
+        "the doublet is exactly two events",
+        onsets_n == 2,
+        format!("{onsets_n} onsets"),
+    );
     let gap_ms = SCAN_POI_PING_MS + SCAN_POI_GAP_MS;
     match ring_ms {
         Some(rms) => c.check(
@@ -881,7 +977,10 @@ fn terrain_scan_sim() {
     );
     let pf = scan_pitch_hz(0.0, SCAN_POI_OCTAVE);
     let of = scan_pitch_hz(0.0, SCAN_OBJECT_OCTAVE);
-    let (dc, sc) = (centroid_hz(&wide(&doub)) / pf, centroid_hz(&wide(&single)) / of);
+    let (dc, sc) = (
+        centroid_hz(&wide(&doub)) / pf,
+        centroid_hz(&wide(&single)) / of,
+    );
     c.check(
         "...and the two are timbrally distinct as well as rhythmically",
         (dc - sc).abs() > 0.3,
@@ -908,7 +1007,11 @@ fn terrain_scan_sim() {
             dz_m: 0.0,
         }],
     );
-    c.check("a POI on its own renders", first_onset(&poi_buf).is_some(), "");
+    c.check(
+        "a POI on its own renders",
+        first_onset(&poi_buf).is_some(),
+        "",
+    );
     println!();
 
     // =========================================================================================
@@ -918,7 +1021,11 @@ fn terrain_scan_sim() {
     c.check(
         "a prop ping is shorter than a vehicle ping",
         prop.len() < veh.len()
-            && approx(prop.len() as f64 / veh.len() as f64, SCAN_PROP_PING_MS / SCAN_PING_MS, 0.01),
+            && approx(
+                prop.len() as f64 / veh.len() as f64,
+                SCAN_PROP_PING_MS / SCAN_PING_MS,
+                0.01,
+            ),
         format!("{} vs {} samples", prop.len(), veh.len()),
     );
     c.check(
@@ -929,14 +1036,26 @@ fn terrain_scan_sim() {
     let o3 = render(&[], &[obj(0.0, 50.0, 0.0, None)], 200.0);
     let ov = render(&[], &[obj(0.0, 50.0, 0.0, Some("v"))], 200.0);
     let op = render(&[], &[obj(0.0, 50.0, 0.0, Some("p"))], 200.0);
-    c.check("a three-field object from an older mod half renders as a vehicle", o3 == ov, "");
-    c.check("...and the tag is genuinely consulted, not ignored", ov != op, "");
+    c.check(
+        "a three-field object from an older mod half renders as a vehicle",
+        o3 == ov,
+        "",
+    );
+    c.check(
+        "...and the tag is genuinely consulted, not ignored",
+        ov != op,
+        "",
+    );
     c.check(
         "an unrecognised kind falls back to vehicle, the safer default",
         render(&[], &[obj(0.0, 50.0, 0.0, Some("?"))], 200.0) == ov,
         "",
     );
-    let (v0, vl, vl2) = (veh[0] as f64, veh[veh.len() - 1] as f64, veh[veh.len() - 2] as f64);
+    let (v0, vl, vl2) = (
+        veh[0] as f64,
+        veh[veh.len() - 1] as f64,
+        veh[veh.len() - 2] as f64,
+    );
     c.check(
         "the object ping still ends at silence after the release change",
         v0.abs() < 1e-6 && vl.abs() < 1e-6 && (vl - vl2).abs() < 1e-6,
@@ -976,7 +1095,9 @@ fn terrain_scan_sim() {
             );
             c.check(
                 "...and the family table is representative NAMES, not transcribed ids",
-                code.contains("FAMILY_NAMES") && code.contains("\"GRAVEL\"") && code.contains("\"SNOW\""),
+                code.contains("FAMILY_NAMES")
+                    && code.contains("\"GRAVEL\"")
+                    && code.contains("\"SNOW\""),
                 "",
             );
             let counters = lsrc.matches("scan.rayCount = scan.rayCount + 1").count();
@@ -1028,9 +1149,15 @@ fn terrain_scan_sim() {
             );
             c.check(
                 "the diag reports the family histogram, the overlay count and the POI count",
-                ["famCounts", "roadCells", "roadEdges", "poiCount", "hasTerrain"]
-                    .iter()
-                    .all(|t| code.contains(t)),
+                [
+                    "famCounts",
+                    "roadCells",
+                    "roadEdges",
+                    "poiCount",
+                    "hasTerrain",
+                ]
+                .iter()
+                .all(|t| code.contains(t)),
                 "",
             );
         }

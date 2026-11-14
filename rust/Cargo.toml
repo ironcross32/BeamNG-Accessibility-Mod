@@ -83,3 +83,11 @@ tauri-build = { version = "2.7.4", features = [] }
 # Debug info off and LTO thin: the audio callback must meet its deadline in release.
 lto = "thin"
 codegen-units = 4
+
+# FFT-heavy tests (HRTF processing) are minutes slower unoptimised.
+[profile.dev.package.rustfft]
+opt-level = 3
+
+[profile.dev.package.realfft]
+opt-level = 3
+

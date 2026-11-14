@@ -382,10 +382,7 @@ impl DrivingAssistant {
             // Raw Lua text for the log only; the following off event carries the
             // reason the player hears.
             let detail = match value.get("data") {
-                Some(Value::Dict(d)) => d
-                    .get("detail")
-                    .map(Value::py_str)
-                    .unwrap_or_default(),
+                Some(Value::Dict(d)) => d.get("detail").map(Value::py_str).unwrap_or_default(),
                 _ => String::new(),
             };
             log::error!(target: "bnvdahook", "Driving assistant fault: {detail}");

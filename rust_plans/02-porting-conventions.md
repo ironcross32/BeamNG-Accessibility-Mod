@@ -1,4 +1,4 @@
-# Porting conventions
+﻿# Porting conventions
 
 Every porting agent follows this file. It exists so that twenty agents produce one
 codebase, and so that "parity" means the same thing to each of them.
@@ -86,6 +86,9 @@ These produce code that compiles, looks right and speaks the wrong number.
 - Crate versions are in `rust/Cargo.toml`; note `ureq` is 3.x and `zip` is deflate-only.
 
 ### Noise
+
+**Superseded:** `beam_audio::dsp::default_rng` reproduces numpy's `default_rng` stream bit for bit (PCG64, uniform, integers, standard_normal). Use it with the Python's seed and compare sample for sample. The paragraph below applies only where the Python generator is unseeded.
+
 
 A few waveforms are built from seeded numpy noise (the articulation centre click, the
 slide voice). numpy's generator is not reproduced. The Rust uses its own fixed-seed
