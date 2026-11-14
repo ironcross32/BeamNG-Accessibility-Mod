@@ -54,12 +54,13 @@ Update this table as work lands. One line per workstream from `04-workstreams.md
 | W0 | Scaffold workspace, Tauri shell, fixture harness, seed modules | done | builds, 22 tests pass, window opens; admin-elevated launch not yet checked |
 | B1 | beam-base: config, logger, secretstore, gear_report, AI registry | done | 51 tests; both Python loaders reproduced (`load_config_engine`, `load_config_configurator`). Config is held as `pyval::PyDict`. Configurator audio-test helpers belong to U2 |
 | B2 | beam-reports: pure report modules | done | 87 tests, bit-exact fixtures. Has its own `pyops` (PyValue, json_loads); B1 is writing a similar `pyval` in beam-base: reconcile at I1. wheel_slip_sim scenario 7 belongs to A1 |
-| B3 | beam-road: road guidance, assistant, recorders | in progress | |
+| B3 | beam-road: road guidance, assistant, recorders | done | 63 tests; file bytes match Python. challenge_results fixture is time-zone dependent (Eastern). traffic_mode_sim belongs to E2; stop-bar audio block to A2 |
 | S1 | beam-speech: Prism FFI and speech | done | 29 tests; matches Python backend/voice listing on this machine; app must call `speech::atexit()` on exit; ship `prism.dll` beside the exe |
 | AH | beam-audio: hrtf, terrain scan render, waveform generators | done | 34 tests; numpy default_rng reproduced exactly in `dsp`, so all 76 waveforms and scan jitter are bit-identical to Python. beam-audio now builds |
 | AA | beam-audio: controller state, API, device, callback skeleton | done | split in `audio-callback-split.md`; crate builds once AH lands `waveforms.rs`; scanner diag hookup and device run untested |
 | A1-A3 | beam-audio: callback voices | not started | split decided by AA |
 | EA | beam-engine: skeleton, shared state, say(), units, engine start | done | 20 tests; `engine-map.md` covers all 848 top-level statements. beam-audio dependency is commented out in beam-engine/Cargo.toml with stand-ins in `compat.rs` until AH lands waveforms: undo at I1 |
+| I0 | Pre-wave-2 integration: re-enable beam-audio in beam-engine, drop audio stand-ins, adapt the four state objects | in progress | |
 | E1 | Telemetry decode and telemetry loop | not started | |
 | E2 | Listeners A: scanner, obstacle, road, hill climb, fuel | not started | |
 | E3 | Implement, dock, ramp, cannon, terrain scan, line-up, trailer, wheel, beacon | not started | |

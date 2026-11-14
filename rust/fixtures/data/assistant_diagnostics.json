@@ -307,7 +307,7 @@
      "op": "review",
      "res": {
       "err": "FileNotFoundError",
-      "msg": "[Errno 2] No such file or directory: 'C:\\\\Users\\\\bcros\\\\AppData\\\\Local\\\\Temp\\\\tmpnnchsfga\\\\missing.ndjson'"
+      "msg": "[Errno 2] No such file or directory: '<DIR>\\\\missing.ndjson'"
      },
      "session": "missing.ndjson",
      "stamp": 28000084,
@@ -476,7 +476,7 @@
      "op": "review",
      "res": {
       "err": "FileNotFoundError",
-      "msg": "[Errno 2] No such file or directory: 'C:\\\\Users\\\\bcros\\\\AppData\\\\Local\\\\Temp\\\\tmpnnchsfga\\\\missing.ndjson'"
+      "msg": "[Errno 2] No such file or directory: '<DIR>\\\\missing.ndjson'"
      },
      "session": "missing.ndjson",
      "stamp": 44000132,
@@ -1009,7 +1009,7 @@
      "op": "review",
      "res": {
       "err": "FileNotFoundError",
-      "msg": "[Errno 2] No such file or directory: 'C:\\\\Users\\\\bcros\\\\AppData\\\\Local\\\\Temp\\\\tmptwi5pih_\\\\missing.ndjson'"
+      "msg": "[Errno 2] No such file or directory: '<DIR>\\\\missing.ndjson'"
      },
      "session": "missing.ndjson",
      "stamp": 3000009,
@@ -1869,7 +1869,7 @@
      "op": "review",
      "res": {
       "err": "FileNotFoundError",
-      "msg": "[Errno 2] No such file or directory: 'C:\\\\Users\\\\bcros\\\\AppData\\\\Local\\\\Temp\\\\tmp0zerv9t0\\\\missing.ndjson'"
+      "msg": "[Errno 2] No such file or directory: '<DIR>\\\\missing.ndjson'"
      },
      "session": "missing.ndjson",
      "stamp": 1000003,
@@ -2867,7 +2867,7 @@
      "op": "review",
      "res": {
       "err": "FileNotFoundError",
-      "msg": "[Errno 2] No such file or directory: 'C:\\\\Users\\\\bcros\\\\AppData\\\\Local\\\\Temp\\\\tmp_gq4fh26\\\\missing.ndjson'"
+      "msg": "[Errno 2] No such file or directory: '<DIR>\\\\missing.ndjson'"
      },
      "session": "missing.ndjson",
      "stamp": 37000111,

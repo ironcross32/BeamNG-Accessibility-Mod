@@ -98,7 +98,7 @@ def run(rnd):
                 if "ok" in res:
                     res["ok"] = clean(res["ok"])
                 elif "err" in res:
-                    res["msg"] = res["msg"].replace(tmp, "<DIR>")
+                    res["msg"] = res["msg"].replace(esc, "<DIR>").replace(tmp, "<DIR>")
                 op.update(clock=clock[0], stamp=stamp[0], res=res, status=clean(rec.status()))
                 out.append(op)
             rec.stop()
