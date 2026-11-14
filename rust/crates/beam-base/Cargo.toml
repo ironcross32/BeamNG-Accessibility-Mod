@@ -18,6 +18,7 @@ windows = { workspace = true, features = [
     "Win32_Foundation",
     "Win32_Security_Cryptography",
     "Win32_System_Memory",
+    "Win32_System_SystemInformation",
 ] }
 
 [dev-dependencies]

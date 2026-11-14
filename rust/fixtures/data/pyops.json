@@ -1,0 +1,9283 @@
+{
+ "conversions": [
+  {
+   "float": {
+    "err": "TypeError",
+    "msg": "float() argument must be a string or a real number, not 'NoneType'"
+   },
+   "int": {
+    "err": "TypeError",
+    "msg": "int() argument must be a string, a bytes-like object or a real number, not 'NoneType'"
+   },
+   "repr": "None",
+   "str": "None",
+   "truthy": false,
+   "value": {
+    "t": "none"
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 4607182418800017408,
+      "repr": "1.0"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "1"
+    }
+   },
+   "repr": "True",
+   "str": "True",
+   "truthy": true,
+   "value": {
+    "t": "bool",
+    "v": true
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 0,
+      "repr": "0.0"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "0"
+    }
+   },
+   "repr": "False",
+   "str": "False",
+   "truthy": false,
+   "value": {
+    "t": "bool",
+    "v": false
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 0,
+      "repr": "0.0"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "0"
+    }
+   },
+   "repr": "0",
+   "str": "0",
+   "truthy": false,
+   "value": {
+    "t": "int",
+    "v": "0"
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 4607182418800017408,
+      "repr": "1.0"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "1"
+    }
+   },
+   "repr": "1",
+   "str": "1",
+   "truthy": true,
+   "value": {
+    "t": "int",
+    "v": "1"
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 13830554455654793216,
+      "repr": "-1.0"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-1"
+    }
+   },
+   "repr": "-1",
+   "str": "-1",
+   "truthy": true,
+   "value": {
+    "t": "int",
+    "v": "-1"
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 4619567317775286272,
+      "repr": "7.0"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "7"
+    }
+   },
+   "repr": "7",
+   "str": "7",
+   "truthy": true,
+   "value": {
+    "t": "int",
+    "v": "7"
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 5055640609639927018,
+      "repr": "1e+30"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "1000000000000000000000000000000"
+    }
+   },
+   "repr": "1000000000000000000000000000000",
+   "str": "1000000000000000000000000000000",
+   "truthy": true,
+   "value": {
+    "t": "int",
+    "v": "1000000000000000000000000000000"
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 14279012646494702826,
+      "repr": "-1e+30"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-1000000000000000000000000000000"
+    }
+   },
+   "repr": "-1000000000000000000000000000000",
+   "str": "-1000000000000000000000000000000",
+   "truthy": true,
+   "value": {
+    "t": "int",
+    "v": "-1000000000000000000000000000000"
+   }
+  },
+  {
+   "float": {
+    "err": "OverflowError",
+    "msg": "int too large to convert to float"
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    }
+   },
+   "repr": "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "str": "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "truthy": true,
+   "value": {
+    "t": "int",
+    "v": "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 0,
+      "repr": "0.0"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "0"
+    }
+   },
+   "repr": "0.0",
+   "str": "0.0",
+   "truthy": false,
+   "value": {
+    "t": "float",
+    "v": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 9223372036854775808,
+      "repr": "-0.0"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "0"
+    }
+   },
+   "repr": "-0.0",
+   "str": "-0.0",
+   "truthy": false,
+   "value": {
+    "t": "float",
+    "v": {
+     "bits": 9223372036854775808,
+     "repr": "-0.0"
+    }
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 4609434218613702656,
+      "repr": "1.5"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "1"
+    }
+   },
+   "repr": "1.5",
+   "str": "1.5",
+   "truthy": true,
+   "value": {
+    "t": "float",
+    "v": {
+     "bits": 4609434218613702656,
+     "repr": "1.5"
+    }
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 13836183955189006336,
+      "repr": "-2.5"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-2"
+    }
+   },
+   "repr": "-2.5",
+   "str": "-2.5",
+   "truthy": true,
+   "value": {
+    "t": "float",
+    "v": {
+     "bits": 13836183955189006336,
+     "repr": "-2.5"
+    }
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 9221120237041090560,
+      "repr": "nan"
+     }
+    }
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "cannot convert float NaN to integer"
+   },
+   "repr": "nan",
+   "str": "nan",
+   "truthy": true,
+   "value": {
+    "t": "float",
+    "v": {
+     "bits": 9221120237041090560,
+     "repr": "nan"
+    }
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 9218868437227405312,
+      "repr": "inf"
+     }
+    }
+   },
+   "int": {
+    "err": "OverflowError",
+    "msg": "cannot convert float infinity to integer"
+   },
+   "repr": "inf",
+   "str": "inf",
+   "truthy": true,
+   "value": {
+    "t": "float",
+    "v": {
+     "bits": 9218868437227405312,
+     "repr": "inf"
+    }
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 18442240474082181120,
+      "repr": "-inf"
+     }
+    }
+   },
+   "int": {
+    "err": "OverflowError",
+    "msg": "cannot convert float infinity to integer"
+   },
+   "repr": "-inf",
+   "str": "-inf",
+   "truthy": true,
+   "value": {
+    "t": "float",
+    "v": {
+     "bits": 18442240474082181120,
+     "repr": "-inf"
+    }
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 9094988921128908188,
+      "repr": "1e+300"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "1000000000000000052504760255204420248704468581108159154915854115511802457988908195786371375080447864043704443832883878176942523235360430575644792184786706982848387200926575803737830233794788090059368953234970799945081119038967640880074652742780142494579258788820056842838115669472196386865459400540160"
+    }
+   },
+   "repr": "1e+300",
+   "str": "1e+300",
+   "truthy": true,
+   "value": {
+    "t": "float",
+    "v": {
+     "bits": 9094988921128908188,
+     "repr": "1e+300"
+    }
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 4638387860618067575,
+      "repr": "123.456"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "123"
+    }
+   },
+   "repr": "123.456",
+   "str": "123.456",
+   "truthy": true,
+   "value": {
+    "t": "float",
+    "v": {
+     "bits": 4638387860618067575,
+     "repr": "123.456"
+    }
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 4612811918334230528,
+      "repr": "2.5"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "2"
+    }
+   },
+   "repr": "2.5",
+   "str": "2.5",
+   "truthy": true,
+   "value": {
+    "t": "float",
+    "v": {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    }
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 4615063718147915776,
+      "repr": "3.5"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "3"
+    }
+   },
+   "repr": "3.5",
+   "str": "3.5",
+   "truthy": true,
+   "value": {
+    "t": "float",
+    "v": {
+     "bits": 4615063718147915776,
+     "repr": "3.5"
+    }
+   }
+  },
+  {
+   "float": {
+    "err": "ValueError",
+    "msg": "could not convert string to float: ''"
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "invalid literal for int() with base 10: ''"
+   },
+   "repr": "''",
+   "str": "",
+   "truthy": false,
+   "value": {
+    "t": "str",
+    "v": ""
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 0,
+      "repr": "0.0"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "0"
+    }
+   },
+   "repr": "'0'",
+   "str": "0",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "0"
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 4609434218613702656,
+      "repr": "1.5"
+     }
+    }
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "invalid literal for int() with base 10: '1.5'"
+   },
+   "repr": "'1.5'",
+   "str": "1.5",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "1.5"
+   }
+  },
+  {
+   "float": {
+    "err": "ValueError",
+    "msg": "could not convert string to float: 'abc'"
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "invalid literal for int() with base 10: 'abc'"
+   },
+   "repr": "'abc'",
+   "str": "abc",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "abc"
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 4622945017495814144,
+      "repr": "12.0"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "12"
+    }
+   },
+   "repr": "' 12 '",
+   "str": " 12 ",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": " 12 "
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 4652007308841189376,
+      "repr": "1000.0"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "1000"
+    }
+   },
+   "repr": "'1_000'",
+   "str": "1_000",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "1_000"
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 4622945017495814144,
+      "repr": "12.0"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "12"
+    }
+   },
+   "repr": "'١٢'",
+   "str": "١٢",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "١٢"
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 9221120237041090560,
+      "repr": "nan"
+     }
+    }
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "invalid literal for int() with base 10: 'nan'"
+   },
+   "repr": "'nan'",
+   "str": "nan",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "nan"
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 18442240474082181120,
+      "repr": "-inf"
+     }
+    }
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "invalid literal for int() with base 10: '-inf'"
+   },
+   "repr": "'-inf'",
+   "str": "-inf",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "-inf"
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 4652007308841189376,
+      "repr": "1000.0"
+     }
+    }
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "invalid literal for int() with base 10: '1e3'"
+   },
+   "repr": "'1e3'",
+   "str": "1e3",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "1e3"
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 4609434218613702656,
+      "repr": "1.5"
+     }
+    }
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "invalid literal for int() with base 10: '١.٥'"
+   },
+   "repr": "'١.٥'",
+   "str": "١.٥",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "١.٥"
+   }
+  },
+  {
+   "float": {
+    "err": "ValueError",
+    "msg": "could not convert string to float: '0x10'"
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "invalid literal for int() with base 10: '0x10'"
+   },
+   "repr": "'0x10'",
+   "str": "0x10",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "0x10"
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 4617315517961601024,
+      "repr": "5.0"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "5"
+    }
+   },
+   "repr": "'+5'",
+   "str": "+5",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "+5"
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 9223372036854775808,
+      "repr": "-0.0"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "0"
+    }
+   },
+   "repr": "'-0'",
+   "str": "-0",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "-0"
+   }
+  },
+  {
+   "float": {
+    "err": "ValueError",
+    "msg": "could not convert string to float: ' '"
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "invalid literal for int() with base 10: ' '"
+   },
+   "repr": "' '",
+   "str": " ",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": " "
+   }
+  },
+  {
+   "float": {
+    "ok": {
+     "t": "float",
+     "v": {
+      "bits": 4622945017495814144,
+      "repr": "12.0"
+     }
+    }
+   },
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "12"
+    }
+   },
+   "repr": "'\\xa012\\xa0'",
+   "str": " 12 ",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": " 12 "
+   }
+  },
+  {
+   "float": {
+    "err": "ValueError",
+    "msg": "could not convert string to float: '1\\x1c'"
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "invalid literal for int() with base 10: '1\\x1c'"
+   },
+   "repr": "'1\\x1c'",
+   "str": "1\u001c",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "1\u001c"
+   }
+  },
+  {
+   "float": {
+    "err": "ValueError",
+    "msg": "could not convert string to float: \"it's\""
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "invalid literal for int() with base 10: \"it's\""
+   },
+   "repr": "\"it's\"",
+   "str": "it's",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "it's"
+   }
+  },
+  {
+   "float": {
+    "err": "ValueError",
+    "msg": "could not convert string to float: 'say \"hi\"'"
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "invalid literal for int() with base 10: 'say \"hi\"'"
+   },
+   "repr": "'say \"hi\"'",
+   "str": "say \"hi\"",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "say \"hi\""
+   }
+  },
+  {
+   "float": {
+    "err": "ValueError",
+    "msg": "could not convert string to float: 'both \\' and \"'"
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "invalid literal for int() with base 10: 'both \\' and \"'"
+   },
+   "repr": "'both \\' and \"'",
+   "str": "both ' and \"",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "both ' and \""
+   }
+  },
+  {
+   "float": {
+    "err": "ValueError",
+    "msg": "could not convert string to float: 'back\\\\slash'"
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "invalid literal for int() with base 10: 'back\\\\slash'"
+   },
+   "repr": "'back\\\\slash'",
+   "str": "back\\slash",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "back\\slash"
+   }
+  },
+  {
+   "float": {
+    "err": "ValueError",
+    "msg": "could not convert string to float: 'tab\\tnl\\ncr\\r'"
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "invalid literal for int() with base 10: 'tab\\tnl\\ncr\\r'"
+   },
+   "repr": "'tab\\tnl\\ncr\\r'",
+   "str": "tab\tnl\ncr\r",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "tab\tnl\ncr\r"
+   }
+  },
+  {
+   "float": {
+    "err": "ValueError",
+    "msg": "could not convert string to float: '\\x00\\x7f\\x80\\xa0é\\u200b\\u2028\\ufeff😀\\U000e0001'"
+   },
+   "int": {
+    "err": "ValueError",
+    "msg": "invalid literal for int() with base 10: '\\x00\\x7f\\x80\\xa0é\\u200b\\u2028\\ufeff😀\\U000e0001'"
+   },
+   "repr": "'\\x00\\x7f\\x80\\xa0é\\u200b\\u2028\\ufeff😀\\U000e0001'",
+   "str": "\u0000 é​ ﻿😀󠀁",
+   "truthy": true,
+   "value": {
+    "t": "str",
+    "v": "\u0000 é​ ﻿😀󠀁"
+   }
+  },
+  {
+   "float": {
+    "err": "TypeError",
+    "msg": "float() argument must be a string or a real number, not 'list'"
+   },
+   "int": {
+    "err": "TypeError",
+    "msg": "int() argument must be a string, a bytes-like object or a real number, not 'list'"
+   },
+   "repr": "[]",
+   "str": "[]",
+   "truthy": false,
+   "value": {
+    "t": "list",
+    "v": []
+   }
+  },
+  {
+   "float": {
+    "err": "TypeError",
+    "msg": "float() argument must be a string or a real number, not 'list'"
+   },
+   "int": {
+    "err": "TypeError",
+    "msg": "int() argument must be a string, a bytes-like object or a real number, not 'list'"
+   },
+   "repr": "[1, 'a', None]",
+   "str": "[1, 'a', None]",
+   "truthy": true,
+   "value": {
+    "t": "list",
+    "v": [
+     {
+      "t": "int",
+      "v": "1"
+     },
+     {
+      "t": "str",
+      "v": "a"
+     },
+     {
+      "t": "none"
+     }
+    ]
+   }
+  },
+  {
+   "float": {
+    "err": "TypeError",
+    "msg": "float() argument must be a string or a real number, not 'dict'"
+   },
+   "int": {
+    "err": "TypeError",
+    "msg": "int() argument must be a string, a bytes-like object or a real number, not 'dict'"
+   },
+   "repr": "{}",
+   "str": "{}",
+   "truthy": false,
+   "value": {
+    "t": "dict",
+    "v": []
+   }
+  },
+  {
+   "float": {
+    "err": "TypeError",
+    "msg": "float() argument must be a string or a real number, not 'dict'"
+   },
+   "int": {
+    "err": "TypeError",
+    "msg": "int() argument must be a string, a bytes-like object or a real number, not 'dict'"
+   },
+   "repr": "{'k': [1.0, True], 'z': {'y': 'q'}}",
+   "str": "{'k': [1.0, True], 'z': {'y': 'q'}}",
+   "truthy": true,
+   "value": {
+    "t": "dict",
+    "v": [
+     [
+      "k",
+      {
+       "t": "list",
+       "v": [
+        {
+         "t": "float",
+         "v": {
+          "bits": 4607182418800017408,
+          "repr": "1.0"
+         }
+        },
+        {
+         "t": "bool",
+         "v": true
+        }
+       ]
+      }
+     ],
+     [
+      "z",
+      {
+       "t": "dict",
+       "v": [
+        [
+         "y",
+         {
+          "t": "str",
+          "v": "q"
+         }
+        ]
+       ]
+      }
+     ]
+    ]
+   }
+  },
+  {
+   "float": {
+    "err": "TypeError",
+    "msg": "float() argument must be a string or a real number, not 'list'"
+   },
+   "int": {
+    "err": "TypeError",
+    "msg": "int() argument must be a string, a bytes-like object or a real number, not 'list'"
+   },
+   "repr": "[\"it's\"]",
+   "str": "[\"it's\"]",
+   "truthy": true,
+   "value": {
+    "t": "list",
+    "v": [
+     {
+      "t": "str",
+      "v": "it's"
+     }
+    ]
+   }
+  },
+  {
+   "float": {
+    "err": "TypeError",
+    "msg": "float() argument must be a string or a real number, not 'dict'"
+   },
+   "int": {
+    "err": "TypeError",
+    "msg": "int() argument must be a string, a bytes-like object or a real number, not 'dict'"
+   },
+   "repr": "{\"a'b\": 'c\"d'}",
+   "str": "{\"a'b\": 'c\"d'}",
+   "truthy": true,
+   "value": {
+    "t": "dict",
+    "v": [
+     [
+      "a'b",
+      {
+       "t": "str",
+       "v": "c\"d"
+      }
+     ]
+    ]
+   }
+  }
+ ],
+ "float_to_int": [
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "0"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "0"
+    }
+   },
+   "x": {
+    "bits": 0,
+    "repr": "0.0"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "0"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "0"
+    }
+   },
+   "x": {
+    "bits": 9223372036854775808,
+    "repr": "-0.0"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "0"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "0"
+    }
+   },
+   "x": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "0"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "0"
+    }
+   },
+   "x": {
+    "bits": 13826050856027422720,
+    "repr": "-0.5"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "1"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "2"
+    }
+   },
+   "x": {
+    "bits": 4609434218613702656,
+    "repr": "1.5"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "2"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "2"
+    }
+   },
+   "x": {
+    "bits": 4612811918334230528,
+    "repr": "2.5"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-2"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-2"
+    }
+   },
+   "x": {
+    "bits": 13836183955189006336,
+    "repr": "-2.5"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "100000000000000000000"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "100000000000000000000"
+    }
+   },
+   "x": {
+    "bits": 4906019910204099648,
+    "repr": "1e+20"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-100000000000000000000"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-100000000000000000000"
+    }
+   },
+   "x": {
+    "bits": 14129391947058875456,
+    "repr": "-1e+20"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "1000000000000000052504760255204420248704468581108159154915854115511802457988908195786371375080447864043704443832883878176942523235360430575644792184786706982848387200926575803737830233794788090059368953234970799945081119038967640880074652742780142494579258788820056842838115669472196386865459400540160"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "1000000000000000052504760255204420248704468581108159154915854115511802457988908195786371375080447864043704443832883878176942523235360430575644792184786706982848387200926575803737830233794788090059368953234970799945081119038967640880074652742780142494579258788820056842838115669472196386865459400540160"
+    }
+   },
+   "x": {
+    "bits": 9094988921128908188,
+    "repr": "1e+300"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "123456789"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "123456790"
+    }
+   },
+   "x": {
+    "bits": 4728057454413393953,
+    "repr": "123456789.987"
+   }
+  },
+  {
+   "int": {
+    "err": "ValueError",
+    "msg": "cannot convert float NaN to integer"
+   },
+   "round_int": {
+    "err": "ValueError",
+    "msg": "cannot convert float NaN to integer"
+   },
+   "x": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   }
+  },
+  {
+   "int": {
+    "err": "OverflowError",
+    "msg": "cannot convert float infinity to integer"
+   },
+   "round_int": {
+    "err": "OverflowError",
+    "msg": "cannot convert float infinity to integer"
+   },
+   "x": {
+    "bits": 9218868437227405312,
+    "repr": "inf"
+   }
+  },
+  {
+   "int": {
+    "err": "OverflowError",
+    "msg": "cannot convert float infinity to integer"
+   },
+   "round_int": {
+    "err": "OverflowError",
+    "msg": "cannot convert float infinity to integer"
+   },
+   "x": {
+    "bits": 18442240474082181120,
+    "repr": "-inf"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "4503599627370497"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "4503599627370497"
+    }
+   },
+   "x": {
+    "bits": 4841369599423283201,
+    "repr": "4503599627370497.0"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "0"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "0"
+    }
+   },
+   "x": {
+    "bits": 4602678819172646911,
+    "repr": "0.49999999999999994"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "558751"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "558751"
+    }
+   },
+   "x": {
+    "bits": 4693046850642753134,
+    "repr": "558751.4664589891"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-542467"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-542467"
+    }
+   },
+   "x": {
+    "bits": 13916279008826804166,
+    "repr": "-542467.4459898404"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "876568"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "876568"
+    }
+   },
+   "x": {
+    "bits": 4695776878168452304,
+    "repr": "876568.4994596485"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-766834"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-766834"
+    }
+   },
+   "x": {
+    "bits": 13918206306221590533,
+    "repr": "-766834.3924601084"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "74005"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "74005"
+    }
+   },
+   "x": {
+    "bits": 4679822000894936992,
+    "repr": "74005.0408692644"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "207104"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "207105"
+    }
+   },
+   "x": {
+    "bits": 4686356079216477120,
+    "repr": "207104.7893996518"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "50600"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "50600"
+    }
+   },
+   "x": {
+    "bits": 4677187256912236288,
+    "repr": "50600.23489227705"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "93961"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "93962"
+    }
+   },
+   "x": {
+    "bits": 4681193422822296848,
+    "repr": "93961.8564985285"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-111879"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-111879"
+    }
+   },
+   "x": {
+    "bits": 13905796745619062720,
+    "repr": "-111879.42514824774"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "308037"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "308038"
+    }
+   },
+   "x": {
+    "bits": 4689035659736357352,
+    "repr": "308037.6930908249"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-277806"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-277806"
+    }
+   },
+   "x": {
+    "bits": 13911888321528838146,
+    "repr": "-277806.0855778457"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "798325"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "798325"
+    }
+   },
+   "x": {
+    "bits": 4695104771689792766,
+    "repr": "798325.0074445305"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-58112"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-58112"
+    }
+   },
+   "x": {
+    "bits": 13901591764172260496,
+    "repr": "-58112.44579876319"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-155919"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-155919"
+    }
+   },
+   "x": {
+    "bits": 13907969394960539436,
+    "repr": "-155919.26837276795"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "416457"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "416457"
+    }
+   },
+   "x": {
+    "bits": 4690898291118315572,
+    "repr": "416457.10897863214"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "588166"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "588167"
+    }
+   },
+   "x": {
+    "bits": 4693299526816401414,
+    "repr": "588166.844532252"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-93431"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-93431"
+    }
+   },
+   "x": {
+    "bits": 13904528992739245752,
+    "repr": "-93431.19271063327"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "396924"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "396924"
+    }
+   },
+   "x": {
+    "bits": 4690562718492469448,
+    "repr": "396924.2113615391"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-996967"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-996967"
+    }
+   },
+   "x": {
+    "bits": 13920183133508361919,
+    "repr": "-996967.3772458656"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-993954"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-993954"
+    }
+   },
+   "x": {
+    "bits": 13920157248820169316,
+    "repr": "-993954.0029395339"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "913444"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "913444"
+    }
+   },
+   "x": {
+    "bits": 4696093636306330402,
+    "repr": "913444.0000220279"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "76962"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "76963"
+    }
+   },
+   "x": {
+    "bits": 4680025265782316640,
+    "repr": "76962.93427931657"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "84139"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "84140"
+    }
+   },
+   "x": {
+    "bits": 4680518438678763696,
+    "repr": "84139.54446134227"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "602986"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "602986"
+    }
+   },
+   "x": {
+    "bits": 4693426823219957448,
+    "repr": "602986.0963196391"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "288224"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "288224"
+    }
+   },
+   "x": {
+    "bits": 4688695271097680960,
+    "repr": "288224.4666319527"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-613154"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-613155"
+    }
+   },
+   "x": {
+    "bits": 13916886209846163064,
+    "repr": "-613154.9480721494"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-242871"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-242872"
+    }
+   },
+   "x": {
+    "bits": 13910957067000274832,
+    "repr": "-242871.96887755068"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "617122"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "617122"
+    }
+   },
+   "x": {
+    "bits": 4693548250713082456,
+    "repr": "617122.1170104248"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-599462"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-599462"
+    }
+   },
+   "x": {
+    "bits": 13916768588473566451,
+    "repr": "-599462.0181275889"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "663892"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "663893"
+    }
+   },
+   "x": {
+    "bits": 4693950006770232462,
+    "repr": "663892.6776994632"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-205129"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-205130"
+    }
+   },
+   "x": {
+    "bits": 13909660247917351264,
+    "repr": "-205129.56615508627"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-28371"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-28371"
+    }
+   },
+   "x": {
+    "bits": 13896899938517380064,
+    "repr": "-28371.460600357386"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "768293"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "768294"
+    }
+   },
+   "x": {
+    "bits": 4694846804765668398,
+    "repr": "768293.7049518877"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-196642"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-196643"
+    }
+   },
+   "x": {
+    "bits": 13909368646342915068,
+    "repr": "-196642.8433717786"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "438374"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "438374"
+    }
+   },
+   "x": {
+    "bits": 4691274822464587088,
+    "repr": "438374.1179056959"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-262271"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-262272"
+    }
+   },
+   "x": {
+    "bits": 13911621447522177070,
+    "repr": "-262271.97389149934"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "-33635"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "-33636"
+    }
+   },
+   "x": {
+    "bits": 13898227690547389552,
+    "repr": "-33635.58869320981"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "811703"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "811704"
+    }
+   },
+   "x": {
+    "bits": 4695219693815614058,
+    "repr": "811703.7037070517"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "932796"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "932797"
+    }
+   },
+   "x": {
+    "bits": 4696259873463328168,
+    "repr": "932796.5521535175"
+   }
+  },
+  {
+   "int": {
+    "ok": {
+     "t": "int",
+     "v": "461154"
+    }
+   },
+   "round_int": {
+    "ok": {
+     "t": "int",
+     "v": "461155"
+    }
+   },
+   "x": {
+    "bits": 4691666193717793052,
+    "repr": "461154.92310358747"
+   }
+  }
+ ],
+ "group_thousands": [
+  {
+   "int": "0",
+   "out": "0"
+  },
+  {
+   "int": "1",
+   "out": "1"
+  },
+  {
+   "int": "-1",
+   "out": "-1"
+  },
+  {
+   "int": "12",
+   "out": "12"
+  },
+  {
+   "int": "123",
+   "out": "123"
+  },
+  {
+   "int": "1234",
+   "out": "1,234"
+  },
+  {
+   "int": "-1234",
+   "out": "-1,234"
+  },
+  {
+   "int": "12345",
+   "out": "12,345"
+  },
+  {
+   "int": "123456",
+   "out": "123,456"
+  },
+  {
+   "int": "1234567",
+   "out": "1,234,567"
+  },
+  {
+   "int": "-1234567",
+   "out": "-1,234,567"
+  },
+  {
+   "int": "1000000000000000000000000000000",
+   "out": "1,000,000,000,000,000,000,000,000,000,000"
+  },
+  {
+   "int": "-1000000000000000000000",
+   "out": "-1,000,000,000,000,000,000,000"
+  }
+ ],
+ "html_unescape": [
+  {
+   "in": "plain",
+   "out": "plain"
+  },
+  {
+   "in": "&amp;",
+   "out": "&"
+  },
+  {
+   "in": "&amp",
+   "out": "&"
+  },
+  {
+   "in": "&ampx",
+   "out": "&x"
+  },
+  {
+   "in": "&amp;x",
+   "out": "&x"
+  },
+  {
+   "in": "&lt;b&gt;",
+   "out": "<b>"
+  },
+  {
+   "in": "&#62;",
+   "out": ">"
+  },
+  {
+   "in": "&#x3e;",
+   "out": ">"
+  },
+  {
+   "in": "&#X3E;",
+   "out": ">"
+  },
+  {
+   "in": "&#0;",
+   "out": "�"
+  },
+  {
+   "in": "&#13;",
+   "out": "\r"
+  },
+  {
+   "in": "&#128;",
+   "out": "€"
+  },
+  {
+   "in": "&#150;",
+   "out": "–"
+  },
+  {
+   "in": "&#xD800;",
+   "out": "�"
+  },
+  {
+   "in": "&#x110000;",
+   "out": "�"
+  },
+  {
+   "in": "&#1114111;",
+   "out": ""
+  },
+  {
+   "in": "&#1;",
+   "out": ""
+  },
+  {
+   "in": "&#xFFFE;",
+   "out": ""
+  },
+  {
+   "in": "&#99999999999999999999;",
+   "out": "�"
+  },
+  {
+   "in": "&#;",
+   "out": "&#;"
+  },
+  {
+   "in": "&#x;",
+   "out": "&#x;"
+  },
+  {
+   "in": "&#xg;",
+   "out": "&#xg;"
+  },
+  {
+   "in": "&#65",
+   "out": "A"
+  },
+  {
+   "in": "&#x41",
+   "out": "A"
+  },
+  {
+   "in": "&",
+   "out": "&"
+  },
+  {
+   "in": "& amp;",
+   "out": "& amp;"
+  },
+  {
+   "in": "&;",
+   "out": "&;"
+  },
+  {
+   "in": "&notit;",
+   "out": "¬it;"
+  },
+  {
+   "in": "&notin;",
+   "out": "∉"
+  },
+  {
+   "in": "&noti",
+   "out": "¬i"
+  },
+  {
+   "in": "&not",
+   "out": "¬"
+  },
+  {
+   "in": "&Aacute;",
+   "out": "Á"
+  },
+  {
+   "in": "&Aacute",
+   "out": "Á"
+  },
+  {
+   "in": "&AElig",
+   "out": "Æ"
+  },
+  {
+   "in": "&unknown;",
+   "out": "&unknown;"
+  },
+  {
+   "in": "&ab;",
+   "out": "&ab;"
+  },
+  {
+   "in": "&a",
+   "out": "&a"
+  },
+  {
+   "in": "a&b&c",
+   "out": "a&b&c"
+  },
+  {
+   "in": "&&amp;",
+   "out": "&&"
+  },
+  {
+   "in": "&amp;amp;",
+   "out": "&amp;"
+  },
+  {
+   "in": "&aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;",
+   "out": "&aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;"
+  },
+  {
+   "in": "&nbsp;x&nbsp",
+   "out": " x "
+  },
+  {
+   "in": "&quot;&apos;&#39;",
+   "out": "\"''"
+  },
+  {
+   "in": "&lang;&rang;",
+   "out": "⟨⟩"
+  },
+  {
+   "in": "&NotNestedGreaterGreater;",
+   "out": "⪢̸"
+  },
+  {
+   "in": "&fjlig;",
+   "out": "fj"
+  },
+  {
+   "in": "Foot &amp; start<br/>Asphalt",
+   "out": "Foot & start<br/>Asphalt"
+  },
+  {
+   "in": "&\tamp;",
+   "out": "&\tamp;"
+  },
+  {
+   "in": "&am\rp;",
+   "out": "&am\rp;"
+  },
+  {
+   "in": "&#x1F600;",
+   "out": "😀"
+  },
+  {
+   "in": "&#55357;",
+   "out": "�"
+  },
+  {
+   "in": "&#x80;",
+   "out": "€"
+  },
+  {
+   "in": "&#x9F;",
+   "out": "Ÿ"
+  },
+  {
+   "in": "&#127;",
+   "out": ""
+  },
+  {
+   "in": "&#11;",
+   "out": ""
+  },
+  {
+   "in": "&#xb;",
+   "out": ""
+  }
+ ],
+ "hypot": [
+  {
+   "out": {
+    "bits": 0,
+    "repr": "0.0"
+   },
+   "x": {
+    "bits": 0,
+    "repr": "0.0"
+   },
+   "y": {
+    "bits": 0,
+    "repr": "0.0"
+   }
+  },
+  {
+   "out": {
+    "bits": 4617315517961601024,
+    "repr": "5.0"
+   },
+   "x": {
+    "bits": 4613937818241073152,
+    "repr": "3.0"
+   },
+   "y": {
+    "bits": 4616189618054758400,
+    "repr": "4.0"
+   }
+  },
+  {
+   "out": {
+    "bits": 4617315517961601024,
+    "repr": "5.0"
+   },
+   "x": {
+    "bits": 13837309855095848960,
+    "repr": "-3.0"
+   },
+   "y": {
+    "bits": 4616189618054758400,
+    "repr": "4.0"
+   }
+  },
+  {
+   "out": {
+    "bits": 6400,
+    "repr": "3.162e-320"
+   },
+   "x": {
+    "bits": 2024,
+    "repr": "1e-320"
+   },
+   "y": {
+    "bits": 6072,
+    "repr": "3e-320"
+   }
+  },
+  {
+   "out": {
+    "bits": 1,
+    "repr": "5e-324"
+   },
+   "x": {
+    "bits": 1,
+    "repr": "5e-324"
+   },
+   "y": {
+    "bits": 1,
+    "repr": "5e-324"
+   }
+  },
+  {
+   "out": {
+    "bits": 9216947043162673653,
+    "repr": "1.4142135623730951e+308"
+   },
+   "x": {
+    "bits": 9214871658872686752,
+    "repr": "1e+308"
+   },
+   "y": {
+    "bits": 9214871658872686752,
+    "repr": "1e+308"
+   }
+  },
+  {
+   "out": {
+    "bits": 9218868437227405312,
+    "repr": "inf"
+   },
+   "x": {
+    "bits": 9218868437227405312,
+    "repr": "inf"
+   },
+   "y": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   }
+  },
+  {
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "x": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "y": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   }
+  },
+  {
+   "out": {
+    "bits": 9218868437227405312,
+    "repr": "inf"
+   },
+   "x": {
+    "bits": 18442240474082181120,
+    "repr": "-inf"
+   },
+   "y": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   }
+  },
+  {
+   "out": {
+    "bits": 0,
+    "repr": "0.0"
+   },
+   "x": {
+    "bits": 0,
+    "repr": "0.0"
+   },
+   "y": {
+    "bits": 9223372036854775808,
+    "repr": "-0.0"
+   }
+  },
+  {
+   "out": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   },
+   "x": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   },
+   "y": {
+    "bits": 0,
+    "repr": "0.0"
+   }
+  },
+  {
+   "out": {
+    "bits": 4607182418784903044,
+    "repr": "0.9999999983219685"
+   },
+   "x": {
+    "bits": 4604544271207114719,
+    "repr": "0.70710678"
+   },
+   "y": {
+    "bits": 4604544271207114719,
+    "repr": "0.70710678"
+   }
+  },
+  {
+   "out": {
+    "bits": 4517329193108106637,
+    "repr": "1e-06"
+   },
+   "x": {
+    "bits": 4517329193108106637,
+    "repr": "1e-06"
+   },
+   "y": {
+    "bits": 0,
+    "repr": "0.0"
+   }
+  },
+  {
+   "out": {
+    "bits": 4504438775524381811,
+    "repr": "1.414213562373095e-07"
+   },
+   "x": {
+    "bits": 4502148214488346440,
+    "repr": "1e-07"
+   },
+   "y": {
+    "bits": 4502148214488346440,
+    "repr": "1e-07"
+   }
+  },
+  {
+   "out": {
+    "bits": 4503645109283491,
+    "repr": "2.2250963295579194e-308"
+   },
+   "x": {
+    "bits": 4503599627370496,
+    "repr": "2.2250738585072014e-308"
+   },
+   "y": {
+    "bits": 20240225330731,
+    "repr": "1e-310"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635824191048705293,
+    "repr": "87.02406421200813"
+   },
+   "x": {
+    "bits": 13856695737148476903,
+    "repr": "-57.74497668796885"
+   },
+   "y": {
+    "bits": 13857653834873051030,
+    "repr": "-65.10534094282625"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637964090420922820,
+    "repr": "117.43386329574338"
+   },
+   "x": {
+    "bits": 13858365000849843899,
+    "repr": "-75.21161731742443"
+   },
+   "y": {
+    "bits": 13859418889412354148,
+    "repr": "-90.18827456527066"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637476683638456282,
+    "repr": "110.50739632290734"
+   },
+   "x": {
+    "bits": 4634489199673646108,
+    "repr": "68.0526957349943"
+   },
+   "y": {
+    "bits": 13859199270560095312,
+    "repr": "-87.06730296310093"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636966758844476614,
+    "repr": "103.26092915998296"
+   },
+   "x": {
+    "bits": 13856307890104202491,
+    "repr": "-54.98915768901676"
+   },
+   "y": {
+    "bits": 4635850746635216976,
+    "repr": "87.40144179380263"
+   }
+  },
+  {
+   "out": {
+    "bits": 4631983301560226937,
+    "repr": "48.220870857047835"
+   },
+   "x": {
+    "bits": 4593740699454632448,
+    "repr": "0.12691734230510576"
+   },
+   "y": {
+    "bits": 4631983278053755508,
+    "repr": "48.22070383352266"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637543229133551148,
+    "repr": "111.45306468565167"
+   },
+   "x": {
+    "bits": 4635784812128280398,
+    "repr": "86.46445609500844"
+   },
+   "y": {
+    "bits": 13858021174667503718,
+    "repr": "-70.32555339290556"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634797533219227799,
+    "repr": "72.43437895507883"
+   },
+   "x": {
+    "bits": 13857489485575539356,
+    "repr": "-63.38489847667117"
+   },
+   "y": {
+    "bits": 4630130853467441468,
+    "repr": "35.058435500034165"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635414061904949466,
+    "repr": "81.19577853562387"
+   },
+   "x": {
+    "bits": 4635401542556752898,
+    "repr": "81.01786789727342"
+   },
+   "y": {
+    "bits": 13841106510028552320,
+    "repr": "-5.372106978275156"
+   }
+  },
+  {
+   "out": {
+    "bits": 4619221754759214655,
+    "repr": "6.693078386478702"
+   },
+   "x": {
+    "bits": 4619209586645775808,
+    "repr": "6.682270930713855"
+   },
+   "y": {
+    "bits": 13823892765581552640,
+    "repr": "-0.38020191488857336"
+   }
+  },
+  {
+   "out": {
+    "bits": 4633042089251330965,
+    "repr": "55.744009883309594"
+   },
+   "x": {
+    "bits": 4633040036773472420,
+    "repr": "55.72942615098262"
+   },
+   "y": {
+    "bits": 13831793075806763648,
+    "repr": "-1.2750289222964568"
+   }
+  },
+  {
+   "out": {
+    "bits": 4632869096278670404,
+    "repr": "54.51482088269452"
+   },
+   "x": {
+    "bits": 13856092065210160112,
+    "repr": "-53.4556295824367"
+   },
+   "y": {
+    "bits": 4622209797639932328,
+    "repr": "10.69398718054147"
+   }
+  },
+  {
+   "out": {
+    "bits": 4629764820920700207,
+    "repr": "32.45761782864644"
+   },
+   "x": {
+    "bits": 13853088602663961168,
+    "repr": "-32.11474463914476"
+   },
+   "y": {
+    "bits": 4616983749211216784,
+    "repr": "4.70533015557784"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636269492975369247,
+    "repr": "93.35218519622912"
+   },
+   "x": {
+    "bits": 13855029200186636762,
+    "repr": "-45.903519366856656"
+   },
+   "y": {
+    "bits": 4635420446859643520,
+    "repr": "81.28651419914422"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637899679066595313,
+    "repr": "116.51852289738578"
+   },
+   "x": {
+    "bits": 13859524308445258012,
+    "repr": "-91.68636912608457"
+   },
+   "y": {
+    "bits": 13858132243411838477,
+    "repr": "-71.90393518204674"
+   }
+  },
+  {
+   "out": {
+    "bits": 4617589838452428258,
+    "repr": "5.243645540034295"
+   },
+   "x": {
+    "bits": 13840297996323956432,
+    "repr": "-4.654002553821286"
+   },
+   "y": {
+    "bits": 4612622311727862112,
+    "repr": "2.4157977519954983"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636521833144889595,
+    "repr": "96.93815468409223"
+   },
+   "x": {
+    "bits": 4636080132553351448,
+    "repr": "90.66121175012483"
+   },
+   "y": {
+    "bits": 4630026288392694844,
+    "repr": "34.31545595727991"
+   }
+  },
+  {
+   "out": {
+    "bits": 4631130334423666789,
+    "repr": "42.16017482979877"
+   },
+   "x": {
+    "bits": 4630972722910543012,
+    "repr": "41.040277672576195"
+   },
+   "y": {
+    "bits": 13844995680793830792,
+    "repr": "-9.652769045048231"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636797660841789795,
+    "repr": "100.85790201116974"
+   },
+   "x": {
+    "bits": 4630573324442185564,
+    "repr": "38.202380868925246"
+   },
+   "y": {
+    "bits": 4636268838650566904,
+    "repr": "93.34288668152647"
+   }
+  },
+  {
+   "out": {
+    "bits": 4638515547559116766,
+    "repr": "125.27054056827862"
+   },
+   "x": {
+    "bits": 13859120299441862560,
+    "repr": "-85.94505587519825"
+   },
+   "y": {
+    "bits": 4636113691519984788,
+    "repr": "91.13811334934354"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637468760924514165,
+    "repr": "110.39480778612581"
+   },
+   "x": {
+    "bits": 13856402937517346528,
+    "repr": "-55.6645101786396"
+   },
+   "y": {
+    "bits": 13859780952343084137,
+    "repr": "-95.33349827163478"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637979473237105144,
+    "repr": "117.65246626162104"
+   },
+   "x": {
+    "bits": 4634652812507016804,
+    "repr": "70.37777393956782"
+   },
+   "y": {
+    "bits": 4636334914004414216,
+    "repr": "94.28187393530618"
+   }
+  },
+  {
+   "out": {
+    "bits": 4631318845000610627,
+    "repr": "43.499623040412665"
+   },
+   "x": {
+    "bits": 13852825833788637628,
+    "repr": "-31.123829741847416"
+   },
+   "y": {
+    "bits": 4629247114067814056,
+    "repr": "30.389544696465833"
+   }
+  },
+  {
+   "out": {
+    "bits": 4638867308742502808,
+    "repr": "132.53873527965038"
+   },
+   "x": {
+    "bits": 4636456886514813816,
+    "repr": "96.01520755984336"
+   },
+   "y": {
+    "bits": 4636129669972930314,
+    "repr": "91.3651808227261"
+   }
+  },
+  {
+   "out": {
+    "bits": 4632699954453850588,
+    "repr": "53.312995933305245"
+   },
+   "x": {
+    "bits": 4622651792067440472,
+    "repr": "11.47912700482236"
+   },
+   "y": {
+    "bits": 13855896001371497541,
+    "repr": "-52.0625122193674"
+   }
+  },
+  {
+   "out": {
+    "bits": 4632381416020793112,
+    "repr": "51.0496442366113"
+   },
+   "x": {
+    "bits": 4632350654743752656,
+    "repr": "50.8310722171733"
+   },
+   "y": {
+    "bits": 4616999058124435504,
+    "repr": "4.7189272019277695"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636335381543959724,
+    "repr": "94.288518071861"
+   },
+   "x": {
+    "bits": 4634054257536504532,
+    "repr": "62.93589810727795"
+   },
+   "y": {
+    "bits": 13858013019902284493,
+    "repr": "-70.20966720913857"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637060328676709146,
+    "repr": "104.5906364515653"
+   },
+   "x": {
+    "bits": 4633050311571106160,
+    "repr": "55.80243297918321"
+   },
+   "y": {
+    "bits": 4635925283022895444,
+    "repr": "88.46066757009731"
+   }
+  },
+  {
+   "out": {
+    "bits": 4632695217002301121,
+    "repr": "53.27933431546035"
+   },
+   "x": {
+    "bits": 13855840387137678106,
+    "repr": "-51.66734932091477"
+   },
+   "y": {
+    "bits": 4623511701003999936,
+    "repr": "13.00663212554116"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634698792545445989,
+    "repr": "71.03118958548437"
+   },
+   "x": {
+    "bits": 13857943577551056272,
+    "repr": "-69.2228320447523"
+   },
+   "y": {
+    "bits": 4625155016588817776,
+    "repr": "15.925747003925352"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636423881447245603,
+    "repr": "95.54617733976606"
+   },
+   "x": {
+    "bits": 4636276953285385708,
+    "repr": "93.45820257800341"
+   },
+   "y": {
+    "bits": 13849656883535945260,
+    "repr": "-19.865456831668936"
+   }
+  },
+  {
+   "out": {
+    "bits": 4638234033158593696,
+    "repr": "121.26998032220808"
+   },
+   "x": {
+    "bits": 13857965468617212538,
+    "repr": "-69.53392280545987"
+   },
+   "y": {
+    "bits": 13860063949463992980,
+    "repr": "-99.3551292416908"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634730465668050437,
+    "repr": "71.48129172919296"
+   },
+   "x": {
+    "bits": 13854393013283163638,
+    "repr": "-41.38313953837125"
+   },
+   "y": {
+    "bits": 13856771581241904497,
+    "repr": "-58.283881384321724"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636805514975746569,
+    "repr": "100.96951596774319"
+   },
+   "x": {
+    "bits": 4632179063975134288,
+    "repr": "49.611846475520565"
+   },
+   "y": {
+    "bits": 13859260706858312157,
+    "repr": "-87.94036527130034"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636964729541578444,
+    "repr": "103.23209103132393"
+   },
+   "x": {
+    "bits": 13854861710593769297,
+    "repr": "-44.71343423158272"
+   },
+   "y": {
+    "bits": 4636247952893882366,
+    "repr": "93.04608222766544"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637191612423496045,
+    "repr": "106.45629070362129"
+   },
+   "x": {
+    "bits": 13859267522609436108,
+    "repr": "-88.03722292029778"
+   },
+   "y": {
+    "bits": 13856992423992249325,
+    "repr": "-59.85306350434971"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636663786521839815,
+    "repr": "98.9554335002641"
+   },
+   "x": {
+    "bits": 4636082829771953080,
+    "repr": "90.69954153180777"
+   },
+   "y": {
+    "bits": 13854137811833157081,
+    "repr": "-39.56982417379522"
+   }
+  },
+  {
+   "out": {
+    "bits": 4629636653980604583,
+    "repr": "31.773468473075493"
+   },
+   "x": {
+    "bits": 4628614169274116856,
+    "repr": "28.14087306997223"
+   },
+   "y": {
+    "bits": 4624494695706960312,
+    "repr": "14.752781489239041"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636111134350941190,
+    "repr": "91.10177379158276"
+   },
+   "x": {
+    "bits": 13848983318631813480,
+    "repr": "-17.472473583200014"
+   },
+   "y": {
+    "bits": 4635992124821894042,
+    "repr": "89.41054666456913"
+   }
+  },
+  {
+   "out": {
+    "bits": 4629827641938706354,
+    "repr": "32.90398800861966"
+   },
+   "x": {
+    "bits": 4629719049673284700,
+    "repr": "32.132393555068774"
+   },
+   "y": {
+    "bits": 4619661786505871808,
+    "repr": "7.083905087842538"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635302670104732064,
+    "repr": "79.61280584626957"
+   },
+   "x": {
+    "bits": 4616702019398819632,
+    "repr": "4.455103816020525"
+   },
+   "y": {
+    "bits": 13858665928406655029,
+    "repr": "-79.48805510706809"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636216489625265849,
+    "repr": "92.59896228849074"
+   },
+   "x": {
+    "bits": 13854957189353617081,
+    "repr": "-45.39185162387498"
+   },
+   "y": {
+    "bits": 4635379897252674656,
+    "repr": "80.71026962575115"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635493872655649575,
+    "repr": "82.32995751853433"
+   },
+   "x": {
+    "bits": 4633716889306616700,
+    "repr": "60.538752657047525"
+   },
+   "y": {
+    "bits": 13856421553689010738,
+    "repr": "-55.79678603407628"
+   }
+  },
+  {
+   "out": {
+    "bits": 4631717692755491870,
+    "repr": "46.33360678946359"
+   },
+   "x": {
+    "bits": 4631640013411530848,
+    "repr": "45.781661853762444"
+   },
+   "y": {
+    "bits": 13843086168177889088,
+    "repr": "-7.130396624899561"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636343104233481581,
+    "repr": "94.39826409066673"
+   },
+   "x": {
+    "bits": 4636336474658911838,
+    "repr": "94.30405216963251"
+   },
+   "y": {
+    "bits": 4616433259958551472,
+    "repr": "4.216397481083661"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637622685108628719,
+    "repr": "112.58220200373374"
+   },
+   "x": {
+    "bits": 13858513142201805490,
+    "repr": "-77.3168325474642"
+   },
+   "y": {
+    "bits": 4635458996849384422,
+    "repr": "81.83434250262471"
+   }
+  },
+  {
+   "out": {
+    "bits": 4638502979530463036,
+    "repr": "125.09193813902397"
+   },
+   "x": {
+    "bits": 13859843067264304202,
+    "repr": "-96.21620439273934"
+   },
+   "y": {
+    "bits": 4635325708166484622,
+    "repr": "79.94019639475502"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635496815821014813,
+    "repr": "82.37178241394254"
+   },
+   "x": {
+    "bits": 13857892341883501399,
+    "repr": "-68.4947294168936"
+   },
+   "y": {
+    "bits": 13855008394149741281,
+    "repr": "-45.75568358309625"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637179199737624032,
+    "repr": "106.27989582806867"
+   },
+   "x": {
+    "bits": 13856038479503045819,
+    "repr": "-53.07488023313041"
+   },
+   "y": {
+    "bits": 13859551911061005143,
+    "repr": "-92.0786258882266"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637428405685116488,
+    "repr": "109.82132534204823"
+   },
+   "x": {
+    "bits": 13855647483494037141,
+    "repr": "-50.29668649400734"
+   },
+   "y": {
+    "bits": 4636570283150704372,
+    "repr": "97.62667067767671"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634729142974325293,
+    "repr": "71.46249512083223"
+   },
+   "x": {
+    "bits": 13857664877700206257,
+    "repr": "-65.26226895517426"
+   },
+   "y": {
+    "bits": 4628888560948997736,
+    "repr": "29.115708126670512"
+   }
+  },
+  {
+   "out": {
+    "bits": 4633273264427990886,
+    "repr": "57.38660830794724"
+   },
+   "x": {
+    "bits": 4623930743192514184,
+    "repr": "13.751000583105693"
+   },
+   "y": {
+    "bits": 13856410007421793503,
+    "repr": "-55.714744871112764"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635918447649306793,
+    "repr": "88.36353106910487"
+   },
+   "x": {
+    "bits": 13853587650759406544,
+    "repr": "-35.66069462928101"
+   },
+   "y": {
+    "bits": 4635389601950998284,
+    "repr": "80.8481816836831"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637709442898646880,
+    "repr": "113.81510435309383"
+   },
+   "x": {
+    "bits": 13859651294617839799,
+    "repr": "-93.49095117548391"
+   },
+   "y": {
+    "bits": 13857640095441339722,
+    "repr": "-64.91009187490741"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636180483955038116,
+    "repr": "92.08729093996095"
+   },
+   "x": {
+    "bits": 13857831079828764943,
+    "repr": "-67.62414325747908"
+   },
+   "y": {
+    "bits": 4633993804702647672,
+    "repr": "62.50635488774691"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637028710994549108,
+    "repr": "104.14132216395757"
+   },
+   "x": {
+    "bits": 4630404404060616184,
+    "repr": "37.00212936846577"
+   },
+   "y": {
+    "bits": 13859922574509794741,
+    "repr": "-97.34607030721129"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636102398289466768,
+    "repr": "90.97762689118667"
+   },
+   "x": {
+    "bits": 13856385213297168928,
+    "repr": "-55.53857201969754"
+   },
+   "y": {
+    "bits": 13858143104412168212,
+    "repr": "-72.05827927979436"
+   }
+  },
+  {
+   "out": {
+    "bits": 4631982896413711173,
+    "repr": "48.21799211791089"
+   },
+   "x": {
+    "bits": 4625960411833751288,
+    "repr": "18.71283271136687"
+   },
+   "y": {
+    "bits": 4631451018781381992,
+    "repr": "44.43877423826308"
+   }
+  },
+  {
+   "out": {
+    "bits": 4629478485631742550,
+    "repr": "31.21154161652006"
+   },
+   "x": {
+    "bits": 13852755528727182896,
+    "repr": "-30.87405598832828"
+   },
+   "y": {
+    "bits": 13840211799465638256,
+    "repr": "-4.577444364417133"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634465830114003515,
+    "repr": "67.72059431815516"
+   },
+   "x": {
+    "bits": 13836366162640164608,
+    "repr": "-2.580916363013671"
+   },
+   "y": {
+    "bits": 13857834404907970163,
+    "repr": "-67.671395474981"
+   }
+  },
+  {
+   "out": {
+    "bits": 4638277979871550642,
+    "repr": "121.89450067524993"
+   },
+   "x": {
+    "bits": 4634695156064795494,
+    "repr": "70.97951208728554"
+   },
+   "y": {
+    "bits": 4636673735152925862,
+    "repr": "99.09681205124306"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636305974074872409,
+    "repr": "93.87061280111938"
+   },
+   "x": {
+    "bits": 13852926422002122372,
+    "repr": "-31.48119086382077"
+   },
+   "y": {
+    "bits": 13859295464883593191,
+    "repr": "-88.43430651875643"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635078468395278282,
+    "repr": "76.42670792632194"
+   },
+   "x": {
+    "bits": 13848989700383170256,
+    "repr": "-17.495146118539935"
+   },
+   "y": {
+    "bits": 4634935663068475214,
+    "repr": "74.3973221745666"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636142967452711225,
+    "repr": "91.55414937597097"
+   },
+   "x": {
+    "bits": 13859021456896696451,
+    "repr": "-84.54041882616188"
+   },
+   "y": {
+    "bits": 4630142853785411776,
+    "repr": "35.1437028876403"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636846871402719623,
+    "repr": "101.55722614299712"
+   },
+   "x": {
+    "bits": 13853616892108983940,
+    "repr": "-35.868466914541415"
+   },
+   "y": {
+    "bits": 13859758344881071160,
+    "repr": "-95.01222691348892"
+   }
+  },
+  {
+   "out": {
+    "bits": 4633635604769974962,
+    "repr": "59.9611912866434"
+   },
+   "x": {
+    "bits": 13856960337174778262,
+    "repr": "-59.62507295367247"
+   },
+   "y": {
+    "bits": 4618824182617231408,
+    "repr": "6.339963389695228"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635472607527964122,
+    "repr": "82.02776187849614"
+   },
+   "x": {
+    "bits": 4635394254573557248,
+    "repr": "80.9142994269132"
+   },
+   "y": {
+    "bits": 13847144360229233448,
+    "repr": "-13.469590455804408"
+   }
+  },
+  {
+   "out": {
+    "bits": 4638836611472759629,
+    "repr": "131.66626639870302"
+   },
+   "x": {
+    "bits": 13859709133705651869,
+    "repr": "-94.31289404924105"
+   },
+   "y": {
+    "bits": 4636165571387057506,
+    "repr": "91.87537060295793"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637762171926463293,
+    "repr": "114.56442890666672"
+   },
+   "x": {
+    "bits": 4636145486578517742,
+    "repr": "91.5899483068167"
+   },
+   "y": {
+    "bits": 13857915280530911036,
+    "repr": "-68.8207072025952"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635551236532950234,
+    "repr": "83.14514724475467"
+   },
+   "x": {
+    "bits": 13856646682155124041,
+    "repr": "-57.39641999617249"
+   },
+   "y": {
+    "bits": 4633663047564682044,
+    "repr": "60.15618407092413"
+   }
+  },
+  {
+   "out": {
+    "bits": 4633305714013427595,
+    "repr": "57.617176480052045"
+   },
+   "x": {
+    "bits": 4608988800904397312,
+    "repr": "1.4010974007106825"
+   },
+   "y": {
+    "bits": 4633303316126495728,
+    "repr": "57.60013846864592"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636774281979769166,
+    "repr": "100.52566839958783"
+   },
+   "x": {
+    "bits": 13855399768447631312,
+    "repr": "-48.53656522638596"
+   },
+   "y": {
+    "bits": 4635895109758835540,
+    "repr": "88.03187969825859"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635373491512442377,
+    "repr": "80.61923858196691"
+   },
+   "x": {
+    "bits": 13858743611581577470,
+    "repr": "-80.59199941970653"
+   },
+   "y": {
+    "bits": 13835273176751023072,
+    "repr": "-2.095533123127538"
+   }
+  },
+  {
+   "out": {
+    "bits": 4633801682433581782,
+    "repr": "61.14124406112175"
+   },
+   "x": {
+    "bits": 4632405070994452312,
+    "repr": "51.21772293359271"
+   },
+   "y": {
+    "bits": 13853268299090754506,
+    "repr": "-33.39156454614529"
+   }
+  },
+  {
+   "out": {
+    "bits": 4633831194761668956,
+    "repr": "61.350941764498856"
+   },
+   "x": {
+    "bits": 13857200785826580881,
+    "repr": "-61.33356338228908"
+   },
+   "y": {
+    "bits": 4609254781319017792,
+    "repr": "1.460156916792883"
+   }
+  },
+  {
+   "out": {
+    "bits": 4629985084609851654,
+    "repr": "34.022685471429256"
+   },
+   "x": {
+    "bits": 4605457341985586432,
+    "repr": "0.8084780001371712"
+   },
+   "y": {
+    "bits": 13853355769364214604,
+    "repr": "-34.01307822016551"
+   }
+  },
+  {
+   "out": {
+    "bits": 4633391573532150950,
+    "repr": "58.22724505329943"
+   },
+   "x": {
+    "bits": 4628940386489480136,
+    "repr": "29.299829433253564"
+   },
+   "y": {
+    "bits": 13855650526368949009,
+    "repr": "-50.318307420651884"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636440529664663267,
+    "repr": "95.78276273875558"
+   },
+   "x": {
+    "bits": 13840543024956204768,
+    "repr": "-4.871631697192896"
+   },
+   "y": {
+    "bits": 4636431806130247224,
+    "repr": "95.65879385856613"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635120700690885597,
+    "repr": "77.02686494348696"
+   },
+   "x": {
+    "bits": 13857960558060668744,
+    "repr": "-69.46413959984523"
+   },
+   "y": {
+    "bits": 4629881222342886356,
+    "repr": "33.28469967831157"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634635725968964683,
+    "repr": "70.13495962972335"
+   },
+   "x": {
+    "bits": 13858007174720133229,
+    "repr": "-70.12660217480307"
+   },
+   "y": {
+    "bits": 4607554846501924032,
+    "repr": "1.0826955619329937"
+   }
+  },
+  {
+   "out": {
+    "bits": 4632453136529495159,
+    "repr": "51.559249101243886"
+   },
+   "x": {
+    "bits": 4617981697888766656,
+    "repr": "5.591686634945916"
+   },
+   "y": {
+    "bits": 13855782373602583266,
+    "repr": "-51.255138361540745"
+   }
+  },
+  {
+   "out": {
+    "bits": 4638629381690595828,
+    "repr": "126.88822087235877"
+   },
+   "x": {
+    "bits": 4636465338050909198,
+    "repr": "96.13531111141512"
+   },
+   "y": {
+    "bits": 4635528131231008310,
+    "repr": "82.81680115570711"
+   }
+  },
+  {
+   "out": {
+    "bits": 4626857142876279784,
+    "repr": "21.898661352362893"
+   },
+   "x": {
+    "bits": 4608455051808232832,
+    "repr": "1.282581293523748"
+   },
+   "y": {
+    "bits": 4626846561675535720,
+    "repr": "21.861069375741323"
+   }
+  },
+  {
+   "out": {
+    "bits": 4632946675525779170,
+    "repr": "55.06605458748324"
+   },
+   "x": {
+    "bits": 13853728072385711266,
+    "repr": "-36.65845029442541"
+   },
+   "y": {
+    "bits": 4630979789704041948,
+    "repr": "41.09049026043405"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636762493427248509,
+    "repr": "100.35814299241424"
+   },
+   "x": {
+    "bits": 13859135937289681785,
+    "repr": "-86.1672830586157"
+   },
+   "y": {
+    "bits": 13855809597834645656,
+    "repr": "-51.44857816482653"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635363035940727713,
+    "repr": "80.47065597136545"
+   },
+   "x": {
+    "bits": 13852183323271373040,
+    "repr": "-28.84117383838833"
+   },
+   "y": {
+    "bits": 13858358881128160856,
+    "repr": "-75.12465084168923"
+   }
+  },
+  {
+   "out": {
+    "bits": 4633650267182435013,
+    "repr": "60.065373993265474"
+   },
+   "x": {
+    "bits": 4633057233818232972,
+    "repr": "55.851618503294134"
+   },
+   "y": {
+    "bits": 13850286079904478968,
+    "repr": "-22.100811376810242"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637712876137389071,
+    "repr": "113.86389361006171"
+   },
+   "x": {
+    "bits": 13856424439299586188,
+    "repr": "-55.81728953040246"
+   },
+   "y": {
+    "bits": 4636684108509774204,
+    "repr": "99.2442263183238"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634711362791434393,
+    "repr": "71.20982352495993"
+   },
+   "x": {
+    "bits": 13856619151736017050,
+    "repr": "-57.200804603083455"
+   },
+   "y": {
+    "bits": 13854538026840276128,
+    "repr": "-42.413522834301375"
+   }
+  },
+  {
+   "out": {
+    "bits": 4630037373812459109,
+    "repr": "34.39422260214341"
+   },
+   "x": {
+    "bits": 13842877433162652432,
+    "repr": "-6.945002688930586"
+   },
+   "y": {
+    "bits": 4629937664600095640,
+    "repr": "33.68574603681117"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635575040350599132,
+    "repr": "83.48341983903032"
+   },
+   "x": {
+    "bits": 13853360027737978210,
+    "repr": "-34.04333578560433"
+   },
+   "y": {
+    "bits": 4635064404651229264,
+    "repr": "76.22685010288956"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636722390031828537,
+    "repr": "99.78823946651472"
+   },
+   "x": {
+    "bits": 13853266194434925716,
+    "repr": "-33.37661006704107"
+   },
+   "y": {
+    "bits": 13859689995234036093,
+    "repr": "-94.04092000963824"
+   }
+  },
+  {
+   "out": {
+    "bits": 4638129259476009177,
+    "repr": "119.7810567410228"
+   },
+   "x": {
+    "bits": 4635746622951469482,
+    "repr": "85.92175525165536"
+   },
+   "y": {
+    "bits": 4635573131758706868,
+    "repr": "83.45629711693874"
+   }
+  },
+  {
+   "out": {
+    "bits": 4638669196061685837,
+    "repr": "127.45401711549603"
+   },
+   "x": {
+    "bits": 13859926833309493093,
+    "repr": "-97.40659149098572"
+   },
+   "y": {
+    "bits": 13858856611501723148,
+    "repr": "-82.19782486772618"
+   }
+  },
+  {
+   "out": {
+    "bits": 4630028168743155069,
+    "repr": "34.32881665088187"
+   },
+   "x": {
+    "bits": 13846418147634320968,
+    "repr": "-12.17957774597302"
+   },
+   "y": {
+    "bits": 13853085903908872984,
+    "repr": "-32.09556883090971"
+   }
+  },
+  {
+   "out": {
+    "bits": 4629295937779608126,
+    "repr": "30.56300136520644"
+   },
+   "x": {
+    "bits": 4623450804599313440,
+    "repr": "12.898458380581417"
+   },
+   "y": {
+    "bits": 13851864330480044780,
+    "repr": "-27.707883785197666"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635963755732934237,
+    "repr": "89.0073976629587"
+   },
+   "x": {
+    "bits": 4635931852979176578,
+    "repr": "88.55403226429374"
+   },
+   "y": {
+    "bits": 4621240512470132848,
+    "repr": "8.97219083983893"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634957130144400999,
+    "repr": "74.70238767170814"
+   },
+   "x": {
+    "bits": 13855512274702182009,
+    "repr": "-49.335970245371705"
+   },
+   "y": {
+    "bits": 13856463222170563100,
+    "repr": "-56.09285840284812"
+   }
+  },
+  {
+   "out": {
+    "bits": 4630680974333009056,
+    "repr": "38.96727934822525"
+   },
+   "x": {
+    "bits": 4619197756119433696,
+    "repr": "6.6717633125230975"
+   },
+   "y": {
+    "bits": 4630599994044923428,
+    "repr": "38.391879793835216"
+   }
+  },
+  {
+   "out": {
+    "bits": 4629100875449783781,
+    "repr": "29.870000757820794"
+   },
+   "x": {
+    "bits": 4621853800929938040,
+    "repr": "10.061609989939129"
+   },
+   "y": {
+    "bits": 13851981564739716236,
+    "repr": "-28.124383543156497"
+   }
+  },
+  {
+   "out": {
+    "bits": 4631101421620899243,
+    "repr": "41.954737010029326"
+   },
+   "x": {
+    "bits": 4629303369548583720,
+    "repr": "30.589404312503717"
+   },
+   "y": {
+    "bits": 13852147500087083896,
+    "repr": "-28.713904321546096"
+   }
+  },
+  {
+   "out": {
+    "bits": 4631262508987758219,
+    "repr": "43.099331593473"
+   },
+   "x": {
+    "bits": 13845491457355647784,
+    "repr": "-10.533445131446186"
+   },
+   "y": {
+    "bits": 13854450601839930581,
+    "repr": "-41.79233084510785"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634423632196258924,
+    "repr": "67.12092583980274"
+   },
+   "x": {
+    "bits": 4633334028073348264,
+    "repr": "57.81835997601712"
+   },
+   "y": {
+    "bits": 13853366859013251888,
+    "repr": "-34.09187491582122"
+   }
+  },
+  {
+   "out": {
+    "bits": 4632281181022546951,
+    "repr": "50.33743173788394"
+   },
+   "x": {
+    "bits": 13855535571944646772,
+    "repr": "-49.501507109337496"
+   },
+   "y": {
+    "bits": 4621332461762124352,
+    "repr": "9.135525593546049"
+   }
+  },
+  {
+   "out": {
+    "bits": 4633788215535682481,
+    "repr": "61.04555599636604"
+   },
+   "x": {
+    "bits": 4630457861691220656,
+    "repr": "37.38196867943532"
+   },
+   "y": {
+    "bits": 13855361021380592909,
+    "repr": "-48.26125075622449"
+   }
+  },
+  {
+   "out": {
+    "bits": 4632448192942018870,
+    "repr": "51.52412279954517"
+   },
+   "x": {
+    "bits": 4629162741612634024,
+    "repr": "30.08979352083375"
+   },
+   "y": {
+    "bits": 4631083177786190188,
+    "repr": "41.825106767780056"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634127541764965139,
+    "repr": "63.45661386906263"
+   },
+   "x": {
+    "bits": 4632005029579089344,
+    "repr": "48.37525771669925"
+   },
+   "y": {
+    "bits": 13854348653900568734,
+    "repr": "-41.06794716771513"
+   }
+  },
+  {
+   "out": {
+    "bits": 4618297404865789810,
+    "repr": "5.872090758886644"
+   },
+   "x": {
+    "bits": 4617894771650133008,
+    "repr": "5.514480625685806"
+   },
+   "y": {
+    "bits": 4611726344000518368,
+    "repr": "2.0179081519082587"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635198569162305616,
+    "repr": "78.1334424777317"
+   },
+   "x": {
+    "bits": 4610893136012320128,
+    "repr": "1.823944737394271"
+   },
+   "y": {
+    "bits": 4635197070874049582,
+    "repr": "78.11215052100371"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635134582771753488,
+    "repr": "77.22414117784524"
+   },
+   "x": {
+    "bits": 13845503026982078136,
+    "repr": "-10.553996916485048"
+   },
+   "y": {
+    "bits": 13858455631045892006,
+    "repr": "-76.49954986627435"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634829082364506909,
+    "repr": "72.88271927502906"
+   },
+   "x": {
+    "bits": 4634132701094219528,
+    "repr": "63.493273108293636"
+   },
+   "y": {
+    "bits": 13853605005200585832,
+    "repr": "-35.7840053504122"
+   }
+  },
+  {
+   "out": {
+    "bits": 4638309237268267265,
+    "repr": "122.33869499876529"
+   },
+   "x": {
+    "bits": 4634982434522461368,
+    "repr": "75.06198451198259"
+   },
+   "y": {
+    "bits": 4636498363518285720,
+    "repr": "96.60463123020452"
+   }
+  },
+  {
+   "out": {
+    "bits": 4627286311941894399,
+    "repr": "23.423376162289966"
+   },
+   "x": {
+    "bits": 4615219473590991008,
+    "repr": "3.569169311645126"
+   },
+   "y": {
+    "bits": 13850581358186048528,
+    "repr": "-23.149850566795124"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637790078888867171,
+    "repr": "114.96101069493083"
+   },
+   "x": {
+    "bits": 13859203730844687046,
+    "repr": "-87.13068741942251"
+   },
+   "y": {
+    "bits": 4634977733697918164,
+    "repr": "74.99518177735746"
+   }
+  },
+  {
+   "out": {
+    "bits": 4632436916272610528,
+    "repr": "51.44399724422851"
+   },
+   "x": {
+    "bits": 13852695354005128528,
+    "repr": "-30.66027243016771"
+   },
+   "y": {
+    "bits": 4631010540624878588,
+    "repr": "41.30898869461814"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635078061767642348,
+    "repr": "76.4209294000645"
+   },
+   "x": {
+    "bits": 4631678604853039920,
+    "repr": "46.05587053803026"
+   },
+   "y": {
+    "bits": 4633779514201743572,
+    "repr": "60.983729300148894"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636242724308601905,
+    "repr": "92.97177956187876"
+   },
+   "x": {
+    "bits": 13857686086288639438,
+    "repr": "-65.56366112411271"
+   },
+   "y": {
+    "bits": 13857711007545662392,
+    "repr": "-65.91781348698612"
+   }
+  },
+  {
+   "out": {
+    "bits": 4632491569239052702,
+    "repr": "51.832329927160785"
+   },
+   "x": {
+    "bits": 4630953201414719020,
+    "repr": "40.90156910208711"
+   },
+   "y": {
+    "bits": 13853026827556614260,
+    "repr": "-31.83790305069165"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637897472470765655,
+    "repr": "116.48716528463534"
+   },
+   "x": {
+    "bits": 13859904315538291387,
+    "repr": "-97.08659471592811"
+   },
+   "y": {
+    "bits": 4634230028896021632,
+    "repr": "64.36965746774695"
+   }
+  },
+  {
+   "out": {
+    "bits": 4633535525574646502,
+    "repr": "59.250085834229864"
+   },
+   "x": {
+    "bits": 4626990127684457860,
+    "repr": "22.371118299449805"
+   },
+   "y": {
+    "bits": 13856290336317131288,
+    "repr": "-54.86443053013153"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635620436332058808,
+    "repr": "84.12853553620778"
+   },
+   "x": {
+    "bits": 13858684455939457841,
+    "repr": "-79.75134718396"
+   },
+   "y": {
+    "bits": 13851604019987416996,
+    "repr": "-26.78307513730364"
+   }
+  },
+  {
+   "out": {
+    "bits": 4625755855372195885,
+    "repr": "17.986102172311963"
+   },
+   "x": {
+    "bits": 13849127710923600368,
+    "repr": "-17.985458053344644"
+   },
+   "y": {
+    "bits": 4594652209666819584,
+    "repr": "0.15221683292388377"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636612163543511377,
+    "repr": "98.22182685527265"
+   },
+   "x": {
+    "bits": 13858087087099983490,
+    "repr": "-71.26222539480116"
+   },
+   "y": {
+    "bits": 13857829101133769063,
+    "repr": "-67.59602431036693"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636845883969611300,
+    "repr": "101.54319387455376"
+   },
+   "x": {
+    "bits": 4636567520119611278,
+    "repr": "97.58740564423917"
+   },
+   "y": {
+    "bits": 13851965222125271056,
+    "repr": "-28.066322913269744"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635771292600339500,
+    "repr": "86.27233204762223"
+   },
+   "x": {
+    "bits": 13857315349557521297,
+    "repr": "-62.14758765030195"
+   },
+   "y": {
+    "bits": 4633618274643070300,
+    "repr": "59.838053328824316"
+   }
+  },
+  {
+   "out": {
+    "bits": 4632769566395667609,
+    "repr": "53.807618529107636"
+   },
+   "x": {
+    "bits": 4610174287806294336,
+    "repr": "1.6643283714862065"
+   },
+   "y": {
+    "bits": 13856137979836294481,
+    "repr": "-53.78187262308587"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637858715604732706,
+    "repr": "115.93639709222455"
+   },
+   "x": {
+    "bits": 13857700830307772208,
+    "repr": "-65.77318623792667"
+   },
+   "y": {
+    "bits": 4636418747680367178,
+    "repr": "95.47322212451505"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636035858722308415,
+    "repr": "90.03204276948689"
+   },
+   "x": {
+    "bits": 4636000934034042956,
+    "repr": "89.53573309857273"
+   },
+   "y": {
+    "bits": 4621504092929500336,
+    "repr": "9.440403791568627"
+   }
+  },
+  {
+   "out": {
+    "bits": 4627891146455718074,
+    "repr": "25.572180012961987"
+   },
+   "x": {
+    "bits": 13849468786346932968,
+    "repr": "-19.197201375321043"
+   },
+   "y": {
+    "bits": 13848820464585648680,
+    "repr": "-16.89389978574232"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635766293775061334,
+    "repr": "86.20129446784753"
+   },
+   "x": {
+    "bits": 4620208923871982784,
+    "repr": "7.569860689033874"
+   },
+   "y": {
+    "bits": 4635742859500889556,
+    "repr": "85.86827340223618"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636163087418323223,
+    "repr": "91.84007128415793"
+   },
+   "x": {
+    "bits": 13859471149165057362,
+    "repr": "-90.93093031838842"
+   },
+   "y": {
+    "bits": 4623446316015140872,
+    "repr": "12.890485053387252"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636723983204070350,
+    "repr": "99.81087980577942"
+   },
+   "x": {
+    "bits": 13860095633553048688,
+    "repr": "-99.80538722804499"
+   },
+   "y": {
+    "bits": 13830766552517344192,
+    "repr": "-1.0470949640509701"
+   }
+  },
+  {
+   "out": {
+    "bits": 4625998417394415959,
+    "repr": "18.84785558661073"
+   },
+   "x": {
+    "bits": 4625918005858602360,
+    "repr": "18.5621764233924"
+   },
+   "y": {
+    "bits": 4614543864302564096,
+    "repr": "3.269138516580256"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636298949104833420,
+    "repr": "93.77078197251666"
+   },
+   "x": {
+    "bits": 4634376791762796928,
+    "repr": "66.45528324507723"
+   },
+   "y": {
+    "bits": 13857727788930933238,
+    "repr": "-66.15629131498994"
+   }
+  },
+  {
+   "out": {
+    "bits": 4631310383672592334,
+    "repr": "43.43950168882985"
+   },
+   "x": {
+    "bits": 13850494497434465256,
+    "repr": "-22.84125918649434"
+   },
+   "y": {
+    "bits": 4630397000250222080,
+    "repr": "36.949522131541016"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636687097750974301,
+    "repr": "99.28670599072707"
+   },
+   "x": {
+    "bits": 4636242492072933426,
+    "repr": "92.96847929453432"
+   },
+   "y": {
+    "bits": 13853473937940226004,
+    "repr": "-34.852716452965666"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636032640144427195,
+    "repr": "89.98630402682731"
+   },
+   "x": {
+    "bits": 13855681312808977184,
+    "repr": "-50.53705823387122"
+   },
+   "y": {
+    "bits": 13858311755630362220,
+    "repr": "-74.45495723909124"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637111688102668085,
+    "repr": "105.32049779212396"
+   },
+   "x": {
+    "bits": 13854028285196840981,
+    "repr": "-38.791590615728786"
+   },
+   "y": {
+    "bits": 4636590670451302880,
+    "repr": "97.91639164451726"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634672734562758286,
+    "repr": "70.66088337933817"
+   },
+   "x": {
+    "bits": 13856348083341421144,
+    "repr": "-55.27474781634072"
+   },
+   "y": {
+    "bits": 13854763962210171009,
+    "repr": "-44.018890192602164"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636453113322674628,
+    "repr": "95.96158727454082"
+   },
+   "x": {
+    "bits": 4630766449522861224,
+    "repr": "39.57461710059698"
+   },
+   "y": {
+    "bits": 13859224177755774040,
+    "repr": "-87.42125550225444"
+   }
+  },
+  {
+   "out": {
+    "bits": 4630060197949582554,
+    "repr": "34.55639785047397"
+   },
+   "x": {
+    "bits": 4626519984273957476,
+    "repr": "20.70083337396717"
+   },
+   "y": {
+    "bits": 13851853622535766416,
+    "repr": "-27.66984152508809"
+   }
+  },
+  {
+   "out": {
+    "bits": 4632486464439522655,
+    "repr": "51.79605814492492"
+   },
+   "x": {
+    "bits": 4631750808334377668,
+    "repr": "46.56890712964153"
+   },
+   "y": {
+    "bits": 13850447779719329416,
+    "repr": "-22.675284520888937"
+   }
+  },
+  {
+   "out": {
+    "bits": 4631646933381636988,
+    "repr": "45.83083119866839"
+   },
+   "x": {
+    "bits": 4630529392428040012,
+    "repr": "37.89022513374093"
+   },
+   "y": {
+    "bits": 4627950666255606828,
+    "repr": "25.78363682018623"
+   }
+  },
+  {
+   "out": {
+    "bits": 4633487553420473089,
+    "repr": "58.90922317756304"
+   },
+   "x": {
+    "bits": 13853835966159389503,
+    "repr": "-37.42508166563356"
+   },
+   "y": {
+    "bits": 13854971497094560028,
+    "repr": "-45.49351423779646"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636424911957009544,
+    "repr": "95.56082176430402"
+   },
+   "x": {
+    "bits": 4635565203797838466,
+    "repr": "83.34363401685007"
+   },
+   "y": {
+    "bits": 4631776515889614856,
+    "repr": "46.751570295920885"
+   }
+  },
+  {
+   "out": {
+    "bits": 4631531841510580385,
+    "repr": "45.01305426942532"
+   },
+   "x": {
+    "bits": 13854716145108081997,
+    "repr": "-43.6791292472577"
+   },
+   "y": {
+    "bits": 4622312814188115960,
+    "repr": "10.87698133047887"
+   }
+  },
+  {
+   "out": {
+    "bits": 4631435290207639941,
+    "repr": "44.327016000100265"
+   },
+   "x": {
+    "bits": 4631155423815462976,
+    "repr": "42.33844568065297"
+   },
+   "y": {
+    "bits": 13846951975723055192,
+    "repr": "-13.127846922460023"
+   }
+  },
+  {
+   "out": {
+    "bits": 4632571111030232842,
+    "repr": "52.39750834628474"
+   },
+   "x": {
+    "bits": 13855620130000978341,
+    "repr": "-50.10232823610139"
+   },
+   "y": {
+    "bits": 4624824169072037952,
+    "repr": "15.338043754694922"
+   }
+  },
+  {
+   "out": {
+    "bits": 4624612607395934359,
+    "repr": "14.962234724393324"
+   },
+   "x": {
+    "bits": 13832783579948030336,
+    "repr": "-1.494965023020626"
+   },
+   "y": {
+    "bits": 13847942494657947104,
+    "repr": "-14.887362007010722"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636467679701899101,
+    "repr": "96.16858797342634"
+   },
+   "x": {
+    "bits": 13857276827870165147,
+    "repr": "-61.87387459910061"
+   },
+   "y": {
+    "bits": 4634881019586690964,
+    "repr": "73.62079159379783"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635233221563658690,
+    "repr": "78.62588271889311"
+   },
+   "x": {
+    "bits": 13854701807524452697,
+    "repr": "-43.57725458829618"
+   },
+   "y": {
+    "bits": 13857677738561199850,
+    "repr": "-65.44503278226662"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634803756059631891,
+    "repr": "72.52281083597727"
+   },
+   "x": {
+    "bits": 13857294668884754569,
+    "repr": "-62.00064263225165"
+   },
+   "y": {
+    "bits": 13853863798759973869,
+    "repr": "-37.6228441872589"
+   }
+  },
+  {
+   "out": {
+    "bits": 4632496136894251927,
+    "repr": "51.86478506937345"
+   },
+   "x": {
+    "bits": 13855262863757651025,
+    "repr": "-47.563798896816145"
+   },
+   "y": {
+    "bits": 13849886011176429960,
+    "repr": "-20.679481734210214"
+   }
+  },
+  {
+   "out": {
+    "bits": 4633318226645953900,
+    "repr": "57.70608408152006"
+   },
+   "x": {
+    "bits": 4624903516100936528,
+    "repr": "15.478992392164997"
+   },
+   "y": {
+    "bits": 13856392634478982488,
+    "repr": "-55.59130268798134"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636211842128271614,
+    "repr": "92.53291738391633"
+   },
+   "x": {
+    "bits": 13854576646497601072,
+    "repr": "-42.68793200399921"
+   },
+   "y": {
+    "bits": 4635477549949284326,
+    "repr": "82.09799790981887"
+   }
+  },
+  {
+   "out": {
+    "bits": 4627227033265455699,
+    "repr": "23.212775997645007"
+   },
+   "x": {
+    "bits": 13850284463341052836,
+    "repr": "-22.095068189813574"
+   },
+   "y": {
+    "bits": 4619698197084737504,
+    "repr": "7.116244178239839"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635743273514210841,
+    "repr": "85.87415688539512"
+   },
+   "x": {
+    "bits": 13853484987989158410,
+    "repr": "-34.93123177295281"
+   },
+   "y": {
+    "bits": 4635220745067359290,
+    "repr": "78.44858104262758"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636592178604878286,
+    "repr": "97.93782379586557"
+   },
+   "x": {
+    "bits": 4636165736459674188,
+    "repr": "91.87771642593106"
+   },
+   "y": {
+    "bits": 13853342122376590728,
+    "repr": "-33.91611054095398"
+   }
+  },
+  {
+   "out": {
+    "bits": 4622313366040781910,
+    "repr": "10.877961617736371"
+   },
+   "x": {
+    "bits": 4600304580487148288,
+    "repr": "0.3682032772701831"
+   },
+   "y": {
+    "bits": 4622309856970891696,
+    "repr": "10.871728257436956"
+   }
+  },
+  {
+   "out": {
+    "bits": 4626630498404511067,
+    "repr": "21.09345843728566"
+   },
+   "x": {
+    "bits": 13849457405053898752,
+    "repr": "-19.156766899875947"
+   },
+   "y": {
+    "bits": 13844531972878618992,
+    "repr": "-8.829058318377719"
+   }
+  },
+  {
+   "out": {
+    "bits": 4638116944767887970,
+    "repr": "119.6060542130522"
+   },
+   "x": {
+    "bits": 4635510937273094166,
+    "repr": "82.57246031780991"
+   },
+   "y": {
+    "bits": 4635789406520752098,
+    "repr": "86.52974633892839"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634896294039172124,
+    "repr": "73.83785461886185"
+   },
+   "x": {
+    "bits": 4630742657048925684,
+    "repr": "39.40556140539039"
+   },
+   "y": {
+    "bits": 4633985003529278468,
+    "repr": "62.44381878971038"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636588069944175213,
+    "repr": "97.87943621554014"
+   },
+   "x": {
+    "bits": 4635752729667408254,
+    "repr": "86.00853690464825"
+   },
+   "y": {
+    "bits": 4631772309552915184,
+    "repr": "46.721682476059755"
+   }
+  },
+  {
+   "out": {
+    "bits": 4633098746480492226,
+    "repr": "56.14658370939789"
+   },
+   "x": {
+    "bits": 13854319396400263550,
+    "repr": "-40.86006012463166"
+   },
+   "y": {
+    "bits": 4630616388198001692,
+    "repr": "38.50836725762221"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635387433103351789,
+    "repr": "80.81736050487935"
+   },
+   "x": {
+    "bits": 13858730768841341221,
+    "repr": "-80.40949310406411"
+   },
+   "y": {
+    "bits": 13844126730514362696,
+    "repr": "-8.10920327301632"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636462202179696109,
+    "repr": "96.09074770120033"
+   },
+   "x": {
+    "bits": 4634593932676943112,
+    "repr": "69.5410412287348"
+   },
+   "y": {
+    "bits": 13857738848906909518,
+    "repr": "-66.31346302674248"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637818358182075876,
+    "repr": "115.36288362216834"
+   },
+   "x": {
+    "bits": 4635125595013418956,
+    "repr": "77.09641744993786"
+   },
+   "y": {
+    "bits": 13859111362045489920,
+    "repr": "-85.81804783381449"
+   }
+  },
+  {
+   "out": {
+    "bits": 4630787906281621078,
+    "repr": "39.72707654129469"
+   },
+   "x": {
+    "bits": 13854084251693443044,
+    "repr": "-39.18925649179417"
+   },
+   "y": {
+    "bits": 4619021045579588384,
+    "repr": "6.514812824498932"
+   }
+  },
+  {
+   "out": {
+    "bits": 4627246994226277457,
+    "repr": "23.283691576198468"
+   },
+   "x": {
+    "bits": 13841358295199509008,
+    "repr": "-5.595737133519393"
+   },
+   "y": {
+    "bits": 13850426950305496984,
+    "repr": "-22.60128357744506"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637806784523597137,
+    "repr": "115.19841204300361"
+   },
+   "x": {
+    "bits": 13858634689554661446,
+    "repr": "-79.04412431991759"
+   },
+   "y": {
+    "bits": 4635597427091835772,
+    "repr": "83.80155456629103"
+   }
+  },
+  {
+   "out": {
+    "bits": 4632898488713078380,
+    "repr": "54.72366669024345"
+   },
+   "x": {
+    "bits": 4626366698176632344,
+    "repr": "20.15625175923023"
+   },
+   "y": {
+    "bits": 4632357030098120172,
+    "repr": "50.87637183451065"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637163572269966678,
+    "repr": "106.0578161556235"
+   },
+   "x": {
+    "bits": 13854707901981806359,
+    "repr": "-43.62055831230662"
+   },
+   "y": {
+    "bits": 4636503115702760344,
+    "repr": "96.67216383335324"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635934225808743650,
+    "repr": "88.58775220053533"
+   },
+   "x": {
+    "bits": 4633704833715084752,
+    "repr": "60.45309252716436"
+   },
+   "y": {
+    "bits": 4634257146823710298,
+    "repr": "64.75502639830793"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635667824563961320,
+    "repr": "84.80196281498468"
+   },
+   "x": {
+    "bits": 13858791312983391260,
+    "repr": "-81.26987711059377"
+   },
+   "y": {
+    "bits": 4627510376425014404,
+    "repr": "24.21941311640377"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635614082913685483,
+    "repr": "84.03824803075956"
+   },
+   "x": {
+    "bits": 13857934290571064221,
+    "repr": "-69.09085612134227"
+   },
+   "y": {
+    "bits": 13855302052042145609,
+    "repr": "-47.84224840556141"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637783473495054258,
+    "repr": "114.86714240311883"
+   },
+   "x": {
+    "bits": 13859653773456023901,
+    "repr": "-93.52617758478068"
+   },
+   "y": {
+    "bits": 13857765217880972594,
+    "repr": "-66.68818868614179"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634600743769688427,
+    "repr": "69.63783267819024"
+   },
+   "x": {
+    "bits": 4633509672209690956,
+    "repr": "59.066386627588685"
+   },
+   "y": {
+    "bits": 13853760121416317478,
+    "repr": "-36.88617235327938"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635983858281271635,
+    "repr": "89.29307205678678"
+   },
+   "x": {
+    "bits": 13812543557259435008,
+    "repr": "-0.0625485738411129"
+   },
+   "y": {
+    "bits": 4635983856739688618,
+    "repr": "89.2930501495745"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635913824805086687,
+    "repr": "88.29783650152193"
+   },
+   "x": {
+    "bits": 4635861868678410464,
+    "repr": "87.55949553376149"
+   },
+   "y": {
+    "bits": 4622604349966774840,
+    "repr": "11.394852904829449"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635535273571069678,
+    "repr": "82.91829991264578"
+   },
+   "x": {
+    "bits": 4628530587581253460,
+    "repr": "27.84393124643914"
+   },
+   "y": {
+    "bits": 13858568500462497738,
+    "repr": "-78.10352074744802"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637031029908339971,
+    "repr": "104.1742759109366"
+   },
+   "x": {
+    "bits": 13858023838282624851,
+    "repr": "-70.3634056404092"
+   },
+   "y": {
+    "bits": 4635106124860905050,
+    "repr": "76.81972994127992"
+   }
+  },
+  {
+   "out": {
+    "bits": 4624801215823637025,
+    "repr": "15.297270594911483"
+   },
+   "x": {
+    "bits": 4622723906712194976,
+    "repr": "11.607228347252942"
+   },
+   "y": {
+    "bits": 4621798779121642736,
+    "repr": "9.963871624457596"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637542235239735062,
+    "repr": "111.43894060502893"
+   },
+   "x": {
+    "bits": 13856725443452372550,
+    "repr": "-57.95605267236219"
+   },
+   "y": {
+    "bits": 13859770336075731848,
+    "repr": "-95.18263203867366"
+   }
+  },
+  {
+   "out": {
+    "bits": 4623913935180571984,
+    "repr": "13.721143556135445"
+   },
+   "x": {
+    "bits": 4614695462527061216,
+    "repr": "3.336461652311854"
+   },
+   "y": {
+    "bits": 4623682095010502576,
+    "repr": "13.309312684384935"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635693947082328416,
+    "repr": "85.17318612829467"
+   },
+   "x": {
+    "bits": 13858811564083698480,
+    "repr": "-81.55766255488265"
+   },
+   "y": {
+    "bits": 13850976134839932892,
+    "repr": "-24.552378985121194"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635883885161218925,
+    "repr": "87.87236857229227"
+   },
+   "x": {
+    "bits": 4635816105271605738,
+    "repr": "86.90915840838684"
+   },
+   "y": {
+    "bits": 13846865946136631120,
+    "repr": "-12.975027678224848"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635102783904923946,
+    "repr": "76.77225210122256"
+   },
+   "x": {
+    "bits": 13855512175181657538,
+    "repr": "-49.335263109514486"
+   },
+   "y": {
+    "bits": 13856847294154977741,
+    "repr": "-58.82185398819602"
+   }
+  },
+  {
+   "out": {
+    "bits": 4629106864234545347,
+    "repr": "29.8912771953626"
+   },
+   "x": {
+    "bits": 13850536024733588816,
+    "repr": "-22.988793790134253"
+   },
+   "y": {
+    "bits": 13849442854500707692,
+    "repr": "-19.105072950519954"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634366802059996625,
+    "repr": "66.31332102993407"
+   },
+   "x": {
+    "bits": 13857617983077459843,
+    "repr": "-64.59585628440077"
+   },
+   "y": {
+    "bits": 13848002749167108008,
+    "repr": "-14.994395516463399"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635864386096889039,
+    "repr": "87.59527020201789"
+   },
+   "x": {
+    "bits": 4635792770195983440,
+    "repr": "86.57754703895012"
+   },
+   "y": {
+    "bits": 4623684672730842040,
+    "repr": "13.313891635540003"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637347853416831500,
+    "repr": "108.67660876047029"
+   },
+   "x": {
+    "bits": 4631494440072189144,
+    "repr": "44.747301065866566"
+   },
+   "y": {
+    "bits": 13860041547821701584,
+    "repr": "-99.03678275770585"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635315912225350939,
+    "repr": "79.80098769850558"
+   },
+   "x": {
+    "bits": 4633539760882575856,
+    "repr": "59.28017950705896"
+   },
+   "y": {
+    "bits": 13856087527044263638,
+    "repr": "-53.42338397432256"
+   }
+  },
+  {
+   "out": {
+    "bits": 4634707804741694311,
+    "repr": "71.15926059703416"
+   },
+   "x": {
+    "bits": 13857611850857764113,
+    "repr": "-64.50871220122305"
+   },
+   "y": {
+    "bits": 13852520129489517416,
+    "repr": "-30.03774989669492"
+   }
+  },
+  {
+   "out": {
+    "bits": 4636223350475675505,
+    "repr": "92.6964608368851"
+   },
+   "x": {
+    "bits": 13858494395098437860,
+    "repr": "-77.05042018517594"
+   },
+   "y": {
+    "bits": 4632449737939804416,
+    "repr": "51.53510066907802"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637882886001702749,
+    "repr": "116.27987909197459"
+   },
+   "x": {
+    "bits": 13858964012633457277,
+    "repr": "-83.72408674704816"
+   },
+   "y": {
+    "bits": 4635378650325030200,
+    "repr": "80.69254971815542"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635862089336595276,
+    "repr": "87.56263127516758"
+   },
+   "x": {
+    "bits": 13857110117254806934,
+    "repr": "-60.689324431931865"
+   },
+   "y": {
+    "bits": 13857452077220377684,
+    "repr": "-63.11909612650257"
+   }
+  },
+  {
+   "out": {
+    "bits": 4629925298475092111,
+    "repr": "33.59787943390358"
+   },
+   "x": {
+    "bits": 13849204806957297736,
+    "repr": "-18.259358186842547"
+   },
+   "y": {
+    "bits": 13852003713924688484,
+    "repr": "-28.203073255581685"
+   }
+  },
+  {
+   "out": {
+    "bits": 4624559929023389413,
+    "repr": "14.868659137034635"
+   },
+   "x": {
+    "bits": 4616205194716723296,
+    "repr": "4.013834855008184"
+   },
+   "y": {
+    "bits": 13847621206207718360,
+    "repr": "-14.316639071026586"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637255303088441879,
+    "repr": "107.36138948988115"
+   },
+   "x": {
+    "bits": 13859893966876654416,
+    "repr": "-96.93953138890834"
+   },
+   "y": {
+    "bits": 13855062932696066778,
+    "repr": "-46.143203262201226"
+   }
+  },
+  {
+   "out": {
+    "bits": 4637311128182127855,
+    "repr": "108.1547117857151"
+   },
+   "x": {
+    "bits": 13859783688675532618,
+    "repr": "-95.37238389451264"
+   },
+   "y": {
+    "bits": 4632375188153080928,
+    "repr": "51.00539257498963"
+   }
+  },
+  {
+   "out": {
+    "bits": 4635821394003318600,
+    "repr": "86.98431580638601"
+   },
+   "x": {
+    "bits": 13859179832656486713,
+    "repr": "-86.79107373895103"
+   },
+   "y": {
+    "bits": 4618210481180503184,
+    "repr": "5.794887017454258"
+   }
+  },
+  {
+   "out": {
+    "bits": 8579455809975843563,
+    "repr": "3.294991427639163e+265"
+   },
+   "x": {
+    "bits": 6199384578028890011,
+    "repr": "2.825405726528538e+106"
+   },
+   "y": {
+    "bits": 8579455809975843563,
+    "repr": "3.294991427639163e+265"
+   }
+  },
+  {
+   "out": {
+    "bits": 3779378197883076864,
+    "repr": "4.855392640130954e-56"
+   },
+   "x": {
+    "bits": 9687318078739554421,
+    "repr": "-1.1471057757259829e-277"
+   },
+   "y": {
+    "bits": 13002750234737852672,
+    "repr": "-4.855392640130954e-56"
+   }
+  },
+  {
+   "out": {
+    "bits": 9049061739537135863,
+    "repr": "8.471476917428396e+296"
+   },
+   "x": {
+    "bits": 9049061739537135863,
+    "repr": "8.471476917428396e+296"
+   },
+   "y": {
+    "bits": 7886263623072493451,
+    "repr": "1.5564419072021596e+219"
+   }
+  },
+  {
+   "out": {
+    "bits": 1732681480488590311,
+    "repr": "7.594947271490598e-193"
+   },
+   "x": {
+    "bits": 1732681480488590311,
+    "repr": "7.594947271490598e-193"
+   },
+   "y": {
+    "bits": 10232506707295223934,
+    "repr": "-3.218077059972992e-241"
+   }
+  },
+  {
+   "out": {
+    "bits": 5606941939166679345,
+    "repr": "6.710356741311123e+66"
+   },
+   "x": {
+    "bits": 14830313976021455153,
+    "repr": "-6.710356741311123e+66"
+   },
+   "y": {
+    "bits": 11689142335176882661,
+    "repr": "-7.744335342605903e-144"
+   }
+  },
+  {
+   "out": {
+    "bits": 8327166389164971045,
+    "repr": "4.485438677624493e+248"
+   },
+   "x": {
+    "bits": 3783136861343518958,
+    "repr": "8.361604707878929e-56"
+   },
+   "y": {
+    "bits": 17550538426019746853,
+    "repr": "-4.485438677624493e+248"
+   }
+  },
+  {
+   "out": {
+    "bits": 6281468788984635451,
+    "repr": "8.495363044011081e+111"
+   },
+   "x": {
+    "bits": 1255556926857763763,
+    "repr": "9.669841188577517e-225"
+   },
+   "y": {
+    "bits": 6281468788984635451,
+    "repr": "8.495363044011081e+111"
+   }
+  },
+  {
+   "out": {
+    "bits": 8014782211098030804,
+    "repr": "6.212913687413867e+227"
+   },
+   "x": {
+    "bits": 16941617571260173232,
+    "repr": "-9.219520336890947e+207"
+   },
+   "y": {
+    "bits": 17238154247952806612,
+    "repr": "-6.212913687413867e+227"
+   }
+  },
+  {
+   "out": {
+    "bits": 7689982889883009633,
+    "repr": "1.2193702816306362e+206"
+   },
+   "x": {
+    "bits": 7689982889883009633,
+    "repr": "1.2193702816306362e+206"
+   },
+   "y": {
+    "bits": 15260570689966098779,
+    "repr": "-4.0781059718705825e+95"
+   }
+  },
+  {
+   "out": {
+    "bits": 5749461086987182156,
+    "repr": "2.369128713543307e+76"
+   },
+   "x": {
+    "bits": 2286256880429361065,
+    "repr": "7.696102248307121e-156"
+   },
+   "y": {
+    "bits": 14972833123841957964,
+    "repr": "-2.369128713543307e+76"
+   }
+  },
+  {
+   "out": {
+    "bits": 8957136172569637769,
+    "repr": "5.874514884579849e+290"
+   },
+   "x": {
+    "bits": 8957136172569637769,
+    "repr": "5.874514884579849e+290"
+   },
+   "y": {
+    "bits": 6490480494523823506,
+    "repr": "7.961793999897004e+125"
+   }
+  },
+  {
+   "out": {
+    "bits": 2570007551477897953,
+    "repr": "7.121212755372914e-137"
+   },
+   "x": {
+    "bits": 11793379588332673761,
+    "repr": "-7.121212755372914e-137"
+   },
+   "y": {
+    "bits": 2331540885761293633,
+    "repr": "8.14367200646522e-153"
+   }
+  },
+  {
+   "out": {
+    "bits": 8061913001785331782,
+    "repr": "8.572131004096392e+230"
+   },
+   "x": {
+    "bits": 2915159646046830288,
+    "repr": "8.416850774343483e-114"
+   },
+   "y": {
+    "bits": 8061913001785331782,
+    "repr": "8.572131004096392e+230"
+   }
+  },
+  {
+   "out": {
+    "bits": 2181459245721166688,
+    "repr": "7.67549923877514e-163"
+   },
+   "x": {
+    "bits": 11115288759134598713,
+    "repr": "-3.283218039525786e-182"
+   },
+   "y": {
+    "bits": 11404831282575942496,
+    "repr": "-7.67549923877514e-163"
+   }
+  },
+  {
+   "out": {
+    "bits": 9034574621134807798,
+    "repr": "8.81712491309535e+295"
+   },
+   "x": {
+    "bits": 18257946657989583606,
+    "repr": "-8.81712491309535e+295"
+   },
+   "y": {
+    "bits": 7085210801012218969,
+    "repr": "4.543619019480089e+165"
+   }
+  },
+  {
+   "out": {
+    "bits": 1975021759374784165,
+    "repr": "1.2184219449631105e-176"
+   },
+   "x": {
+    "bits": 11198393796229559973,
+    "repr": "-1.2184219449631105e-176"
+   },
+   "y": {
+    "bits": 9915520435603336392,
+    "repr": "-2.1440224181831957e-262"
+   }
+  },
+  {
+   "out": {
+    "bits": 6855739691805087677,
+    "repr": "2.094988542167646e+150"
+   },
+   "x": {
+    "bits": 13259045141750274500,
+    "repr": "-6.461928621478554e-39"
+   },
+   "y": {
+    "bits": 6855739691805087677,
+    "repr": "2.094988542167646e+150"
+   }
+  },
+  {
+   "out": {
+    "bits": 7266846462548169416,
+    "repr": "6.337946687702064e+177"
+   },
+   "x": {
+    "bits": 7266846462548169416,
+    "repr": "6.337946687702064e+177"
+   },
+   "y": {
+    "bits": 9638461546926453418,
+    "repr": "-6.43665871507852e-281"
+   }
+  },
+  {
+   "out": {
+    "bits": 8895741257386755045,
+    "repr": "4.763604702558313e+286"
+   },
+   "x": {
+    "bits": 8895741257386755045,
+    "repr": "4.763604702558313e+286"
+   },
+   "y": {
+    "bits": 4486747494866397017,
+    "repr": "9.37338840948837e-09"
+   }
+  },
+  {
+   "out": {
+    "bits": 1700949752909925317,
+    "repr": "5.776499437121217e-195"
+   },
+   "x": {
+    "bits": 1535106300011032632,
+    "repr": "4.639908419724186e-206"
+   },
+   "y": {
+    "bits": 10924321789764701125,
+    "repr": "-5.776499437121217e-195"
+   }
+  },
+  {
+   "out": {
+    "bits": 5473870430940495350,
+    "repr": "9.060351376507342e+57"
+   },
+   "x": {
+    "bits": 14697242467795271158,
+    "repr": "-9.060351376507342e+57"
+   },
+   "y": {
+    "bits": 3529422362806886844,
+    "repr": "9.560500151367535e-73"
+   }
+  },
+  {
+   "out": {
+    "bits": 7676504211843894117,
+    "repr": "1.5313685863526062e+205"
+   },
+   "x": {
+    "bits": 13201767056198083447,
+    "repr": "-9.90926746887749e-43"
+   },
+   "y": {
+    "bits": 7676504211843894117,
+    "repr": "1.5313685863526062e+205"
+   }
+  },
+  {
+   "out": {
+    "bits": 4233419518450383418,
+    "repr": "1.042210820421745e-25"
+   },
+   "x": {
+    "bits": 4233419518450383418,
+    "repr": "1.042210820421745e-25"
+   },
+   "y": {
+    "bits": 9980862650672271646,
+    "repr": "-4.981274546289698e-258"
+   }
+  },
+  {
+   "out": {
+    "bits": 8254121829343814057,
+    "repr": "6.087956836335378e+243"
+   },
+   "x": {
+    "bits": 17477493866198589865,
+    "repr": "-6.087956836335378e+243"
+   },
+   "y": {
+    "bits": 17014296550690428163,
+    "repr": "-6.506596810868912e+212"
+   }
+  },
+  {
+   "out": {
+    "bits": 6638054261736113420,
+    "repr": "5.652293373057349e+135"
+   },
+   "x": {
+    "bits": 11431390677611362254,
+    "repr": "-4.547326087294176e-161"
+   },
+   "y": {
+    "bits": 6638054261736113420,
+    "repr": "5.652293373057349e+135"
+   }
+  },
+  {
+   "out": {
+    "bits": 3775874368763639045,
+    "repr": "2.8803763636811718e-56"
+   },
+   "x": {
+    "bits": 3775874368763639045,
+    "repr": "2.8803763636811718e-56"
+   },
+   "y": {
+    "bits": 711265644177715683,
+    "repr": "3.9281491333015527e-261"
+   }
+  },
+  {
+   "out": {
+    "bits": 8139801775410570927,
+    "repr": "1.4234947020228318e+236"
+   },
+   "x": {
+    "bits": 17363173812265346735,
+    "repr": "-1.4234947020228318e+236"
+   },
+   "y": {
+    "bits": 11895460839046679480,
+    "repr": "-4.771222515637088e-130"
+   }
+  },
+  {
+   "out": {
+    "bits": 5167135071690059843,
+    "repr": "2.8380944297162533e+37"
+   },
+   "x": {
+    "bits": 5167135071690059843,
+    "repr": "2.8380944297162533e+37"
+   },
+   "y": {
+    "bits": 3440819720211877252,
+    "repr": "1.096205491445392e-78"
+   }
+  },
+  {
+   "out": {
+    "bits": 8390526440615099876,
+    "repr": "7.853043101589396e+252"
+   },
+   "x": {
+    "bits": 8390526440615099876,
+    "repr": "7.853043101589396e+252"
+   },
+   "y": {
+    "bits": 9919187864189956923,
+    "repr": "-3.816341317609242e-262"
+   }
+  },
+  {
+   "out": {
+    "bits": 8055698246512076601,
+    "repr": "3.34632571712314e+230"
+   },
+   "x": {
+    "bits": 8055698246512076601,
+    "repr": "3.34632571712314e+230"
+   },
+   "y": {
+    "bits": 2292875950176310946,
+    "repr": "2.0897049406970656e-155"
+   }
+  },
+  {
+   "out": {
+    "bits": 8508620009891622291,
+    "repr": "6.362552518995106e+260"
+   },
+   "x": {
+    "bits": 8508620009891622291,
+    "repr": "6.362552518995106e+260"
+   },
+   "y": {
+    "bits": 13824592839894505176,
+    "repr": "-0.4190638459480005"
+   }
+  },
+  {
+   "out": {
+    "bits": 925391963413533026,
+    "repr": "8.457150182971354e-247"
+   },
+   "x": {
+    "bits": 925391963413533026,
+    "repr": "8.457150182971354e-247"
+   },
+   "y": {
+    "bits": 9893506039813035521,
+    "repr": "-7.143966601581908e-264"
+   }
+  },
+  {
+   "out": {
+    "bits": 5473490281330612143,
+    "repr": "8.530500152299453e+57"
+   },
+   "x": {
+    "bits": 10822742401176926217,
+    "repr": "-9.239335603308673e-202"
+   },
+   "y": {
+    "bits": 14696862318185387951,
+    "repr": "-8.530500152299453e+57"
+   }
+  },
+  {
+   "out": {
+    "bits": 4650852088998663626,
+    "repr": "868.6667092299842"
+   },
+   "x": {
+    "bits": 13874224125853439434,
+    "repr": "-868.6667092299842"
+   },
+   "y": {
+    "bits": 12086067415319397190,
+    "repr": "-2.6110097092601502e-117"
+   }
+  },
+  {
+   "out": {
+    "bits": 7564013129312447039,
+    "repr": "4.62950137768639e+197"
+   },
+   "x": {
+    "bits": 16700596574041165135,
+    "repr": "-7.284896242685189e+191"
+   },
+   "y": {
+    "bits": 7564013129312438406,
+    "repr": "4.6295013776806585e+197"
+   }
+  },
+  {
+   "out": {
+    "bits": 8751018554312135937,
+    "repr": "9.895511298140279e+276"
+   },
+   "x": {
+    "bits": 8751018554312135937,
+    "repr": "9.895511298140279e+276"
+   },
+   "y": {
+    "bits": 8030691126681232229,
+    "repr": "7.10542955922206e+228"
+   }
+  },
+  {
+   "out": {
+    "bits": 4033389231357633136,
+    "repr": "4.679403167697225e-39"
+   },
+   "x": {
+    "bits": 10349829728401569537,
+    "repr": "-2.2621577846742103e-233"
+   },
+   "y": {
+    "bits": 13256761268212408944,
+    "repr": "-4.679403167697225e-39"
+   }
+  },
+  {
+   "out": {
+    "bits": 8800294546507944496,
+    "repr": "1.9203534635847765e+280"
+   },
+   "x": {
+    "bits": 18023666583362720304,
+    "repr": "-1.9203534635847765e+280"
+   },
+   "y": {
+    "bits": 10714088733910825812,
+    "repr": "-4.894048716146714e-209"
+   }
+  },
+  {
+   "out": {
+    "bits": 8627791572056035350,
+    "repr": "5.793314124569902e+268"
+   },
+   "x": {
+    "bits": 17851163608910811158,
+    "repr": "-5.793314124569902e+268"
+   },
+   "y": {
+    "bits": 8249231779744364259,
+    "repr": "2.8975012273907797e+243"
+   }
+  },
+  {
+   "out": {
+    "bits": 8644358484774997722,
+    "repr": "7.571330109970958e+269"
+   },
+   "x": {
+    "bits": 8151664074362169393,
+    "repr": "8.408510054775742e+236"
+   },
+   "y": {
+    "bits": 8644358484774997722,
+    "repr": "7.571330109970958e+269"
+   }
+  },
+  {
+   "out": {
+    "bits": 3786109932446934702,
+    "repr": "1.3746240266092169e-55"
+   },
+   "x": {
+    "bits": 3786109932446934702,
+    "repr": "1.3746240266092169e-55"
+   },
+   "y": {
+    "bits": 10134522653870274008,
+    "repr": "-9.411426338234568e-248"
+   }
+  },
+  {
+   "out": {
+    "bits": 8807553451777776117,
+    "repr": "6.061795950789324e+280"
+   },
+   "x": {
+    "bits": 8207984954093695983,
+    "repr": "5.130291496515278e+240"
+   },
+   "y": {
+    "bits": 18030925488632551925,
+    "repr": "-6.061795950789324e+280"
+   }
+  },
+  {
+   "out": {
+    "bits": 3662580412512865061,
+    "repr": "7.634258422367288e-64"
+   },
+   "x": {
+    "bits": 11494512156226421168,
+    "repr": "-7.542308451613187e-157"
+   },
+   "y": {
+    "bits": 12885952449367640869,
+    "repr": "-7.634258422367288e-64"
+   }
+  },
+  {
+   "out": {
+    "bits": 1030862322094008290,
+    "repr": "9.105760933489602e-240"
+   },
+   "x": {
+    "bits": 1030862322094008290,
+    "repr": "9.105760933489602e-240"
+   },
+   "y": {
+    "bits": 442039609146922152,
+    "repr": "4.0634868080281044e-279"
+   }
+  },
+  {
+   "out": {
+    "bits": 8197269794292395946,
+    "repr": "9.664727953709703e+239"
+   },
+   "x": {
+    "bits": 17420641831147171754,
+    "repr": "-9.664727953709703e+239"
+   },
+   "y": {
+    "bits": 3583861059929106079,
+    "repr": "4.1195675850675787e-69"
+   }
+  },
+  {
+   "out": {
+    "bits": 5241227897181121094,
+    "repr": "2.4898471917205182e+42"
+   },
+   "x": {
+    "bits": 513433115854709741,
+    "repr": "2.3223253537796687e-274"
+   },
+   "y": {
+    "bits": 5241227897181121094,
+    "repr": "2.4898471917205182e+42"
+   }
+  },
+  {
+   "out": {
+    "bits": 5419995856605164461,
+    "repr": "2.269378666486339e+54"
+   },
+   "x": {
+    "bits": 3945725347713052835,
+    "repr": "6.317199075598945e-45"
+   },
+   "y": {
+    "bits": 14643367893459940269,
+    "repr": "-2.269378666486339e+54"
+   }
+  },
+  {
+   "out": {
+    "bits": 8654724404967068025,
+    "repr": "3.666070812903952e+270"
+   },
+   "x": {
+    "bits": 17878096441821843833,
+    "repr": "-3.666070812903952e+270"
+   },
+   "y": {
+    "bits": 4516996934552533403,
+    "repr": "9.416579152559183e-07"
+   }
+  },
+  {
+   "out": {
+    "bits": 6124863973144371693,
+    "repr": "2.789883635253343e+101"
+   },
+   "x": {
+    "bits": 6124863973144371693,
+    "repr": "2.789883635253343e+101"
+   },
+   "y": {
+    "bits": 9859509548584973411,
+    "repr": "-3.879424234518869e-266"
+   }
+  },
+  {
+   "out": {
+    "bits": 5261403826832592994,
+    "repr": "5.648038731264789e+43"
+   },
+   "x": {
+    "bits": 13078148576483476818,
+    "repr": "-5.1646736318812915e-51"
+   },
+   "y": {
+    "bits": 5261403826832592994,
+    "repr": "5.648038731264789e+43"
+   }
+  },
+  {
+   "out": {
+    "bits": 5576874292870765185,
+    "repr": "6.923488475133783e+64"
+   },
+   "x": {
+    "bits": 14800246329725540993,
+    "repr": "-6.923488475133783e+64"
+   },
+   "y": {
+    "bits": 4986897163058273615,
+    "repr": "2.5408919949986643e+25"
+   }
+  },
+  {
+   "out": {
+    "bits": 7232697110756332850,
+    "repr": "3.1363433981970436e+175"
+   },
+   "x": {
+    "bits": 6536000606559276041,
+    "repr": "8.897999409181649e+128"
+   },
+   "y": {
+    "bits": 7232697110756332850,
+    "repr": "3.1363433981970436e+175"
+   }
+  },
+  {
+   "out": {
+    "bits": 8628175484720651441,
+    "repr": "6.0747819751945656e+268"
+   },
+   "x": {
+    "bits": 10088567360645175053,
+    "repr": "-7.765338067330292e-251"
+   },
+   "y": {
+    "bits": 17851547521575427249,
+    "repr": "-6.0747819751945656e+268"
+   }
+  },
+  {
+   "out": {
+    "bits": 7777488527448507871,
+    "repr": "8.20314989905033e+211"
+   },
+   "x": {
+    "bits": 5023481505147865224,
+    "repr": "7.115511772105311e+27"
+   },
+   "y": {
+    "bits": 7777488527448507871,
+    "repr": "8.20314989905033e+211"
+   }
+  },
+  {
+   "out": {
+    "bits": 4096945337941231672,
+    "repr": "8.207393611402049e-35"
+   },
+   "x": {
+    "bits": 13320317374796007480,
+    "repr": "-8.207393611402049e-35"
+   },
+   "y": {
+    "bits": 11160759091191811274,
+    "repr": "-3.659509407130921e-179"
+   }
+  },
+  {
+   "out": {
+    "bits": 7934584165026487525,
+    "repr": "2.6483104688566274e+222"
+   },
+   "x": {
+    "bits": 7934584165026487525,
+    "repr": "2.6483104688566274e+222"
+   },
+   "y": {
+    "bits": 4544971616055571194,
+    "repr": "7.241375015505292e-05"
+   }
+  },
+  {
+   "out": {
+    "bits": 8030177515528590151,
+    "repr": "6.413803456579312e+228"
+   },
+   "x": {
+    "bits": 1371458203215793733,
+    "repr": "5.529336627855597e-217"
+   },
+   "y": {
+    "bits": 8030177515528590151,
+    "repr": "6.413803456579312e+228"
+   }
+  },
+  {
+   "out": {
+    "bits": 3441895702195840183,
+    "repr": "1.3541203413599677e-78"
+   },
+   "x": {
+    "bits": 10473110015409780738,
+    "repr": "-4.0458709072320675e-225"
+   },
+   "y": {
+    "bits": 12665267739050615991,
+    "repr": "-1.3541203413599677e-78"
+   }
+  },
+  {
+   "out": {
+    "bits": 5144100269143118171,
+    "repr": "8.10637639773691e+35"
+   },
+   "x": {
+    "bits": 4270205502887123463,
+    "repr": "3.113094466334414e-23"
+   },
+   "y": {
+    "bits": 14367472305997893979,
+    "repr": "-8.10637639773691e+35"
+   }
+  },
+  {
+   "out": {
+    "bits": 5878433388744691915,
+    "repr": "9.903099555685045e+84"
+   },
+   "x": {
+    "bits": 15101805425599467723,
+    "repr": "-9.903099555685045e+84"
+   },
+   "y": {
+    "bits": 12507915356263759996,
+    "repr": "-4.131881757918612e-89"
+   }
+  },
+  {
+   "out": {
+    "bits": 3019409250346336872,
+    "repr": "7.867533089365788e-107"
+   },
+   "x": {
+    "bits": 2821236901480147258,
+    "repr": "4.462567937525661e-120"
+   },
+   "y": {
+    "bits": 3019409250346336872,
+    "repr": "7.867533089365788e-107"
+   }
+  },
+  {
+   "out": {
+    "bits": 6190629275968042957,
+    "repr": "7.320076139471173e+105"
+   },
+   "x": {
+    "bits": 15124837853393276576,
+    "repr": "-3.453028898265564e+86"
+   },
+   "y": {
+    "bits": 6190629275968042957,
+    "repr": "7.320076139471173e+105"
+   }
+  },
+  {
+   "out": {
+    "bits": 8029988135413414427,
+    "repr": "6.158785180003263e+228"
+   },
+   "x": {
+    "bits": 5149299163387890812,
+    "repr": "1.8264900293561048e+36"
+   },
+   "y": {
+    "bits": 17253360172268190235,
+    "repr": "-6.158785180003263e+228"
+   }
+  },
+  {
+   "out": {
+    "bits": 2926978289875598902,
+    "repr": "4.9891157870553156e-113"
+   },
+   "x": {
+    "bits": 12150350326730374710,
+    "repr": "-4.9891157870553156e-113"
+   },
+   "y": {
+    "bits": 11359743088183032247,
+    "repr": "-7.432708083169431e-166"
+   }
+  },
+  {
+   "out": {
+    "bits": 3160610802685639606,
+    "repr": "2.1027480198918333e-97"
+   },
+   "x": {
+    "bits": 12383982839540415414,
+    "repr": "-2.1027480198918333e-97"
+   },
+   "y": {
+    "bits": 11192380949565091247,
+    "repr": "-4.7689170184655e-177"
+   }
+  },
+  {
+   "out": {
+    "bits": 7621577416314655598,
+    "repr": "3.258115782160087e+201"
+   },
+   "x": {
+    "bits": 16844949453169431406,
+    "repr": "-3.258115782160087e+201"
+   },
+   "y": {
+    "bits": 9610023202896109677,
+    "repr": "-7.978627909368851e-283"
+   }
+  },
+  {
+   "out": {
+    "bits": 6156778613305003898,
+    "repr": "3.868396820035642e+103"
+   },
+   "x": {
+    "bits": 13793930725500082284,
+    "repr": "-0.0036482388806958112"
+   },
+   "y": {
+    "bits": 15380150650159779706,
+    "repr": "-3.868396820035642e+103"
+   }
+  },
+  {
+   "out": {
+    "bits": 8628787332462791421,
+    "repr": "6.5233617819115635e+268"
+   },
+   "x": {
+    "bits": 17370357938420753111,
+    "repr": "-4.0581644971434235e+236"
+   },
+   "y": {
+    "bits": 17852159369317567229,
+    "repr": "-6.5233617819115635e+268"
+   }
+  },
+  {
+   "out": {
+    "bits": 7310152958767861613,
+    "repr": "4.896534894151495e+180"
+   },
+   "x": {
+    "bits": 16149208674462938128,
+    "repr": "-9.893138645677233e+154"
+   },
+   "y": {
+    "bits": 7310152958767861613,
+    "repr": "4.896534894151495e+180"
+   }
+  },
+  {
+   "out": {
+    "bits": 6677815194535921462,
+    "repr": "2.6389838167792747e+138"
+   },
+   "x": {
+    "bits": 15901187231390697270,
+    "repr": "-2.6389838167792747e+138"
+   },
+   "y": {
+    "bits": 14300560679386055394,
+    "repr": "-2.7631664881804265e+31"
+   }
+  },
+  {
+   "out": {
+    "bits": 5362207851898532894,
+    "repr": "3.085426851235318e+50"
+   },
+   "x": {
+    "bits": 14585579888753308702,
+    "repr": "-3.085426851235318e+50"
+   },
+   "y": {
+    "bits": 9502777957354885710,
+    "repr": "-5.338859424869991e-290"
+   }
+  },
+  {
+   "out": {
+    "bits": 7625337963636926234,
+    "repr": "5.707961105668298e+201"
+   },
+   "x": {
+    "bits": 6041818218842020956,
+    "repr": "8.29371422736357e+95"
+   },
+   "y": {
+    "bits": 7625337963636926234,
+    "repr": "5.707961105668298e+201"
+   }
+  },
+  {
+   "out": {
+    "bits": 4383997277023765298,
+    "repr": "1.2815911613328623e-15"
+   },
+   "x": {
+    "bits": 1415991416695945093,
+    "repr": "5.2475128640988665e-214"
+   },
+   "y": {
+    "bits": 4383997277023765298,
+    "repr": "1.2815911613328623e-15"
+   }
+  },
+  {
+   "out": {
+    "bits": 6918172504638458106,
+    "repr": "3.0647047026955575e+154"
+   },
+   "x": {
+    "bits": 10402424838394218514,
+    "repr": "-7.4297404198353e-230"
+   },
+   "y": {
+    "bits": 6918172504638458106,
+    "repr": "3.0647047026955575e+154"
+   }
+  },
+  {
+   "out": {
+    "bits": 7295104067396265032,
+    "repr": "4.76805411306215e+179"
+   },
+   "x": {
+    "bits": 7295104067396265032,
+    "repr": "4.76805411306215e+179"
+   },
+   "y": {
+    "bits": 12273689088764605463,
+    "repr": "-9.114073517522437e-105"
+   }
+  },
+  {
+   "out": {
+    "bits": 3523264161178385870,
+    "repr": "3.7405578041422415e-73"
+   },
+   "x": {
+    "bits": 12746636198033161678,
+    "repr": "-3.7405578041422415e-73"
+   },
+   "y": {
+    "bits": 12019695398841054345,
+    "repr": "-9.238630288427374e-122"
+   }
+  },
+  {
+   "out": {
+    "bits": 4441970405588446610,
+    "repr": "9.571986429856837e-12"
+   },
+   "x": {
+    "bits": 13665342442443222418,
+    "repr": "-9.571986429856837e-12"
+   },
+   "y": {
+    "bits": 540553556115074617,
+    "repr": "1.5187444394547177e-272"
+   }
+  },
+  {
+   "out": {
+    "bits": 9080045659659041020,
+    "repr": "9.83737988905683e+298"
+   },
+   "x": {
+    "bits": 4092506518110447394,
+    "repr": "4.1383250365495436e-35"
+   },
+   "y": {
+    "bits": 9080045659659041020,
+    "repr": "9.83737988905683e+298"
+   }
+  },
+  {
+   "out": {
+    "bits": 5801979788396009213,
+    "repr": "7.697101593519568e+79"
+   },
+   "x": {
+    "bits": 12093002256098785847,
+    "repr": "-7.524415806749592e-117"
+   },
+   "y": {
+    "bits": 15025351825250785021,
+    "repr": "-7.697101593519568e+79"
+   }
+  },
+  {
+   "out": {
+    "bits": 563753559583410428,
+    "repr": "5.576607097584384e-271"
+   },
+   "x": {
+    "bits": 563753559503629832,
+    "repr": "5.576607013754012e-271"
+   },
+   "y": {
+    "bits": 507438086453567047,
+    "repr": "9.669426514404096e-275"
+   }
+  },
+  {
+   "out": {
+    "bits": 7788411962589350802,
+    "repr": "4.62843894836922e+212"
+   },
+   "x": {
+    "bits": 11084226133066412627,
+    "repr": "-2.806739097391509e-184"
+   },
+   "y": {
+    "bits": 17011783999444126610,
+    "repr": "-4.62843894836922e+212"
+   }
+  },
+  {
+   "out": {
+    "bits": 8675521474263542213,
+    "repr": "9.147446155229569e+271"
+   },
+   "x": {
+    "bits": 17898893511118318021,
+    "repr": "-9.147446155229569e+271"
+   },
+   "y": {
+    "bits": 2544296236074596718,
+    "repr": "1.3081401390637337e-138"
+   }
+  },
+  {
+   "out": {
+    "bits": 7119565660149480034,
+    "repr": "8.77986056310773e+167"
+   },
+   "x": {
+    "bits": 7119565660149480034,
+    "repr": "8.77986056310773e+167"
+   },
+   "y": {
+    "bits": 15612587973562445303,
+    "repr": "-1.3644999300117532e+119"
+   }
+  },
+  {
+   "out": {
+    "bits": 5384527897322472000,
+    "repr": "9.610241636106986e+51"
+   },
+   "x": {
+    "bits": 5384527897322472000,
+    "repr": "9.610241636106986e+51"
+   },
+   "y": {
+    "bits": 10534630340420280847,
+    "repr": "-5.12493912387991e-221"
+   }
+  },
+  {
+   "out": {
+    "bits": 8311778028215916744,
+    "repr": "4.434187502965386e+247"
+   },
+   "x": {
+    "bits": 17535150065070692552,
+    "repr": "-4.434187502965386e+247"
+   },
+   "y": {
+    "bits": 4691232745189810309,
+    "repr": "435924.8981633264"
+   }
+  },
+  {
+   "out": {
+    "bits": 5071078177769202277,
+    "repr": "1.019749382995201e+31"
+   },
+   "x": {
+    "bits": 415582920468251667,
+    "repr": "7.040221645567536e-281"
+   },
+   "y": {
+    "bits": 5071078177769202277,
+    "repr": "1.019749382995201e+31"
+   }
+  },
+  {
+   "out": {
+    "bits": 4053225624719093491,
+    "repr": "9.389296452041123e-38"
+   },
+   "x": {
+    "bits": 13276597661573869299,
+    "repr": "-9.389296452041123e-38"
+   },
+   "y": {
+    "bits": 3914825318421605337,
+    "repr": "5.543191565067898e-47"
+   }
+  },
+  {
+   "out": {
+    "bits": 9063838405044741468,
+    "repr": "8.247779249557924e+297"
+   },
+   "x": {
+    "bits": 18063053747870408568,
+    "repr": "-8.381353260989652e+282"
+   },
+   "y": {
+    "bits": 18287210441899517276,
+    "repr": "-8.247779249557924e+297"
+   }
+  },
+  {
+   "out": {
+    "bits": 8364110985211947438,
+    "repr": "1.381219122166e+251"
+   },
+   "x": {
+    "bits": 7051621924571702806,
+    "repr": "2.5548133968187424e+163"
+   },
+   "y": {
+    "bits": 17587483022066723246,
+    "repr": "-1.381219122166e+251"
+   }
+  },
+  {
+   "out": {
+    "bits": 5770669742013584873,
+    "repr": "6.234630598749702e+77"
+   },
+   "x": {
+    "bits": 14994041778868360681,
+    "repr": "-6.234630598749702e+77"
+   },
+   "y": {
+    "bits": 9547756451575489568,
+    "repr": "-5.399911333381247e-287"
+   }
+  },
+  {
+   "out": {
+    "bits": 5244354550320512507,
+    "repr": "4.12740578872969e+42"
+   },
+   "x": {
+    "bits": 5244354550320512507,
+    "repr": "4.12740578872969e+42"
+   },
+   "y": {
+    "bits": 2127816301742005608,
+    "repr": "1.9944729512990644e-166"
+   }
+  },
+  {
+   "out": {
+    "bits": 2607078686981867041,
+    "repr": "2.0777726846488443e-134"
+   },
+   "x": {
+    "bits": 2607078686981867041,
+    "repr": "2.0777726846488443e-134"
+   },
+   "y": {
+    "bits": 11556344933133778679,
+    "repr": "-9.776226489429386e-153"
+   }
+  },
+  {
+   "out": {
+    "bits": 7406653213453369593,
+    "repr": "1.3987743192265234e+187"
+   },
+   "x": {
+    "bits": 11905793676360691363,
+    "repr": "-2.3331350140624486e-129"
+   },
+   "y": {
+    "bits": 7406653213453369593,
+    "repr": "1.3987743192265234e+187"
+   }
+  },
+  {
+   "out": {
+    "bits": 8066512063992761175,
+    "repr": "1.7473348505532415e+231"
+   },
+   "x": {
+    "bits": 17289884100828899449,
+    "repr": "-1.7473348441283567e+231"
+   },
+   "y": {
+    "bits": 17228886594809591104,
+    "repr": "-1.4984275078749597e+227"
+   }
+  },
+  {
+   "out": {
+    "bits": 6174459863898148210,
+    "repr": "5.765288480169084e+104"
+   },
+   "x": {
+    "bits": 10103723920453035222,
+    "repr": "-8.25387001004378e-250"
+   },
+   "y": {
+    "bits": 6174459863898148210,
+    "repr": "5.765288480169084e+104"
+   }
+  },
+  {
+   "out": {
+    "bits": 5294647269767082289,
+    "repr": "9.4076245698103e+45"
+   },
+   "x": {
+    "bits": 5294647269767082289,
+    "repr": "9.4076245698103e+45"
+   },
+   "y": {
+    "bits": 3693911089149196423,
+    "repr": "9.435867974648557e-62"
+   }
+  },
+  {
+   "out": {
+    "bits": 3902900141683741839,
+    "repr": "8.856206415039986e-48"
+   },
+   "x": {
+    "bits": 9597556516094987906,
+    "repr": "-1.168131827722463e-283"
+   },
+   "y": {
+    "bits": 3902900141683741839,
+    "repr": "8.856206415039986e-48"
+   }
+  },
+  {
+   "out": {
+    "bits": 8894291148543057397,
+    "repr": "3.6723163367891744e+286"
+   },
+   "x": {
+    "bits": 8894291148543057397,
+    "repr": "3.6723163367891744e+286"
+   },
+   "y": {
+    "bits": 5303992268895168867,
+    "repr": "3.934334712805541e+46"
+   }
+  },
+  {
+   "out": {
+    "bits": 7957812609074671135,
+    "repr": "9.204484524618772e+223"
+   },
+   "x": {
+    "bits": 14723844320989247340,
+    "repr": "-5.424200212583079e+59"
+   },
+   "y": {
+    "bits": 7957812609074671135,
+    "repr": "9.204484524618772e+223"
+   }
+  },
+  {
+   "out": {
+    "bits": 8689297388556652556,
+    "repr": "7.636414269727556e+272"
+   },
+   "x": {
+    "bits": 1853949182098187145,
+    "repr": "9.763315469091747e-185"
+   },
+   "y": {
+    "bits": 8689297388556652556,
+    "repr": "7.636414269727556e+272"
+   }
+  }
+ ],
+ "isprintable_sample": [
+  {
+   "cp": 0,
+   "printable": false
+  },
+  {
+   "cp": 31,
+   "printable": false
+  },
+  {
+   "cp": 32,
+   "printable": true
+  },
+  {
+   "cp": 126,
+   "printable": true
+  },
+  {
+   "cp": 127,
+   "printable": false
+  },
+  {
+   "cp": 160,
+   "printable": false
+  },
+  {
+   "cp": 173,
+   "printable": false
+  },
+  {
+   "cp": 888,
+   "printable": false
+  },
+  {
+   "cp": 8232,
+   "printable": false
+  },
+  {
+   "cp": 12288,
+   "printable": false
+  },
+  {
+   "cp": 55296,
+   "printable": false
+  },
+  {
+   "cp": 57344,
+   "printable": false
+  },
+  {
+   "cp": 65279,
+   "printable": false
+  },
+  {
+   "cp": 128512,
+   "printable": true
+  },
+  {
+   "cp": 917505,
+   "printable": false
+  },
+  {
+   "cp": 1114111,
+   "printable": false
+  }
+ ],
+ "json_loads": [
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting value: line 1 column 1 (char 0)",
+   "text": ""
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting value: line 1 column 2 (char 1)",
+   "text": " "
+  },
+  {
+   "ok": {
+    "t": "none"
+   },
+   "text": "null"
+  },
+  {
+   "ok": {
+    "t": "bool",
+    "v": true
+   },
+   "text": "true"
+  },
+  {
+   "ok": {
+    "t": "bool",
+    "v": false
+   },
+   "text": "false"
+  },
+  {
+   "ok": {
+    "t": "float",
+    "v": {
+     "bits": 9221120237041090560,
+     "repr": "nan"
+    }
+   },
+   "text": "NaN"
+  },
+  {
+   "ok": {
+    "t": "float",
+    "v": {
+     "bits": 9218868437227405312,
+     "repr": "inf"
+    }
+   },
+   "text": "Infinity"
+  },
+  {
+   "ok": {
+    "t": "float",
+    "v": {
+     "bits": 18442240474082181120,
+     "repr": "-inf"
+    }
+   },
+   "text": "-Infinity"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting value: line 1 column 1 (char 0)",
+   "text": "-NaN"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting value: line 1 column 1 (char 0)",
+   "text": "nan"
+  },
+  {
+   "ok": {
+    "t": "int",
+    "v": "0"
+   },
+   "text": "0"
+  },
+  {
+   "ok": {
+    "t": "int",
+    "v": "0"
+   },
+   "text": "-0"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Extra data: line 1 column 2 (char 1)",
+   "text": "00"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Extra data: line 1 column 2 (char 1)",
+   "text": "01"
+  },
+  {
+   "ok": {
+    "t": "int",
+    "v": "1"
+   },
+   "text": "1"
+  },
+  {
+   "ok": {
+    "t": "int",
+    "v": "-1"
+   },
+   "text": "-1"
+  },
+  {
+   "ok": {
+    "t": "int",
+    "v": "123456789012345678901234567890"
+   },
+   "text": "123456789012345678901234567890"
+  },
+  {
+   "ok": {
+    "t": "float",
+    "v": {
+     "bits": 4609434218613702656,
+     "repr": "1.5"
+    }
+   },
+   "text": "1.5"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Extra data: line 1 column 2 (char 1)",
+   "text": "1."
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting value: line 1 column 1 (char 0)",
+   "text": ".5"
+  },
+  {
+   "ok": {
+    "t": "float",
+    "v": {
+     "bits": 4681608360884174848,
+     "repr": "100000.0"
+    }
+   },
+   "text": "1e5"
+  },
+  {
+   "ok": {
+    "t": "float",
+    "v": {
+     "bits": 4681608360884174848,
+     "repr": "100000.0"
+    }
+   },
+   "text": "1E+5"
+  },
+  {
+   "ok": {
+    "t": "float",
+    "v": {
+     "bits": 4532020583610935537,
+     "repr": "1e-05"
+    }
+   },
+   "text": "1e-5"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Extra data: line 1 column 2 (char 1)",
+   "text": "1e"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Extra data: line 1 column 2 (char 1)",
+   "text": "1e+"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting value: line 1 column 1 (char 0)",
+   "text": "-"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting value: line 1 column 1 (char 0)",
+   "text": "-a"
+  },
+  {
+   "ok": {
+    "t": "float",
+    "v": {
+     "bits": 9218868437227405312,
+     "repr": "inf"
+    }
+   },
+   "text": "1.5e400"
+  },
+  {
+   "ok": {
+    "t": "float",
+    "v": {
+     "bits": 18442240474082181120,
+     "repr": "-inf"
+    }
+   },
+   "text": "-1e400"
+  },
+  {
+   "ok": {
+    "t": "float",
+    "v": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "text": "1e-400"
+  },
+  {
+   "ok": {
+    "t": "float",
+    "v": {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    }
+   },
+   "text": "2.50"
+  },
+  {
+   "ok": {
+    "t": "str",
+    "v": "a"
+   },
+   "text": "\"a\""
+  },
+  {
+   "ok": {
+    "t": "str",
+    "v": "é"
+   },
+   "text": "\"\\u00e9\""
+  },
+  {
+   "ok": {
+    "t": "str",
+    "v": "😀"
+   },
+   "text": "\"\\ud83d\\ude00\""
+  },
+  {
+   "ok": {
+    "t": "str",
+    "v": "\n\t\"\\/\b\f\r"
+   },
+   "text": "\"\\n\\t\\\"\\\\\\/\\b\\f\\r\""
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Invalid \\escape: line 1 column 2 (char 1)",
+   "text": "\"\\x\""
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Invalid \\uXXXX escape: line 1 column 3 (char 2)",
+   "text": "\"\\u12\""
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Invalid control character at: line 1 column 5 (char 4)",
+   "text": "\"tab\there\""
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Unterminated string starting at: line 1 column 1 (char 0)",
+   "text": "\"unterminated"
+  },
+  {
+   "ok": {
+    "t": "str",
+    "v": "é😀"
+   },
+   "text": "\"é😀\""
+  },
+  {
+   "ok": {
+    "t": "list",
+    "v": []
+   },
+   "text": "[]"
+  },
+  {
+   "ok": {
+    "t": "list",
+    "v": []
+   },
+   "text": "[ ]"
+  },
+  {
+   "ok": {
+    "t": "list",
+    "v": [
+     {
+      "t": "int",
+      "v": "1"
+     },
+     {
+      "t": "int",
+      "v": "2"
+     }
+    ]
+   },
+   "text": "[1,2]"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Illegal trailing comma before end of array: line 1 column 3 (char 2)",
+   "text": "[1,]"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting value: line 1 column 2 (char 1)",
+   "text": "[,1]"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting ',' delimiter: line 1 column 4 (char 3)",
+   "text": "[1 2]"
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": []
+   },
+   "text": "{}"
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "a",
+      {
+       "t": "int",
+       "v": "1"
+      }
+     ]
+    ]
+   },
+   "text": "{\"a\":1}"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Illegal trailing comma before end of object: line 1 column 7 (char 6)",
+   "text": "{\"a\":1,}"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting property name enclosed in double quotes: line 1 column 2 (char 1)",
+   "text": "{a:1}"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting ':' delimiter: line 1 column 6 (char 5)",
+   "text": "{\"a\" 1}"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting ',' delimiter: line 1 column 8 (char 7)",
+   "text": "{\"a\":1 \"b\":2}"
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "b",
+      {
+       "t": "int",
+       "v": "3"
+      }
+     ],
+     [
+      "a",
+      {
+       "t": "int",
+       "v": "2"
+      }
+     ]
+    ]
+   },
+   "text": "{\"b\":1,\"a\":2,\"b\":3}"
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "x",
+      {
+       "t": "list",
+       "v": [
+        {
+         "t": "int",
+         "v": "1"
+        },
+        {
+         "t": "dict",
+         "v": [
+          [
+           "y",
+           {
+            "t": "none"
+           }
+          ]
+         ]
+        }
+       ]
+      }
+     ]
+    ]
+   },
+   "text": " \t\n\r{\"x\": [1, {\"y\": null}]} \n"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Extra data: line 1 column 9 (char 8)",
+   "text": "{\"x\":1} extra"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Extra data: line 1 column 8 (char 7)",
+   "text": "{\"x\":1}{}"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)",
+   "text": "﻿{}"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Extra data: line 1 column 4 (char 3)",
+   "text": "[1]x"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting value: line 1 column 1 (char 0)",
+   "text": " {}"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Extra data: line 1 column 3 (char 2)",
+   "text": "{} "
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting value: line 1 column 1 (char 0)",
+   "text": "tru"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting value: line 1 column 1 (char 0)",
+   "text": "nul"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting value: line 1 column 1 (char 0)",
+   "text": "True"
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "k",
+      {
+       "t": "float",
+       "v": {
+        "bits": 9221120237041090560,
+        "repr": "nan"
+       }
+      }
+     ],
+     [
+      "j",
+      {
+       "t": "float",
+       "v": {
+        "bits": 18442240474082181120,
+        "repr": "-inf"
+       }
+      }
+     ]
+    ]
+   },
+   "text": "{\"k\": NaN, \"j\": -Infinity}"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting ',' delimiter: line 1 column 3 (char 2)",
+   "text": "[01]"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Extra data: line 1 column 2 (char 1)",
+   "text": "1_000"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Expecting value: line 1 column 1 (char 0)",
+   "text": "+1"
+  },
+  {
+   "err": "JSONDecodeError",
+   "msg": "Invalid control character at: line 1 column 2 (char 1)",
+   "text": "\"\u0001\""
+  },
+  {
+   "ok": {
+    "t": "list",
+    "v": [
+     {
+      "t": "list",
+      "v": [
+       {
+        "t": "list",
+        "v": [
+         {
+          "t": "list",
+          "v": [
+           {
+            "t": "list",
+            "v": []
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "text": "[[[[[]]]]]"
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "a",
+      {
+       "t": "dict",
+       "v": [
+        [
+         "b",
+         {
+          "t": "dict",
+          "v": [
+           [
+            "c",
+            {
+             "t": "list",
+             "v": [
+              {
+               "t": "bool",
+               "v": true
+              },
+              {
+               "t": "bool",
+               "v": false
+              },
+              {
+               "t": "none"
+              }
+             ]
+            }
+           ]
+          ]
+         }
+        ]
+       ]
+      }
+     ]
+    ]
+   },
+   "text": "{\"a\": {\"b\": {\"c\": [true, false, null]}}}"
+  },
+  {
+   "ok": {
+    "t": "list",
+    "v": [
+     {
+      "t": "float",
+      "v": {
+       "bits": 4607182418800017408,
+       "repr": "1.0"
+      }
+     },
+     {
+      "t": "int",
+      "v": "1"
+     },
+     {
+      "t": "float",
+      "v": {
+       "bits": 9223372036854775808,
+       "repr": "-0.0"
+      }
+     },
+     {
+      "t": "float",
+      "v": {
+       "bits": 0,
+       "repr": "0.0"
+      }
+     },
+     {
+      "t": "float",
+      "v": {
+       "bits": 4636737291354636288,
+       "repr": "100.0"
+      }
+     },
+     {
+      "t": "float",
+      "v": {
+       "bits": 4636737291354636288,
+       "repr": "100.0"
+      }
+     },
+     {
+      "t": "float",
+      "v": {
+       "bits": 4614256650576692846,
+       "repr": "3.14159"
+      }
+     }
+    ]
+   },
+   "text": "[1.0, 1, -0.0, 0.0, 1e2, 1E2, 3.14159]"
+  },
+  {
+   "ok": {
+    "t": "str",
+    "v": "Aß"
+   },
+   "text": "\"\\u0041\\u00df\""
+  },
+  {
+   "ok": {
+    "t": "list",
+    "v": [
+     {
+      "t": "str",
+      "v": "a"
+     },
+     {
+      "t": "str",
+      "v": "b"
+     }
+    ]
+   },
+   "text": "[\"a\",\"b\"]"
+  }
+ ],
+ "minmax": [
+  {
+   "a": {
+    "bits": 0,
+    "repr": "0.0"
+   },
+   "b": {
+    "bits": 9223372036854775808,
+    "repr": "-0.0"
+   },
+   "max": {
+    "bits": 0,
+    "repr": "0.0"
+   },
+   "min": {
+    "bits": 0,
+    "repr": "0.0"
+   }
+  },
+  {
+   "a": {
+    "bits": 9223372036854775808,
+    "repr": "-0.0"
+   },
+   "b": {
+    "bits": 0,
+    "repr": "0.0"
+   },
+   "max": {
+    "bits": 9223372036854775808,
+    "repr": "-0.0"
+   },
+   "min": {
+    "bits": 9223372036854775808,
+    "repr": "-0.0"
+   }
+  },
+  {
+   "a": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   },
+   "b": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "max": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   },
+   "min": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   }
+  },
+  {
+   "a": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "b": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   },
+   "max": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "min": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   }
+  },
+  {
+   "a": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   },
+   "b": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   },
+   "max": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   },
+   "min": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   }
+  },
+  {
+   "a": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   },
+   "b": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   },
+   "max": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   },
+   "min": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   }
+  }
+ ],
+ "sort": [
+  {
+   "keys": [
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    }
+   ],
+   "order": [
+    6,
+    5,
+    7,
+    4,
+    8,
+    9,
+    10,
+    1,
+    3,
+    0,
+    2
+   ]
+  },
+  {
+   "keys": [],
+   "order": []
+  },
+  {
+   "keys": [
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   ],
+   "order": [
+    1,
+    2,
+    4,
+    3,
+    0
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    }
+   ],
+   "order": [
+    3,
+    1,
+    2,
+    0
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    }
+   ],
+   "order": [
+    10,
+    14,
+    3,
+    15,
+    2,
+    8,
+    18,
+    0,
+    4,
+    16,
+    1,
+    6,
+    7,
+    9,
+    12,
+    13,
+    5,
+    11,
+    17
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    }
+   ],
+   "order": [
+    7,
+    8,
+    0,
+    2,
+    3,
+    6,
+    4,
+    5,
+    1
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   ],
+   "order": [
+    3,
+    6,
+    10,
+    12,
+    4,
+    5,
+    13,
+    15,
+    2,
+    0,
+    8,
+    1,
+    9,
+    7,
+    11,
+    14
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    }
+   ],
+   "order": [
+    0,
+    1,
+    4,
+    6,
+    8,
+    5,
+    7,
+    2,
+    3,
+    9,
+    10
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    }
+   ],
+   "order": [
+    7,
+    10,
+    11,
+    1,
+    2,
+    3,
+    8,
+    0,
+    5,
+    6,
+    9,
+    4
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    }
+   ],
+   "order": [
+    12,
+    3,
+    7,
+    8,
+    10,
+    2,
+    4,
+    5,
+    11,
+    9,
+    13,
+    0,
+    1,
+    6
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    }
+   ],
+   "order": [
+    0,
+    4,
+    8,
+    11,
+    9,
+    3,
+    5,
+    6,
+    1,
+    2,
+    7,
+    10,
+    12
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    }
+   ],
+   "order": [
+    0,
+    3,
+    6,
+    2,
+    1,
+    4,
+    5
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    }
+   ],
+   "order": [
+    4,
+    0,
+    1,
+    2,
+    3,
+    5
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    }
+   ],
+   "order": [
+    8,
+    2,
+    4,
+    7,
+    3,
+    1,
+    6,
+    0,
+    5
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   ],
+   "order": [
+    5,
+    8,
+    15,
+    7,
+    11,
+    16,
+    2,
+    9,
+    14,
+    1,
+    4,
+    10,
+    12,
+    0,
+    3,
+    6,
+    13
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    }
+   ],
+   "order": [
+    4,
+    13,
+    12,
+    0,
+    8,
+    11,
+    6,
+    9,
+    10,
+    2,
+    5,
+    1,
+    3,
+    7
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    }
+   ],
+   "order": [
+    1,
+    6,
+    9,
+    15,
+    0,
+    2,
+    4,
+    8,
+    3,
+    10,
+    11,
+    12,
+    5,
+    17,
+    7,
+    13,
+    14,
+    16
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    }
+   ],
+   "order": [
+    3,
+    4,
+    5,
+    1,
+    6,
+    2,
+    0,
+    7,
+    9,
+    10,
+    8
+   ]
+  },
+  {
+   "keys": [],
+   "order": []
+  },
+  {
+   "keys": [
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    }
+   ],
+   "order": [
+    0
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    }
+   ],
+   "order": [
+    1,
+    7,
+    4,
+    5,
+    9,
+    13,
+    3,
+    10,
+    14,
+    0,
+    2,
+    6,
+    8,
+    11,
+    12
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    }
+   ],
+   "order": [
+    8,
+    4,
+    0,
+    1,
+    5,
+    6,
+    7,
+    2,
+    3
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    }
+   ],
+   "order": [
+    5,
+    3,
+    1,
+    0,
+    2,
+    4,
+    6
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    }
+   ],
+   "order": [
+    2,
+    0,
+    4,
+    3,
+    1
+   ]
+  },
+  {
+   "keys": [],
+   "order": []
+  },
+  {
+   "keys": [
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    }
+   ],
+   "order": [
+    3,
+    4,
+    1,
+    0,
+    2
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    }
+   ],
+   "order": [
+    0,
+    5,
+    7,
+    8,
+    11,
+    1,
+    4,
+    6,
+    10,
+    2,
+    12,
+    3,
+    9
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    }
+   ],
+   "order": [
+    2,
+    3,
+    7,
+    9,
+    5,
+    8,
+    1,
+    6,
+    0,
+    4
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   ],
+   "order": [
+    2,
+    1,
+    9,
+    12,
+    13,
+    15,
+    16,
+    7,
+    0,
+    4,
+    5,
+    6,
+    10,
+    11,
+    3,
+    8,
+    14
+   ]
+  },
+  {
+   "keys": [
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 4612811918334230528,
+     "repr": "2.5"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    }
+   ],
+   "order": [
+    2,
+    4,
+    6,
+    7,
+    3,
+    0,
+    1,
+    5
+   ]
+  }
+ ]
+}

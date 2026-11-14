@@ -1,0 +1,3693 @@
+{
+ "constants": [
+  {
+   "expr": "48000",
+   "kind": "int",
+   "name": "DEFAULT_SR",
+   "value": 48000
+  },
+  {
+   "expr": "20",
+   "kind": "int",
+   "name": "CLICK_DUR_MS",
+   "value": 20
+  },
+  {
+   "expr": "(8.0, 5.0)",
+   "kind": "float",
+   "name": "ATT_START_DEG",
+   "value": {
+    "bits": 4620693217682128896,
+    "repr": "8.0"
+   }
+  },
+  {
+   "expr": "(8.0, 5.0)",
+   "kind": "float",
+   "name": "ATT_STOP_DEG",
+   "value": {
+    "bits": 4617315517961601024,
+    "repr": "5.0"
+   }
+  },
+  {
+   "expr": "(60.0, 30.0)",
+   "kind": "float",
+   "name": "ROLL_CAP_DEG",
+   "value": {
+    "bits": 4633641066610819072,
+    "repr": "60.0"
+   }
+  },
+  {
+   "expr": "(60.0, 30.0)",
+   "kind": "float",
+   "name": "PITCH_CAP_DEG",
+   "value": {
+    "bits": 4629137466983448576,
+    "repr": "30.0"
+   }
+  },
+  {
+   "expr": "(-24.0, -36.0)",
+   "kind": "float",
+   "name": "ATT_MAX_DBFS",
+   "value": {
+    "bits": 13850820653977960448,
+    "repr": "-24.0"
+   }
+  },
+  {
+   "expr": "(-24.0, -36.0)",
+   "kind": "float",
+   "name": "ATT_MIN_DBFS",
+   "value": {
+    "bits": 13853635403745067008,
+    "repr": "-36.0"
+   }
+  },
+  {
+   "expr": "(220.0, 300.0)",
+   "kind": "float",
+   "name": "ATT_BASE_ROLL_HZ",
+   "value": {
+    "bits": 4641944578423783424,
+    "repr": "220.0"
+   }
+  },
+  {
+   "expr": "(220.0, 300.0)",
+   "kind": "float",
+   "name": "ATT_BASE_PITCH_HZ",
+   "value": {
+    "bits": 4643985272004935680,
+    "repr": "300.0"
+   }
+  },
+  {
+   "expr": "80.0",
+   "kind": "float",
+   "name": "ATT_SMOOTH_MS",
+   "value": {
+    "bits": 4635329916471083008,
+    "repr": "80.0"
+   }
+  },
+  {
+   "expr": "0.04",
+   "kind": "float",
+   "name": "ATT_FADE_MIN_GAIN",
+   "value": {
+    "bits": 4585925428558828667,
+    "repr": "0.04"
+   }
+  },
+  {
+   "expr": "50.0",
+   "kind": "float",
+   "name": "ATT_FADE_SENSITIVITY",
+   "value": {
+    "bits": 4632233691727265792,
+    "repr": "50.0"
+   }
+  },
+  {
+   "expr": "20.0",
+   "kind": "float",
+   "name": "ATT_FADE_ATTACK_MS",
+   "value": {
+    "bits": 4626322717216342016,
+    "repr": "20.0"
+   }
+  },
+  {
+   "expr": "1250.0",
+   "kind": "float",
+   "name": "ATT_FADE_DECAY_MS",
+   "value": {
+    "bits": 4653212373585231872,
+    "repr": "1250.0"
+   }
+  },
+  {
+   "expr": "-10.0",
+   "kind": "float",
+   "name": "ATT_HRTF_FAR_DB",
+   "value": {
+    "bits": 13845191154443747328,
+    "repr": "-10.0"
+   }
+  },
+  {
+   "expr": "300.0",
+   "kind": "float",
+   "name": "PEDAL_BASE_FREQ",
+   "value": {
+    "bits": 4643985272004935680,
+    "repr": "300.0"
+   }
+  },
+  {
+   "expr": "4.0",
+   "kind": "float",
+   "name": "PEDAL_MAX_MULT",
+   "value": {
+    "bits": 4616189618054758400,
+    "repr": "4.0"
+   }
+  },
+  {
+   "expr": "60.0",
+   "kind": "float",
+   "name": "PEDAL_SMOOTH_MS",
+   "value": {
+    "bits": 4633641066610819072,
+    "repr": "60.0"
+   }
+  },
+  {
+   "expr": "100.0",
+   "kind": "float",
+   "name": "STEER_BASE_FREQ",
+   "value": {
+    "bits": 4636737291354636288,
+    "repr": "100.0"
+   }
+  },
+  {
+   "expr": "400.0",
+   "kind": "float",
+   "name": "STEER_MAX_FREQ",
+   "value": {
+    "bits": 4645744490609377280,
+    "repr": "400.0"
+   }
+  },
+  {
+   "expr": "-20.0",
+   "kind": "float",
+   "name": "STEER_AMP_DB",
+   "value": {
+    "bits": 13849694754071117824,
+    "repr": "-20.0"
+   }
+  },
+  {
+   "expr": "180.0",
+   "kind": "float",
+   "name": "DRIFT_FREQ_HZ",
+   "value": {
+    "bits": 4640537203540230144,
+    "repr": "180.0"
+   }
+  },
+  {
+   "expr": "-15.0",
+   "kind": "float",
+   "name": "DRIFT_AMP_DB",
+   "value": {
+    "bits": 13848005904210853888,
+    "repr": "-15.0"
+   }
+  },
+  {
+   "expr": "0.12",
+   "kind": "float",
+   "name": "DRIFT_RATE_TAU",
+   "value": {
+    "bits": 4593311331947716280,
+    "repr": "0.12"
+   }
+  },
+  {
+   "expr": "0.1",
+   "kind": "float",
+   "name": "DRIFT_PAN_TAU",
+   "value": {
+    "bits": 4591870180066957722,
+    "repr": "0.1"
+   }
+  },
+  {
+   "expr": "0.05",
+   "kind": "float",
+   "name": "DRIFT_ATTACK_TAU",
+   "value": {
+    "bits": 4587366580439587226,
+    "repr": "0.05"
+   }
+  },
+  {
+   "expr": "0.12",
+   "kind": "float",
+   "name": "DRIFT_RELEASE_TAU",
+   "value": {
+    "bits": 4593311331947716280,
+    "repr": "0.12"
+   }
+  },
+  {
+   "expr": "60",
+   "kind": "int",
+   "name": "SCANNER_BEEP_DUR_MS",
+   "value": 60
+  },
+  {
+   "expr": "10.0",
+   "kind": "float",
+   "name": "SCANNER_MAX_RATE_HZ",
+   "value": {
+    "bits": 4621819117588971520,
+    "repr": "10.0"
+   }
+  },
+  {
+   "expr": "0.5",
+   "kind": "float",
+   "name": "SCANNER_MIN_RATE_HZ",
+   "value": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "expr": "13.0",
+   "kind": "float",
+   "name": "SCANNER_HALF_DIST_BASE_M",
+   "value": {
+    "bits": 4623507967449235456,
+    "repr": "13.0"
+   }
+  },
+  {
+   "expr": "2.0",
+   "kind": "float",
+   "name": "SCANNER_HALF_DIST_PER_MS",
+   "value": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   }
+  },
+  {
+   "expr": "1000.0",
+   "kind": "float",
+   "name": "SCANNER_BEEP_FREQ_HZ",
+   "value": {
+    "bits": 4652007308841189376,
+    "repr": "1000.0"
+   }
+  },
+  {
+   "expr": "1.5",
+   "kind": "float",
+   "name": "SCANNER_ALIGN_THRESHOLD_DEG",
+   "value": {
+    "bits": 4609434218613702656,
+    "repr": "1.5"
+   }
+  },
+  {
+   "expr": "6.0",
+   "kind": "float",
+   "name": "SCANNER_ALIGN_PITCH_DECAY_DEG",
+   "value": {
+    "bits": 4618441417868443648,
+    "repr": "6.0"
+   }
+  },
+  {
+   "expr": "0.5",
+   "kind": "float",
+   "name": "SCANNER_ALIGN_WEIGHT",
+   "value": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "expr": "1000.0",
+   "kind": "float",
+   "name": "SCANNER_BASE_FREQ_DEFAULT",
+   "value": {
+    "bits": 4652007308841189376,
+    "repr": "1000.0"
+   }
+  },
+  {
+   "expr": "1.0",
+   "kind": "float",
+   "name": "SCANNER_OFFSET_OCT_DEFAULT",
+   "value": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   }
+  },
+  {
+   "expr": "0.5",
+   "kind": "float",
+   "name": "SCANNER_OFFSET_OCT_MIN",
+   "value": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "expr": "2.0",
+   "kind": "float",
+   "name": "SCANNER_OFFSET_OCT_MAX",
+   "value": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   }
+  },
+  {
+   "expr": "0.09",
+   "kind": "float",
+   "name": "SCANNER_BEARING_TAU",
+   "value": {
+    "bits": 4591149604126578442,
+    "repr": "0.09"
+   }
+  },
+  {
+   "expr": "4.0",
+   "kind": "float",
+   "name": "SCANNER_HALF_DIST_MIN_M",
+   "value": {
+    "bits": 4616189618054758400,
+    "repr": "4.0"
+   }
+  },
+  {
+   "expr": "0.25",
+   "kind": "float",
+   "name": "SCANNER_CLOSING_SMOOTH",
+   "value": {
+    "bits": 4598175219545276416,
+    "repr": "0.25"
+   }
+  },
+  {
+   "expr": "60.0",
+   "kind": "float",
+   "name": "SCANNER_CLOSING_MAX_MS",
+   "value": {
+    "bits": 4633641066610819072,
+    "repr": "60.0"
+   }
+  },
+  {
+   "expr": "0.04",
+   "kind": "float",
+   "name": "SCANNER_STEER_TONE_DEADZONE",
+   "value": {
+    "bits": 4585925428558828667,
+    "repr": "0.04"
+   }
+  },
+  {
+   "expr": "0.45",
+   "kind": "float",
+   "name": "SCANNER_STEER_TONE_FULL",
+   "value": {
+    "bits": 4601778099247172813,
+    "repr": "0.45"
+   }
+  },
+  {
+   "expr": "0.5",
+   "kind": "float",
+   "name": "SCANNER_STEER_TONE_CURVE",
+   "value": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "expr": "0.12",
+   "kind": "float",
+   "name": "SCANNER_TONE_LEVEL_SMOOTH",
+   "value": {
+    "bits": 4593311331947716280,
+    "repr": "0.12"
+   }
+  },
+  {
+   "expr": "0.12",
+   "kind": "float",
+   "name": "SCANNER_TONE_AMP",
+   "value": {
+    "bits": 4593311331947716280,
+    "repr": "0.12"
+   }
+  },
+  {
+   "expr": "0.6",
+   "kind": "float",
+   "name": "CANNON_AIM_STALE_S",
+   "value": {
+    "bits": 4603579539098121011,
+    "repr": "0.6"
+   }
+  },
+  {
+   "expr": "0.5",
+   "kind": "float",
+   "name": "CANNON_AIM_DEADZONE_DEG",
+   "value": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "expr": "10.0",
+   "kind": "float",
+   "name": "CANNON_AIM_FULL_ERROR_DEG",
+   "value": {
+    "bits": 4621819117588971520,
+    "repr": "10.0"
+   }
+  },
+  {
+   "expr": "440.0",
+   "kind": "float",
+   "name": "CANNON_AIM_RAISE_HZ",
+   "value": {
+    "bits": 4646448178051153920,
+    "repr": "440.0"
+   }
+  },
+  {
+   "expr": "660.0",
+   "kind": "float",
+   "name": "CANNON_AIM_LOWER_HZ",
+   "value": {
+    "bits": 4649016637213638656,
+    "repr": "660.0"
+   }
+  },
+  {
+   "expr": "1.5",
+   "kind": "float",
+   "name": "CANNON_AIM_MIN_RATE_HZ",
+   "value": {
+    "bits": 4609434218613702656,
+    "repr": "1.5"
+   }
+  },
+  {
+   "expr": "10.0",
+   "kind": "float",
+   "name": "CANNON_AIM_MAX_RATE_HZ",
+   "value": {
+    "bits": 4621819117588971520,
+    "repr": "10.0"
+   }
+  },
+  {
+   "expr": "0.32",
+   "kind": "float",
+   "name": "CANNON_AIM_DUTY",
+   "value": {
+    "bits": 4599436227440940155,
+    "repr": "0.32"
+   }
+  },
+  {
+   "expr": "-28.0",
+   "kind": "float",
+   "name": "CANNON_AIM_MIN_DB",
+   "value": {
+    "bits": 13851946553884803072,
+    "repr": "-28.0"
+   }
+  },
+  {
+   "expr": "-18.0",
+   "kind": "float",
+   "name": "CANNON_AIM_MAX_DB",
+   "value": {
+    "bits": 13849131804117696512,
+    "repr": "-18.0"
+   }
+  },
+  {
+   "expr": "660.0",
+   "kind": "float",
+   "name": "COUPLER_TONE_FREQ_HZ",
+   "value": {
+    "bits": 4649016637213638656,
+    "repr": "660.0"
+   }
+  },
+  {
+   "expr": "-18.0",
+   "kind": "float",
+   "name": "COUPLER_TONE_AMP_DB",
+   "value": {
+    "bits": 13849131804117696512,
+    "repr": "-18.0"
+   }
+  },
+  {
+   "expr": "0.8",
+   "kind": "float",
+   "name": "COUPLER_MIN_PITCH",
+   "value": {
+    "bits": 4605380978949069210,
+    "repr": "0.8"
+   }
+  },
+  {
+   "expr": "2.0",
+   "kind": "float",
+   "name": "COUPLER_MAX_PITCH",
+   "value": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   }
+  },
+  {
+   "expr": "2.5",
+   "kind": "float",
+   "name": "COUPLER_BEEP_PITCH",
+   "value": {
+    "bits": 4612811918334230528,
+    "repr": "2.5"
+   }
+  },
+  {
+   "expr": "10.0",
+   "kind": "float",
+   "name": "COUPLER_HALF_DIST_M",
+   "value": {
+    "bits": 4621819117588971520,
+    "repr": "10.0"
+   }
+  },
+  {
+   "expr": "1.5",
+   "kind": "float",
+   "name": "COUPLER_RANGE_M",
+   "value": {
+    "bits": 4609434218613702656,
+    "repr": "1.5"
+   }
+  },
+  {
+   "expr": "40",
+   "kind": "int",
+   "name": "COUPLER_BEEP_DUR_MS",
+   "value": 40
+  },
+  {
+   "expr": "20.0",
+   "kind": "float",
+   "name": "COUPLER_BEEP_MAX_RATE",
+   "value": {
+    "bits": 4626322717216342016,
+    "repr": "20.0"
+   }
+  },
+  {
+   "expr": "4.0",
+   "kind": "float",
+   "name": "COUPLER_BEEP_MIN_RATE",
+   "value": {
+    "bits": 4616189618054758400,
+    "repr": "4.0"
+   }
+  },
+  {
+   "expr": "413.7",
+   "kind": "float",
+   "name": "OBSTACLE_CUE_FREQ_HZ",
+   "value": {
+    "bits": 4645985503558185779,
+    "repr": "413.7"
+   }
+  },
+  {
+   "expr": "((1, 1.0), (2, 0.5), (4, 0.25), (6, 1.0 / 6.0), (8, 0.125), (10, 0.1))",
+   "kind": "seq",
+   "name": "OBSTACLE_CUE_HARMONICS",
+   "value": [
+    [
+     1,
+     {
+      "bits": 4607182418800017408,
+      "repr": "1.0"
+     }
+    ],
+    [
+     2,
+     {
+      "bits": 4602678819172646912,
+      "repr": "0.5"
+     }
+    ],
+    [
+     4,
+     {
+      "bits": 4598175219545276416,
+      "repr": "0.25"
+     }
+    ],
+    [
+     6,
+     {
+      "bits": 4595172819793696085,
+      "repr": "0.16666666666666666"
+     }
+    ],
+    [
+     8,
+     {
+      "bits": 4593671619917905920,
+      "repr": "0.125"
+     }
+    ],
+    [
+     10,
+     {
+      "bits": 4591870180066957722,
+      "repr": "0.1"
+     }
+    ]
+   ]
+  },
+  {
+   "expr": "80",
+   "kind": "int",
+   "name": "OBSTACLE_CUE_DUR_MS",
+   "value": 80
+  },
+  {
+   "expr": "8",
+   "kind": "int",
+   "name": "OBSTACLE_CUE_ATTACK_MS",
+   "value": 8
+  },
+  {
+   "expr": "42",
+   "kind": "int",
+   "name": "OBSTACLE_CUE_BODY_MS",
+   "value": 42
+  },
+  {
+   "expr": "30",
+   "kind": "int",
+   "name": "OBSTACLE_CUE_RELEASE_MS",
+   "value": 30
+  },
+  {
+   "expr": "-18.0",
+   "kind": "float",
+   "name": "OBSTACLE_DEFAULT_DB",
+   "value": {
+    "bits": 13849131804117696512,
+    "repr": "-18.0"
+   }
+  },
+  {
+   "expr": "-6.0",
+   "kind": "float",
+   "name": "OBSTACLE_ADVISORY_OFFSET_DB",
+   "value": {
+    "bits": 13841813454723219456,
+    "repr": "-6.0"
+   }
+  },
+  {
+   "expr": "-9.0",
+   "kind": "float",
+   "name": "OBSTACLE_STEADY_OFFSET_DB",
+   "value": {
+    "bits": 13844628204490326016,
+    "repr": "-9.0"
+   }
+  },
+  {
+   "expr": "100",
+   "kind": "int",
+   "name": "OBSTACLE_DOUBLET_GAP_MS",
+   "value": 100
+  },
+  {
+   "expr": "0.05",
+   "kind": "float",
+   "name": "OBSTACLE_BEARING_CROSSFADE_S",
+   "value": {
+    "bits": 4587366580439587226,
+    "repr": "0.05"
+   }
+  },
+  {
+   "expr": "0.05",
+   "kind": "float",
+   "name": "OBSTACLE_STEADY_ATTACK_S",
+   "value": {
+    "bits": 4587366580439587226,
+    "repr": "0.05"
+   }
+  },
+  {
+   "expr": "0.15",
+   "kind": "float",
+   "name": "OBSTACLE_STEADY_RELEASE_S",
+   "value": {
+    "bits": 4594572339843380019,
+    "repr": "0.15"
+   }
+  },
+  {
+   "expr": "1.0",
+   "kind": "float",
+   "name": "OBSTACLE_REARM_S",
+   "value": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   }
+  },
+  {
+   "expr": "(0.7, 1.5)",
+   "kind": "seq",
+   "name": "OBSTACLE_ADVISORY_RATE",
+   "value": [
+    {
+     "bits": 4604480259023595110,
+     "repr": "0.7"
+    },
+    {
+     "bits": 4609434218613702656,
+     "repr": "1.5"
+    }
+   ]
+  },
+  {
+   "expr": "(1.5, 4.0)",
+   "kind": "seq",
+   "name": "OBSTACLE_URGENT_RATE",
+   "value": [
+    {
+     "bits": 4609434218613702656,
+     "repr": "1.5"
+    },
+    {
+     "bits": 4616189618054758400,
+     "repr": "4.0"
+    }
+   ]
+  },
+  {
+   "expr": "-6.0",
+   "kind": "float",
+   "name": "OBSTACLE_URGENT_DUCK_DB",
+   "value": {
+    "bits": 13841813454723219456,
+    "repr": "-6.0"
+   }
+  },
+  {
+   "expr": "-12.0",
+   "kind": "float",
+   "name": "OBSTACLE_EMERGENCY_DUCK_DB",
+   "value": {
+    "bits": 13846317054350589952,
+    "repr": "-12.0"
+   }
+  },
+  {
+   "expr": "200",
+   "kind": "int",
+   "name": "TERRAIN_SWEEP_DUR_MS",
+   "value": 200
+  },
+  {
+   "expr": "-14.0",
+   "kind": "float",
+   "name": "TERRAIN_SWEEP_AMP_DB",
+   "value": {
+    "bits": 13847442954257432576,
+    "repr": "-14.0"
+   }
+  },
+  {
+   "expr": "500.0",
+   "kind": "float",
+   "name": "DROPOFF_FREQ_START",
+   "value": {
+    "bits": 4647503709213818880,
+    "repr": "500.0"
+   }
+  },
+  {
+   "expr": "200.0",
+   "kind": "float",
+   "name": "DROPOFF_FREQ_END",
+   "value": {
+    "bits": 4641240890982006784,
+    "repr": "200.0"
+   }
+  },
+  {
+   "expr": "200.0",
+   "kind": "float",
+   "name": "HILL_FREQ_START",
+   "value": {
+    "bits": 4641240890982006784,
+    "repr": "200.0"
+   }
+  },
+  {
+   "expr": "500.0",
+   "kind": "float",
+   "name": "HILL_FREQ_END",
+   "value": {
+    "bits": 4647503709213818880,
+    "repr": "500.0"
+   }
+  },
+  {
+   "expr": "80",
+   "kind": "int",
+   "name": "LS_CLICK_DUR_MS",
+   "value": 80
+  },
+  {
+   "expr": "250.0",
+   "kind": "float",
+   "name": "LS_CARRIER_HZ",
+   "value": {
+    "bits": 4643000109586448384,
+    "repr": "250.0"
+   }
+  },
+  {
+   "expr": "375.0",
+   "kind": "float",
+   "name": "LS_MOD_HZ",
+   "value": {
+    "bits": 4645304685958266880,
+    "repr": "375.0"
+   }
+  },
+  {
+   "expr": "4.0",
+   "kind": "float",
+   "name": "LS_MOD_INDEX_PEAK",
+   "value": {
+    "bits": 4616189618054758400,
+    "repr": "4.0"
+   }
+  },
+  {
+   "expr": "-14.0",
+   "kind": "float",
+   "name": "LS_AMP_DB",
+   "value": {
+    "bits": 13847442954257432576,
+    "repr": "-14.0"
+   }
+  },
+  {
+   "expr": "1.0",
+   "kind": "float",
+   "name": "LS_MIN_RATE_HZ",
+   "value": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   }
+  },
+  {
+   "expr": "10.0",
+   "kind": "float",
+   "name": "LS_MAX_RATE_HZ",
+   "value": {
+    "bits": 4621819117588971520,
+    "repr": "10.0"
+   }
+  },
+  {
+   "expr": "3.0",
+   "kind": "float",
+   "name": "LS_ACCEL_FOR_MAX_RATE",
+   "value": {
+    "bits": 4613937818241073152,
+    "repr": "3.0"
+   }
+  },
+  {
+   "expr": "6.0",
+   "kind": "float",
+   "name": "LS_DECEL_FOR_MAX_RATE",
+   "value": {
+    "bits": 4618441417868443648,
+    "repr": "6.0"
+   }
+  },
+  {
+   "expr": "0.7",
+   "kind": "float",
+   "name": "LS_PITCH_AT_0MPH",
+   "value": {
+    "bits": 4604480259023595110,
+    "repr": "0.7"
+   }
+  },
+  {
+   "expr": "1.8",
+   "kind": "float",
+   "name": "LS_PITCH_AT_25MPH",
+   "value": {
+    "bits": 4610785298501913805,
+    "repr": "1.8"
+   }
+  },
+  {
+   "expr": "0.05",
+   "kind": "float",
+   "name": "LS_FADE_ATTACK_S",
+   "value": {
+    "bits": 4587366580439587226,
+    "repr": "0.05"
+   }
+  },
+  {
+   "expr": "0.3",
+   "kind": "float",
+   "name": "LS_FADE_DECAY_S",
+   "value": {
+    "bits": 4599075939470750515,
+    "repr": "0.3"
+   }
+  },
+  {
+   "expr": "0.08",
+   "kind": "float",
+   "name": "LS_STOP_FADE_S",
+   "value": {
+    "bits": 4590429028186199163,
+    "repr": "0.08"
+   }
+  },
+  {
+   "expr": "0.0",
+   "kind": "float",
+   "name": "LS_HRTF_AZIMUTH",
+   "value": {
+    "bits": 0,
+    "repr": "0.0"
+   }
+  },
+  {
+   "expr": "140.0",
+   "kind": "float",
+   "name": "LS_STOP_TONE_HZ",
+   "value": {
+    "bits": 4639129828656676864,
+    "repr": "140.0"
+   }
+  },
+  {
+   "expr": "180",
+   "kind": "int",
+   "name": "LS_STOP_TONE_MS",
+   "value": 180
+  },
+  {
+   "expr": "-16.0",
+   "kind": "float",
+   "name": "LS_STOP_AMP_DB",
+   "value": {
+    "bits": 13848568854164275200,
+    "repr": "-16.0"
+   }
+  },
+  {
+   "expr": "90.0",
+   "kind": "float",
+   "name": "SLIP_LOCK_HZ",
+   "value": {
+    "bits": 4636033603912859648,
+    "repr": "90.0"
+   }
+  },
+  {
+   "expr": "220.0",
+   "kind": "float",
+   "name": "SLIP_SPIN_HZ",
+   "value": {
+    "bits": 4641944578423783424,
+    "repr": "220.0"
+   }
+  },
+  {
+   "expr": "22.0",
+   "kind": "float",
+   "name": "SLIP_AM_HZ",
+   "value": {
+    "bits": 4626885667169763328,
+    "repr": "22.0"
+   }
+  },
+  {
+   "expr": "0.6",
+   "kind": "float",
+   "name": "SLIP_AM_DEPTH",
+   "value": {
+    "bits": 4603579539098121011,
+    "repr": "0.6"
+   }
+  },
+  {
+   "expr": "5.0",
+   "kind": "float",
+   "name": "SLIP_MAG_FOR_FULL",
+   "value": {
+    "bits": 4617315517961601024,
+    "repr": "5.0"
+   }
+  },
+  {
+   "expr": "1.0",
+   "kind": "float",
+   "name": "SLIP_PITCH_RISE_OCT",
+   "value": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   }
+  },
+  {
+   "expr": "0.06",
+   "kind": "float",
+   "name": "SLIP_PITCH_TAU_S",
+   "value": {
+    "bits": 4588807732320345784,
+    "repr": "0.06"
+   }
+  },
+  {
+   "expr": "0.04",
+   "kind": "float",
+   "name": "SLIP_FADE_ATTACK_S",
+   "value": {
+    "bits": 4585925428558828667,
+    "repr": "0.04"
+   }
+  },
+  {
+   "expr": "0.12",
+   "kind": "float",
+   "name": "SLIP_FADE_DECAY_S",
+   "value": {
+    "bits": 4593311331947716280,
+    "repr": "0.12"
+   }
+  },
+  {
+   "expr": "-18.0",
+   "kind": "float",
+   "name": "SLIP_AMP_DB",
+   "value": {
+    "bits": 13849131804117696512,
+    "repr": "-18.0"
+   }
+  },
+  {
+   "expr": "5000.0",
+   "kind": "float",
+   "name": "SLIP_HARMONIC_TOP_HZ",
+   "value": {
+    "bits": 4662219572839972864,
+    "repr": "5000.0"
+   }
+  },
+  {
+   "expr": "4096",
+   "kind": "int",
+   "name": "SLIP_TABLE_LEN",
+   "value": 4096
+  },
+  {
+   "expr": "0.6",
+   "kind": "float",
+   "name": "SLIP_TABLE_RMS",
+   "value": {
+    "bits": 4603579539098121011,
+    "repr": "0.6"
+   }
+  },
+  {
+   "expr": "0.08",
+   "kind": "float",
+   "name": "SLIP_AZ_TAU_S",
+   "value": {
+    "bits": 4590429028186199163,
+    "repr": "0.08"
+   }
+  },
+  {
+   "expr": "(700.0, 2000.0)",
+   "kind": "seq",
+   "name": "SLIDE_BAND_LO",
+   "value": [
+    {
+     "bits": 4649368480934526976,
+     "repr": "700.0"
+    },
+    {
+     "bits": 4656510908468559872,
+     "repr": "2000.0"
+    }
+   ]
+  },
+  {
+   "expr": "(2000.0, 5500.0)",
+   "kind": "seq",
+   "name": "SLIDE_BAND_HI",
+   "value": [
+    {
+     "bits": 4656510908468559872,
+     "repr": "2000.0"
+    },
+    {
+     "bits": 4662769328653860864,
+     "repr": "5500.0"
+    }
+   ]
+  },
+  {
+   "expr": "2.0",
+   "kind": "float",
+   "name": "SLIDE_NOISE_S",
+   "value": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   }
+  },
+  {
+   "expr": "9.0",
+   "kind": "float",
+   "name": "SLIDE_AM_HZ",
+   "value": {
+    "bits": 4621256167635550208,
+    "repr": "9.0"
+   }
+  },
+  {
+   "expr": "0.35",
+   "kind": "float",
+   "name": "SLIDE_AM_DEPTH",
+   "value": {
+    "bits": 4599976659396224614,
+    "repr": "0.35"
+   }
+  },
+  {
+   "expr": "12.0",
+   "kind": "float",
+   "name": "SLIDE_DEG_MIN",
+   "value": {
+    "bits": 4622945017495814144,
+    "repr": "12.0"
+   }
+  },
+  {
+   "expr": "45.0",
+   "kind": "float",
+   "name": "SLIDE_DEG_FULL",
+   "value": {
+    "bits": 4631530004285489152,
+    "repr": "45.0"
+   }
+  },
+  {
+   "expr": "440.0",
+   "kind": "float",
+   "name": "GUIDANCE_FREQ_HZ",
+   "value": {
+    "bits": 4646448178051153920,
+    "repr": "440.0"
+   }
+  },
+  {
+   "expr": "0.5",
+   "kind": "float",
+   "name": "GUIDANCE_DEADZONE_DEG",
+   "value": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "expr": "5.0",
+   "kind": "float",
+   "name": "GUIDANCE_FULL_SCALE_DEG",
+   "value": {
+    "bits": 4617315517961601024,
+    "repr": "5.0"
+   }
+  },
+  {
+   "expr": "-40.0",
+   "kind": "float",
+   "name": "GUIDANCE_MIN_DBFS",
+   "value": {
+    "bits": 13854198353698488320,
+    "repr": "-40.0"
+   }
+  },
+  {
+   "expr": "-12.0",
+   "kind": "float",
+   "name": "GUIDANCE_MAX_DBFS",
+   "value": {
+    "bits": 13846317054350589952,
+    "repr": "-12.0"
+   }
+  },
+  {
+   "expr": "220.0",
+   "kind": "float",
+   "name": "HYDRO_STEER_LO_HZ",
+   "value": {
+    "bits": 4641944578423783424,
+    "repr": "220.0"
+   }
+  },
+  {
+   "expr": "440.0",
+   "kind": "float",
+   "name": "HYDRO_STEER_HI_HZ",
+   "value": {
+    "bits": 4646448178051153920,
+    "repr": "440.0"
+   }
+  },
+  {
+   "expr": "-26.0",
+   "kind": "float",
+   "name": "HYDRO_STEER_MIN_DB",
+   "value": {
+    "bits": 13851383603931381760,
+    "repr": "-26.0"
+   }
+  },
+  {
+   "expr": "-18.0",
+   "kind": "float",
+   "name": "HYDRO_STEER_MAX_DB",
+   "value": {
+    "bits": 13849131804117696512,
+    "repr": "-18.0"
+   }
+  },
+  {
+   "expr": "0.05",
+   "kind": "float",
+   "name": "HYDRO_STEER_DEADZONE",
+   "value": {
+    "bits": 4587366580439587226,
+    "repr": "0.05"
+   }
+  },
+  {
+   "expr": "0.85",
+   "kind": "float",
+   "name": "HYDRO_STEER_FULL",
+   "value": {
+    "bits": 4605831338911806259,
+    "repr": "0.85"
+   }
+  },
+  {
+   "expr": "75.0",
+   "kind": "float",
+   "name": "HYDRO_STEER_MAX_AZIMUTH_DEG",
+   "value": {
+    "bits": 4634978072750194688,
+    "repr": "75.0"
+   }
+  },
+  {
+   "expr": "2.0",
+   "kind": "float",
+   "name": "HYDRO_STEER_FM_RATIO_LO",
+   "value": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   }
+  },
+  {
+   "expr": "2.12",
+   "kind": "float",
+   "name": "HYDRO_STEER_FM_RATIO_HI",
+   "value": {
+    "bits": 4611956234405030134,
+    "repr": "2.12"
+   }
+  },
+  {
+   "expr": "0.9",
+   "kind": "float",
+   "name": "HYDRO_STEER_FM_INDEX_LO",
+   "value": {
+    "bits": 4606281698874543309,
+    "repr": "0.9"
+   }
+  },
+  {
+   "expr": "1.4",
+   "kind": "float",
+   "name": "HYDRO_STEER_FM_INDEX_HI",
+   "value": {
+    "bits": 4608983858650965606,
+    "repr": "1.4"
+   }
+  },
+  {
+   "expr": "3.0",
+   "kind": "float",
+   "name": "HYDRO_STEER_FM_DIRT_CURVE",
+   "value": {
+    "bits": 4613937818241073152,
+    "repr": "3.0"
+   }
+  },
+  {
+   "expr": "0.02",
+   "kind": "float",
+   "name": "HYDRO_STEER_ATTACK_TAU",
+   "value": {
+    "bits": 4581421828931458171,
+    "repr": "0.02"
+   }
+  },
+  {
+   "expr": "0.05",
+   "kind": "float",
+   "name": "HYDRO_STEER_REL_TAU",
+   "value": {
+    "bits": 4587366580439587226,
+    "repr": "0.05"
+   }
+  },
+  {
+   "expr": "0.05",
+   "kind": "float",
+   "name": "HYDRO_STEER_PITCH_TAU",
+   "value": {
+    "bits": 4587366580439587226,
+    "repr": "0.05"
+   }
+  },
+  {
+   "expr": "2.5",
+   "kind": "float",
+   "name": "HYDRO_CENTER_REARM",
+   "value": {
+    "bits": 4612811918334230528,
+    "repr": "2.5"
+   }
+  },
+  {
+   "expr": "16",
+   "kind": "int",
+   "name": "HYDRO_CENTER_CLICK_DUR_MS",
+   "value": 16
+  },
+  {
+   "expr": "-6.0",
+   "kind": "float",
+   "name": "HYDRO_CENTER_CLICK_DB",
+   "value": {
+    "bits": 13841813454723219456,
+    "repr": "-6.0"
+   }
+  },
+  {
+   "expr": "2500.0",
+   "kind": "float",
+   "name": "HYDRO_CENTER_CLICK_LO_HZ",
+   "value": {
+    "bits": 4657715973212602368,
+    "repr": "2500.0"
+   }
+  },
+  {
+   "expr": "7000.0",
+   "kind": "float",
+   "name": "HYDRO_CENTER_CLICK_HI_HZ",
+   "value": {
+    "bits": 4664418596095524864,
+    "repr": "7000.0"
+   }
+  },
+  {
+   "expr": "45.0",
+   "kind": "float",
+   "name": "TRAILER_FULL_DEG",
+   "value": {
+    "bits": 4631530004285489152,
+    "repr": "45.0"
+   }
+  },
+  {
+   "expr": "-10.0",
+   "kind": "float",
+   "name": "TRAILER_FWD_DUCK_DB",
+   "value": {
+    "bits": 13845191154443747328,
+    "repr": "-10.0"
+   }
+  },
+  {
+   "expr": "0.15",
+   "kind": "float",
+   "name": "TRAILER_DUCK_TAU",
+   "value": {
+    "bits": 4594572339843380019,
+    "repr": "0.15"
+   }
+  },
+  {
+   "expr": "2.0",
+   "kind": "float",
+   "name": "IMPL_GROUND_FAR_M",
+   "value": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   }
+  },
+  {
+   "expr": "180.0",
+   "kind": "float",
+   "name": "IMPL_GROUND_CARRIER_HZ",
+   "value": {
+    "bits": 4640537203540230144,
+    "repr": "180.0"
+   }
+  },
+  {
+   "expr": "3.0",
+   "kind": "float",
+   "name": "IMPL_GROUND_RATIO_BASE",
+   "value": {
+    "bits": 4613937818241073152,
+    "repr": "3.0"
+   }
+  },
+  {
+   "expr": "0.45",
+   "kind": "float",
+   "name": "IMPL_GROUND_RATIO_DRIFT",
+   "value": {
+    "bits": 4601778099247172813,
+    "repr": "0.45"
+   }
+  },
+  {
+   "expr": "2.0",
+   "kind": "float",
+   "name": "IMPL_GROUND_DIRT_CURVE",
+   "value": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   }
+  },
+  {
+   "expr": "0.6",
+   "kind": "float",
+   "name": "IMPL_GROUND_INDEX_LO",
+   "value": {
+    "bits": 4603579539098121011,
+    "repr": "0.6"
+   }
+  },
+  {
+   "expr": "2.2",
+   "kind": "float",
+   "name": "IMPL_GROUND_INDEX_HI",
+   "value": {
+    "bits": 4612136378390124954,
+    "repr": "2.2"
+   }
+  },
+  {
+   "expr": "0.35",
+   "kind": "float",
+   "name": "IMPL_GROUND_JACK_FULL_M",
+   "value": {
+    "bits": 4599976659396224614,
+    "repr": "0.35"
+   }
+  },
+  {
+   "expr": "1.5",
+   "kind": "float",
+   "name": "IMPL_GROUND_JACK_OCTAVES",
+   "value": {
+    "bits": 4609434218613702656,
+    "repr": "1.5"
+   }
+  },
+  {
+   "expr": "1.2",
+   "kind": "float",
+   "name": "IMPL_GROUND_JACK_INDEX",
+   "value": {
+    "bits": 4608083138725491507,
+    "repr": "1.2"
+   }
+  },
+  {
+   "expr": "-30.0",
+   "kind": "float",
+   "name": "IMPL_GROUND_MIN_DB",
+   "value": {
+    "bits": 13852509503838224384,
+    "repr": "-30.0"
+   }
+  },
+  {
+   "expr": "-19.5",
+   "kind": "float",
+   "name": "IMPL_GROUND_MAX_DB",
+   "value": {
+    "bits": 13849554016582762496,
+    "repr": "-19.5"
+   }
+  },
+  {
+   "expr": "IMPL_GROUND_MAX_DB - IMPL_GROUND_MIN_DB",
+   "kind": "float",
+   "name": "IMPL_GROUND_SPAN_DB",
+   "value": {
+    "bits": 4622100592565682176,
+    "repr": "10.5"
+   }
+  },
+  {
+   "expr": "0.15",
+   "kind": "float",
+   "name": "IMPL_GROUND_CLOSING_MPS",
+   "value": {
+    "bits": 4594572339843380019,
+    "repr": "0.15"
+   }
+  },
+  {
+   "expr": "0.35",
+   "kind": "float",
+   "name": "IMPL_STREAM_PAN",
+   "value": {
+    "bits": 4599976659396224614,
+    "repr": "0.35"
+   }
+  },
+  {
+   "expr": "(1.0 - IMPL_STREAM_PAN) * 0.25 * math.pi",
+   "kind": "float",
+   "name": "_IMPL_PAN_THETA",
+   "value": {
+    "bits": 4602773474084094902,
+    "repr": "0.5105088062083414"
+   }
+  },
+  {
+   "expr": "math.cos(_IMPL_PAN_THETA)",
+   "kind": "float",
+   "name": "IMPL_GROUND_GAIN_L",
+   "value": {
+    "bits": 4606033964929947006,
+    "repr": "0.8724960070727972"
+   }
+  },
+  {
+   "expr": "math.sin(_IMPL_PAN_THETA)",
+   "kind": "float",
+   "name": "IMPL_GROUND_GAIN_R",
+   "value": {
+    "bits": 4602473837682429901,
+    "repr": "0.4886212414969549"
+   }
+  },
+  {
+   "expr": "IMPL_GROUND_GAIN_R",
+   "kind": "float",
+   "name": "IMPL_TILT_GAIN_L",
+   "value": {
+    "bits": 4602473837682429901,
+    "repr": "0.4886212414969549"
+   }
+  },
+  {
+   "expr": "IMPL_GROUND_GAIN_L",
+   "kind": "float",
+   "name": "IMPL_TILT_GAIN_R",
+   "value": {
+    "bits": 4606033964929947006,
+    "repr": "0.8724960070727972"
+   }
+  },
+  {
+   "expr": "400.0",
+   "kind": "float",
+   "name": "IMPL_TILT_LEVEL_HZ",
+   "value": {
+    "bits": 4645744490609377280,
+    "repr": "400.0"
+   }
+  },
+  {
+   "expr": "24",
+   "kind": "int",
+   "name": "IMPL_TILT_STEPS_PER_OCT",
+   "value": 24
+  },
+  {
+   "expr": "50.0",
+   "kind": "float",
+   "name": "IMPL_TILT_FALLBACK_SPAN_DEG",
+   "value": {
+    "bits": 4632233691727265792,
+    "repr": "50.0"
+   }
+  },
+  {
+   "expr": "5.0",
+   "kind": "float",
+   "name": "IMPL_TILT_MIN_SPAN_DEG",
+   "value": {
+    "bits": 4617315517961601024,
+    "repr": "5.0"
+   }
+  },
+  {
+   "expr": "3.0",
+   "kind": "float",
+   "name": "IMPL_TILT_STOP_CONFIRM_DEG",
+   "value": {
+    "bits": 4613937818241073152,
+    "repr": "3.0"
+   }
+  },
+  {
+   "expr": "2.0",
+   "kind": "float",
+   "name": "IMPL_TILT_SPAN_SWAP_DEG",
+   "value": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   }
+  },
+  {
+   "expr": "-26.0",
+   "kind": "float",
+   "name": "IMPL_TILT_MIN_DB",
+   "value": {
+    "bits": 13851383603931381760,
+    "repr": "-26.0"
+   }
+  },
+  {
+   "expr": "-20.0",
+   "kind": "float",
+   "name": "IMPL_TILT_MAX_DB",
+   "value": {
+    "bits": 13849694754071117824,
+    "repr": "-20.0"
+   }
+  },
+  {
+   "expr": "IMPL_TILT_MAX_DB - IMPL_TILT_MIN_DB",
+   "kind": "float",
+   "name": "IMPL_TILT_SPAN_DB",
+   "value": {
+    "bits": 4618441417868443648,
+    "repr": "6.0"
+   }
+  },
+  {
+   "expr": "0.008",
+   "kind": "float",
+   "name": "IMPL_TILT_GLIDE_TAU",
+   "value": {
+    "bits": 4575765307799480828,
+    "repr": "0.008"
+   }
+  },
+  {
+   "expr": "1.5",
+   "kind": "float",
+   "name": "IMPL_TILT_STEP_DIP_DB",
+   "value": {
+    "bits": 4609434218613702656,
+    "repr": "1.5"
+   }
+  },
+  {
+   "expr": "6.0",
+   "kind": "float",
+   "name": "IMPL_TILT_STEP_DIP_MS",
+   "value": {
+    "bits": 4618441417868443648,
+    "repr": "6.0"
+   }
+  },
+  {
+   "expr": "0.06",
+   "kind": "float",
+   "name": "IMPL_GATE_ON",
+   "value": {
+    "bits": 4588807732320345784,
+    "repr": "0.06"
+   }
+  },
+  {
+   "expr": "0.02",
+   "kind": "float",
+   "name": "IMPL_GATE_OFF",
+   "value": {
+    "bits": 4581421828931458171,
+    "repr": "0.02"
+   }
+  },
+  {
+   "expr": "0.03",
+   "kind": "float",
+   "name": "IMPL_GATE_ATTACK_TAU",
+   "value": {
+    "bits": 4584304132692975288,
+    "repr": "0.03"
+   }
+  },
+  {
+   "expr": "0.35",
+   "kind": "float",
+   "name": "IMPL_GATE_REL_TAU",
+   "value": {
+    "bits": 4599976659396224614,
+    "repr": "0.35"
+   }
+  },
+  {
+   "expr": "0.02",
+   "kind": "float",
+   "name": "IMPL_GATE_CUT",
+   "value": {
+    "bits": 4581421828931458171,
+    "repr": "0.02"
+   }
+  },
+  {
+   "expr": "0.25",
+   "kind": "float",
+   "name": "IMPL_CLOSING_TAU",
+   "value": {
+    "bits": 4598175219545276416,
+    "repr": "0.25"
+   }
+  },
+  {
+   "expr": "0.5",
+   "kind": "float",
+   "name": "IMPL_CLOSING_STALE_S",
+   "value": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "expr": "-4.0",
+   "kind": "float",
+   "name": "IMPL_HYDRO_DUCK_DB",
+   "value": {
+    "bits": 13839561654909534208,
+    "repr": "-4.0"
+   }
+  },
+  {
+   "expr": "6.0",
+   "kind": "float",
+   "name": "DOCK_MAX_RANGE_M",
+   "value": {
+    "bits": 4618441417868443648,
+    "repr": "6.0"
+   }
+  },
+  {
+   "expr": "3.5",
+   "kind": "float",
+   "name": "DOCK_BEAT_RANGE_M",
+   "value": {
+    "bits": 4615063718147915776,
+    "repr": "3.5"
+   }
+  },
+  {
+   "expr": "700.0",
+   "kind": "float",
+   "name": "DOCK_PULSE_FREQ_HZ",
+   "value": {
+    "bits": 4649368480934526976,
+    "repr": "700.0"
+   }
+  },
+  {
+   "expr": "1.2",
+   "kind": "float",
+   "name": "DOCK_PULSE_MIN_HZ",
+   "value": {
+    "bits": 4608083138725491507,
+    "repr": "1.2"
+   }
+  },
+  {
+   "expr": "12.0",
+   "kind": "float",
+   "name": "DOCK_PULSE_MAX_HZ",
+   "value": {
+    "bits": 4622945017495814144,
+    "repr": "12.0"
+   }
+  },
+  {
+   "expr": "0.35",
+   "kind": "float",
+   "name": "DOCK_PULSE_DUTY",
+   "value": {
+    "bits": 4599976659396224614,
+    "repr": "0.35"
+   }
+  },
+  {
+   "expr": "0.15",
+   "kind": "float",
+   "name": "DOCK_PULSE_EDGE",
+   "value": {
+    "bits": 4594572339843380019,
+    "repr": "0.15"
+   }
+  },
+  {
+   "expr": "-18.0",
+   "kind": "float",
+   "name": "DOCK_PULSE_DB",
+   "value": {
+    "bits": 13849131804117696512,
+    "repr": "-18.0"
+   }
+  },
+  {
+   "expr": "75.0",
+   "kind": "float",
+   "name": "DOCK_MAX_AZIMUTH_DEG",
+   "value": {
+    "bits": 4634978072750194688,
+    "repr": "75.0"
+   }
+  },
+  {
+   "expr": "1.2",
+   "kind": "float",
+   "name": "DOCK_LATERAL_FULL_M",
+   "value": {
+    "bits": 4608083138725491507,
+    "repr": "1.2"
+   }
+  },
+  {
+   "expr": "330.0",
+   "kind": "float",
+   "name": "DOCK_REF_HZ",
+   "value": {
+    "bits": 4644513037586268160,
+    "repr": "330.0"
+   }
+  },
+  {
+   "expr": "12.0",
+   "kind": "float",
+   "name": "DOCK_BEAT_MAX_HZ",
+   "value": {
+    "bits": 4622945017495814144,
+    "repr": "12.0"
+   }
+  },
+  {
+   "expr": "24.0",
+   "kind": "float",
+   "name": "DOCK_BEAT_HZ_PER_M",
+   "value": {
+    "bits": 4627448617123184640,
+    "repr": "24.0"
+   }
+  },
+  {
+   "expr": "-22.0",
+   "kind": "float",
+   "name": "DOCK_BEAT_DB",
+   "value": {
+    "bits": 13850257704024539136,
+    "repr": "-22.0"
+   }
+  },
+  {
+   "expr": "5.5",
+   "kind": "float",
+   "name": "DOCK_AM_ABOVE_HZ",
+   "value": {
+    "bits": 4617878467915022336,
+    "repr": "5.5"
+   }
+  },
+  {
+   "expr": "2.0",
+   "kind": "float",
+   "name": "DOCK_AM_BELOW_HZ",
+   "value": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   }
+  },
+  {
+   "expr": "0.45",
+   "kind": "float",
+   "name": "DOCK_AM_DEPTH",
+   "value": {
+    "bits": 4601778099247172813,
+    "repr": "0.45"
+   }
+  },
+  {
+   "expr": "0.5",
+   "kind": "float",
+   "name": "DOCK_LOCK_BEAT_HZ",
+   "value": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "expr": "2.5",
+   "kind": "float",
+   "name": "DOCK_LOCK_REARM_BEAT_HZ",
+   "value": {
+    "bits": 4612811918334230528,
+    "repr": "2.5"
+   }
+  },
+  {
+   "expr": "-8.0",
+   "kind": "float",
+   "name": "DOCK_LOCK_DB",
+   "value": {
+    "bits": 13844065254536904704,
+    "repr": "-8.0"
+   }
+  },
+  {
+   "expr": "1568.0",
+   "kind": "float",
+   "name": "DOCK_LOCK_HI_HZ",
+   "value": {
+    "bits": 4654610952375762944,
+    "repr": "1568.0"
+   }
+  },
+  {
+   "expr": "1046.0",
+   "kind": "float",
+   "name": "DOCK_LOCK_LO_HZ",
+   "value": {
+    "bits": 4652315172096966656,
+    "repr": "1046.0"
+   }
+  },
+  {
+   "expr": "110.0",
+   "kind": "float",
+   "name": "DOCK_LOCK_DUR_MS",
+   "value": {
+    "bits": 4637440978796412928,
+    "repr": "110.0"
+   }
+  },
+  {
+   "expr": "25.0",
+   "kind": "float",
+   "name": "DOCK_RAMP_MAX_RANGE_M",
+   "value": {
+    "bits": 4627730092099895296,
+    "repr": "25.0"
+   }
+  },
+  {
+   "expr": "8.0",
+   "kind": "float",
+   "name": "DOCK_RAMP_BEAT_RANGE_M",
+   "value": {
+    "bits": 4620693217682128896,
+    "repr": "8.0"
+   }
+  },
+  {
+   "expr": "3.0",
+   "kind": "float",
+   "name": "DOCK_RAMP_LATERAL_FULL_M",
+   "value": {
+    "bits": 4613937818241073152,
+    "repr": "3.0"
+   }
+  },
+  {
+   "expr": "0.15",
+   "kind": "float",
+   "name": "DOCK_RAMP_LATERAL_DEADZONE_M",
+   "value": {
+    "bits": 4594572339843380019,
+    "repr": "0.15"
+   }
+  },
+  {
+   "expr": "0.5",
+   "kind": "float",
+   "name": "DOCK_RAMP_BEAT_HZ_PER_DEG",
+   "value": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "expr": "0.15",
+   "kind": "float",
+   "name": "DOCK_RAMP_LOCK_LATERAL_M",
+   "value": {
+    "bits": 4594572339843380019,
+    "repr": "0.15"
+   }
+  },
+  {
+   "expr": "3.0",
+   "kind": "float",
+   "name": "DOCK_RAMP_LOCK_YAW_DEG",
+   "value": {
+    "bits": 4613937818241073152,
+    "repr": "3.0"
+   }
+  },
+  {
+   "expr": "0.5",
+   "kind": "float",
+   "name": "DOCK_RAMP_REARM_LATERAL_M",
+   "value": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "expr": "8.0",
+   "kind": "float",
+   "name": "DOCK_RAMP_REARM_YAW_DEG",
+   "value": {
+    "bits": 4620693217682128896,
+    "repr": "8.0"
+   }
+  },
+  {
+   "expr": "0.04",
+   "kind": "float",
+   "name": "DOCK_ATTACK_TAU",
+   "value": {
+    "bits": 4585925428558828667,
+    "repr": "0.04"
+   }
+  },
+  {
+   "expr": "0.2",
+   "kind": "float",
+   "name": "DOCK_REL_TAU",
+   "value": {
+    "bits": 4596373779694328218,
+    "repr": "0.2"
+   }
+  },
+  {
+   "expr": "-12.0",
+   "kind": "float",
+   "name": "DOCK_HYDRO_DUCK_DB",
+   "value": {
+    "bits": 13846317054350589952,
+    "repr": "-12.0"
+   }
+  },
+  {
+   "expr": "0.6",
+   "kind": "float",
+   "name": "DOCK_STALE_S",
+   "value": {
+    "bits": 4603579539098121011,
+    "repr": "0.6"
+   }
+  },
+  {
+   "expr": "1320.0",
+   "kind": "float",
+   "name": "SLAM_CLEAR_HZ",
+   "value": {
+    "bits": 4653520236841009152,
+    "repr": "1320.0"
+   }
+  },
+  {
+   "expr": "660.0",
+   "kind": "float",
+   "name": "SLAM_OVER_HZ",
+   "value": {
+    "bits": 4649016637213638656,
+    "repr": "660.0"
+   }
+  },
+  {
+   "expr": "55.0",
+   "kind": "float",
+   "name": "SLAM_TICK_DUR_MS",
+   "value": {
+    "bits": 4632937379169042432,
+    "repr": "55.0"
+   }
+  },
+  {
+   "expr": "523.0",
+   "kind": "float",
+   "name": "SLAM_COMMIT_LO_HZ",
+   "value": {
+    "bits": 4647811572469596160,
+    "repr": "523.0"
+   }
+  },
+  {
+   "expr": "1046.0",
+   "kind": "float",
+   "name": "SLAM_COMMIT_HI_HZ",
+   "value": {
+    "bits": 4652315172096966656,
+    "repr": "1046.0"
+   }
+  },
+  {
+   "expr": "150.0",
+   "kind": "float",
+   "name": "SLAM_COMMIT_DUR_MS",
+   "value": {
+    "bits": 4639481672377565184,
+    "repr": "150.0"
+   }
+  },
+  {
+   "expr": "-12.0",
+   "kind": "float",
+   "name": "SLAM_CUE_DB",
+   "value": {
+    "bits": 13846317054350589952,
+    "repr": "-12.0"
+   }
+  },
+  {
+   "expr": "1760.0",
+   "kind": "float",
+   "name": "ENTRY_CUE_HZ",
+   "value": {
+    "bits": 4655455377305894912,
+    "repr": "1760.0"
+   }
+  },
+  {
+   "expr": "90.0",
+   "kind": "float",
+   "name": "ENTRY_CUE_DUR_MS",
+   "value": {
+    "bits": 4636033603912859648,
+    "repr": "90.0"
+   }
+  },
+  {
+   "expr": "-14.0",
+   "kind": "float",
+   "name": "ENTRY_CUE_DB",
+   "value": {
+    "bits": 13847442954257432576,
+    "repr": "-14.0"
+   }
+  },
+  {
+   "expr": "880.0",
+   "kind": "float",
+   "name": "DOCK_APPROACH_CUE_HZ",
+   "value": {
+    "bits": 4650951777678524416,
+    "repr": "880.0"
+   }
+  },
+  {
+   "expr": "40.0",
+   "kind": "float",
+   "name": "DOCK_APPROACH_CUE_PIP_MS",
+   "value": {
+    "bits": 4630826316843712512,
+    "repr": "40.0"
+   }
+  },
+  {
+   "expr": "50.0",
+   "kind": "float",
+   "name": "DOCK_APPROACH_CUE_GAP_MS",
+   "value": {
+    "bits": 4632233691727265792,
+    "repr": "50.0"
+   }
+  },
+  {
+   "expr": "-12.0",
+   "kind": "float",
+   "name": "DOCK_APPROACH_CUE_DB",
+   "value": {
+    "bits": 13846317054350589952,
+    "repr": "-12.0"
+   }
+  },
+  {
+   "expr": "800.0",
+   "kind": "float",
+   "name": "NODE_BEEP_BASE_FREQ_HZ",
+   "value": {
+    "bits": 4650248090236747776,
+    "repr": "800.0"
+   }
+  },
+  {
+   "expr": "600.0",
+   "kind": "float",
+   "name": "NODE_BEEP_LOW_FREQ_HZ",
+   "value": {
+    "bits": 4648488871632306176,
+    "repr": "600.0"
+   }
+  },
+  {
+   "expr": "1400.0",
+   "kind": "float",
+   "name": "NODE_BEEP_HIGH_FREQ_HZ",
+   "value": {
+    "bits": 4653872080561897472,
+    "repr": "1400.0"
+   }
+  },
+  {
+   "expr": "40",
+   "kind": "int",
+   "name": "NODE_BEEP_DUR_MS",
+   "value": 40
+  },
+  {
+   "expr": "-14.0",
+   "kind": "float",
+   "name": "NODE_BEEP_AMP_DB",
+   "value": {
+    "bits": 13847442954257432576,
+    "repr": "-14.0"
+   }
+  },
+  {
+   "expr": "770.0",
+   "kind": "float",
+   "name": "CLICKSPOT_BEEP_FREQ_HZ",
+   "value": {
+    "bits": 4649984207446081536,
+    "repr": "770.0"
+   }
+  },
+  {
+   "expr": "1540.0",
+   "kind": "float",
+   "name": "CLICKSPOT_BEEP_MOD_HZ",
+   "value": {
+    "bits": 4654487807073452032,
+    "repr": "1540.0"
+   }
+  },
+  {
+   "expr": "4.0",
+   "kind": "float",
+   "name": "CLICKSPOT_BEEP_MOD_INDEX",
+   "value": {
+    "bits": 4616189618054758400,
+    "repr": "4.0"
+   }
+  },
+  {
+   "expr": "18",
+   "kind": "int",
+   "name": "CLICKSPOT_BEEP_DUR_MS",
+   "value": 18
+  },
+  {
+   "expr": "-12.0",
+   "kind": "float",
+   "name": "CLICKSPOT_BEEP_AMP_DB",
+   "value": {
+    "bits": 13846317054350589952,
+    "repr": "-12.0"
+   }
+  },
+  {
+   "expr": "739.99",
+   "kind": "float",
+   "name": "ROAD_BEEP_FREQ_HZ",
+   "value": {
+    "bits": 4649720236694485074,
+    "repr": "739.99"
+   }
+  },
+  {
+   "expr": "369.99",
+   "kind": "float",
+   "name": "ROAD_BEEP_MOD_HZ",
+   "value": {
+    "bits": 4645216549106184356,
+    "repr": "369.99"
+   }
+  },
+  {
+   "expr": "1.8",
+   "kind": "float",
+   "name": "ROAD_BEEP_MOD_INDEX",
+   "value": {
+    "bits": 4610785298501913805,
+    "repr": "1.8"
+   }
+  },
+  {
+   "expr": "140",
+   "kind": "int",
+   "name": "ROAD_BEEP_DUR_MS",
+   "value": 140
+  },
+  {
+   "expr": "-14.0",
+   "kind": "float",
+   "name": "ROAD_BEEP_AMP_DB",
+   "value": {
+    "bits": 13847442954257432576,
+    "repr": "-14.0"
+   }
+  },
+  {
+   "expr": "0.7",
+   "kind": "float",
+   "name": "ROAD_BEEP_MIN_RATE_HZ",
+   "value": {
+    "bits": 4604480259023595110,
+    "repr": "0.7"
+   }
+  },
+  {
+   "expr": "4.0",
+   "kind": "float",
+   "name": "ROAD_BEEP_MAX_RATE_HZ",
+   "value": {
+    "bits": 4616189618054758400,
+    "repr": "4.0"
+   }
+  },
+  {
+   "expr": "20.0",
+   "kind": "float",
+   "name": "ROAD_BEEP_HALF_DIST_M",
+   "value": {
+    "bits": 4626322717216342016,
+    "repr": "20.0"
+   }
+  },
+  {
+   "expr": "523.25",
+   "kind": "float",
+   "name": "ROUTE_BEACON_FREQ_HZ",
+   "value": {
+    "bits": 4647813771492851712,
+    "repr": "523.25"
+   }
+  },
+  {
+   "expr": "1046.5",
+   "kind": "float",
+   "name": "ROUTE_BEACON_MOD_HZ",
+   "value": {
+    "bits": 4652317371120222208,
+    "repr": "1046.5"
+   }
+  },
+  {
+   "expr": "0.9",
+   "kind": "float",
+   "name": "ROUTE_BEACON_MOD_INDEX",
+   "value": {
+    "bits": 4606281698874543309,
+    "repr": "0.9"
+   }
+  },
+  {
+   "expr": "110",
+   "kind": "int",
+   "name": "ROUTE_BEACON_DUR_MS",
+   "value": 110
+  },
+  {
+   "expr": "-16.0",
+   "kind": "float",
+   "name": "ROUTE_BEACON_AMP_DB",
+   "value": {
+    "bits": 13848568854164275200,
+    "repr": "-16.0"
+   }
+  },
+  {
+   "expr": "0.5",
+   "kind": "float",
+   "name": "ROUTE_BEACON_MIN_RATE_HZ",
+   "value": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "expr": "4.0",
+   "kind": "float",
+   "name": "ROUTE_BEACON_MAX_RATE_HZ",
+   "value": {
+    "bits": 4616189618054758400,
+    "repr": "4.0"
+   }
+  },
+  {
+   "expr": "400.0",
+   "kind": "float",
+   "name": "ROUTE_BEACON_HALF_DIST_M",
+   "value": {
+    "bits": 4645744490609377280,
+    "repr": "400.0"
+   }
+  },
+  {
+   "expr": "440.0",
+   "kind": "float",
+   "name": "ROAD_CORRECTION_CARRIER_HZ",
+   "value": {
+    "bits": 4646448178051153920,
+    "repr": "440.0"
+   }
+  },
+  {
+   "expr": "523.25",
+   "kind": "float",
+   "name": "ROAD_CORRECTION_MID_HZ",
+   "value": {
+    "bits": 4647813771492851712,
+    "repr": "523.25"
+   }
+  },
+  {
+   "expr": "659.25",
+   "kind": "float",
+   "name": "ROAD_CORRECTION_HIGH_HZ",
+   "value": {
+    "bits": 4649010040143872000,
+    "repr": "659.25"
+   }
+  },
+  {
+   "expr": "80",
+   "kind": "int",
+   "name": "ROAD_CORRECTION_PIP_MS",
+   "value": 80
+  },
+  {
+   "expr": "0.85",
+   "kind": "float",
+   "name": "ROAD_CORRECTION_RATE_MIN_HZ",
+   "value": {
+    "bits": 4605831338911806259,
+    "repr": "0.85"
+   }
+  },
+  {
+   "expr": "3.5",
+   "kind": "float",
+   "name": "ROAD_CORRECTION_RATE_MAX_HZ",
+   "value": {
+    "bits": 4615063718147915776,
+    "repr": "3.5"
+   }
+  },
+  {
+   "expr": "659.25",
+   "kind": "float",
+   "name": "ROAD_CORRECTION_UNWIND_HZ",
+   "value": {
+    "bits": 4649010040143872000,
+    "repr": "659.25"
+   }
+  },
+  {
+   "expr": "55",
+   "kind": "int",
+   "name": "ROAD_CORRECTION_UNWIND_PIP_MS",
+   "value": 55
+  },
+  {
+   "expr": "55",
+   "kind": "int",
+   "name": "ROAD_CORRECTION_UNWIND_GAP_MS",
+   "value": 55
+  },
+  {
+   "expr": "0.8",
+   "kind": "float",
+   "name": "ROAD_CORRECTION_UNWIND_REPEAT_S",
+   "value": {
+    "bits": 4605380978949069210,
+    "repr": "0.8"
+   }
+  },
+  {
+   "expr": "659.25",
+   "kind": "float",
+   "name": "ROAD_CORRECTION_SETTLED_START_HZ",
+   "value": {
+    "bits": 4649010040143872000,
+    "repr": "659.25"
+   }
+  },
+  {
+   "expr": "880.0",
+   "kind": "float",
+   "name": "ROAD_CORRECTION_SETTLED_END_HZ",
+   "value": {
+    "bits": 4650951777678524416,
+    "repr": "880.0"
+   }
+  },
+  {
+   "expr": "130",
+   "kind": "int",
+   "name": "ROAD_CORRECTION_SETTLED_MS",
+   "value": 130
+  },
+  {
+   "expr": "2.0",
+   "kind": "float",
+   "name": "ROAD_CORRECTION_SETTLED_REFRACTORY_S",
+   "value": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   }
+  },
+  {
+   "expr": "35.0",
+   "kind": "float",
+   "name": "ROAD_CORRECTION_MAX_AZIMUTH_DEG",
+   "value": {
+    "bits": 4630122629401935872,
+    "repr": "35.0"
+   }
+  },
+  {
+   "expr": "25.0",
+   "kind": "float",
+   "name": "ROAD_CORRECTION_MIN_AZIMUTH_DEG",
+   "value": {
+    "bits": 4627730092099895296,
+    "repr": "25.0"
+   }
+  },
+  {
+   "expr": "0.015",
+   "kind": "float",
+   "name": "ROAD_CORRECTION_ATTACK_S",
+   "value": {
+    "bits": 4579800533065604792,
+    "repr": "0.015"
+   }
+  },
+  {
+   "expr": "0.025",
+   "kind": "float",
+   "name": "ROAD_CORRECTION_RELEASE_S",
+   "value": {
+    "bits": 4582862980812216730,
+    "repr": "0.025"
+   }
+  },
+  {
+   "expr": "783.99",
+   "kind": "float",
+   "name": "ROAD_CHIME_FWD_FREQ_HZ",
+   "value": {
+    "bits": 4650107264787462226,
+    "repr": "783.99"
+   }
+  },
+  {
+   "expr": "523.25",
+   "kind": "float",
+   "name": "ROAD_CHIME_BACK_FREQ_HZ",
+   "value": {
+    "bits": 4647813771492851712,
+    "repr": "523.25"
+   }
+  },
+  {
+   "expr": "180",
+   "kind": "int",
+   "name": "ROAD_CHIME_DUR_MS",
+   "value": 180
+  },
+  {
+   "expr": "120",
+   "kind": "int",
+   "name": "ROAD_CHIME_GAP_MS",
+   "value": 120
+  },
+  {
+   "expr": "-12.0",
+   "kind": "float",
+   "name": "ROAD_CHIME_AMP_DB",
+   "value": {
+    "bits": 13846317054350589952,
+    "repr": "-12.0"
+   }
+  },
+  {
+   "expr": "320",
+   "kind": "int",
+   "name": "ROAD_CHIME_REPEAT_GAP_MS",
+   "value": 320
+  },
+  {
+   "expr": "5.5",
+   "kind": "float",
+   "name": "ROAD_CHIME_MOD_INDEX_PEAK",
+   "value": {
+    "bits": 4617878467915022336,
+    "repr": "5.5"
+   }
+  },
+  {
+   "expr": "1.1",
+   "kind": "float",
+   "name": "ROAD_CHIME_MOD_INDEX_FLOOR",
+   "value": {
+    "bits": 4607632778762754458,
+    "repr": "1.1"
+   }
+  },
+  {
+   "expr": "90.0",
+   "kind": "float",
+   "name": "ROAD_CHIME_MOD_DECAY",
+   "value": {
+    "bits": 4636033603912859648,
+    "repr": "90.0"
+   }
+  },
+  {
+   "expr": "1046.5",
+   "kind": "float",
+   "name": "ROAD_JUNCTION_FREQ_HZ",
+   "value": {
+    "bits": 4652317371120222208,
+    "repr": "1046.5"
+   }
+  },
+  {
+   "expr": "55",
+   "kind": "int",
+   "name": "ROAD_JUNCTION_PIP_MS",
+   "value": 55
+  },
+  {
+   "expr": "55",
+   "kind": "int",
+   "name": "ROAD_JUNCTION_GAP_MS",
+   "value": 55
+  },
+  {
+   "expr": "-14.0",
+   "kind": "float",
+   "name": "ROAD_JUNCTION_AMP_DB",
+   "value": {
+    "bits": 13847442954257432576,
+    "repr": "-14.0"
+   }
+  },
+  {
+   "expr": "659.25",
+   "kind": "float",
+   "name": "ROAD_JUNCTION_ENTRY_START_HZ",
+   "value": {
+    "bits": 4649010040143872000,
+    "repr": "659.25"
+   }
+  },
+  {
+   "expr": "440.0",
+   "kind": "float",
+   "name": "ROAD_JUNCTION_ENTRY_END_HZ",
+   "value": {
+    "bits": 4646448178051153920,
+    "repr": "440.0"
+   }
+  },
+  {
+   "expr": "180",
+   "kind": "int",
+   "name": "ROAD_JUNCTION_ENTRY_MS",
+   "value": 180
+  },
+  {
+   "expr": "440.0 * 2.0 ** (-6 / 12)",
+   "kind": "float",
+   "name": "STOP_BAR_HZ",
+   "value": {
+    "bits": 4644181019972687716,
+    "repr": "311.1269837220809"
+   }
+  },
+  {
+   "expr": "STOP_BAR_HZ / 2.0",
+   "kind": "float",
+   "name": "STOP_BAR_SUB_HZ",
+   "value": {
+    "bits": 4639677420345317220,
+    "repr": "155.56349186104046"
+   }
+  },
+  {
+   "expr": "0.5",
+   "kind": "float",
+   "name": "STOP_BAR_SUB_LEVEL",
+   "value": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "expr": "0.5",
+   "kind": "float",
+   "name": "STOP_BAR_REACH_M",
+   "value": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "expr": "2.5",
+   "kind": "float",
+   "name": "STOP_BAR_CLEAR_M",
+   "value": {
+    "bits": 4612811918334230528,
+    "repr": "2.5"
+   }
+  },
+  {
+   "expr": "1.0",
+   "kind": "float",
+   "name": "STOP_BAR_HOLD_M",
+   "value": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   }
+  },
+  {
+   "expr": "0.2",
+   "kind": "float",
+   "name": "STOP_BAR_STOPPED_MPS",
+   "value": {
+    "bits": 4596373779694328218,
+    "repr": "0.2"
+   }
+  },
+  {
+   "expr": "0.5",
+   "kind": "float",
+   "name": "STOP_BAR_MOVING_MPS",
+   "value": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "expr": "10.0 ** (-18.0 / 20.0)",
+   "kind": "float",
+   "name": "STOP_BAR_STOPPED_GAIN",
+   "value": {
+    "bits": 4593703777102890192,
+    "repr": "0.12589254117941673"
+   }
+  },
+  {
+   "expr": "0.6",
+   "kind": "float",
+   "name": "STOP_BAR_FADE_S",
+   "value": {
+    "bits": 4603579539098121011,
+    "repr": "0.6"
+   }
+  },
+  {
+   "expr": "0.008",
+   "kind": "float",
+   "name": "STOP_BAR_EDGE_S",
+   "value": {
+    "bits": 4575765307799480828,
+    "repr": "0.008"
+   }
+  },
+  {
+   "expr": "0.02",
+   "kind": "float",
+   "name": "STOP_BAR_RELEASE_S",
+   "value": {
+    "bits": 4581421828931458171,
+    "repr": "0.02"
+   }
+  },
+  {
+   "expr": "0.18",
+   "kind": "float",
+   "name": "STOP_BAR_MIN_PERIOD_S",
+   "value": {
+    "bits": 4595653203753948938,
+    "repr": "0.18"
+   }
+  },
+  {
+   "expr": "1.5",
+   "kind": "float",
+   "name": "STOP_BAR_MAX_PERIOD_S",
+   "value": {
+    "bits": 4609434218613702656,
+    "repr": "1.5"
+   }
+  },
+  {
+   "expr": "2.0",
+   "kind": "float",
+   "name": "STOP_BAR_WAIT_PERIOD_S",
+   "value": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   }
+  },
+  {
+   "expr": "0.15",
+   "kind": "float",
+   "name": "STOP_BAR_WAIT_ON_S",
+   "value": {
+    "bits": 4594572339843380019,
+    "repr": "0.15"
+   }
+  },
+  {
+   "expr": "440.0",
+   "kind": "float",
+   "name": "COORD_GUIDE_FC_ONCOURSE_HZ",
+   "value": {
+    "bits": 4646448178051153920,
+    "repr": "440.0"
+   }
+  },
+  {
+   "expr": "220.0",
+   "kind": "float",
+   "name": "COORD_GUIDE_FC_OFFCOURSE_HZ",
+   "value": {
+    "bits": 4641944578423783424,
+    "repr": "220.0"
+   }
+  },
+  {
+   "expr": "0.25",
+   "kind": "float",
+   "name": "COORD_GUIDE_FM_RATIO_MIN",
+   "value": {
+    "bits": 4598175219545276416,
+    "repr": "0.25"
+   }
+  },
+  {
+   "expr": "1.618",
+   "kind": "float",
+   "name": "COORD_GUIDE_FM_RATIO_MAX",
+   "value": {
+    "bits": 4609965643369732375,
+    "repr": "1.618"
+   }
+  },
+  {
+   "expr": "3.0",
+   "kind": "float",
+   "name": "COORD_GUIDE_MOD_INDEX_MAX",
+   "value": {
+    "bits": 4613937818241073152,
+    "repr": "3.0"
+   }
+  },
+  {
+   "expr": "-12.0",
+   "kind": "float",
+   "name": "COORD_GUIDE_AMP_DB",
+   "value": {
+    "bits": 13846317054350589952,
+    "repr": "-12.0"
+   }
+  },
+  {
+   "expr": "5.0",
+   "kind": "float",
+   "name": "COORD_GUIDE_DEADZONE_DEG",
+   "value": {
+    "bits": 4617315517961601024,
+    "repr": "5.0"
+   }
+  },
+  {
+   "expr": "-12.0",
+   "kind": "float",
+   "name": "LINEUP_AMP_DB",
+   "value": {
+    "bits": 13846317054350589952,
+    "repr": "-12.0"
+   }
+  },
+  {
+   "expr": "0.12",
+   "kind": "float",
+   "name": "LINEUP_SMOOTH_S",
+   "value": {
+    "bits": 4593311331947716280,
+    "repr": "0.12"
+   }
+  },
+  {
+   "expr": "0.25",
+   "kind": "float",
+   "name": "LINEUP_AZ_SMOOTH_S",
+   "value": {
+    "bits": 4598175219545276416,
+    "repr": "0.25"
+   }
+  },
+  {
+   "expr": "0.5",
+   "kind": "float",
+   "name": "LINEUP_STALE_S",
+   "value": {
+    "bits": 4602678819172646912,
+    "repr": "0.5"
+   }
+  },
+  {
+   "expr": "[(1600.0, 1.0, 0.4, 0.4, 22.0), (1200.0, 2.0, 1.2, 1.2, 28.0), (880.0, 1.414, 2.4, 2.4, 34.0), (620.0, 3.0, 3.5, 3.5, 42.0), (440.0, 0.5, 5.0, 1.0, 55.0)]",
+   "kind": "seq",
+   "name": "PLACEMENT_PING_RUNGS",
+   "value": [
+    [
+     {
+      "bits": 4654751689864118272,
+      "repr": "1600.0"
+     },
+     {
+      "bits": 4607182418800017408,
+      "repr": "1.0"
+     },
+     {
+      "bits": 4600877379321698714,
+      "repr": "0.4"
+     },
+     {
+      "bits": 4600877379321698714,
+      "repr": "0.4"
+     },
+     {
+      "bits": 4626885667169763328,
+      "repr": "22.0"
+     }
+    ],
+    [
+     {
+      "bits": 4652992471259676672,
+      "repr": "1200.0"
+     },
+     {
+      "bits": 4611686018427387904,
+      "repr": "2.0"
+     },
+     {
+      "bits": 4608083138725491507,
+      "repr": "1.2"
+     },
+     {
+      "bits": 4608083138725491507,
+      "repr": "1.2"
+     },
+     {
+      "bits": 4628574517030027264,
+      "repr": "28.0"
+     }
+    ],
+    [
+     {
+      "bits": 4650951777678524416,
+      "repr": "880.0"
+     },
+     {
+      "bits": 4609046909045748793,
+      "repr": "1.414"
+     },
+     {
+      "bits": 4612586738352862003,
+      "repr": "2.4"
+     },
+     {
+      "bits": 4612586738352862003,
+      "repr": "2.4"
+     },
+     {
+      "bits": 4629981891913580544,
+      "repr": "34.0"
+     }
+    ],
+    [
+     {
+      "bits": 4648664793492750336,
+      "repr": "620.0"
+     },
+     {
+      "bits": 4613937818241073152,
+      "repr": "3.0"
+     },
+     {
+      "bits": 4615063718147915776,
+      "repr": "3.5"
+     },
+     {
+      "bits": 4615063718147915776,
+      "repr": "3.5"
+     },
+     {
+      "bits": 4631107791820423168,
+      "repr": "42.0"
+     }
+    ],
+    [
+     {
+      "bits": 4646448178051153920,
+      "repr": "440.0"
+     },
+     {
+      "bits": 4602678819172646912,
+      "repr": "0.5"
+     },
+     {
+      "bits": 4617315517961601024,
+      "repr": "5.0"
+     },
+     {
+      "bits": 4607182418800017408,
+      "repr": "1.0"
+     },
+     {
+      "bits": 4632937379169042432,
+      "repr": "55.0"
+     }
+    ]
+   ]
+  },
+  {
+   "expr": "-12.0",
+   "kind": "float",
+   "name": "PLACEMENT_PING_AMP_DB",
+   "value": {
+    "bits": 13846317054350589952,
+    "repr": "-12.0"
+   }
+  },
+  {
+   "expr": "261.626",
+   "kind": "float",
+   "name": "SCAN_MIDDLE_C_HZ",
+   "value": {
+    "bits": 4643310189457667260,
+    "repr": "261.626"
+   }
+  },
+  {
+   "expr": "(1.0, 256.0 / 243.0, 9.0 / 8.0, 32.0 / 27.0, 81.0 / 64.0, 4.0 / 3.0, 729.0 / 512.0, 3.0 / 2.0, 128.0 / 81.0, 27.0 / 16.0, 16.0 / 9.0, 243.0 / 128.0)",
+   "kind": "seq",
+   "name": "SCAN_PYTHAGOREAN_RATIOS",
+   "value": [
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4607423352113415830,
+     "repr": "1.0534979423868314"
+    },
+    {
+     "bits": 4607745368753438720,
+     "repr": "1.125"
+    },
+    {
+     "bits": 4608016418731011944,
+     "repr": "1.1851851851851851"
+    },
+    {
+     "bits": 4608378687451037696,
+     "repr": "1.265625"
+    },
+    {
+     "bits": 4608683618675807573,
+     "repr": "1.3333333333333333"
+    },
+    {
+     "bits": 4609091170985836544,
+     "repr": "1.423828125"
+    },
+    {
+     "bits": 4609434218613702656,
+     "repr": "1.5"
+    },
+    {
+     "bits": 4609795618583800288,
+     "repr": "1.5802469135802468"
+    },
+    {
+     "bits": 4610278643543834624,
+     "repr": "1.6875"
+    },
+    {
+     "bits": 4610685218510194460,
+     "repr": "1.7777777777777777"
+    },
+    {
+     "bits": 4611228621590233088,
+     "repr": "1.8984375"
+    }
+   ]
+  },
+  {
+   "expr": "20.0",
+   "kind": "float",
+   "name": "SCAN_M_PER_OCTAVE",
+   "value": {
+    "bits": 4626322717216342016,
+    "repr": "20.0"
+   }
+  },
+  {
+   "expr": "2.0",
+   "kind": "float",
+   "name": "SCAN_OCTAVE_CLAMP",
+   "value": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   }
+  },
+  {
+   "expr": "2.0",
+   "kind": "float",
+   "name": "SCAN_DURATION_S",
+   "value": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   }
+  },
+  {
+   "expr": "200.0",
+   "kind": "float",
+   "name": "SCAN_MAX_RANGE_M",
+   "value": {
+    "bits": 4641240890982006784,
+    "repr": "200.0"
+   }
+  },
+  {
+   "expr": "250.0",
+   "kind": "float",
+   "name": "SCAN_REF_PING_MS",
+   "value": {
+    "bits": 4643000109586448384,
+    "repr": "250.0"
+   }
+  },
+  {
+   "expr": "-16.0",
+   "kind": "float",
+   "name": "SCAN_REF_PING_DB",
+   "value": {
+    "bits": 13848568854164275200,
+    "repr": "-16.0"
+   }
+  },
+  {
+   "expr": "0.35",
+   "kind": "float",
+   "name": "SCAN_REF_LEAD_S",
+   "value": {
+    "bits": 4599976659396224614,
+    "repr": "0.35"
+   }
+  },
+  {
+   "expr": "190.0",
+   "kind": "float",
+   "name": "SCAN_GRAIN_MS",
+   "value": {
+    "bits": 4640889047261118464,
+    "repr": "190.0"
+   }
+  },
+  {
+   "expr": "12.0",
+   "kind": "float",
+   "name": "SCAN_GRAIN_ATTACK_MS",
+   "value": {
+    "bits": 4622945017495814144,
+    "repr": "12.0"
+   }
+  },
+  {
+   "expr": "3.0",
+   "kind": "float",
+   "name": "SCAN_GRAIN_DECAY_POW",
+   "value": {
+    "bits": 4613937818241073152,
+    "repr": "3.0"
+   }
+  },
+  {
+   "expr": "8.0",
+   "kind": "float",
+   "name": "SCAN_GRAIN_FADE_MS",
+   "value": {
+    "bits": 4620693217682128896,
+    "repr": "8.0"
+   }
+  },
+  {
+   "expr": "90.0",
+   "kind": "float",
+   "name": "SCAN_REF_RELEASE_MS",
+   "value": {
+    "bits": 4636033603912859648,
+    "repr": "90.0"
+   }
+  },
+  {
+   "expr": "55.0",
+   "kind": "float",
+   "name": "SCAN_PING_MS",
+   "value": {
+    "bits": 4632937379169042432,
+    "repr": "55.0"
+   }
+  },
+  {
+   "expr": "22.0",
+   "kind": "float",
+   "name": "SCAN_PROP_PING_MS",
+   "value": {
+    "bits": 4626885667169763328,
+    "repr": "22.0"
+   }
+  },
+  {
+   "expr": "25.0",
+   "kind": "float",
+   "name": "SCAN_TIME_JITTER_MS",
+   "value": {
+    "bits": 4627730092099895296,
+    "repr": "25.0"
+   }
+  },
+  {
+   "expr": "23716",
+   "kind": "int",
+   "name": "SCAN_RNG_SEED",
+   "value": 23716
+  },
+  {
+   "expr": "-14.0",
+   "kind": "float",
+   "name": "SCAN_TERRAIN_H2_DB",
+   "value": {
+    "bits": 13847442954257432576,
+    "repr": "-14.0"
+   }
+  },
+  {
+   "expr": "-20.0",
+   "kind": "float",
+   "name": "SCAN_TERRAIN_H3_DB",
+   "value": {
+    "bits": 13849694754071117824,
+    "repr": "-20.0"
+   }
+  },
+  {
+   "expr": "8",
+   "kind": "int",
+   "name": "SCAN_WATER_HARMONICS",
+   "value": 8
+  },
+  {
+   "expr": "5.5",
+   "kind": "float",
+   "name": "SCAN_WATER_VIBRATO_HZ",
+   "value": {
+    "bits": 4617878467915022336,
+    "repr": "5.5"
+   }
+  },
+  {
+   "expr": "12.0",
+   "kind": "float",
+   "name": "SCAN_WATER_VIBRATO_CENTS",
+   "value": {
+    "bits": 4622945017495814144,
+    "repr": "12.0"
+   }
+  },
+  {
+   "expr": "(1, 3, 5, 7)",
+   "kind": "seq",
+   "name": "SCAN_OBJECT_HARMONICS",
+   "value": [
+    1,
+    3,
+    5,
+    7
+   ]
+  },
+  {
+   "expr": "5.0",
+   "kind": "float",
+   "name": "SCAN_OBJECT_DECAY",
+   "value": {
+    "bits": 4617315517961601024,
+    "repr": "5.0"
+   }
+  },
+  {
+   "expr": "1.0",
+   "kind": "float",
+   "name": "SCAN_OBJECT_OCTAVE",
+   "value": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   }
+  },
+  {
+   "expr": "-16.0",
+   "kind": "float",
+   "name": "SCAN_GRASS_H2_DB",
+   "value": {
+    "bits": 13848568854164275200,
+    "repr": "-16.0"
+   }
+  },
+  {
+   "expr": "-26.0",
+   "kind": "float",
+   "name": "SCAN_GRASS_H3_DB",
+   "value": {
+    "bits": 13851383603931381760,
+    "repr": "-26.0"
+   }
+  },
+  {
+   "expr": "-24.0",
+   "kind": "float",
+   "name": "SCAN_LOOSE_H2_DB",
+   "value": {
+    "bits": 13850820653977960448,
+    "repr": "-24.0"
+   }
+  },
+  {
+   "expr": "5.0 / 6.0",
+   "kind": "float",
+   "name": "SCAN_LOOSE_FM_RATIO",
+   "value": {
+    "bits": 4605681218924227243,
+    "repr": "0.8333333333333334"
+   }
+  },
+  {
+   "expr": "0.35",
+   "kind": "float",
+   "name": "SCAN_DIRT_FM_INDEX",
+   "value": {
+    "bits": 4599976659396224614,
+    "repr": "0.35"
+   }
+  },
+  {
+   "expr": "0.7",
+   "kind": "float",
+   "name": "SCAN_GRAVEL_FM_INDEX",
+   "value": {
+    "bits": 4604480259023595110,
+    "repr": "0.7"
+   }
+  },
+  {
+   "expr": "((1.0, 0.0), (2.0, -10.0), (4.0, -16.0), (8.0, -24.0))",
+   "kind": "seq",
+   "name": "SCAN_ICE_PARTIALS",
+   "value": [
+    [
+     {
+      "bits": 4607182418800017408,
+      "repr": "1.0"
+     },
+     {
+      "bits": 0,
+      "repr": "0.0"
+     }
+    ],
+    [
+     {
+      "bits": 4611686018427387904,
+      "repr": "2.0"
+     },
+     {
+      "bits": 13845191154443747328,
+      "repr": "-10.0"
+     }
+    ],
+    [
+     {
+      "bits": 4616189618054758400,
+      "repr": "4.0"
+     },
+     {
+      "bits": 13848568854164275200,
+      "repr": "-16.0"
+     }
+    ],
+    [
+     {
+      "bits": 4620693217682128896,
+      "repr": "8.0"
+     },
+     {
+      "bits": 13850820653977960448,
+      "repr": "-24.0"
+     }
+    ]
+   ]
+  },
+  {
+   "expr": "8.0",
+   "kind": "float",
+   "name": "SCAN_ICE_DETUNE_CENTS",
+   "value": {
+    "bits": 4620693217682128896,
+    "repr": "8.0"
+   }
+  },
+  {
+   "expr": "2.5",
+   "kind": "float",
+   "name": "SCAN_ICE_ATTACK_MULT",
+   "value": {
+    "bits": 4612811918334230528,
+    "repr": "2.5"
+   }
+  },
+  {
+   "expr": "{'d': 'dirt', 'v': 'gravel', 'g': 'grass', 'i': 'ice', 'r': 'paved'}",
+   "kind": "dict",
+   "name": "SCAN_FAMILY_CODES",
+   "value": [
+    [
+     "d",
+     "dirt"
+    ],
+    [
+     "v",
+     "gravel"
+    ],
+    [
+     "g",
+     "grass"
+    ],
+    [
+     "i",
+     "ice"
+    ],
+    [
+     "r",
+     "paved"
+    ]
+   ]
+  },
+  {
+   "expr": "'paved'",
+   "kind": "str",
+   "name": "SCAN_PAVED",
+   "value": "paved"
+  },
+  {
+   "expr": "frozenset({SCAN_PAVED, 'dirt', 'gravel', 'grass', 'ice'})",
+   "kind": "set",
+   "name": "SCAN_FAMILY_VOICES",
+   "value": [
+    "dirt",
+    "grass",
+    "gravel",
+    "ice",
+    "paved"
+   ]
+  },
+  {
+   "expr": "30.0",
+   "kind": "float",
+   "name": "SCAN_POI_PING_MS",
+   "value": {
+    "bits": 4629137466983448576,
+    "repr": "30.0"
+   }
+  },
+  {
+   "expr": "40.0",
+   "kind": "float",
+   "name": "SCAN_POI_GAP_MS",
+   "value": {
+    "bits": 4630826316843712512,
+    "repr": "40.0"
+   }
+  },
+  {
+   "expr": "(1.0, 2.76, 5.4, 8.93)",
+   "kind": "seq",
+   "name": "SCAN_POI_PARTIALS",
+   "value": [
+    {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    {
+     "bits": 4613397386285788692,
+     "repr": "2.76"
+    },
+    {
+     "bits": 4617765877924338074,
+     "repr": "5.4"
+    },
+    {
+     "bits": 4621216761138810716,
+     "repr": "8.93"
+    }
+   ]
+  },
+  {
+   "expr": "6.0",
+   "kind": "float",
+   "name": "SCAN_POI_DECAY",
+   "value": {
+    "bits": 4618441417868443648,
+    "repr": "6.0"
+   }
+  },
+  {
+   "expr": "1.0",
+   "kind": "float",
+   "name": "SCAN_POI_OCTAVE",
+   "value": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   }
+  },
+  {
+   "expr": "-20.0",
+   "kind": "float",
+   "name": "SCAN_TERRAIN_DB",
+   "value": {
+    "bits": 13849694754071117824,
+    "repr": "-20.0"
+   }
+  },
+  {
+   "expr": "-3.0",
+   "kind": "float",
+   "name": "SCAN_WATER_DB_OFFSET",
+   "value": {
+    "bits": 13837309855095848960,
+    "repr": "-3.0"
+   }
+  },
+  {
+   "expr": "3.0",
+   "kind": "float",
+   "name": "SCAN_OBJECT_DB_OFFSET",
+   "value": {
+    "bits": 4613937818241073152,
+    "repr": "3.0"
+   }
+  },
+  {
+   "expr": "3.0",
+   "kind": "float",
+   "name": "SCAN_POI_DB_OFFSET",
+   "value": {
+    "bits": 4613937818241073152,
+    "repr": "3.0"
+   }
+  },
+  {
+   "expr": "15.0",
+   "kind": "float",
+   "name": "SCAN_CROSSFADE_MS",
+   "value": {
+    "bits": 4624633867356078080,
+    "repr": "15.0"
+   }
+  }
+ ]
+}

@@ -258,6 +258,8 @@ dependencies = [
  "beam-testutil",
  "indexmap 2.14.2",
  "log",
+ "parking_lot 0.13.0",
+ "regex",
  "serde",
  "serde_json",
 ]
@@ -271,9 +273,11 @@ dependencies = [
  "beam-testutil",
  "indexmap 2.14.2",
  "log",
+ "parking_lot 0.13.0",
  "serde",
  "serde_json",
  "tempfile",
+ "windows",
 ]
 
 [[package]]

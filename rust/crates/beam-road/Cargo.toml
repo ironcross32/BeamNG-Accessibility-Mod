@@ -14,6 +14,17 @@ serde.workspace = true
 serde_json.workspace = true
 indexmap.workspace = true
 log.workspace = true
+parking_lot.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+# Local time and its zone name (the CRT's view, which Python's datetime uses on
+# Windows), and QueryPerformanceCounter for time.monotonic().
+windows = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_System_Time",
+    "Win32_System_Performance",
+] }
+
 [dev-dependencies]
 beam-testutil.workspace = true
 tempfile.workspace = true

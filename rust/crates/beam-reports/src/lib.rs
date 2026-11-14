@@ -6,5 +6,6 @@ pub mod drift_speech;
 pub mod fuel_stations;
 pub mod induction_report;
 pub mod poi_guidance;
+pub mod pyops;
 pub mod wheel_report;
 pub mod wheel_slip;

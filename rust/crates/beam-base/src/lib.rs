@@ -8,6 +8,7 @@ pub mod logger;
 pub mod paths;
 pub mod pyerr;
 pub mod pyfmt;
+pub mod pyval;
 pub mod route_beacon;
 pub mod secretstore;
 pub mod speech_config;

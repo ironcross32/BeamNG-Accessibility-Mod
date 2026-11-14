@@ -1,0 +1,2674 @@
+{
+ "buffer_overflow": [
+  "line 5",
+  "line 6",
+  "line 7",
+  "line 8",
+  "line 9",
+  "line 10",
+  "line 11",
+  "line 12",
+  "line 13",
+  "line 14",
+  "line 15",
+  "line 16",
+  "line 17",
+  "line 18",
+  "line 19",
+  "line 20",
+  "line 21",
+  "line 22",
+  "line 23",
+  "line 24",
+  "line 25",
+  "line 26",
+  "line 27",
+  "line 28",
+  "line 29",
+  "line 30",
+  "line 31",
+  "line 32",
+  "line 33",
+  "line 34",
+  "line 35",
+  "line 36",
+  "line 37",
+  "line 38",
+  "line 39",
+  "line 40",
+  "line 41",
+  "line 42",
+  "line 43",
+  "line 44",
+  "line 45",
+  "line 46",
+  "line 47",
+  "line 48",
+  "line 49",
+  "line 50",
+  "line 51",
+  "line 52",
+  "line 53",
+  "line 54",
+  "line 55",
+  "line 56",
+  "line 57",
+  "line 58",
+  "line 59",
+  "line 60",
+  "line 61",
+  "line 62",
+  "line 63",
+  "line 64",
+  "line 65",
+  "line 66",
+  "line 67",
+  "line 68",
+  "line 69",
+  "line 70",
+  "line 71",
+  "line 72",
+  "line 73",
+  "line 74",
+  "line 75",
+  "line 76",
+  "line 77",
+  "line 78",
+  "line 79",
+  "line 80",
+  "line 81",
+  "line 82",
+  "line 83",
+  "line 84",
+  "line 85",
+  "line 86",
+  "line 87",
+  "line 88",
+  "line 89",
+  "line 90",
+  "line 91",
+  "line 92",
+  "line 93",
+  "line 94",
+  "line 95",
+  "line 96",
+  "line 97",
+  "line 98",
+  "line 99",
+  "line 100",
+  "line 101",
+  "line 102",
+  "line 103",
+  "line 104"
+ ],
+ "log_entries": [
+  {
+   "excluded": true,
+   "interrupt": false,
+   "reason": "loading_suppressed",
+   "seq": 1,
+   "source": "python",
+   "spoken": false,
+   "text": "Entry 0 Alpha"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": null,
+   "seq": 2,
+   "source": "ui_bridge",
+   "spoken": true,
+   "text": "Entry 1 beta"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": null,
+   "seq": 3,
+   "source": "python",
+   "spoken": true,
+   "text": "Entry 2 beta"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": null,
+   "seq": 4,
+   "source": "ui_bridge",
+   "spoken": true,
+   "text": "Entry 3 Alpha"
+  },
+  {
+   "excluded": false,
+   "interrupt": false,
+   "reason": null,
+   "seq": 5,
+   "source": "python",
+   "spoken": true,
+   "text": "Entry 4 beta"
+  },
+  {
+   "excluded": true,
+   "interrupt": true,
+   "reason": null,
+   "seq": 6,
+   "source": "ui_bridge",
+   "spoken": true,
+   "text": "Entry 5 beta"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": null,
+   "seq": 7,
+   "source": "python",
+   "spoken": true,
+   "text": "Entry 6 Alpha"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": "loading_suppressed",
+   "seq": 8,
+   "source": "ui_bridge",
+   "spoken": false,
+   "text": "Entry 7 beta"
+  },
+  {
+   "excluded": false,
+   "interrupt": false,
+   "reason": null,
+   "seq": 9,
+   "source": "python",
+   "spoken": true,
+   "text": "Entry 8 beta"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": null,
+   "seq": 10,
+   "source": "ui_bridge",
+   "spoken": true,
+   "text": "Entry 9 Alpha"
+  },
+  {
+   "excluded": true,
+   "interrupt": true,
+   "reason": null,
+   "seq": 11,
+   "source": "python",
+   "spoken": true,
+   "text": "Entry 10 beta"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": null,
+   "seq": 12,
+   "source": "ui_bridge",
+   "spoken": true,
+   "text": "Entry 11 beta"
+  },
+  {
+   "excluded": false,
+   "interrupt": false,
+   "reason": null,
+   "seq": 13,
+   "source": "python",
+   "spoken": true,
+   "text": "Entry 12 Alpha"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": null,
+   "seq": 14,
+   "source": "ui_bridge",
+   "spoken": true,
+   "text": "Entry 13 beta"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": "loading_suppressed",
+   "seq": 15,
+   "source": "python",
+   "spoken": false,
+   "text": "Entry 14 beta"
+  },
+  {
+   "excluded": true,
+   "interrupt": true,
+   "reason": null,
+   "seq": 16,
+   "source": "ui_bridge",
+   "spoken": true,
+   "text": "Entry 15 Alpha"
+  },
+  {
+   "excluded": false,
+   "interrupt": false,
+   "reason": null,
+   "seq": 17,
+   "source": "python",
+   "spoken": true,
+   "text": "Entry 16 beta"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": null,
+   "seq": 18,
+   "source": "ui_bridge",
+   "spoken": true,
+   "text": "Entry 17 beta"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": null,
+   "seq": 19,
+   "source": "python",
+   "spoken": true,
+   "text": "Entry 18 Alpha"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": null,
+   "seq": 20,
+   "source": "ui_bridge",
+   "spoken": true,
+   "text": "Entry 19 beta"
+  },
+  {
+   "excluded": true,
+   "interrupt": false,
+   "reason": null,
+   "seq": 21,
+   "source": "python",
+   "spoken": true,
+   "text": "Entry 20 beta"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": "loading_suppressed",
+   "seq": 22,
+   "source": "ui_bridge",
+   "spoken": false,
+   "text": "Entry 21 Alpha"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": null,
+   "seq": 23,
+   "source": "python",
+   "spoken": true,
+   "text": "Entry 22 beta"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": null,
+   "seq": 24,
+   "source": "ui_bridge",
+   "spoken": true,
+   "text": "Entry 23 beta"
+  },
+  {
+   "excluded": false,
+   "interrupt": false,
+   "reason": null,
+   "seq": 25,
+   "source": "python",
+   "spoken": true,
+   "text": "Entry 24 Alpha"
+  },
+  {
+   "excluded": true,
+   "interrupt": true,
+   "reason": null,
+   "seq": 26,
+   "source": "ui_bridge",
+   "spoken": true,
+   "text": "Entry 25 beta"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": null,
+   "seq": 27,
+   "source": "python",
+   "spoken": true,
+   "text": "Entry 26 beta"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": null,
+   "seq": 28,
+   "source": "ui_bridge",
+   "spoken": true,
+   "text": "Entry 27 Alpha"
+  },
+  {
+   "excluded": false,
+   "interrupt": false,
+   "reason": "loading_suppressed",
+   "seq": 29,
+   "source": "python",
+   "spoken": false,
+   "text": "Entry 28 beta"
+  },
+  {
+   "excluded": false,
+   "interrupt": true,
+   "reason": null,
+   "seq": 30,
+   "source": "ui_bridge",
+   "spoken": true,
+   "text": "Entry 29 beta"
+  }
+ ],
+ "log_overflow": [
+  {
+   "out": {
+    "dropped": true,
+    "next_seq": 1005,
+    "seqs": [
+     1003,
+     1004,
+     1005
+    ]
+   },
+   "q": {
+    "last_n": 3,
+    "since_seq": 0
+   }
+  },
+  {
+   "out": {
+    "dropped": true,
+    "next_seq": 1005,
+    "seqs": [
+     1003,
+     1004,
+     1005
+    ]
+   },
+   "q": {
+    "last_n": 3,
+    "since_seq": 4
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 1005,
+    "seqs": [
+     1003,
+     1004,
+     1005
+    ]
+   },
+   "q": {
+    "last_n": 3,
+    "since_seq": 5
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 1005,
+    "seqs": [
+     1003,
+     1004,
+     1005
+    ]
+   },
+   "q": {
+    "last_n": 3,
+    "since_seq": 6
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 1005,
+    "seqs": [
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30,
+     31,
+     32,
+     33,
+     34,
+     35,
+     36,
+     37,
+     38,
+     39,
+     40,
+     41,
+     42,
+     43,
+     44,
+     45,
+     46,
+     47,
+     48,
+     49,
+     50,
+     51,
+     52,
+     53,
+     54,
+     55,
+     56,
+     57,
+     58,
+     59,
+     60,
+     61,
+     62,
+     63,
+     64,
+     65,
+     66,
+     67,
+     68,
+     69,
+     70,
+     71,
+     72,
+     73,
+     74,
+     75,
+     76,
+     77,
+     78,
+     79,
+     80,
+     81,
+     82,
+     83,
+     84,
+     85,
+     86,
+     87,
+     88,
+     89,
+     90,
+     91,
+     92,
+     93,
+     94,
+     95,
+     96,
+     97,
+     98,
+     99,
+     100,
+     101,
+     102,
+     103,
+     104,
+     105,
+     106,
+     107,
+     108,
+     109,
+     110,
+     111,
+     112,
+     113,
+     114,
+     115,
+     116,
+     117,
+     118,
+     119,
+     120,
+     121,
+     122,
+     123,
+     124,
+     125,
+     126,
+     127,
+     128,
+     129,
+     130,
+     131,
+     132,
+     133,
+     134,
+     135,
+     136,
+     137,
+     138,
+     139,
+     140,
+     141,
+     142,
+     143,
+     144,
+     145,
+     146,
+     147,
+     148,
+     149,
+     150,
+     151,
+     152,
+     153,
+     154,
+     155,
+     156,
+     157,
+     158,
+     159,
+     160,
+     161,
+     162,
+     163,
+     164,
+     165,
+     166,
+     167,
+     168,
+     169,
+     170,
+     171,
+     172,
+     173,
+     174,
+     175,
+     176,
+     177,
+     178,
+     179,
+     180,
+     181,
+     182,
+     183,
+     184,
+     185,
+     186,
+     187,
+     188,
+     189,
+     190,
+     191,
+     192,
+     193,
+     194,
+     195,
+     196,
+     197,
+     198,
+     199,
+     200,
+     201,
+     202,
+     203,
+     204,
+     205,
+     206,
+     207,
+     208,
+     209,
+     210,
+     211,
+     212,
+     213,
+     214,
+     215,
+     216,
+     217,
+     218,
+     219,
+     220,
+     221,
+     222,
+     223,
+     224,
+     225,
+     226,
+     227,
+     228,
+     229,
+     230,
+     231,
+     232,
+     233,
+     234,
+     235,
+     236,
+     237,
+     238,
+     239,
+     240,
+     241,
+     242,
+     243,
+     244,
+     245,
+     246,
+     247,
+     248,
+     249,
+     250,
+     251,
+     252,
+     253,
+     254,
+     255,
+     256,
+     257,
+     258,
+     259,
+     260,
+     261,
+     262,
+     263,
+     264,
+     265,
+     266,
+     267,
+     268,
+     269,
+     270,
+     271,
+     272,
+     273,
+     274,
+     275,
+     276,
+     277,
+     278,
+     279,
+     280,
+     281,
+     282,
+     283,
+     284,
+     285,
+     286,
+     287,
+     288,
+     289,
+     290,
+     291,
+     292,
+     293,
+     294,
+     295,
+     296,
+     297,
+     298,
+     299,
+     300,
+     301,
+     302,
+     303,
+     304,
+     305,
+     306,
+     307,
+     308,
+     309,
+     310,
+     311,
+     312,
+     313,
+     314,
+     315,
+     316,
+     317,
+     318,
+     319,
+     320,
+     321,
+     322,
+     323,
+     324,
+     325,
+     326,
+     327,
+     328,
+     329,
+     330,
+     331,
+     332,
+     333,
+     334,
+     335,
+     336,
+     337,
+     338,
+     339,
+     340,
+     341,
+     342,
+     343,
+     344,
+     345,
+     346,
+     347,
+     348,
+     349,
+     350,
+     351,
+     352,
+     353,
+     354,
+     355,
+     356,
+     357,
+     358,
+     359,
+     360,
+     361,
+     362,
+     363,
+     364,
+     365,
+     366,
+     367,
+     368,
+     369,
+     370,
+     371,
+     372,
+     373,
+     374,
+     375,
+     376,
+     377,
+     378,
+     379,
+     380,
+     381,
+     382,
+     383,
+     384,
+     385,
+     386,
+     387,
+     388,
+     389,
+     390,
+     391,
+     392,
+     393,
+     394,
+     395,
+     396,
+     397,
+     398,
+     399,
+     400,
+     401,
+     402,
+     403,
+     404,
+     405,
+     406,
+     407,
+     408,
+     409,
+     410,
+     411,
+     412,
+     413,
+     414,
+     415,
+     416,
+     417,
+     418,
+     419,
+     420,
+     421,
+     422,
+     423,
+     424,
+     425,
+     426,
+     427,
+     428,
+     429,
+     430,
+     431,
+     432,
+     433,
+     434,
+     435,
+     436,
+     437,
+     438,
+     439,
+     440,
+     441,
+     442,
+     443,
+     444,
+     445,
+     446,
+     447,
+     448,
+     449,
+     450,
+     451,
+     452,
+     453,
+     454,
+     455,
+     456,
+     457,
+     458,
+     459,
+     460,
+     461,
+     462,
+     463,
+     464,
+     465,
+     466,
+     467,
+     468,
+     469,
+     470,
+     471,
+     472,
+     473,
+     474,
+     475,
+     476,
+     477,
+     478,
+     479,
+     480,
+     481,
+     482,
+     483,
+     484,
+     485,
+     486,
+     487,
+     488,
+     489,
+     490,
+     491,
+     492,
+     493,
+     494,
+     495,
+     496,
+     497,
+     498,
+     499,
+     500,
+     501,
+     502,
+     503,
+     504,
+     505,
+     506,
+     507,
+     508,
+     509,
+     510,
+     511,
+     512,
+     513,
+     514,
+     515,
+     516,
+     517,
+     518,
+     519,
+     520,
+     521,
+     522,
+     523,
+     524,
+     525,
+     526,
+     527,
+     528,
+     529,
+     530,
+     531,
+     532,
+     533,
+     534,
+     535,
+     536,
+     537,
+     538,
+     539,
+     540,
+     541,
+     542,
+     543,
+     544,
+     545,
+     546,
+     547,
+     548,
+     549,
+     550,
+     551,
+     552,
+     553,
+     554,
+     555,
+     556,
+     557,
+     558,
+     559,
+     560,
+     561,
+     562,
+     563,
+     564,
+     565,
+     566,
+     567,
+     568,
+     569,
+     570,
+     571,
+     572,
+     573,
+     574,
+     575,
+     576,
+     577,
+     578,
+     579,
+     580,
+     581,
+     582,
+     583,
+     584,
+     585,
+     586,
+     587,
+     588,
+     589,
+     590,
+     591,
+     592,
+     593,
+     594,
+     595,
+     596,
+     597,
+     598,
+     599,
+     600,
+     601,
+     602,
+     603,
+     604,
+     605,
+     606,
+     607,
+     608,
+     609,
+     610,
+     611,
+     612,
+     613,
+     614,
+     615,
+     616,
+     617,
+     618,
+     619,
+     620,
+     621,
+     622,
+     623,
+     624,
+     625,
+     626,
+     627,
+     628,
+     629,
+     630,
+     631,
+     632,
+     633,
+     634,
+     635,
+     636,
+     637,
+     638,
+     639,
+     640,
+     641,
+     642,
+     643,
+     644,
+     645,
+     646,
+     647,
+     648,
+     649,
+     650,
+     651,
+     652,
+     653,
+     654,
+     655,
+     656,
+     657,
+     658,
+     659,
+     660,
+     661,
+     662,
+     663,
+     664,
+     665,
+     666,
+     667,
+     668,
+     669,
+     670,
+     671,
+     672,
+     673,
+     674,
+     675,
+     676,
+     677,
+     678,
+     679,
+     680,
+     681,
+     682,
+     683,
+     684,
+     685,
+     686,
+     687,
+     688,
+     689,
+     690,
+     691,
+     692,
+     693,
+     694,
+     695,
+     696,
+     697,
+     698,
+     699,
+     700,
+     701,
+     702,
+     703,
+     704,
+     705,
+     706,
+     707,
+     708,
+     709,
+     710,
+     711,
+     712,
+     713,
+     714,
+     715,
+     716,
+     717,
+     718,
+     719,
+     720,
+     721,
+     722,
+     723,
+     724,
+     725,
+     726,
+     727,
+     728,
+     729,
+     730,
+     731,
+     732,
+     733,
+     734,
+     735,
+     736,
+     737,
+     738,
+     739,
+     740,
+     741,
+     742,
+     743,
+     744,
+     745,
+     746,
+     747,
+     748,
+     749,
+     750,
+     751,
+     752,
+     753,
+     754,
+     755,
+     756,
+     757,
+     758,
+     759,
+     760,
+     761,
+     762,
+     763,
+     764,
+     765,
+     766,
+     767,
+     768,
+     769,
+     770,
+     771,
+     772,
+     773,
+     774,
+     775,
+     776,
+     777,
+     778,
+     779,
+     780,
+     781,
+     782,
+     783,
+     784,
+     785,
+     786,
+     787,
+     788,
+     789,
+     790,
+     791,
+     792,
+     793,
+     794,
+     795,
+     796,
+     797,
+     798,
+     799,
+     800,
+     801,
+     802,
+     803,
+     804,
+     805,
+     806,
+     807,
+     808,
+     809,
+     810,
+     811,
+     812,
+     813,
+     814,
+     815,
+     816,
+     817,
+     818,
+     819,
+     820,
+     821,
+     822,
+     823,
+     824,
+     825,
+     826,
+     827,
+     828,
+     829,
+     830,
+     831,
+     832,
+     833,
+     834,
+     835,
+     836,
+     837,
+     838,
+     839,
+     840,
+     841,
+     842,
+     843,
+     844,
+     845,
+     846,
+     847,
+     848,
+     849,
+     850,
+     851,
+     852,
+     853,
+     854,
+     855,
+     856,
+     857,
+     858,
+     859,
+     860,
+     861,
+     862,
+     863,
+     864,
+     865,
+     866,
+     867,
+     868,
+     869,
+     870,
+     871,
+     872,
+     873,
+     874,
+     875,
+     876,
+     877,
+     878,
+     879,
+     880,
+     881,
+     882,
+     883,
+     884,
+     885,
+     886,
+     887,
+     888,
+     889,
+     890,
+     891,
+     892,
+     893,
+     894,
+     895,
+     896,
+     897,
+     898,
+     899,
+     900,
+     901,
+     902,
+     903,
+     904,
+     905,
+     906,
+     907,
+     908,
+     909,
+     910,
+     911,
+     912,
+     913,
+     914,
+     915,
+     916,
+     917,
+     918,
+     919,
+     920,
+     921,
+     922,
+     923,
+     924,
+     925,
+     926,
+     927,
+     928,
+     929,
+     930,
+     931,
+     932,
+     933,
+     934,
+     935,
+     936,
+     937,
+     938,
+     939,
+     940,
+     941,
+     942,
+     943,
+     944,
+     945,
+     946,
+     947,
+     948,
+     949,
+     950,
+     951,
+     952,
+     953,
+     954,
+     955,
+     956,
+     957,
+     958,
+     959,
+     960,
+     961,
+     962,
+     963,
+     964,
+     965,
+     966,
+     967,
+     968,
+     969,
+     970,
+     971,
+     972,
+     973,
+     974,
+     975,
+     976,
+     977,
+     978,
+     979,
+     980,
+     981,
+     982,
+     983,
+     984,
+     985,
+     986,
+     987,
+     988,
+     989,
+     990,
+     991,
+     992,
+     993,
+     994,
+     995,
+     996,
+     997,
+     998,
+     999,
+     1000,
+     1001,
+     1002,
+     1003,
+     1004,
+     1005
+    ]
+   },
+   "q": {
+    "last_n": 0
+   }
+  }
+ ],
+ "log_queries": [
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30
+    ]
+   },
+   "q": {}
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30
+    ]
+   },
+   "q": {
+    "last_n": 0
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30
+    ]
+   },
+   "q": {
+    "last_n": null
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": [
+     26,
+     27,
+     28,
+     29,
+     30
+    ]
+   },
+   "q": {
+    "last_n": 5
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": [
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30
+    ]
+   },
+   "q": {
+    "last_n": -3
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30
+    ]
+   },
+   "q": {
+    "last_n": 100
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": [
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30
+    ]
+   },
+   "q": {
+    "since_seq": 10
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30
+    ]
+   },
+   "q": {
+    "since_seq": 0
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": []
+   },
+   "q": {
+    "since_seq": 30
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": []
+   },
+   "q": {
+    "since_seq": 99
+   }
+  },
+  {
+   "out": {
+    "dropped": true,
+    "next_seq": 30,
+    "seqs": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30
+    ]
+   },
+   "q": {
+    "since_seq": -5
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": [
+     2,
+     4,
+     6,
+     8,
+     10,
+     12,
+     14,
+     16,
+     18,
+     20,
+     22,
+     24,
+     26,
+     28,
+     30
+    ]
+   },
+   "q": {
+    "source": "ui_bridge"
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30
+    ]
+   },
+   "q": {
+    "source": ""
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": [
+     1,
+     4,
+     7,
+     10,
+     13,
+     16,
+     19,
+     22,
+     25,
+     28
+    ]
+   },
+   "q": {
+    "contains": "ALPHA"
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": [
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30
+    ]
+   },
+   "q": {
+    "contains": ""
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": [
+     3,
+     21,
+     22,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     29,
+     30
+    ]
+   },
+   "q": {
+    "contains": "entry 2"
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": [
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     23,
+     24,
+     25,
+     26,
+     27,
+     28,
+     30
+    ]
+   },
+   "q": {
+    "spoken_only": true
+   }
+  },
+  {
+   "out": {
+    "dropped": false,
+    "next_seq": 30,
+    "seqs": [
+     25,
+     27
+    ]
+   },
+   "q": {
+    "last_n": 2,
+    "since_seq": 20,
+    "source": "python",
+    "spoken_only": true
+   }
+  }
+ ],
+ "normalize": [
+  {
+   "in": "hello",
+   "out": "hello"
+  },
+  {
+   "in": "",
+   "out": ""
+  },
+  {
+   "in": "   ",
+   "out": "   "
+  },
+  {
+   "in": " padded ",
+   "out": " padded "
+  },
+  {
+   "in": 0,
+   "out": "0"
+  },
+  {
+   "in": 1,
+   "out": "1"
+  },
+  {
+   "in": -7,
+   "out": "-7"
+  },
+  {
+   "in": 12345678901234,
+   "out": "12345678901234"
+  },
+  {
+   "in": 1.0,
+   "out": "1.0"
+  },
+  {
+   "in": 2.5,
+   "out": "2.5"
+  },
+  {
+   "in": -0.0,
+   "out": "-0.0"
+  },
+  {
+   "in": 1e-05,
+   "out": "1e-05"
+  },
+  {
+   "in": 1e+16,
+   "out": "1e+16"
+  },
+  {
+   "in": 0.1,
+   "out": "0.1"
+  },
+  {
+   "in": true,
+   "out": "True"
+  },
+  {
+   "in": false,
+   "out": "False"
+  },
+  {
+   "in": null,
+   "out": null
+  },
+  {
+   "in": [],
+   "out": null
+  },
+  {
+   "in": [
+    "one"
+   ],
+   "out": "one"
+  },
+  {
+   "in": [
+    "a",
+    "b"
+   ],
+   "out": null
+  },
+  {
+   "in": [
+    [
+     "nested"
+    ]
+   ],
+   "out": "nested"
+  },
+  {
+   "in": [
+    [
+     1,
+     2
+    ]
+   ],
+   "out": null
+  },
+  {
+   "in": {},
+   "out": null
+  },
+  {
+   "in": {
+    "k": "v"
+   },
+   "out": "v"
+  },
+  {
+   "in": {
+    "a": 1,
+    "b": 2
+   },
+   "out": null
+  },
+  {
+   "in": {
+    "k": [
+     "x"
+    ]
+   },
+   "out": "x"
+  },
+  {
+   "in": {
+    "k": {
+     "j": 3.5
+    }
+   },
+   "out": "3.5"
+  },
+  {
+   "in": [
+    null
+   ],
+   "out": null
+  },
+  {
+   "in": [
+    {}
+   ],
+   "out": null
+  },
+  {
+   "in": {
+    "k": null
+   },
+   "out": null
+  },
+  {
+   "in": "table: 0x1a2b",
+   "out": null
+  },
+  {
+   "in": " TABLE:0XFF ",
+   "out": null
+  },
+  {
+   "in": "table:0x",
+   "out": "table:0x"
+  },
+  {
+   "in": "table: 0xzz",
+   "out": "table: 0xzz"
+  },
+  {
+   "in": "table: 0x12 extra",
+   "out": "table: 0x12 extra"
+  },
+  {
+   "in": "Table:   0xdeadbeef",
+   "out": null
+  },
+  {
+   "in": "a table: 0x1",
+   "out": "a table: 0x1"
+  },
+  {
+   "in": [
+    true
+   ],
+   "out": "True"
+  },
+  {
+   "in": {
+    "k": false
+   },
+   "out": "False"
+  }
+ ],
+ "say": [
+  {
+   "buffer": [
+    "hello"
+   ],
+   "name": "plain",
+   "spoken": [
+    [
+     "hello",
+     true
+    ]
+   ],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": true,
+     "reason": null,
+     "source": "python",
+     "spoken": true,
+     "text": "hello"
+    }
+   ],
+   "text": "hello"
+  },
+  {
+   "buffer": [
+    "hello there"
+   ],
+   "name": "strip",
+   "spoken": [
+    [
+     "hello there",
+     true
+    ]
+   ],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": true,
+     "reason": null,
+     "source": "python",
+     "spoken": true,
+     "text": "hello there"
+    }
+   ],
+   "text": "  hello there \n"
+  },
+  {
+   "buffer": [],
+   "name": "blank",
+   "spoken": [],
+   "tap": [],
+   "text": "   "
+  },
+  {
+   "buffer": [],
+   "name": "empty",
+   "spoken": [],
+   "tap": [],
+   "text": ""
+  },
+  {
+   "buffer": [],
+   "name": "none",
+   "spoken": [],
+   "tap": [],
+   "text": null
+  },
+  {
+   "buffer": [
+    "one"
+   ],
+   "name": "list_one",
+   "spoken": [
+    [
+     "one",
+     true
+    ]
+   ],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": true,
+     "reason": null,
+     "source": "python",
+     "spoken": true,
+     "text": "one"
+    }
+   ],
+   "text": [
+    "one"
+   ]
+  },
+  {
+   "buffer": [],
+   "name": "list_two",
+   "spoken": [],
+   "tap": [],
+   "text": [
+    "a",
+    "b"
+   ]
+  },
+  {
+   "buffer": [
+    "v"
+   ],
+   "name": "dict_one",
+   "spoken": [
+    [
+     "v",
+     true
+    ]
+   ],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": true,
+     "reason": null,
+     "source": "python",
+     "spoken": true,
+     "text": "v"
+    }
+   ],
+   "text": {
+    "k": "v"
+   }
+  },
+  {
+   "buffer": [
+    "42"
+   ],
+   "name": "int",
+   "spoken": [
+    [
+     "42",
+     true
+    ]
+   ],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": true,
+     "reason": null,
+     "source": "python",
+     "spoken": true,
+     "text": "42"
+    }
+   ],
+   "text": 42
+  },
+  {
+   "buffer": [
+    "2.0"
+   ],
+   "name": "float",
+   "spoken": [
+    [
+     "2.0",
+     true
+    ]
+   ],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": true,
+     "reason": null,
+     "source": "python",
+     "spoken": true,
+     "text": "2.0"
+    }
+   ],
+   "text": 2.0
+  },
+  {
+   "buffer": [
+    "True"
+   ],
+   "name": "bool",
+   "spoken": [
+    [
+     "True",
+     true
+    ]
+   ],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": true,
+     "reason": null,
+     "source": "python",
+     "spoken": true,
+     "text": "True"
+    }
+   ],
+   "text": true
+  },
+  {
+   "buffer": [],
+   "name": "lua_pointer",
+   "spoken": [],
+   "tap": [],
+   "text": "table: 0x00ff"
+  },
+  {
+   "buffer": [
+    "quiet"
+   ],
+   "interrupt": false,
+   "name": "no_interrupt",
+   "spoken": [
+    [
+     "quiet",
+     false
+    ]
+   ],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": false,
+     "reason": null,
+     "source": "python",
+     "spoken": true,
+     "text": "quiet"
+    }
+   ],
+   "text": "quiet"
+  },
+  {
+   "buffer": [],
+   "exclude": true,
+   "name": "excluded",
+   "spoken": [
+    [
+     "not kept",
+     true
+    ]
+   ],
+   "tap": [
+    {
+     "excluded": true,
+     "interrupt": true,
+     "reason": null,
+     "source": "python",
+     "spoken": true,
+     "text": "not kept"
+    }
+   ],
+   "text": "not kept"
+  },
+  {
+   "buffer": [
+    "src"
+   ],
+   "name": "source",
+   "source": "ui_udp.toastr",
+   "spoken": [
+    [
+     "src",
+     true
+    ]
+   ],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": true,
+     "reason": null,
+     "source": "ui_udp.toastr",
+     "spoken": true,
+     "text": "src"
+    }
+   ],
+   "text": "src"
+  },
+  {
+   "buffer": [],
+   "loading": true,
+   "name": "loading_suppressed",
+   "spoken": [],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": true,
+     "reason": "loading_suppressed",
+     "source": "python",
+     "spoken": false,
+     "text": "x"
+    }
+   ],
+   "text": "x"
+  },
+  {
+   "buffer": [],
+   "exclude": true,
+   "name": "settling_suppressed",
+   "settling": true,
+   "spoken": [],
+   "tap": [
+    {
+     "excluded": true,
+     "interrupt": true,
+     "reason": "loading_suppressed",
+     "source": "python",
+     "spoken": false,
+     "text": "x"
+    }
+   ],
+   "text": "x"
+  },
+  {
+   "buffer": [],
+   "exclude": true,
+   "loading": true,
+   "name": "loading_lifecycle_passes",
+   "source": "loading_lifecycle",
+   "spoken": [
+    [
+     "Loading",
+     true
+    ]
+   ],
+   "tap": [
+    {
+     "excluded": true,
+     "interrupt": true,
+     "reason": null,
+     "source": "loading_lifecycle",
+     "spoken": true,
+     "text": "Loading"
+    }
+   ],
+   "text": "Loading"
+  },
+  {
+   "buffer": [
+    "cmd"
+   ],
+   "command_context": true,
+   "loading": true,
+   "name": "loading_command_context_passes",
+   "spoken": [
+    [
+     "cmd",
+     true
+    ]
+   ],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": true,
+     "reason": null,
+     "source": "python",
+     "spoken": true,
+     "text": "cmd"
+    }
+   ],
+   "text": "cmd"
+  },
+  {
+   "buffer": [
+    "bg"
+   ],
+   "name": "protected_demotes",
+   "protected": true,
+   "spoken": [
+    [
+     "bg",
+     false
+    ]
+   ],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": false,
+     "reason": null,
+     "source": "python",
+     "spoken": true,
+     "text": "bg"
+    }
+   ],
+   "text": "bg"
+  },
+  {
+   "buffer": [
+    "ui"
+   ],
+   "name": "protected_ui_bridge_keeps",
+   "protected": true,
+   "source": "ui_bridge",
+   "spoken": [
+    [
+     "ui",
+     true
+    ]
+   ],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": true,
+     "reason": null,
+     "source": "ui_bridge",
+     "spoken": true,
+     "text": "ui"
+    }
+   ],
+   "text": "ui"
+  },
+  {
+   "buffer": [
+    "cmd"
+   ],
+   "command_context": true,
+   "name": "protected_command_keeps",
+   "protected": true,
+   "spoken": [
+    [
+     "cmd",
+     true
+    ]
+   ],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": true,
+     "reason": null,
+     "source": "python",
+     "spoken": true,
+     "text": "cmd"
+    }
+   ],
+   "text": "cmd"
+  },
+  {
+   "buffer": [
+    "q"
+   ],
+   "interrupt": false,
+   "name": "protected_no_interrupt",
+   "protected": true,
+   "spoken": [
+    [
+     "q",
+     false
+    ]
+   ],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": false,
+     "reason": null,
+     "source": "python",
+     "spoken": true,
+     "text": "q"
+    }
+   ],
+   "text": "q"
+  },
+  {
+   "buffer": [],
+   "loading": true,
+   "name": "protected_suppressed_while_loading",
+   "protected": true,
+   "spoken": [],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": true,
+     "reason": "loading_suppressed",
+     "source": "python",
+     "spoken": false,
+     "text": "l"
+    }
+   ],
+   "text": "l"
+  }
+ ]
+}
