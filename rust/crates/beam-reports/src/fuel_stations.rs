@@ -208,8 +208,29 @@ fn pump_phrase(data: &PyDict) -> String {
 }
 
 /// What to say for an event, or `None` to stay quiet.
-pub fn event_phrase(data: &PyDict) -> Option<String> {
-    let kind = data.get("kind").and_then(PyValue::as_str).unwrap_or("\u{0}none");
+///
+/// Every branch gives a `PyValue::Str` except one: for `park_refused` and `error`
+/// Python returns the event's `message` value itself when it is truthy, whatever its
+/// type, and the engine logged and spoke that value. Use [`PyValue::py_str`] for the
+/// text; the raw value is kept so that quirk stays visible.
+pub fn event_phrase(data: &PyDict) -> Option<PyValue> {
+    if matches!(
+        data.get("kind").and_then(PyValue::as_str),
+        Some("park_refused" | "error")
+    ) {
+        return Some(match data.get("message").filter(|v| v.truthy()) {
+            Some(v) => v.clone(),
+            None => PyValue::str("Parking failed"),
+        });
+    }
+    event_phrase_text(data).map(PyValue::Str)
+}
+
+fn event_phrase_text(data: &PyDict) -> Option<String> {
+    let kind = data
+        .get("kind")
+        .and_then(PyValue::as_str)
+        .unwrap_or("\u{0}none");
     let station = match data.get("station").filter(|v| v.truthy()) {
         Some(v) => v.py_str(),
         None => "the station".to_string(),
@@ -229,7 +250,11 @@ pub fn event_phrase(data: &PyDict) -> Option<String> {
             if !data.get("official").is_none_or(PyValue::truthy) {
                 return Some("Stopped by the pumps. The game has no refuelling here".to_string());
             }
-            let action = if flag("electric") { "recharge" } else { "refuel" };
+            let action = if flag("electric") {
+                "recharge"
+            } else {
+                "refuel"
+            };
             if flag("inZone") {
                 return Some(format!(
                     "Stopped at {}. Put the car in park, then press Shift E to {action}",
@@ -241,16 +266,12 @@ pub fn event_phrase(data: &PyDict) -> Option<String> {
                 pump_phrase(data)
             ))
         }
-        "park_refused" | "park_failed" | "error" => {
+        "park_failed" => {
             let message = match data.get("message").filter(|v| v.truthy()) {
                 Some(v) => v.py_str(),
                 None => "Parking failed".to_string(),
             };
-            Some(if kind != "park_failed" {
-                message
-            } else {
-                format!("Parking stopped. {message}")
-            })
+            Some(format!("Parking stopped. {message}"))
         }
         "park_cancelled" => Some("Parking cancelled".to_string()),
         "cancelled" => Some("Fuel station assistance off".to_string()),

@@ -1,0 +1,96 @@
+{
+ "format": "%(asctime)s [%(levelname)s] %(message)s",
+ "levels": {
+  "10": "DEBUG",
+  "20": "INFO",
+  "30": "WARNING",
+  "40": "ERROR"
+ },
+ "messages": [
+  "short",
+  "short",
+  "short",
+  "éééééééééééééééééééééééééééééééééééééééé",
+  "a\nmulti-line\nmessage",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "yyyyy",
+  "ünïünïünïünïünïünïünïünïünïünï",
+  "line 0",
+  "line 1",
+  "line 2",
+  "line 3",
+  "line 4",
+  "line 5",
+  "line 6",
+  "line 7",
+  "line 8",
+  "line 9",
+  "line 10",
+  "line 11",
+  "line 12",
+  "line 13",
+  "line 14",
+  "line 15",
+  "line 16",
+  "line 17",
+  "line 18",
+  "line 19",
+  "line 20",
+  "line 21",
+  "line 22",
+  "line 23",
+  "line 24",
+  "line 25",
+  "line 26",
+  "line 27",
+  "line 28",
+  "line 29",
+  "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+  "after a long one",
+  "",
+  "end"
+ ],
+ "runs": [
+  {
+   "backups": 3,
+   "files": {
+    "bnvdahook.log": "YWZ0ZXIgYSBsb25nIG9uZQ0KDQplbmQNCg==",
+    "bnvdahook.log.1": "enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6DQo=",
+    "bnvdahook.log.2": "bGluZSAyNw0KbGluZSAyOA0KbGluZSAyOQ0K",
+    "bnvdahook.log.3": "bGluZSA1DQpsaW5lIDYNCmxpbmUgNw0KbGluZSA4DQpsaW5lIDkNCmxpbmUgMTANCmxpbmUgMTENCmxpbmUgMTINCmxpbmUgMTMNCmxpbmUgMTQNCmxpbmUgMTUNCmxpbmUgMTYNCmxpbmUgMTcNCmxpbmUgMTgNCmxpbmUgMTkNCmxpbmUgMjANCmxpbmUgMjENCmxpbmUgMjINCmxpbmUgMjMNCmxpbmUgMjQNCmxpbmUgMjUNCmxpbmUgMjYNCg=="
+   },
+   "max_bytes": 200
+  },
+  {
+   "backups": 1,
+   "files": {
+    "bnvdahook.log": "YWZ0ZXIgYSBsb25nIG9uZQ0KDQplbmQNCg==",
+    "bnvdahook.log.1": "enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6DQo="
+   },
+   "max_bytes": 100
+  },
+  {
+   "backups": 0,
+   "files": {
+    "bnvdahook.log": "c2hvcnQNCnNob3J0DQpzaG9ydA0Kw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6kNCmENCm11bHRpLWxpbmUNCm1lc3NhZ2UNCnh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4DQp5eXl5eQ0Kw7xuw6/DvG7Dr8O8bsOvw7xuw6/DvG7Dr8O8bsOvw7xuw6/DvG7Dr8O8bsOvw7xuw68NCmxpbmUgMA0KbGluZSAxDQpsaW5lIDINCmxpbmUgMw0KbGluZSA0DQpsaW5lIDUNCmxpbmUgNg0KbGluZSA3DQpsaW5lIDgNCmxpbmUgOQ0KbGluZSAxMA0KbGluZSAxMQ0KbGluZSAxMg0KbGluZSAxMw0KbGluZSAxNA0KbGluZSAxNQ0KbGluZSAxNg0KbGluZSAxNw0KbGluZSAxOA0KbGluZSAxOQ0KbGluZSAyMA0KbGluZSAyMQ0KbGluZSAyMg0KbGluZSAyMw0KbGluZSAyNA0KbGluZSAyNQ0KbGluZSAyNg0KbGluZSAyNw0KbGluZSAyOA0KbGluZSAyOQ0Kenp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6DQphZnRlciBhIGxvbmcgb25lDQoNCmVuZA0K"
+   },
+   "max_bytes": 1000
+  },
+  {
+   "backups": 3,
+   "files": {
+    "bnvdahook.log": "c2hvcnQNCnNob3J0DQpzaG9ydA0Kw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6nDqcOpw6kNCmENCm11bHRpLWxpbmUNCm1lc3NhZ2UNCnh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4DQp5eXl5eQ0Kw7xuw6/DvG7Dr8O8bsOvw7xuw6/DvG7Dr8O8bsOvw7xuw6/DvG7Dr8O8bsOvw7xuw68NCmxpbmUgMA0KbGluZSAxDQpsaW5lIDINCmxpbmUgMw0KbGluZSA0DQpsaW5lIDUNCmxpbmUgNg0KbGluZSA3DQpsaW5lIDgNCmxpbmUgOQ0KbGluZSAxMA0KbGluZSAxMQ0KbGluZSAxMg0KbGluZSAxMw0KbGluZSAxNA0KbGluZSAxNQ0KbGluZSAxNg0KbGluZSAxNw0KbGluZSAxOA0KbGluZSAxOQ0KbGluZSAyMA0KbGluZSAyMQ0KbGluZSAyMg0KbGluZSAyMw0KbGluZSAyNA0KbGluZSAyNQ0KbGluZSAyNg0KbGluZSAyNw0KbGluZSAyOA0KbGluZSAyOQ0Kenp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6DQphZnRlciBhIGxvbmcgb25lDQoNCmVuZA0K"
+   },
+   "max_bytes": 0
+  },
+  {
+   "backups": 2,
+   "files": {
+    "bnvdahook.log": "YWZ0ZXIgYSBsb25nIG9uZQ0KDQplbmQNCg==",
+    "bnvdahook.log.1": "enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6enp6DQo=",
+    "bnvdahook.log.2": "bGluZSAyNw0KbGluZSAyOA0KbGluZSAyOQ0K"
+   },
+   "max_bytes": 50
+  }
+ ]
+}

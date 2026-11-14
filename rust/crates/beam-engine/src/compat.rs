@@ -1,4 +1,4 @@
-//! TEMPORARY SHIMS. Delete at integration (workstream I1).
+﻿//! TEMPORARY SHIMS. Delete at integration (workstream I1).
 //!
 //! When beam-engine's skeleton was written, the wave-1 crates it calls (beam-base's
 //! config/gear_report/secretstore/ai_registry, beam-road, beam-reports, beam-speech,
@@ -132,26 +132,6 @@ pub mod beam_base {
         }
         pub fn extra_args_for(provider: &str, cfg: &ConfigMap) -> Map<String, super::super::Value> {
             Map::new()
-        }
-    }
-}
-
-pub mod beam_speech {
-    pub mod speech {
-        use super::super::ConfigMap;
-        /// `speech.speak(text, interrupt)`.
-        pub fn speak(text: &str, interrupt: bool) {}
-        /// `speech.stop()`.
-        pub fn stop() {}
-        /// `speech.init(cfg)`: the backend, or None when no backend is available.
-        pub fn init(cfg: Option<&ConfigMap>) -> Option<String> {
-            None
-        }
-        /// `speech.configure(cfg)`.
-        pub fn configure(cfg: &ConfigMap) {}
-        /// `speech.describe_capabilities()`.
-        pub fn describe_capabilities() -> String {
-            String::new()
         }
     }
 }

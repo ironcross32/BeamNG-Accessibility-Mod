@@ -148,6 +148,11 @@ VARIANTS = [
     {"a": [1.5, None]},
 ]
 
+PER_KEY_VARIANTS = [
+    None, True, 7, 25, 3.7, -0.0, 1e300, 10**30, -(10**30), float("nan"), float("inf"),
+    "", " 12 ", "5.5", "abc", [1, "a"], {"a": [1.5, None]},
+]
+
 
 def main():
     cases = []
@@ -222,11 +227,19 @@ def main():
         "force_sapi", "sapi_voice_name", "sapi_rate", "sapi_volume", "announce_gear",
         "my_token", "unknown_key",
     ]
+    # Every key at once, for the domain strings (numbers and containers are covered key
+    # by key below, where one that corrupts cannot mask the rest).
     for vi, value in enumerate(VARIANTS):
-        cases.append(case(f"all keys = variant {vi} ({value!r})",
-                          js({k: value for k in keys}, indent=2)))
+        if isinstance(value, str):
+            cases.append(case(f"all keys = variant {vi} ({value!r})",
+                              js({k: value for k in keys})))
+    # One key at a time, so a value that sends one key down the corruption path cannot
+    # hide what the others do. The domain strings (note names, model ids, renderer...)
+    # are already exercised by the all-keys cases, which they never corrupt; here only
+    # the type-crossing values, to keep the fixture small enough to commit.
     for key in keys:
-        for vi, value in enumerate(VARIANTS):
+        for value in PER_KEY_VARIANTS:
+            vi = next(i for i, v in enumerate(VARIANTS) if repr(v) == repr(value))
             cases.append(case(f"{key} = variant {vi} ({value!r})", js({key: value})))
 
     write_fixture("config", {

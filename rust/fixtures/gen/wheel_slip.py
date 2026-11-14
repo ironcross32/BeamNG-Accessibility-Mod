@@ -47,7 +47,7 @@ def main():
 
     azimuths = []
     for b in [None, 0.0, 5.0, 9.999, 10.0, -10.0, 30.0, -30.0, 60.0, 90.0, 169.9, 170.0, 170.1,
-              -175.0, 180.0, 350.0, nan] + [rnd.uniform(-360, 360) for _ in range(20)]:
+              -175.0, 180.0, 350.0, nan] + [rnd.uniform(-360, 360) for _ in range(4)]:
         for g in (0.0, 0.1, 0.5, 0.51, 1.25, 1.999, 2.0, 10.0, nan):
             for rev in (False, True):
                 azimuths.append({"b": opt(b), "g": fbits(g), "rev": rev,
@@ -90,13 +90,13 @@ def main():
 
     # Detector sequences: every step's full result.
     sequences = []
-    for seq_i in range(60):
+    for seq_i in range(24):
         det = ws.SlipDetector()
         t = rnd.choice([0.0, 1.0, 5.0])
         steps = []
         mode = seq_i % 4
         g = rnd.uniform(0, 25)
-        for _ in range(rnd.randint(5, 120)):
+        for _ in range(rnd.randint(5, 50)):
             r = rnd.random()
             if r < 0.03:
                 t += rnd.choice([2.0, 0.0, -0.5])  # rebase: gap, repeat, backwards

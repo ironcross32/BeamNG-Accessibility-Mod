@@ -1,0 +1,2383 @@
+{
+ "cases": [
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "null"
+    },
+    "compact_utf8": {
+     "ok": "null"
+    },
+    "default_utf8": {
+     "ok": "null"
+    },
+    "indent2": {
+     "ok": "null"
+    },
+    "indent2_nonan": {
+     "ok": "null"
+    }
+   },
+   "text": "null"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "true"
+    },
+    "compact_utf8": {
+     "ok": "true"
+    },
+    "default_utf8": {
+     "ok": "true"
+    },
+    "indent2": {
+     "ok": "true"
+    },
+    "indent2_nonan": {
+     "ok": "true"
+    }
+   },
+   "text": "true"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "false"
+    },
+    "compact_utf8": {
+     "ok": "false"
+    },
+    "default_utf8": {
+     "ok": "false"
+    },
+    "indent2": {
+     "ok": "false"
+    },
+    "indent2_nonan": {
+     "ok": "false"
+    }
+   },
+   "text": "false"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "0"
+    },
+    "compact_utf8": {
+     "ok": "0"
+    },
+    "default_utf8": {
+     "ok": "0"
+    },
+    "indent2": {
+     "ok": "0"
+    },
+    "indent2_nonan": {
+     "ok": "0"
+    }
+   },
+   "text": "0"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "0"
+    },
+    "compact_utf8": {
+     "ok": "0"
+    },
+    "default_utf8": {
+     "ok": "0"
+    },
+    "indent2": {
+     "ok": "0"
+    },
+    "indent2_nonan": {
+     "ok": "0"
+    }
+   },
+   "text": "-0"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "1"
+    },
+    "compact_utf8": {
+     "ok": "1"
+    },
+    "default_utf8": {
+     "ok": "1"
+    },
+    "indent2": {
+     "ok": "1"
+    },
+    "indent2_nonan": {
+     "ok": "1"
+    }
+   },
+   "text": "1"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "-1"
+    },
+    "compact_utf8": {
+     "ok": "-1"
+    },
+    "default_utf8": {
+     "ok": "-1"
+    },
+    "indent2": {
+     "ok": "-1"
+    },
+    "indent2_nonan": {
+     "ok": "-1"
+    }
+   },
+   "text": "-1"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "12345678901234567890"
+    },
+    "compact_utf8": {
+     "ok": "12345678901234567890"
+    },
+    "default_utf8": {
+     "ok": "12345678901234567890"
+    },
+    "indent2": {
+     "ok": "12345678901234567890"
+    },
+    "indent2_nonan": {
+     "ok": "12345678901234567890"
+    }
+   },
+   "text": "12345678901234567890"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "-9223372036854775808"
+    },
+    "compact_utf8": {
+     "ok": "-9223372036854775808"
+    },
+    "default_utf8": {
+     "ok": "-9223372036854775808"
+    },
+    "indent2": {
+     "ok": "-9223372036854775808"
+    },
+    "indent2_nonan": {
+     "ok": "-9223372036854775808"
+    }
+   },
+   "text": "-9223372036854775808"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "9223372036854775807"
+    },
+    "compact_utf8": {
+     "ok": "9223372036854775807"
+    },
+    "default_utf8": {
+     "ok": "9223372036854775807"
+    },
+    "indent2": {
+     "ok": "9223372036854775807"
+    },
+    "indent2_nonan": {
+     "ok": "9223372036854775807"
+    }
+   },
+   "text": "9223372036854775807"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "9223372036854775808"
+    },
+    "compact_utf8": {
+     "ok": "9223372036854775808"
+    },
+    "default_utf8": {
+     "ok": "9223372036854775808"
+    },
+    "indent2": {
+     "ok": "9223372036854775808"
+    },
+    "indent2_nonan": {
+     "ok": "9223372036854775808"
+    }
+   },
+   "text": "9223372036854775808"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "1.0"
+    },
+    "compact_utf8": {
+     "ok": "1.0"
+    },
+    "default_utf8": {
+     "ok": "1.0"
+    },
+    "indent2": {
+     "ok": "1.0"
+    },
+    "indent2_nonan": {
+     "ok": "1.0"
+    }
+   },
+   "text": "1.0"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "-0.0"
+    },
+    "compact_utf8": {
+     "ok": "-0.0"
+    },
+    "default_utf8": {
+     "ok": "-0.0"
+    },
+    "indent2": {
+     "ok": "-0.0"
+    },
+    "indent2_nonan": {
+     "ok": "-0.0"
+    }
+   },
+   "text": "-0.0"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "100000.0"
+    },
+    "compact_utf8": {
+     "ok": "100000.0"
+    },
+    "default_utf8": {
+     "ok": "100000.0"
+    },
+    "indent2": {
+     "ok": "100000.0"
+    },
+    "indent2_nonan": {
+     "ok": "100000.0"
+    }
+   },
+   "text": "1e5"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "100000.0"
+    },
+    "compact_utf8": {
+     "ok": "100000.0"
+    },
+    "default_utf8": {
+     "ok": "100000.0"
+    },
+    "indent2": {
+     "ok": "100000.0"
+    },
+    "indent2_nonan": {
+     "ok": "100000.0"
+    }
+   },
+   "text": "1E+5"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "1e-07"
+    },
+    "compact_utf8": {
+     "ok": "1e-07"
+    },
+    "default_utf8": {
+     "ok": "1e-07"
+    },
+    "indent2": {
+     "ok": "1e-07"
+    },
+    "indent2_nonan": {
+     "ok": "1e-07"
+    }
+   },
+   "text": "1e-7"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "1.5e+300"
+    },
+    "compact_utf8": {
+     "ok": "1.5e+300"
+    },
+    "default_utf8": {
+     "ok": "1.5e+300"
+    },
+    "indent2": {
+     "ok": "1.5e+300"
+    },
+    "indent2_nonan": {
+     "ok": "1.5e+300"
+    }
+   },
+   "text": "1.5e300"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "err": "ValueError",
+     "msg": "Out of range float values are not JSON compliant: inf"
+    },
+    "compact_utf8": {
+     "ok": "Infinity"
+    },
+    "default_utf8": {
+     "ok": "Infinity"
+    },
+    "indent2": {
+     "ok": "Infinity"
+    },
+    "indent2_nonan": {
+     "err": "ValueError",
+     "msg": "Out of range float values are not JSON compliant: inf"
+    }
+   },
+   "text": "1e400"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "err": "ValueError",
+     "msg": "Out of range float values are not JSON compliant: -inf"
+    },
+    "compact_utf8": {
+     "ok": "-Infinity"
+    },
+    "default_utf8": {
+     "ok": "-Infinity"
+    },
+    "indent2": {
+     "ok": "-Infinity"
+    },
+    "indent2_nonan": {
+     "err": "ValueError",
+     "msg": "Out of range float values are not JSON compliant: -inf"
+    }
+   },
+   "text": "-1e400"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "0.1"
+    },
+    "compact_utf8": {
+     "ok": "0.1"
+    },
+    "default_utf8": {
+     "ok": "0.1"
+    },
+    "indent2": {
+     "ok": "0.1"
+    },
+    "indent2_nonan": {
+     "ok": "0.1"
+    }
+   },
+   "text": "0.1"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "123.456"
+    },
+    "compact_utf8": {
+     "ok": "123.456"
+    },
+    "default_utf8": {
+     "ok": "123.456"
+    },
+    "indent2": {
+     "ok": "123.456"
+    },
+    "indent2_nonan": {
+     "ok": "123.456"
+    }
+   },
+   "text": "123.456"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "1e+16"
+    },
+    "compact_utf8": {
+     "ok": "1e+16"
+    },
+    "default_utf8": {
+     "ok": "1e+16"
+    },
+    "indent2": {
+     "ok": "1e+16"
+    },
+    "indent2_nonan": {
+     "ok": "1e+16"
+    }
+   },
+   "text": "1e16"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "1000000000000000.0"
+    },
+    "compact_utf8": {
+     "ok": "1000000000000000.0"
+    },
+    "default_utf8": {
+     "ok": "1000000000000000.0"
+    },
+    "indent2": {
+     "ok": "1000000000000000.0"
+    },
+    "indent2_nonan": {
+     "ok": "1000000000000000.0"
+    }
+   },
+   "text": "1e15"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "12345678.9"
+    },
+    "compact_utf8": {
+     "ok": "12345678.9"
+    },
+    "default_utf8": {
+     "ok": "12345678.9"
+    },
+    "indent2": {
+     "ok": "12345678.9"
+    },
+    "indent2_nonan": {
+     "ok": "12345678.9"
+    }
+   },
+   "text": "12345678.9"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "err": "ValueError",
+     "msg": "Out of range float values are not JSON compliant: nan"
+    },
+    "compact_utf8": {
+     "ok": "NaN"
+    },
+    "default_utf8": {
+     "ok": "NaN"
+    },
+    "indent2": {
+     "ok": "NaN"
+    },
+    "indent2_nonan": {
+     "err": "ValueError",
+     "msg": "Out of range float values are not JSON compliant: nan"
+    }
+   },
+   "text": "NaN"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "err": "ValueError",
+     "msg": "Out of range float values are not JSON compliant: inf"
+    },
+    "compact_utf8": {
+     "ok": "Infinity"
+    },
+    "default_utf8": {
+     "ok": "Infinity"
+    },
+    "indent2": {
+     "ok": "Infinity"
+    },
+    "indent2_nonan": {
+     "err": "ValueError",
+     "msg": "Out of range float values are not JSON compliant: inf"
+    }
+   },
+   "text": "Infinity"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "err": "ValueError",
+     "msg": "Out of range float values are not JSON compliant: -inf"
+    },
+    "compact_utf8": {
+     "ok": "-Infinity"
+    },
+    "default_utf8": {
+     "ok": "-Infinity"
+    },
+    "indent2": {
+     "ok": "-Infinity"
+    },
+    "indent2_nonan": {
+     "err": "ValueError",
+     "msg": "Out of range float values are not JSON compliant: -inf"
+    }
+   },
+   "text": "-Infinity"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"x\""
+    },
+    "compact_utf8": {
+     "ok": "\"x\""
+    },
+    "default_utf8": {
+     "ok": "\"x\""
+    },
+    "indent2": {
+     "ok": "\"x\""
+    },
+    "indent2_nonan": {
+     "ok": "\"x\""
+    }
+   },
+   "text": "\"x\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\""
+    },
+    "compact_utf8": {
+     "ok": "\"\""
+    },
+    "default_utf8": {
+     "ok": "\"\""
+    },
+    "indent2": {
+     "ok": "\"\""
+    },
+    "indent2_nonan": {
+     "ok": "\"\""
+    }
+   },
+   "text": "\"\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\\u00e9\""
+    },
+    "compact_utf8": {
+     "ok": "\"é\""
+    },
+    "default_utf8": {
+     "ok": "\"é\""
+    },
+    "indent2": {
+     "ok": "\"\\u00e9\""
+    },
+    "indent2_nonan": {
+     "ok": "\"\\u00e9\""
+    }
+   },
+   "text": "\"\\u00e9\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\\ud83d\\ude00\""
+    },
+    "compact_utf8": {
+     "ok": "\"😀\""
+    },
+    "default_utf8": {
+     "ok": "\"😀\""
+    },
+    "indent2": {
+     "ok": "\"\\ud83d\\ude00\""
+    },
+    "indent2_nonan": {
+     "ok": "\"\\ud83d\\ude00\""
+    }
+   },
+   "text": "\"\\ud83d\\ude00\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\\u00e9\""
+    },
+    "compact_utf8": {
+     "ok": "\"é\""
+    },
+    "default_utf8": {
+     "ok": "\"é\""
+    },
+    "indent2": {
+     "ok": "\"\\u00e9\""
+    },
+    "indent2_nonan": {
+     "ok": "\"\\u00e9\""
+    }
+   },
+   "text": "\"é\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\\n\\t\\r\\b\\f\\\"\\\\/\""
+    },
+    "compact_utf8": {
+     "ok": "\"\\n\\t\\r\\b\\f\\\"\\\\/\""
+    },
+    "default_utf8": {
+     "ok": "\"\\n\\t\\r\\b\\f\\\"\\\\/\""
+    },
+    "indent2": {
+     "ok": "\"\\n\\t\\r\\b\\f\\\"\\\\/\""
+    },
+    "indent2_nonan": {
+     "ok": "\"\\n\\t\\r\\b\\f\\\"\\\\/\""
+    }
+   },
+   "text": "\"\\n\\t\\r\\b\\f\\\"\\\\\\/\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\\u007f\""
+    },
+    "compact_utf8": {
+     "ok": "\"\""
+    },
+    "default_utf8": {
+     "ok": "\"\""
+    },
+    "indent2": {
+     "ok": "\"\\u007f\""
+    },
+    "indent2_nonan": {
+     "ok": "\"\\u007f\""
+    }
+   },
+   "text": "\"\\u007f\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\\u0001\""
+    },
+    "compact_utf8": {
+     "ok": "\"\\u0001\""
+    },
+    "default_utf8": {
+     "ok": "\"\\u0001\""
+    },
+    "indent2": {
+     "ok": "\"\\u0001\""
+    },
+    "indent2_nonan": {
+     "ok": "\"\\u0001\""
+    }
+   },
+   "text": "\"\\u0001\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\\u65e5\\u672c\\u8a9e\""
+    },
+    "compact_utf8": {
+     "ok": "\"日本語\""
+    },
+    "default_utf8": {
+     "ok": "\"日本語\""
+    },
+    "indent2": {
+     "ok": "\"\\u65e5\\u672c\\u8a9e\""
+    },
+    "indent2_nonan": {
+     "ok": "\"\\u65e5\\u672c\\u8a9e\""
+    }
+   },
+   "text": "\"日本語\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"emoji \\ud83d\\ude00\""
+    },
+    "compact_utf8": {
+     "ok": "\"emoji 😀\""
+    },
+    "default_utf8": {
+     "ok": "\"emoji 😀\""
+    },
+    "indent2": {
+     "ok": "\"emoji \\ud83d\\ude00\""
+    },
+    "indent2_nonan": {
+     "ok": "\"emoji \\ud83d\\ude00\""
+    }
+   },
+   "text": "\"emoji 😀\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\\u007f\""
+    },
+    "compact_utf8": {
+     "ok": "\"\""
+    },
+    "default_utf8": {
+     "ok": "\"\""
+    },
+    "indent2": {
+     "ok": "\"\\u007f\""
+    },
+    "indent2_nonan": {
+     "ok": "\"\\u007f\""
+    }
+   },
+   "text": "\"\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[]"
+    },
+    "compact_utf8": {
+     "ok": "[]"
+    },
+    "default_utf8": {
+     "ok": "[]"
+    },
+    "indent2": {
+     "ok": "[]"
+    },
+    "indent2_nonan": {
+     "ok": "[]"
+    }
+   },
+   "text": "[]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "{}"
+    },
+    "compact_utf8": {
+     "ok": "{}"
+    },
+    "default_utf8": {
+     "ok": "{}"
+    },
+    "indent2": {
+     "ok": "{}"
+    },
+    "indent2_nonan": {
+     "ok": "{}"
+    }
+   },
+   "text": "{}"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[1,2.0,\"3\",null,true]"
+    },
+    "compact_utf8": {
+     "ok": "[1,2.0,\"3\",null,true]"
+    },
+    "default_utf8": {
+     "ok": "[1, 2.0, \"3\", null, true]"
+    },
+    "indent2": {
+     "ok": "[\n  1,\n  2.0,\n  \"3\",\n  null,\n  true\n]"
+    },
+    "indent2_nonan": {
+     "ok": "[\n  1,\n  2.0,\n  \"3\",\n  null,\n  true\n]"
+    }
+   },
+   "text": "[1, 2.0, \"3\", null, true]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "{\"b\":1,\"a\":2}"
+    },
+    "compact_utf8": {
+     "ok": "{\"b\":1,\"a\":2}"
+    },
+    "default_utf8": {
+     "ok": "{\"b\": 1, \"a\": 2}"
+    },
+    "indent2": {
+     "ok": "{\n  \"b\": 1,\n  \"a\": 2\n}"
+    },
+    "indent2_nonan": {
+     "ok": "{\n  \"b\": 1,\n  \"a\": 2\n}"
+    }
+   },
+   "text": "{\"b\": 1, \"a\": 2}"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "{\"a\":2,\"b\":3}"
+    },
+    "compact_utf8": {
+     "ok": "{\"a\":2,\"b\":3}"
+    },
+    "default_utf8": {
+     "ok": "{\"a\": 2, \"b\": 3}"
+    },
+    "indent2": {
+     "ok": "{\n  \"a\": 2,\n  \"b\": 3\n}"
+    },
+    "indent2_nonan": {
+     "ok": "{\n  \"a\": 2,\n  \"b\": 3\n}"
+    }
+   },
+   "text": "{\"a\": 1, \"a\": 2, \"b\": 3}"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "{\"nested\":{\"list\":[1,[2,{\"x\":[]}],{}]},\"z\":{\"y\":{}}}"
+    },
+    "compact_utf8": {
+     "ok": "{\"nested\":{\"list\":[1,[2,{\"x\":[]}],{}]},\"z\":{\"y\":{}}}"
+    },
+    "default_utf8": {
+     "ok": "{\"nested\": {\"list\": [1, [2, {\"x\": []}], {}]}, \"z\": {\"y\": {}}}"
+    },
+    "indent2": {
+     "ok": "{\n  \"nested\": {\n    \"list\": [\n      1,\n      [\n        2,\n        {\n          \"x\": []\n        }\n      ],\n      {}\n    ]\n  },\n  \"z\": {\n    \"y\": {}\n  }\n}"
+    },
+    "indent2_nonan": {
+     "ok": "{\n  \"nested\": {\n    \"list\": [\n      1,\n      [\n        2,\n        {\n          \"x\": []\n        }\n      ],\n      {}\n    ]\n  },\n  \"z\": {\n    \"y\": {}\n  }\n}"
+    }
+   },
+   "text": "{\"nested\": {\"list\": [1, [2, {\"x\": []}], {}]}, \"z\": {\"y\": {}}}"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "{\"padded\":1}"
+    },
+    "compact_utf8": {
+     "ok": "{\"padded\":1}"
+    },
+    "default_utf8": {
+     "ok": "{\"padded\": 1}"
+    },
+    "indent2": {
+     "ok": "{\n  \"padded\": 1\n}"
+    },
+    "indent2_nonan": {
+     "ok": "{\n  \"padded\": 1\n}"
+    }
+   },
+   "text": " \t\n {\"padded\": 1} \r\n"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[1,2,3]"
+    },
+    "compact_utf8": {
+     "ok": "[1,2,3]"
+    },
+    "default_utf8": {
+     "ok": "[1, 2, 3]"
+    },
+    "indent2": {
+     "ok": "[\n  1,\n  2,\n  3\n]"
+    },
+    "indent2_nonan": {
+     "ok": "[\n  1,\n  2,\n  3\n]"
+    }
+   },
+   "text": "[1,2,3]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "{\"k\":\"v\"}"
+    },
+    "compact_utf8": {
+     "ok": "{\"k\":\"v\"}"
+    },
+    "default_utf8": {
+     "ok": "{\"k\": \"v\"}"
+    },
+    "indent2": {
+     "ok": "{\n  \"k\": \"v\"\n}"
+    },
+    "indent2_nonan": {
+     "ok": "{\n  \"k\": \"v\"\n}"
+    }
+   },
+   "text": "{\"k\":\"v\"}"
+  },
+  {
+   "decodes": false,
+   "text": ""
+  },
+  {
+   "decodes": false,
+   "text": " "
+  },
+  {
+   "decodes": false,
+   "text": "nan"
+  },
+  {
+   "decodes": false,
+   "text": "inf"
+  },
+  {
+   "decodes": false,
+   "text": "01"
+  },
+  {
+   "decodes": false,
+   "text": "1."
+  },
+  {
+   "decodes": false,
+   "text": ".5"
+  },
+  {
+   "decodes": false,
+   "text": "+1"
+  },
+  {
+   "decodes": false,
+   "text": "1e"
+  },
+  {
+   "decodes": false,
+   "text": "[1,]"
+  },
+  {
+   "decodes": false,
+   "text": "{\"a\":1,}"
+  },
+  {
+   "decodes": false,
+   "text": "{'a': 1}"
+  },
+  {
+   "decodes": false,
+   "text": "{\"a\" 1}"
+  },
+  {
+   "decodes": false,
+   "text": "[1 2]"
+  },
+  {
+   "decodes": false,
+   "text": "\"unterminated"
+  },
+  {
+   "decodes": false,
+   "text": "\"bad \\x escape\""
+  },
+  {
+   "decodes": false,
+   "text": "\"ctl \u0001 char\""
+  },
+  {
+   "decodes": false,
+   "text": "["
+  },
+  {
+   "decodes": false,
+   "text": "]"
+  },
+  {
+   "decodes": false,
+   "text": "tru"
+  },
+  {
+   "decodes": false,
+   "text": "nul"
+  },
+  {
+   "decodes": false,
+   "text": "{\"a\":1} x"
+  },
+  {
+   "decodes": false,
+   "text": "1 2"
+  },
+  {
+   "decodes": false,
+   "text": "\"\\u12\""
+  },
+  {
+   "decodes": false,
+   "text": "-"
+  },
+  {
+   "decodes": false,
+   "text": "--1"
+  },
+  {
+   "decodes": false,
+   "text": "1.e5"
+  },
+  {
+   "decodes": false,
+   "text": "Infinityx"
+  },
+  {
+   "decodes": false,
+   "text": "-NaN"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "838947"
+    },
+    "compact_utf8": {
+     "ok": "838947"
+    },
+    "default_utf8": {
+     "ok": "838947"
+    },
+    "indent2": {
+     "ok": "838947"
+    },
+    "indent2_nonan": {
+     "ok": "838947"
+    }
+   },
+   "text": "838947"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "err": "ValueError",
+     "msg": "Out of range float values are not JSON compliant: inf"
+    },
+    "compact_utf8": {
+     "ok": "[247206,{\"key\":[],\"é\":Infinity}]"
+    },
+    "default_utf8": {
+     "ok": "[247206, {\"key\": [], \"é\": Infinity}]"
+    },
+    "indent2": {
+     "ok": "[\n  247206,\n  {\n    \"key\": [],\n    \"\\u00e9\": Infinity\n  }\n]"
+    },
+    "indent2_nonan": {
+     "err": "ValueError",
+     "msg": "Out of range float values are not JSON compliant: inf"
+    }
+   },
+   "text": "[247206, {\"key\": [], \"\\u00e9\": Infinity}]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"/\\tab\""
+    },
+    "compact_utf8": {
+     "ok": "\"/\\tab\""
+    },
+    "default_utf8": {
+     "ok": "\"/\\tab\""
+    },
+    "indent2": {
+     "ok": "\"/\\tab\""
+    },
+    "indent2_nonan": {
+     "ok": "\"/\\tab\""
+    }
+   },
+   "text": "\"/\\tab\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "-0.46035896964449496"
+    },
+    "compact_utf8": {
+     "ok": "-0.46035896964449496"
+    },
+    "default_utf8": {
+     "ok": "-0.46035896964449496"
+    },
+    "indent2": {
+     "ok": "-0.46035896964449496"
+    },
+    "indent2_nonan": {
+     "ok": "-0.46035896964449496"
+    }
+   },
+   "text": "-0.46035896964449496"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "true"
+    },
+    "compact_utf8": {
+     "ok": "true"
+    },
+    "default_utf8": {
+     "ok": "true"
+    },
+    "indent2": {
+     "ok": "true"
+    },
+    "indent2_nonan": {
+     "ok": "true"
+    }
+   },
+   "text": "true"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "false"
+    },
+    "compact_utf8": {
+     "ok": "false"
+    },
+    "default_utf8": {
+     "ok": "false"
+    },
+    "indent2": {
+     "ok": "false"
+    },
+    "indent2_nonan": {
+     "ok": "false"
+    }
+   },
+   "text": "false"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "{\"key\":false}"
+    },
+    "compact_utf8": {
+     "ok": "{\"key\":false}"
+    },
+    "default_utf8": {
+     "ok": "{\"key\": false}"
+    },
+    "indent2": {
+     "ok": "{\n  \"key\": false\n}"
+    },
+    "indent2_nonan": {
+     "ok": "{\n  \"key\": false\n}"
+    }
+   },
+   "text": "{\"key\": false}"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "-388720"
+    },
+    "compact_utf8": {
+     "ok": "-388720"
+    },
+    "default_utf8": {
+     "ok": "-388720"
+    },
+    "indent2": {
+     "ok": "-388720"
+    },
+    "indent2_nonan": {
+     "ok": "-388720"
+    }
+   },
+   "text": "-388720"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "false"
+    },
+    "compact_utf8": {
+     "ok": "false"
+    },
+    "default_utf8": {
+     "ok": "false"
+    },
+    "indent2": {
+     "ok": "false"
+    },
+    "indent2_nonan": {
+     "ok": "false"
+    }
+   },
+   "text": "false"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "-427453"
+    },
+    "compact_utf8": {
+     "ok": "-427453"
+    },
+    "default_utf8": {
+     "ok": "-427453"
+    },
+    "indent2": {
+     "ok": "-427453"
+    },
+    "indent2_nonan": {
+     "ok": "-427453"
+    }
+   },
+   "text": "-427453"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "2.5"
+    },
+    "compact_utf8": {
+     "ok": "2.5"
+    },
+    "default_utf8": {
+     "ok": "2.5"
+    },
+    "indent2": {
+     "ok": "2.5"
+    },
+    "indent2_nonan": {
+     "ok": "2.5"
+    }
+   },
+   "text": "2.5"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\\u007f\\u00e9\\t\""
+    },
+    "compact_utf8": {
+     "ok": "\"é\\t\""
+    },
+    "default_utf8": {
+     "ok": "\"é\\t\""
+    },
+    "indent2": {
+     "ok": "\"\\u007f\\u00e9\\t\""
+    },
+    "indent2_nonan": {
+     "ok": "\"\\u007f\\u00e9\\t\""
+    }
+   },
+   "text": "\"\\u007f\\u00e9\\t\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[{\"x y\":false,\"b\":false}]"
+    },
+    "compact_utf8": {
+     "ok": "[{\"x y\":false,\"b\":false}]"
+    },
+    "default_utf8": {
+     "ok": "[{\"x y\": false, \"b\": false}]"
+    },
+    "indent2": {
+     "ok": "[\n  {\n    \"x y\": false,\n    \"b\": false\n  }\n]"
+    },
+    "indent2_nonan": {
+     "ok": "[\n  {\n    \"x y\": false,\n    \"b\": false\n  }\n]"
+    }
+   },
+   "text": "[{\"x y\": false, \"b\": false}]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "472810"
+    },
+    "compact_utf8": {
+     "ok": "472810"
+    },
+    "default_utf8": {
+     "ok": "472810"
+    },
+    "indent2": {
+     "ok": "472810"
+    },
+    "indent2_nonan": {
+     "ok": "472810"
+    }
+   },
+   "text": "472810"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "false"
+    },
+    "compact_utf8": {
+     "ok": "false"
+    },
+    "default_utf8": {
+     "ok": "false"
+    },
+    "indent2": {
+     "ok": "false"
+    },
+    "indent2_nonan": {
+     "ok": "false"
+    }
+   },
+   "text": "false"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[]"
+    },
+    "compact_utf8": {
+     "ok": "[]"
+    },
+    "default_utf8": {
+     "ok": "[]"
+    },
+    "indent2": {
+     "ok": "[]"
+    },
+    "indent2_nonan": {
+     "ok": "[]"
+    }
+   },
+   "text": "[]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "{}"
+    },
+    "compact_utf8": {
+     "ok": "{}"
+    },
+    "default_utf8": {
+     "ok": "{}"
+    },
+    "indent2": {
+     "ok": "{}"
+    },
+    "indent2_nonan": {
+     "ok": "{}"
+    }
+   },
+   "text": "{}"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[null,true,{\"q\\\"uote\":[-3.75],\"b\":\"\\ud83d\\ude00\\u0001/\",\"a\":\"\"}]"
+    },
+    "compact_utf8": {
+     "ok": "[null,true,{\"q\\\"uote\":[-3.75],\"b\":\"😀\\u0001/\",\"a\":\"\"}]"
+    },
+    "default_utf8": {
+     "ok": "[null, true, {\"q\\\"uote\": [-3.75], \"b\": \"😀\\u0001/\", \"a\": \"\"}]"
+    },
+    "indent2": {
+     "ok": "[\n  null,\n  true,\n  {\n    \"q\\\"uote\": [\n      -3.75\n    ],\n    \"b\": \"\\ud83d\\ude00\\u0001/\",\n    \"a\": \"\"\n  }\n]"
+    },
+    "indent2_nonan": {
+     "ok": "[\n  null,\n  true,\n  {\n    \"q\\\"uote\": [\n      -3.75\n    ],\n    \"b\": \"\\ud83d\\ude00\\u0001/\",\n    \"a\": \"\"\n  }\n]"
+    }
+   },
+   "text": "[null, true, {\"q\\\"uote\": [-3.75], \"b\": \"\\ud83d\\ude00\\u0001/\", \"a\": \"\"}]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[{\"q\\\"uote\":{\"key\":null,\"x y\":203344}},[{\"\\u00e9\":922134},null],null]"
+    },
+    "compact_utf8": {
+     "ok": "[{\"q\\\"uote\":{\"key\":null,\"x y\":203344}},[{\"é\":922134},null],null]"
+    },
+    "default_utf8": {
+     "ok": "[{\"q\\\"uote\": {\"key\": null, \"x y\": 203344}}, [{\"é\": 922134}, null], null]"
+    },
+    "indent2": {
+     "ok": "[\n  {\n    \"q\\\"uote\": {\n      \"key\": null,\n      \"x y\": 203344\n    }\n  },\n  [\n    {\n      \"\\u00e9\": 922134\n    },\n    null\n  ],\n  null\n]"
+    },
+    "indent2_nonan": {
+     "ok": "[\n  {\n    \"q\\\"uote\": {\n      \"key\": null,\n      \"x y\": 203344\n    }\n  },\n  [\n    {\n      \"\\u00e9\": 922134\n    },\n    null\n  ],\n  null\n]"
+    }
+   },
+   "text": "[{\"q\\\"uote\": {\"key\": null, \"x y\": 203344}}, [{\"\\u00e9\": 922134}, null], null]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\" \""
+    },
+    "compact_utf8": {
+     "ok": "\" \""
+    },
+    "default_utf8": {
+     "ok": "\" \""
+    },
+    "indent2": {
+     "ok": "\" \""
+    },
+    "indent2_nonan": {
+     "ok": "\" \""
+    }
+   },
+   "text": "\" \""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "{}"
+    },
+    "compact_utf8": {
+     "ok": "{}"
+    },
+    "default_utf8": {
+     "ok": "{}"
+    },
+    "indent2": {
+     "ok": "{}"
+    },
+    "indent2_nonan": {
+     "ok": "{}"
+    }
+   },
+   "text": "{}"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "err": "ValueError",
+     "msg": "Out of range float values are not JSON compliant: inf"
+    },
+    "compact_utf8": {
+     "ok": "Infinity"
+    },
+    "default_utf8": {
+     "ok": "Infinity"
+    },
+    "indent2": {
+     "ok": "Infinity"
+    },
+    "indent2_nonan": {
+     "err": "ValueError",
+     "msg": "Out of range float values are not JSON compliant: inf"
+    }
+   },
+   "text": "Infinity"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "-294506"
+    },
+    "compact_utf8": {
+     "ok": "-294506"
+    },
+    "default_utf8": {
+     "ok": "-294506"
+    },
+    "indent2": {
+     "ok": "-294506"
+    },
+    "indent2_nonan": {
+     "ok": "-294506"
+    }
+   },
+   "text": "-294506"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\""
+    },
+    "compact_utf8": {
+     "ok": "\"\""
+    },
+    "default_utf8": {
+     "ok": "\"\""
+    },
+    "indent2": {
+     "ok": "\"\""
+    },
+    "indent2_nonan": {
+     "ok": "\"\""
+    }
+   },
+   "text": "\"\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "138012"
+    },
+    "compact_utf8": {
+     "ok": "138012"
+    },
+    "default_utf8": {
+     "ok": "138012"
+    },
+    "indent2": {
+     "ok": "138012"
+    },
+    "indent2_nonan": {
+     "ok": "138012"
+    }
+   },
+   "text": "138012"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "842690"
+    },
+    "compact_utf8": {
+     "ok": "842690"
+    },
+    "default_utf8": {
+     "ok": "842690"
+    },
+    "indent2": {
+     "ok": "842690"
+    },
+    "indent2_nonan": {
+     "ok": "842690"
+    }
+   },
+   "text": "842690"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "null"
+    },
+    "compact_utf8": {
+     "ok": "null"
+    },
+    "default_utf8": {
+     "ok": "null"
+    },
+    "indent2": {
+     "ok": "null"
+    },
+    "indent2_nonan": {
+     "ok": "null"
+    }
+   },
+   "text": "null"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\\u00e9\\\" \""
+    },
+    "compact_utf8": {
+     "ok": "\"é\\\" \""
+    },
+    "default_utf8": {
+     "ok": "\"é\\\" \""
+    },
+    "indent2": {
+     "ok": "\"\\u00e9\\\" \""
+    },
+    "indent2_nonan": {
+     "ok": "\"\\u00e9\\\" \""
+    }
+   },
+   "text": "\"é\\\" \""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[]"
+    },
+    "compact_utf8": {
+     "ok": "[]"
+    },
+    "default_utf8": {
+     "ok": "[]"
+    },
+    "indent2": {
+     "ok": "[]"
+    },
+    "indent2_nonan": {
+     "ok": "[]"
+    }
+   },
+   "text": "[]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[]"
+    },
+    "compact_utf8": {
+     "ok": "[]"
+    },
+    "default_utf8": {
+     "ok": "[]"
+    },
+    "indent2": {
+     "ok": "[]"
+    },
+    "indent2_nonan": {
+     "ok": "[]"
+    }
+   },
+   "text": "[]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[[\"/\\\"\\u007f\"],[null,true,null]]"
+    },
+    "compact_utf8": {
+     "ok": "[[\"/\\\"\"],[null,true,null]]"
+    },
+    "default_utf8": {
+     "ok": "[[\"/\\\"\"], [null, true, null]]"
+    },
+    "indent2": {
+     "ok": "[\n  [\n    \"/\\\"\\u007f\"\n  ],\n  [\n    null,\n    true,\n    null\n  ]\n]"
+    },
+    "indent2_nonan": {
+     "ok": "[\n  [\n    \"/\\\"\\u007f\"\n  ],\n  [\n    null,\n    true,\n    null\n  ]\n]"
+    }
+   },
+   "text": "[[\"/\\\"\"], [null, true, null]]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\\u00e9\""
+    },
+    "compact_utf8": {
+     "ok": "\"é\""
+    },
+    "default_utf8": {
+     "ok": "\"é\""
+    },
+    "indent2": {
+     "ok": "\"\\u00e9\""
+    },
+    "indent2_nonan": {
+     "ok": "\"\\u00e9\""
+    }
+   },
+   "text": "\"\\u00e9\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\\u65e5a \\ud83d\\ude00 \""
+    },
+    "compact_utf8": {
+     "ok": "\"日a 😀 \""
+    },
+    "default_utf8": {
+     "ok": "\"日a 😀 \""
+    },
+    "indent2": {
+     "ok": "\"\\u65e5a \\ud83d\\ude00 \""
+    },
+    "indent2_nonan": {
+     "ok": "\"\\u65e5a \\ud83d\\ude00 \""
+    }
+   },
+   "text": "\"日a 😀 \""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\""
+    },
+    "compact_utf8": {
+     "ok": "\"\""
+    },
+    "default_utf8": {
+     "ok": "\"\""
+    },
+    "indent2": {
+     "ok": "\"\""
+    },
+    "indent2_nonan": {
+     "ok": "\"\""
+    }
+   },
+   "text": "\"\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[null,571384,\"\\\"\\u00e9/\\u007f\"]"
+    },
+    "compact_utf8": {
+     "ok": "[null,571384,\"\\\"é/\"]"
+    },
+    "default_utf8": {
+     "ok": "[null, 571384, \"\\\"é/\"]"
+    },
+    "indent2": {
+     "ok": "[\n  null,\n  571384,\n  \"\\\"\\u00e9/\\u007f\"\n]"
+    },
+    "indent2_nonan": {
+     "ok": "[\n  null,\n  571384,\n  \"\\\"\\u00e9/\\u007f\"\n]"
+    }
+   },
+   "text": "[null, 571384, \"\\\"é/\"]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[true,true,[]]"
+    },
+    "compact_utf8": {
+     "ok": "[true,true,[]]"
+    },
+    "default_utf8": {
+     "ok": "[true, true, []]"
+    },
+    "indent2": {
+     "ok": "[\n  true,\n  true,\n  []\n]"
+    },
+    "indent2_nonan": {
+     "ok": "[\n  true,\n  true,\n  []\n]"
+    }
+   },
+   "text": "[true, true, []]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[]"
+    },
+    "compact_utf8": {
+     "ok": "[]"
+    },
+    "default_utf8": {
+     "ok": "[]"
+    },
+    "indent2": {
+     "ok": "[]"
+    },
+    "indent2_nonan": {
+     "ok": "[]"
+    }
+   },
+   "text": "[]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\\\\\""
+    },
+    "compact_utf8": {
+     "ok": "\"\\\\\""
+    },
+    "default_utf8": {
+     "ok": "\"\\\\\""
+    },
+    "indent2": {
+     "ok": "\"\\\\\""
+    },
+    "indent2_nonan": {
+     "ok": "\"\\\\\""
+    }
+   },
+   "text": "\"\\\\\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "-186773"
+    },
+    "compact_utf8": {
+     "ok": "-186773"
+    },
+    "default_utf8": {
+     "ok": "-186773"
+    },
+    "indent2": {
+     "ok": "-186773"
+    },
+    "indent2_nonan": {
+     "ok": "-186773"
+    }
+   },
+   "text": "-186773"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "true"
+    },
+    "compact_utf8": {
+     "ok": "true"
+    },
+    "default_utf8": {
+     "ok": "true"
+    },
+    "indent2": {
+     "ok": "true"
+    },
+    "indent2_nonan": {
+     "ok": "true"
+    }
+   },
+   "text": "true"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "null"
+    },
+    "compact_utf8": {
+     "ok": "null"
+    },
+    "default_utf8": {
+     "ok": "null"
+    },
+    "indent2": {
+     "ok": "null"
+    },
+    "indent2_nonan": {
+     "ok": "null"
+    }
+   },
+   "text": "null"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "{\"\\u00e9\":null,\"q\\\"uote\":1e+16}"
+    },
+    "compact_utf8": {
+     "ok": "{\"é\":null,\"q\\\"uote\":1e+16}"
+    },
+    "default_utf8": {
+     "ok": "{\"é\": null, \"q\\\"uote\": 1e+16}"
+    },
+    "indent2": {
+     "ok": "{\n  \"\\u00e9\": null,\n  \"q\\\"uote\": 1e+16\n}"
+    },
+    "indent2_nonan": {
+     "ok": "{\n  \"\\u00e9\": null,\n  \"q\\\"uote\": 1e+16\n}"
+    }
+   },
+   "text": "{\"\\u00e9\": null, \"q\\\"uote\": 1e+16}"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[]"
+    },
+    "compact_utf8": {
+     "ok": "[]"
+    },
+    "default_utf8": {
+     "ok": "[]"
+    },
+    "indent2": {
+     "ok": "[]"
+    },
+    "indent2_nonan": {
+     "ok": "[]"
+    }
+   },
+   "text": "[]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[[],null]"
+    },
+    "compact_utf8": {
+     "ok": "[[],null]"
+    },
+    "default_utf8": {
+     "ok": "[[], null]"
+    },
+    "indent2": {
+     "ok": "[\n  [],\n  null\n]"
+    },
+    "indent2_nonan": {
+     "ok": "[\n  [],\n  null\n]"
+    }
+   },
+   "text": "[[], null]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[\"a \"]"
+    },
+    "compact_utf8": {
+     "ok": "[\"a \"]"
+    },
+    "default_utf8": {
+     "ok": "[\"a \"]"
+    },
+    "indent2": {
+     "ok": "[\n  \"a \"\n]"
+    },
+    "indent2_nonan": {
+     "ok": "[\n  \"a \"\n]"
+    }
+   },
+   "text": "[\"a \"]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[\"\\u65e5\\\"\\t /\",[-133318,false,{}]]"
+    },
+    "compact_utf8": {
+     "ok": "[\"日\\\"\\t /\",[-133318,false,{}]]"
+    },
+    "default_utf8": {
+     "ok": "[\"日\\\"\\t /\", [-133318, false, {}]]"
+    },
+    "indent2": {
+     "ok": "[\n  \"\\u65e5\\\"\\t /\",\n  [\n    -133318,\n    false,\n    {}\n  ]\n]"
+    },
+    "indent2_nonan": {
+     "ok": "[\n  \"\\u65e5\\\"\\t /\",\n  [\n    -133318,\n    false,\n    {}\n  ]\n]"
+    }
+   },
+   "text": "[\"日\\\"\\t /\", [-133318, false, {}]]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "null"
+    },
+    "compact_utf8": {
+     "ok": "null"
+    },
+    "default_utf8": {
+     "ok": "null"
+    },
+    "indent2": {
+     "ok": "null"
+    },
+    "indent2_nonan": {
+     "ok": "null"
+    }
+   },
+   "text": "null"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[]"
+    },
+    "compact_utf8": {
+     "ok": "[]"
+    },
+    "default_utf8": {
+     "ok": "[]"
+    },
+    "indent2": {
+     "ok": "[]"
+    },
+    "indent2_nonan": {
+     "ok": "[]"
+    }
+   },
+   "text": "[]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[]"
+    },
+    "compact_utf8": {
+     "ok": "[]"
+    },
+    "default_utf8": {
+     "ok": "[]"
+    },
+    "indent2": {
+     "ok": "[]"
+    },
+    "indent2_nonan": {
+     "ok": "[]"
+    }
+   },
+   "text": "[]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "{\"b\":\"\\u007f\\\\\",\"a\":[],\"\\ud83d\\ude00\":-959129}"
+    },
+    "compact_utf8": {
+     "ok": "{\"b\":\"\\\\\",\"a\":[],\"😀\":-959129}"
+    },
+    "default_utf8": {
+     "ok": "{\"b\": \"\\\\\", \"a\": [], \"😀\": -959129}"
+    },
+    "indent2": {
+     "ok": "{\n  \"b\": \"\\u007f\\\\\",\n  \"a\": [],\n  \"\\ud83d\\ude00\": -959129\n}"
+    },
+    "indent2_nonan": {
+     "ok": "{\n  \"b\": \"\\u007f\\\\\",\n  \"a\": [],\n  \"\\ud83d\\ude00\": -959129\n}"
+    }
+   },
+   "text": "{\"b\": \"\\u007f\\\\\", \"a\": [], \"\\ud83d\\ude00\": -959129}"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "602836"
+    },
+    "compact_utf8": {
+     "ok": "602836"
+    },
+    "default_utf8": {
+     "ok": "602836"
+    },
+    "indent2": {
+     "ok": "602836"
+    },
+    "indent2_nonan": {
+     "ok": "602836"
+    }
+   },
+   "text": "602836"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "false"
+    },
+    "compact_utf8": {
+     "ok": "false"
+    },
+    "default_utf8": {
+     "ok": "false"
+    },
+    "indent2": {
+     "ok": "false"
+    },
+    "indent2_nonan": {
+     "ok": "false"
+    }
+   },
+   "text": "false"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "[null]"
+    },
+    "compact_utf8": {
+     "ok": "[null]"
+    },
+    "default_utf8": {
+     "ok": "[null]"
+    },
+    "indent2": {
+     "ok": "[\n  null\n]"
+    },
+    "indent2_nonan": {
+     "ok": "[\n  null\n]"
+    }
+   },
+   "text": "[null]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "err": "ValueError",
+     "msg": "Out of range float values are not JSON compliant: inf"
+    },
+    "compact_utf8": {
+     "ok": "[[true,{\"a\":Infinity},2.5]]"
+    },
+    "default_utf8": {
+     "ok": "[[true, {\"a\": Infinity}, 2.5]]"
+    },
+    "indent2": {
+     "ok": "[\n  [\n    true,\n    {\n      \"a\": Infinity\n    },\n    2.5\n  ]\n]"
+    },
+    "indent2_nonan": {
+     "err": "ValueError",
+     "msg": "Out of range float values are not JSON compliant: inf"
+    }
+   },
+   "text": "[[true, {\"a\": Infinity}, 2.5]]"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "\"\\ud83d\\ude00\\ud83d\\ude00\\u65e5\\\"\\\"\""
+    },
+    "compact_utf8": {
+     "ok": "\"😀😀日\\\"\\\"\""
+    },
+    "default_utf8": {
+     "ok": "\"😀😀日\\\"\\\"\""
+    },
+    "indent2": {
+     "ok": "\"\\ud83d\\ude00\\ud83d\\ude00\\u65e5\\\"\\\"\""
+    },
+    "indent2_nonan": {
+     "ok": "\"\\ud83d\\ude00\\ud83d\\ude00\\u65e5\\\"\\\"\""
+    }
+   },
+   "text": "\"\\ud83d\\ude00\\ud83d\\ude00\\u65e5\\\"\\\"\""
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "{\"x y\":null}"
+    },
+    "compact_utf8": {
+     "ok": "{\"x y\":null}"
+    },
+    "default_utf8": {
+     "ok": "{\"x y\": null}"
+    },
+    "indent2": {
+     "ok": "{\n  \"x y\": null\n}"
+    },
+    "indent2_nonan": {
+     "ok": "{\n  \"x y\": null\n}"
+    }
+   },
+   "text": "{\"x y\": null}"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "{\"a\":\" \\t \\\\\\\\\",\"x y\":[\"\\u0001a \\u0001\",\" \\u00e9\"]}"
+    },
+    "compact_utf8": {
+     "ok": "{\"a\":\" \\t \\\\\\\\\",\"x y\":[\"\\u0001a \\u0001\",\" é\"]}"
+    },
+    "default_utf8": {
+     "ok": "{\"a\": \" \\t \\\\\\\\\", \"x y\": [\"\\u0001a \\u0001\", \" é\"]}"
+    },
+    "indent2": {
+     "ok": "{\n  \"a\": \" \\t \\\\\\\\\",\n  \"x y\": [\n    \"\\u0001a \\u0001\",\n    \" \\u00e9\"\n  ]\n}"
+    },
+    "indent2_nonan": {
+     "ok": "{\n  \"a\": \" \\t \\\\\\\\\",\n  \"x y\": [\n    \"\\u0001a \\u0001\",\n    \" \\u00e9\"\n  ]\n}"
+    }
+   },
+   "text": "{\"a\": \" \\t \\\\\\\\\", \"x y\": [\"\\u0001a \\u0001\", \" é\"]}"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "711336"
+    },
+    "compact_utf8": {
+     "ok": "711336"
+    },
+    "default_utf8": {
+     "ok": "711336"
+    },
+    "indent2": {
+     "ok": "711336"
+    },
+    "indent2_nonan": {
+     "ok": "711336"
+    }
+   },
+   "text": "711336"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "false"
+    },
+    "compact_utf8": {
+     "ok": "false"
+    },
+    "default_utf8": {
+     "ok": "false"
+    },
+    "indent2": {
+     "ok": "false"
+    },
+    "indent2_nonan": {
+     "ok": "false"
+    }
+   },
+   "text": "false"
+  },
+  {
+   "decodes": true,
+   "encoded": {
+    "compact_ascii_nonan": {
+     "ok": "false"
+    },
+    "compact_utf8": {
+     "ok": "false"
+    },
+    "default_utf8": {
+     "ok": "false"
+    },
+    "indent2": {
+     "ok": "false"
+    },
+    "indent2_nonan": {
+     "ok": "false"
+    }
+   },
+   "text": "false"
+  }
+ ]
+}

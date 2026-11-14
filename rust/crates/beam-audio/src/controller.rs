@@ -82,7 +82,7 @@ pub enum SlamKind {
 }
 
 impl SlamKind {
-    pub fn from_str(kind: &str) -> Option<SlamKind> {
+    pub fn parse(kind: &str) -> Option<SlamKind> {
         match kind {
             "clear" => Some(SlamKind::Clear),
             "over" => Some(SlamKind::Over),
@@ -1163,7 +1163,11 @@ impl AudioController {
         if !distance.is_finite() {
             s._scan_closing_ms = 0.0;
         }
-        s._scan_prev_dist = if distance.is_finite() { Some(distance) } else { None };
+        s._scan_prev_dist = if distance.is_finite() {
+            Some(distance)
+        } else {
+            None
+        };
         s._scan_prev_dist_t = now;
     }
 
@@ -1218,7 +1222,11 @@ impl AudioController {
         acquire: bool,
         bearing_deg: f64,
     ) {
-        let mode = if mode.to_uppercase() == "RAMP" { "RAMP" } else { "IMPL" };
+        let mode = if mode.to_uppercase() == "RAMP" {
+            "RAMP"
+        } else {
+            "IMPL"
+        };
         let acquire = acquire && mode == "RAMP";
         let now = self.clock.perf_counter();
         let mut v = self.voice.lock();
@@ -1255,7 +1263,7 @@ impl AudioController {
 
     /// Fire a slam-gate earcon ("clear", "over", "committed"); anything else is ignored.
     pub fn trigger_slam_cue(&self, kind: &str) {
-        let Some(kind) = SlamKind::from_str(kind) else {
+        let Some(kind) = SlamKind::parse(kind) else {
             return;
         };
         let mut v = self.voice.lock();
@@ -1310,19 +1318,19 @@ impl AudioController {
         objects: &[crate::scan::ScanObject],
         reach_m: f64,
         pois: &[crate::scan::ScanPoi],
-    ) {
+    ) -> Result<(), crate::scan::ScanError> {
         if !self.is_enabled() {
-            return;
+            return Ok(());
         }
         let (sr, level) = {
             let s = self.lock.lock();
             if !s._scan_tones_enabled {
-                return;
+                return Ok(());
             }
             (s.samplerate, s._scan_level_db)
         };
         let started = std::time::Instant::now();
-        let buf = crate::scan::render_scan(samples, objects, reach_m, sr, level, pois);
+        let buf = crate::scan::render_scan(samples, objects, reach_m, sr, level, pois)?;
         log::debug!(
             "Terrain scan rendered in {} ms ({} samples, {} objects, {} POIs).",
             beam_base::pyfmt::py_f(started.elapsed().as_secs_f64() * 1000.0, 0),
@@ -1331,6 +1339,7 @@ impl AudioController {
             pois.len()
         );
         self.play_scan(Some(Arc::new(buf)));
+        Ok(())
     }
 
     pub fn stop_scan(&self) {
@@ -1387,7 +1396,13 @@ impl AudioController {
     }
 
     /// Terrain-only update path (types 2 = drop-off, 3 = hill).
-    pub fn update_obstacle(&self, obstacle_type: i64, _bearing: f64, _urgency: f64, _distance: f64) {
+    pub fn update_obstacle(
+        &self,
+        obstacle_type: i64,
+        _bearing: f64,
+        _urgency: f64,
+        _distance: f64,
+    ) {
         let mut v = self.voice.lock();
         let mut s = self.lock.lock();
         if obstacle_type == 2 || obstacle_type == 3 {
@@ -1597,8 +1612,12 @@ impl AudioController {
                 .enumerate()
             {
                 if choices.contains(&name) {
-                    let (l, r) =
-                        render_directional_pulse(s._hrtf.as_deref(), s._hrtf_user_enabled, &pulse, bearing);
+                    let (l, r) = render_directional_pulse(
+                        s._hrtf.as_deref(),
+                        s._hrtf_user_enabled,
+                        &pulse,
+                        bearing,
+                    );
                     queue.push(PulseEntry {
                         delay: (slot as f64 * 0.24 * sr).trunc() as i64,
                         L: l,
@@ -1613,7 +1632,8 @@ impl AudioController {
             let pulse: Wave = (0..n)
                 .map(|i| {
                     let t = i as f64 / sr;
-                    let phase = 2.0 * std::f64::consts::PI * (660.0 * t - 440.0 * t * t / (2.0 * 0.23));
+                    let phase =
+                        2.0 * std::f64::consts::PI * (660.0 * t - 440.0 * t * t / (2.0 * 0.23));
                     ((phase.sin() + 0.3 * (2.0 * phase).sin())
                         * (std::f64::consts::PI * t / 0.23).sin().powi(2)
                         * 0.3) as f32
@@ -1707,7 +1727,8 @@ impl AudioController {
             let s = self.lock.lock();
             (s._gear_tone_settings.clone(), s.samplerate)
         };
-        let hz = gear_report::degree_frequency(degree, &settings.root, settings.octave, &settings.scale);
+        let hz =
+            gear_report::degree_frequency(degree, &settings.root, settings.octave, &settings.scale);
         let buf = gear_report::render_tone(hz, settings.level_db, sr as u32, sport);
         let mut s = self.lock.lock();
         // Three in flight is already a shift every few tens of ms; the oldest is inaudible.
@@ -1761,7 +1782,8 @@ impl AudioController {
         if now < next_allowed {
             return; // previous chime still in flight
         }
-        let (first_l, first_r) = render_directional_pulse(hrtf.as_deref(), enabled, &first, bearing_first);
+        let (first_l, first_r) =
+            render_directional_pulse(hrtf.as_deref(), enabled, &first, bearing_first);
         let second_rendered = match (bearing_second, second) {
             (Some(b), Some(w)) => Some(render_directional_pulse(hrtf.as_deref(), enabled, &w, b)),
             _ => None,
@@ -1800,7 +1822,8 @@ impl AudioController {
         if !self.is_enabled() || !s._road_mode_active {
             return;
         }
-        let delay = w.len() as i64 + (s.samplerate * ROAD_JUNCTION_GAP_MS as f64 / 1000.0).trunc() as i64;
+        let delay =
+            w.len() as i64 + (s.samplerate * ROAD_JUNCTION_GAP_MS as f64 / 1000.0).trunc() as i64;
         s._road_junction_queue = vec![
             PulseEntry {
                 delay: 0,
@@ -1911,7 +1934,8 @@ impl AudioController {
         {
             Self::stop_road_correction_voice_locked(&mut v);
             if settled_wave_present
-                && now - s._road_correction_settled_last_time >= ROAD_CORRECTION_SETTLED_REFRACTORY_S
+                && now - s._road_correction_settled_last_time
+                    >= ROAD_CORRECTION_SETTLED_REFRACTORY_S
             {
                 v._road_correction_settled_pos = 0;
                 s._road_correction_settled_last_time = now;
@@ -2016,19 +2040,28 @@ impl AudioController {
 
             let (buzzer_amp, chime_amp) = (s.buzzer_amp, s.chime_amp);
             tasks.push(Box::new(move |w: &mut Waveforms| {
-                w.CHECK_ENGINE_BUZZER_WAVEFORM = Some(gen::check_engine_buzzer(sr, buzzer_amp));
-                w.OIL_CHIME_WAVEFORM = Some(gen::oil_chime(sr, chime_amp));
+                w.CHECK_ENGINE_BUZZER_WAVEFORM = Some(wavegen::check_engine_buzzer(sr, buzzer_amp));
+                w.OIL_CHIME_WAVEFORM = Some(wavegen::oil_chime(sr, chime_amp));
             }));
 
-            s._hrtf_front_emphasis_db = py_min(0.0, cfg_float(cfg, "hrtf_front_emphasis_db", -6.0)?);
+            s._hrtf_front_emphasis_db =
+                py_min(0.0, cfg_float(cfg, "hrtf_front_emphasis_db", -6.0)?);
             s._hrtf_user_enabled = cfg_bool(cfg, "hrtf_enabled", true);
             let dist_db = cfg_float(cfg, "hrtf_distance_gain_db", 0.0)?;
             s._hrtf_distance_gain = db_to_amp(dist_db);
 
             // Loader implement tones.
             s._impl_tones_enabled = cfg_bool(cfg, "implement_tones_enabled", true);
-            s._impl_ground_db = clamp_db(cfg_float(cfg, "implement_ground_tone_dbfs", IMPL_GROUND_MAX_DB)?);
-            s._impl_tilt_db = clamp_db(cfg_float(cfg, "implement_tilt_tone_dbfs", IMPL_TILT_MAX_DB)?);
+            s._impl_ground_db = clamp_db(cfg_float(
+                cfg,
+                "implement_ground_tone_dbfs",
+                IMPL_GROUND_MAX_DB,
+            )?);
+            s._impl_tilt_db = clamp_db(cfg_float(
+                cfg,
+                "implement_tilt_tone_dbfs",
+                IMPL_TILT_MAX_DB,
+            )?);
 
             // Docking instrument: only the pulse voice is user-levelled.
             s._dock_tones_enabled = cfg_bool(cfg, "dock_tones_enabled", true);
@@ -2047,7 +2080,10 @@ impl AudioController {
             s._scan_steer_tone_enabled = cfg_bool(cfg, "scanner_steer_tone_enabled", true);
             s._scan_base_freq = py_max(
                 100.0,
-                py_min(8000.0, cfg_float(cfg, "scanner_base_freq_hz", SCANNER_BASE_FREQ_DEFAULT)?),
+                py_min(
+                    8000.0,
+                    cfg_float(cfg, "scanner_base_freq_hz", SCANNER_BASE_FREQ_DEFAULT)?,
+                ),
             );
             s._scan_offset_oct = py_max(
                 SCANNER_OFFSET_OCT_MIN,
@@ -2070,17 +2106,19 @@ impl AudioController {
             let ping_db = cfg_float(cfg, "placement_ping_volume_db", PLACEMENT_PING_AMP_DB)?;
             s._ping_amp = db_to_amp(ping_db);
             let ping_amp = s._ping_amp;
-            tasks.push(Box::new(move |w: &mut Waveforms| w.PLACEMENT_PING_WAVEFORMS = Some(gen::placement_pings(sr, ping_amp))));
+            tasks.push(Box::new(move |w: &mut Waveforms| {
+                w.PLACEMENT_PING_WAVEFORMS = Some(wavegen::placement_pings(sr, ping_amp))
+            }));
 
             let obs_db = cfg_float(cfg, "obstacle_buzz_volume_db", OBSTACLE_DEFAULT_DB)?;
             s._obstacle_amp = db_to_amp(obs_db);
             let obstacle_amp = s._obstacle_amp;
             tasks.push(Box::new(move |w: &mut Waveforms| {
-                let (buzz, peak) = gen::obstacle_buzz(sr, obstacle_amp);
+                let (buzz, peak) = wavegen::obstacle_buzz(sr, obstacle_amp);
                 w.OBSTACLE_BUZZ_WAVEFORM = Some(buzz);
                 w._obstacle_harmonic_peak = Some(peak);
-                w.DROPOFF_SWEEP_WAVEFORM = Some(gen::dropoff_sweep(sr));
-                w.HILL_SWEEP_WAVEFORM = Some(gen::hill_sweep(sr));
+                w.DROPOFF_SWEEP_WAVEFORM = Some(wavegen::dropoff_sweep(sr));
+                w.HILL_SWEEP_WAVEFORM = Some(wavegen::hill_sweep(sr));
             }));
 
             let road_db = cfg_float(cfg, "road_beep_volume_db", ROAD_BEEP_AMP_DB)?;
@@ -2088,40 +2126,44 @@ impl AudioController {
             let correction_db = cfg_float(cfg, "road_correction_volume_db", -24.0)?;
             s._road_correction_amp = db_to_amp(correction_db);
             let road_amp = s._road_amp;
-            tasks.push(Box::new(move |w: &mut Waveforms| w.ROAD_BEEP_WAVEFORM = gen::road_beep(sr, road_amp)));
+            tasks.push(Box::new(move |w: &mut Waveforms| {
+                w.ROAD_BEEP_WAVEFORM = wavegen::road_beep(sr, road_amp)
+            }));
             // Route beacon volume: assigned here AND in regenerate_waveforms.
             let beacon_db = cfg_float(cfg, "route_beacon_volume_db", ROUTE_BEACON_AMP_DB)?;
             s._route_beacon_amp = db_to_amp(beacon_db);
             let beacon_amp = s._route_beacon_amp;
             tasks.push(Box::new(move |w: &mut Waveforms| {
-                w.ROUTE_BEACON_WAVEFORM = gen::route_beacon_pulse(sr, beacon_amp);
-                w.ROAD_CHIME_FWD_WAVEFORM = gen::road_chime_tone(sr, ROAD_CHIME_FWD_FREQ_HZ);
-                w.ROAD_CHIME_BACK_WAVEFORM = gen::road_chime_tone(sr, ROAD_CHIME_BACK_FREQ_HZ);
+                w.ROUTE_BEACON_WAVEFORM = wavegen::route_beacon_pulse(sr, beacon_amp);
+                w.ROAD_CHIME_FWD_WAVEFORM = wavegen::road_chime_tone(sr, ROAD_CHIME_FWD_FREQ_HZ);
+                w.ROAD_CHIME_BACK_WAVEFORM = wavegen::road_chime_tone(sr, ROAD_CHIME_BACK_FREQ_HZ);
             }));
             let junction_db = cfg_float(cfg, "road_junction_volume_db", ROAD_JUNCTION_AMP_DB)?;
             s._road_junction_amp = db_to_amp(junction_db);
             s._junction_proximity_enabled = cfg_bool(cfg, "road_junction_proximity_enabled", true);
             let (junction_amp, correction_amp) = (s._road_junction_amp, s._road_correction_amp);
             tasks.push(Box::new(move |w: &mut Waveforms| {
-                w.ROAD_JUNCTION_WAVEFORM = gen::road_junction_pip(sr, junction_amp);
-                w.ROAD_JUNCTION_ENTRY_WAVEFORM = gen::road_junction_entry(sr, junction_amp);
-                w.ROAD_CORRECTION_SETTLED_WAVEFORM = gen::road_correction_settled(sr, correction_amp);
+                w.ROAD_JUNCTION_WAVEFORM = wavegen::road_junction_pip(sr, junction_amp);
+                w.ROAD_JUNCTION_ENTRY_WAVEFORM = wavegen::road_junction_entry(sr, junction_amp);
+                w.ROAD_CORRECTION_SETTLED_WAVEFORM =
+                    wavegen::road_correction_settled(sr, correction_amp);
             }));
 
             // Regenerate volume-dependent waveforms.
-            let (cc, ls_db, ls_stop_db) = (s._compass_click_amp, s._ls_click_amp_db, s._ls_stop_amp_db);
+            let (cc, ls_db, ls_stop_db) =
+                (s._compass_click_amp, s._ls_click_amp_db, s._ls_stop_amp_db);
             tasks.push(Box::new(move |w: &mut Waveforms| {
-                w.CLICK_WAVEFORM = Some(gen::click(sr, cc));
-                w.HIGHLIGHT_CLICK_WAVEFORM = Some(gen::highlight_click(sr, cc));
-                w.LS_CLICK_WAVEFORM = Some(gen::lowspeed_click(sr, ls_db));
-                w.LS_STOP_WAVEFORM = Some(gen::lowspeed_stop_tone(sr, ls_stop_db));
-                w.CAM_CLICK_WAVEFORM = Some(gen::cam_click(sr, cc));
-                w.CAM_HIGHLIGHT_CLICK_WAVEFORM = Some(gen::cam_highlight_click(sr, cc));
-                w.HYDRO_CENTER_CLICK_WAVEFORM = Some(gen::center_click(sr));
-                w.DOCK_LOCK_WAVEFORM = Some(gen::dock_lock(sr));
-                w.SLAM_CUE_WAVEFORMS = gen::slam_cues(sr);
-                w.ENTRY_CUE_WAVEFORM = Some(gen::entry_cue(sr));
-                w.DOCK_APPROACH_CUE_WAVEFORM = Some(gen::dock_approach_cue(sr));
+                w.CLICK_WAVEFORM = Some(wavegen::click(sr, cc));
+                w.HIGHLIGHT_CLICK_WAVEFORM = Some(wavegen::highlight_click(sr, cc));
+                w.LS_CLICK_WAVEFORM = Some(wavegen::lowspeed_click(sr, ls_db));
+                w.LS_STOP_WAVEFORM = Some(wavegen::lowspeed_stop_tone(sr, ls_stop_db));
+                w.CAM_CLICK_WAVEFORM = Some(wavegen::cam_click(sr, cc));
+                w.CAM_HIGHLIGHT_CLICK_WAVEFORM = Some(wavegen::cam_highlight_click(sr, cc));
+                w.HYDRO_CENTER_CLICK_WAVEFORM = Some(wavegen::center_click(sr));
+                w.DOCK_LOCK_WAVEFORM = Some(wavegen::dock_lock(sr));
+                w.SLAM_CUE_WAVEFORMS = wavegen::slam_cues(sr);
+                w.ENTRY_CUE_WAVEFORM = Some(wavegen::entry_cue(sr));
+                w.DOCK_APPROACH_CUE_WAVEFORM = Some(wavegen::dock_approach_cue(sr));
             }));
 
             let old_follow = s._follow_default_enabled;
@@ -2134,7 +2176,8 @@ impl AudioController {
             };
             s._audio_poll_interval = cfg_float(cfg, "audio_poll_interval_sec", 2.0)?;
             restart_target = s._audio_stream.is_some()
-                && (old_follow != s._follow_default_enabled || old_device != s._preferred_device_name);
+                && (old_follow != s._follow_default_enabled
+                    || old_device != s._preferred_device_name);
         }
         Ok(restart_target)
     }
@@ -2196,7 +2239,12 @@ impl AudioController {
                 return;
             }
         }
-        if self.load_hrtf(&base_dir.join(info.filename), Some(key), Some(elevation), Some(eq)) {
+        if self.load_hrtf(
+            &base_dir.join(info.filename),
+            Some(key),
+            Some(elevation),
+            Some(eq),
+        ) {
             log::info!("HRTF set: {}", info.label);
         }
     }
@@ -2291,7 +2339,11 @@ impl AudioController {
             return;
         }
         let waves = self.waveforms();
-        let Some(pings) = waves.PLACEMENT_PING_WAVEFORMS.as_ref().filter(|p| !p.is_empty()) else {
+        let Some(pings) = waves
+            .PLACEMENT_PING_WAVEFORMS
+            .as_ref()
+            .filter(|p| !p.is_empty())
+        else {
             return;
         };
         let rung = rung.clamp(0, pings.len() as i64 - 1);
@@ -2299,7 +2351,11 @@ impl AudioController {
         let mut s = self.lock.lock();
         s._ping_request_rung = rung;
         s._ping_request_pitch_mult = pitch_mult;
-        let hrtf = if s._hrtf_user_enabled { s._hrtf.clone() } else { None };
+        let hrtf = if s._hrtf_user_enabled {
+            s._hrtf.clone()
+        } else {
+            None
+        };
         match hrtf {
             Some(h) => {
                 let hrtf_az = py_mod(360.0 - azimuth_deg, 360.0);
@@ -2333,17 +2389,17 @@ impl AudioController {
             ClickSlot::CamHighlight => waves.CAM_HIGHLIGHT_CLICK_WAVEFORM.clone(),
         };
         let mut conv: Option<(Wave, Wave)> = None;
-        let mut tried_hrtf = false;
         if let (Some(h), true, Some(w)) = (s._hrtf.clone(), s._hrtf_user_enabled, wave) {
-            tried_hrtf = true;
             let hrtf_az = py_mod(360.0 - azimuth_deg, 360.0);
             if let Some((ir_l, ir_r)) = h.get_hrir(hrtf_az) {
                 let gain = Self::hrtf_emphasis_gain_for(s._hrtf_front_emphasis_db, hrtf_az)
                     * s._hrtf_distance_gain;
-                conv = Some((convolve_scaled(&w, &ir_l, gain), convolve_scaled(&w, &ir_r, gain)));
+                conv = Some((
+                    convolve_scaled(&w, &ir_l, gain),
+                    convolve_scaled(&w, &ir_r, gain),
+                ));
             }
         }
-        let _ = tried_hrtf;
         let pan = azimuth_deg.to_radians().sin();
         let (use_hrtf, request_pitch, request_pan, conv_l, conv_r, request) = match slot {
             ClickSlot::Click => (
@@ -2521,7 +2577,10 @@ impl AudioController {
     pub fn regenerate_waveforms(&self) {
         let mut s = self.lock.lock();
         let sr = s.samplerate;
-        log::info!("Generating audio waveforms for {} Hz sample rate.", beam_base::pyfmt::py_float_str(sr));
+        log::info!(
+            "Generating audio waveforms for {} Hz sample rate.",
+            beam_base::pyfmt::py_float_str(sr)
+        );
         let p = (
             s._compass_click_amp,
             s.buzzer_amp,
@@ -2535,43 +2594,55 @@ impl AudioController {
             s._ls_stop_amp_db,
             s._ping_amp,
         );
-        let (cc, buzzer, chime, obstacle, road, beacon, junction, correction, ls_db, ls_stop_db, ping) = p;
+        let (
+            cc,
+            buzzer,
+            chime,
+            obstacle,
+            road,
+            beacon,
+            junction,
+            correction,
+            ls_db,
+            ls_stop_db,
+            ping,
+        ) = p;
         self.update_waves(|w| {
-            w.CLICK_WAVEFORM = Some(gen::click(sr, cc));
-            w.HIGHLIGHT_CLICK_WAVEFORM = Some(gen::highlight_click(sr, cc));
-            w.TC_TONE_WAVEFORM = Some(gen::tc_tone(sr));
-            w.CHECK_ENGINE_BUZZER_WAVEFORM = Some(gen::check_engine_buzzer(sr, buzzer));
-            w.OIL_CHIME_WAVEFORM = Some(gen::oil_chime(sr, chime));
-            w.SCANNER_BEEP_WAVEFORM = Some(gen::scanner_beep(sr));
-            w.SCANNER_ALIGNED_WAVEFORM = Some(gen::scanner_aligned_beep(sr));
-            let (buzz, peak) = gen::obstacle_buzz(sr, obstacle);
+            w.CLICK_WAVEFORM = Some(wavegen::click(sr, cc));
+            w.HIGHLIGHT_CLICK_WAVEFORM = Some(wavegen::highlight_click(sr, cc));
+            w.TC_TONE_WAVEFORM = Some(wavegen::tc_tone(sr));
+            w.CHECK_ENGINE_BUZZER_WAVEFORM = Some(wavegen::check_engine_buzzer(sr, buzzer));
+            w.OIL_CHIME_WAVEFORM = Some(wavegen::oil_chime(sr, chime));
+            w.SCANNER_BEEP_WAVEFORM = Some(wavegen::scanner_beep(sr));
+            w.SCANNER_ALIGNED_WAVEFORM = Some(wavegen::scanner_aligned_beep(sr));
+            let (buzz, peak) = wavegen::obstacle_buzz(sr, obstacle);
             w.OBSTACLE_BUZZ_WAVEFORM = Some(buzz);
             w._obstacle_harmonic_peak = Some(peak);
-            w.DROPOFF_SWEEP_WAVEFORM = Some(gen::dropoff_sweep(sr));
-            w.HILL_SWEEP_WAVEFORM = Some(gen::hill_sweep(sr));
-            w.ROAD_BEEP_WAVEFORM = gen::road_beep(sr, road);
-            w.ROUTE_BEACON_WAVEFORM = gen::route_beacon_pulse(sr, beacon);
-            w.ROAD_CHIME_FWD_WAVEFORM = gen::road_chime_tone(sr, ROAD_CHIME_FWD_FREQ_HZ);
-            w.ROAD_CHIME_BACK_WAVEFORM = gen::road_chime_tone(sr, ROAD_CHIME_BACK_FREQ_HZ);
-            w.ROAD_JUNCTION_WAVEFORM = gen::road_junction_pip(sr, junction);
-            w.ROAD_JUNCTION_ENTRY_WAVEFORM = gen::road_junction_entry(sr, junction);
-            w.ROAD_CORRECTION_SETTLED_WAVEFORM = gen::road_correction_settled(sr, correction);
+            w.DROPOFF_SWEEP_WAVEFORM = Some(wavegen::dropoff_sweep(sr));
+            w.HILL_SWEEP_WAVEFORM = Some(wavegen::hill_sweep(sr));
+            w.ROAD_BEEP_WAVEFORM = wavegen::road_beep(sr, road);
+            w.ROUTE_BEACON_WAVEFORM = wavegen::route_beacon_pulse(sr, beacon);
+            w.ROAD_CHIME_FWD_WAVEFORM = wavegen::road_chime_tone(sr, ROAD_CHIME_FWD_FREQ_HZ);
+            w.ROAD_CHIME_BACK_WAVEFORM = wavegen::road_chime_tone(sr, ROAD_CHIME_BACK_FREQ_HZ);
+            w.ROAD_JUNCTION_WAVEFORM = wavegen::road_junction_pip(sr, junction);
+            w.ROAD_JUNCTION_ENTRY_WAVEFORM = wavegen::road_junction_entry(sr, junction);
+            w.ROAD_CORRECTION_SETTLED_WAVEFORM = wavegen::road_correction_settled(sr, correction);
             w.GUIDANCE_WAVEFORM = None; // synthesised on the fly
-            w.LS_CLICK_WAVEFORM = Some(gen::lowspeed_click(sr, ls_db));
-            w.LS_STOP_WAVEFORM = Some(gen::lowspeed_stop_tone(sr, ls_stop_db));
-            w.CAM_CLICK_WAVEFORM = Some(gen::cam_click(sr, cc));
-            w.CAM_HIGHLIGHT_CLICK_WAVEFORM = Some(gen::cam_highlight_click(sr, cc));
-            w.HYDRO_CENTER_CLICK_WAVEFORM = Some(gen::center_click(sr));
-            w.DOCK_LOCK_WAVEFORM = Some(gen::dock_lock(sr));
-            w.SLAM_CUE_WAVEFORMS = gen::slam_cues(sr);
-            w.ENTRY_CUE_WAVEFORM = Some(gen::entry_cue(sr));
-            w.DOCK_APPROACH_CUE_WAVEFORM = Some(gen::dock_approach_cue(sr));
-            w.NODE_BEEP_WAVEFORM = Some(gen::node_beep(sr));
-            w.NODE_BEEP_REV_WAVEFORM = Some(gen::node_beep_reverse(sr));
-            w.CLICKSPOT_BEEP_WAVEFORM = Some(gen::clickspot_beep(sr));
-            w.CLICKSPOT_BEEP_REV_WAVEFORM = Some(gen::clickspot_beep_reverse(sr));
-            w.DESCRIBE_ERROR_WAVEFORM = Some(gen::describe_error_buzz(sr));
-            w.PLACEMENT_PING_WAVEFORMS = Some(gen::placement_pings(sr, ping));
+            w.LS_CLICK_WAVEFORM = Some(wavegen::lowspeed_click(sr, ls_db));
+            w.LS_STOP_WAVEFORM = Some(wavegen::lowspeed_stop_tone(sr, ls_stop_db));
+            w.CAM_CLICK_WAVEFORM = Some(wavegen::cam_click(sr, cc));
+            w.CAM_HIGHLIGHT_CLICK_WAVEFORM = Some(wavegen::cam_highlight_click(sr, cc));
+            w.HYDRO_CENTER_CLICK_WAVEFORM = Some(wavegen::center_click(sr));
+            w.DOCK_LOCK_WAVEFORM = Some(wavegen::dock_lock(sr));
+            w.SLAM_CUE_WAVEFORMS = wavegen::slam_cues(sr);
+            w.ENTRY_CUE_WAVEFORM = Some(wavegen::entry_cue(sr));
+            w.DOCK_APPROACH_CUE_WAVEFORM = Some(wavegen::dock_approach_cue(sr));
+            w.NODE_BEEP_WAVEFORM = Some(wavegen::node_beep(sr));
+            w.NODE_BEEP_REV_WAVEFORM = Some(wavegen::node_beep_reverse(sr));
+            w.CLICKSPOT_BEEP_WAVEFORM = Some(wavegen::clickspot_beep(sr));
+            w.CLICKSPOT_BEEP_REV_WAVEFORM = Some(wavegen::clickspot_beep_reverse(sr));
+            w.DESCRIBE_ERROR_WAVEFORM = Some(wavegen::describe_error_buzz(sr));
+            w.PLACEMENT_PING_WAVEFORMS = Some(wavegen::placement_pings(sr, ping));
         });
         if let Some(h) = s._hrtf.as_ref() {
             let mut h2 = (**h).clone();
@@ -2583,7 +2654,7 @@ impl AudioController {
 
 /// The waveform generators (AH's `waveforms` module), adapted to `Wave`. Every Python
 /// `_generate_*` reads `self.samplerate` plus the one level attribute named here.
-mod gen {
+mod wavegen {
     use super::{SlamCueWaveforms, Wave};
     use crate::waveforms as wf;
 
@@ -2607,7 +2678,10 @@ mod gen {
         w(wf::generate_cam_highlight_click(sr, compass_click_amp))
     }
     pub fn placement_pings(sr: f64, ping_amp: f64) -> Vec<Wave> {
-        wf::generate_placement_pings(sr, ping_amp).into_iter().map(w).collect()
+        wf::generate_placement_pings(sr, ping_amp)
+            .into_iter()
+            .map(w)
+            .collect()
     }
     pub fn center_click(sr: f64) -> Wave {
         w(wf::generate_center_click(sr))
@@ -2673,7 +2747,10 @@ mod gen {
         ow(wf::generate_road_junction_entry(sr, road_junction_amp))
     }
     pub fn road_correction_settled(sr: f64, road_correction_amp: f64) -> Option<Wave> {
-        ow(wf::generate_road_correction_settled(sr, road_correction_amp))
+        ow(wf::generate_road_correction_settled(
+            sr,
+            road_correction_amp,
+        ))
     }
     pub fn lowspeed_click(sr: f64, ls_click_amp_db: f64) -> Wave {
         w(wf::generate_lowspeed_click(sr, ls_click_amp_db))
@@ -2692,5 +2769,92 @@ mod gen {
     }
     pub fn node_beep_reverse(sr: f64) -> Wave {
         w(wf::generate_node_beep_reverse(sr))
+    }
+}
+
+/// Entry points the Python sims call on private methods (`_mix_assistant_cues`,
+/// `_mix_junction_proximity`, `_mix_gear_tones`, `_render_road_correction_block`,
+/// `_slip_voice_tables`, `_render_lineup`). Each takes the locks the Python method took.
+impl AudioController {
+    pub fn mix_assistant_cues(&self, buf_l: &mut [f32], buf_r: &mut [f32], frames: usize) {
+        let mut s = self.lock.lock();
+        crate::callback::assistant_cues::mix_assistant_cues(&mut s, buf_l, buf_r, frames);
+    }
+
+    pub fn mix_gear_tones(&self, buf_l: &mut [f32], buf_r: &mut [f32], frames: usize) {
+        let mut s = self.lock.lock();
+        crate::callback::gear_tones::mix_gear_tones(&mut s, buf_l, buf_r, frames);
+    }
+
+    pub fn mix_junction_proximity(&self, buf_l: &mut [f32], buf_r: &mut [f32], frames: usize) {
+        let now = self.clock.monotonic();
+        let mut s = self.lock.lock();
+        crate::callback::junction_proximity::mix_junction_proximity(
+            &mut s, now, buf_l, buf_r, frames,
+        );
+    }
+
+    pub fn render_road_correction_block(
+        &self,
+        frames: usize,
+        active: bool,
+        bearing_deg: f64,
+        severity: f64,
+        phase: &str,
+    ) -> Option<(Vec<f32>, Vec<f32>)> {
+        let mut v = self.voice.lock();
+        let (hrtf, enabled, sr, amp) = {
+            let s = self.lock.lock();
+            (
+                s._hrtf.clone(),
+                s._hrtf_user_enabled,
+                s.samplerate,
+                s._road_correction_amp,
+            )
+        };
+        let hrtf = if enabled { hrtf } else { None };
+        crate::callback::road_correction::render_road_correction_block(
+            &mut v,
+            hrtf.as_deref(),
+            sr,
+            amp,
+            frames,
+            active,
+            bearing_deg,
+            severity,
+            phase,
+        )
+    }
+
+    pub fn slip_voice_tables(&self) -> crate::callback::slip::SlipTables {
+        let sr = self.samplerate();
+        let mut v = self.voice.lock();
+        crate::callback::slip::slip_voice_tables(&mut v, sr)
+    }
+
+    pub fn render_lineup(
+        &self,
+        buf_l: &mut [f32],
+        buf_r: &mut [f32],
+        frames: usize,
+        live: bool,
+        target: (f64, f64, f64, f64),
+    ) {
+        let mut v = self.voice.lock();
+        let (hrtf, enabled, sr) = {
+            let s = self.lock.lock();
+            (s._hrtf.clone(), s._hrtf_user_enabled, s.samplerate)
+        };
+        let hrtf = if enabled { hrtf } else { None };
+        crate::callback::lineup::render_lineup(
+            &mut v,
+            hrtf.as_deref(),
+            sr,
+            buf_l,
+            buf_r,
+            frames,
+            live,
+            target,
+        );
     }
 }

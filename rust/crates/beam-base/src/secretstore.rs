@@ -126,9 +126,10 @@ pub fn protect(plaintext: &str) -> String {
     )
 }
 
-/// `base64.b64decode(s)` with Python's default (non-validating) rules: characters
-/// outside the alphabet are skipped, decoding stops once padding completes a quad,
-/// and a dangling partial quad is an error.
+/// `base64.b64decode(s)` with Python's default (non-validating) rules, as CPython 3.13
+/// behaves (checked by the `secretstore` fixture): characters outside the alphabet are
+/// skipped, `=` is ignored unless it trails the last data character, and a final
+/// partial quad is accepted only when that trailing padding completes it.
 pub fn py_b64decode(s: &str) -> Option<Vec<u8>> {
     if !s.is_ascii() {
         // `.encode("ascii")` raises first.
@@ -147,21 +148,16 @@ pub fn py_b64decode(s: &str) -> Option<Vec<u8>> {
     let mut out = Vec::with_capacity(s.len() * 3 / 4);
     let mut quad_pos = 0u32;
     let mut left = 0u32;
-    let mut pads = 0u32;
+    let mut trailing_pads = 0u32;
     for &c in s.as_bytes() {
         if c == b'=' {
-            if quad_pos >= 2 {
-                pads += 1;
-                if quad_pos + pads >= 4 {
-                    return Some(out);
-                }
-            }
+            trailing_pads += 1;
             continue;
         }
         let Some(v) = val(c) else {
             continue;
         };
-        pads = 0;
+        trailing_pads = 0;
         match quad_pos {
             0 => {
                 quad_pos = 1;
@@ -184,10 +180,11 @@ pub fn py_b64decode(s: &str) -> Option<Vec<u8>> {
             }
         }
     }
-    if quad_pos != 0 {
-        return None;
+    if quad_pos == 0 || (quad_pos >= 2 && quad_pos + trailing_pads >= 4) {
+        Some(out)
+    } else {
+        None
     }
-    Some(out)
 }
 
 /// Decrypt a stored secret.

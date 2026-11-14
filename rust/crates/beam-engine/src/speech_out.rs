@@ -1,4 +1,4 @@
-//! Owner: EA. Speech output (`beamtel.py:153-170, 299-502`): `say()`, the replay buffer,
+﻿//! Owner: EA. Speech output (`beamtel.py:153-170, 299-502`): `say()`, the replay buffer,
 //! the speech tap, the speech log file and the loading lifecycle.
 //!
 //! None of this lives in `state::State`, because `say()` is called while `state_lock` is
@@ -19,7 +19,7 @@ use regex::Regex;
 use serde::Serialize;
 use serde_json::Value;
 
-use crate::compat::beam_speech::speech;
+use beam_speech::speech;
 use crate::timer::{Timer, local_hms_millis, monotonic, time_time};
 
 /// `SPEECH_BUFFER = deque(maxlen=100)`: what the user can replay.
@@ -161,7 +161,7 @@ fn backend_speak(text: &str, interrupt: bool) {
         f(text, interrupt);
         return;
     }
-    speech::speak(text, interrupt);
+    let _ = speech::speak(text, interrupt);
 }
 
 fn py_type_name(v: &Value) -> &'static str {
@@ -388,7 +388,7 @@ fn say_normalized(normalized: &str, interrupt: bool, exclude_from_buffer: bool, 
 
 /// `stop_speech()`.
 pub fn stop_speech() {
-    speech::stop();
+    let _ = speech::stop();
 }
 
 /// `len(SPEECH_BUFFER)`.

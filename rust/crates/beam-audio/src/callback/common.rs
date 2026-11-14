@@ -1,4 +1,4 @@
-﻿//! Helpers every voice shares: the numpy idioms the callback repeats (open `linspace`,
+//! Helpers every voice shares: the numpy idioms the callback repeats (open `linspace`,
 //! direct `np.convolve(..., mode="full")`), the HRTF overlap-add bookkeeping, the two
 //! one-shot playback shapes, delayed-pulse queues, and the controller's small math
 //! helpers (`_clamp`, `_pan_gains`, `_render_directional_pulse`).
@@ -127,7 +127,13 @@ pub fn add_conv_f32(buf: &mut [f32], conv: &[f64], frames: usize) {
 /// `ol = min(len(tail), frames); buf[:ol] += tail[:ol].astype(np.float32)`, then both
 /// tails `None`. Callers that gate on `len(tail) > 0` get the same result, since an empty
 /// tail adds nothing.
-pub fn drain_tails(buf_l: &mut [f32], buf_r: &mut [f32], tail_l: &mut Tail, tail_r: &mut Tail, frames: usize) {
+pub fn drain_tails(
+    buf_l: &mut [f32],
+    buf_r: &mut [f32],
+    tail_l: &mut Tail,
+    tail_r: &mut Tail,
+    frames: usize,
+) {
     if let Some(t) = tail_l.as_ref() {
         let ol = t.len().min(frames).min(buf_l.len());
         for k in 0..ol {
@@ -156,7 +162,13 @@ pub fn drain_tails(buf_l: &mut [f32], buf_r: &mut [f32], tail_l: &mut Tail, tail
 /// `pos` is the Python float cursor; callers check `pos >= 0` first. Several Python sites
 /// compute `next` from `int(pos)` rather than `pos`; cursors only ever hold whole numbers,
 /// so the two agree.
-pub fn play_centred(buf_l: &mut [f32], buf_r: &mut [f32], wave: &[f32], pos: &mut f64, frames: usize) {
+pub fn play_centred(
+    buf_l: &mut [f32],
+    buf_r: &mut [f32],
+    wave: &[f32],
+    pos: &mut f64,
+    frames: usize,
+) {
     let start = pos.trunc() as i64;
     let len = wave.len() as i64;
     let n = (frames as i64).min(len - start);
@@ -229,7 +241,12 @@ pub struct PulseEntry {
 /// four Python copies of this loop differ only in spelling; each adds
 /// `L[pos:pos+n]` at `offset = max(0, delay)` in `f32`, clears the delay once it lands
 /// inside the block, and keeps the entry while `pos < len(L)`.
-pub fn mix_pulse_queue(queue: &mut Vec<PulseEntry>, buf_l: &mut [f32], buf_r: &mut [f32], frames: usize) {
+pub fn mix_pulse_queue(
+    queue: &mut Vec<PulseEntry>,
+    buf_l: &mut [f32],
+    buf_r: &mut [f32],
+    frames: usize,
+) {
     let frames_i = frames as i64;
     queue.retain_mut(|entry| {
         if entry.delay >= frames_i {

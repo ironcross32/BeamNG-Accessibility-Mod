@@ -7,7 +7,9 @@
 use beam_base::pyfmt::{py_float_parse, py_g, py_round, py_strip};
 use indexmap::IndexMap;
 
-use crate::pyops::{PyErr, int_text_to_i128, py_max, py_min, py_round_to_int, py_str_to_float, py_str_to_int};
+use crate::pyops::{
+    PyErr, int_text_to_i128, py_max, py_min, py_round_to_int, py_str_to_float, py_str_to_int,
+};
 
 /// A row: the `k=v` fields in wire order.
 pub type Row = IndexMap<String, String>;
@@ -107,7 +109,11 @@ pub fn row_line(row: &Row) -> Result<String, PyErr> {
             (Some(i), Some(c)) => (i + 1, c),
             _ => (1, 1),
         };
-        let parts = [get(row, "ref", ""), get(row, "device", ""), get(row, "blend", "")];
+        let parts = [
+            get(row, "ref", ""),
+            get(row, "device", ""),
+            get(row, "blend", ""),
+        ];
         let name: Vec<&str> = parts.iter().copied().filter(|p| !p.is_empty()).collect();
         let mut line = format!("Sound {index} of {count}: {}", name.join(", "));
         if row.get("modified").map(String::as_str) == Some("1") {

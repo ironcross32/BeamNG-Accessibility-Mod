@@ -144,6 +144,12 @@ fn load_config_matches_python() {
         } else {
             case["input"].as_str().map(|s| s.as_bytes().to_vec())
         };
+        if name == "python-sealed secret" && !python_blob_unseals(&fx) {
+            // DPAPI is per Windows user: the blob in the fixture only opens for the
+            // account that generated it.
+            eprintln!("skipping {name:?}: fixture sealed by another Windows account");
+            continue;
+        }
         let locked = case["locked"].as_bool().unwrap();
         for loader in ["engine", "configurator"] {
             let got = run(loader, input.as_deref(), locked);
@@ -169,11 +175,8 @@ fn load_config_matches_python() {
     );
 }
 
-#[test]
-fn python_sealed_secret_unseals() {
-    let fx = load("config");
-    let plain = fx["py_sealed_plaintext"].as_str().unwrap();
-    // The case "python-sealed secret" carries a blob sealed by secretstore.py.
+/// The blob secretstore.py sealed when the fixture was generated.
+fn python_blob(fx: &Value) -> String {
     let case = fx["cases"]
         .as_array()
         .unwrap()
@@ -181,6 +184,20 @@ fn python_sealed_secret_unseals() {
         .find(|c| c["name"] == "python-sealed secret")
         .unwrap();
     let input: Value = serde_json::from_str(case["input"].as_str().unwrap()).unwrap();
-    let blob = input["ai_describer_api_key"].as_str().unwrap();
-    assert_eq!(secretstore::unprotect(blob).as_deref(), Some(plain));
+    input["ai_describer_api_key"].as_str().unwrap().to_string()
+}
+
+fn python_blob_unseals(fx: &Value) -> bool {
+    secretstore::unprotect(&python_blob(fx)).is_some()
+}
+
+#[test]
+fn python_sealed_secret_unseals() {
+    let fx = load("config");
+    let plain = fx["py_sealed_plaintext"].as_str().unwrap();
+    let blob = python_blob(&fx);
+    match secretstore::unprotect(&blob) {
+        Some(got) => assert_eq!(got, plain),
+        None => eprintln!("skipped: fixture sealed by another Windows account"),
+    }
 }

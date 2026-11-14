@@ -47,10 +47,18 @@ fn conversions_match_python() {
             failures.push(format!("int({v:?}) = {it:?}, want {}", case["int"]));
         }
         if v.py_str() != s(&case["str"]) {
-            failures.push(format!("str({v:?}) = {:?}, want {}", v.py_str(), case["str"]));
+            failures.push(format!(
+                "str({v:?}) = {:?}, want {}",
+                v.py_str(),
+                case["str"]
+            ));
         }
         if v.py_repr() != s(&case["repr"]) {
-            failures.push(format!("repr({v:?}) = {:?}, want {}", v.py_repr(), case["repr"]));
+            failures.push(format!(
+                "repr({v:?}) = {:?}, want {}",
+                v.py_repr(),
+                case["repr"]
+            ));
         }
         if v.truthy() != case["truthy"].as_bool().unwrap() {
             failures.push(format!("bool({v:?}) wrong"));
@@ -68,12 +76,16 @@ fn float_to_int_matches_python() {
         let x = f(&case["x"]);
         let a = py_float_to_int(x);
         let b = py_round_to_int(x);
-        let eq = |t: &String, want: &serde_json::Value| same_pv(&PyValue::Int(t.clone()), &dec(want));
+        let eq =
+            |t: &String, want: &serde_json::Value| same_pv(&PyValue::Int(t.clone()), &dec(want));
         if !matches_outcome(&a, &case["int"], true, eq) {
             failures.push(format!("int({x:?}) = {a:?}, want {}", case["int"]));
         }
         if !matches_outcome(&b, &case["round_int"], true, eq) {
-            failures.push(format!("int(round({x:?})) = {b:?}, want {}", case["round_int"]));
+            failures.push(format!(
+                "int(round({x:?})) = {b:?}, want {}",
+                case["round_int"]
+            ));
         }
     }
     check_failures(failures, all.len());
@@ -95,7 +107,10 @@ fn html_unescape_matches_python() {
     for case in all {
         let got = html_unescape(s(&case["in"]));
         if got != s(&case["out"]) {
-            failures.push(format!("unescape({}) = {got:?}, want {}", case["in"], case["out"]));
+            failures.push(format!(
+                "unescape({}) = {got:?}, want {}",
+                case["in"], case["out"]
+            ));
         }
     }
     check_failures(failures, all.len());
@@ -110,7 +125,10 @@ fn hypot_matches_python() {
         let (x, y) = (f(&case["x"]), f(&case["y"]));
         let got = py_hypot(x, y);
         if !same_f64(got, f(&case["out"])) {
-            failures.push(format!("hypot({x:?}, {y:?}) = {got:?}, want {}", case["out"]["repr"]));
+            failures.push(format!(
+                "hypot({x:?}, {y:?}) = {got:?}, want {}",
+                case["out"]["repr"]
+            ));
         }
     }
     check_failures(failures, all.len());
@@ -149,7 +167,11 @@ fn isprintable_matches_python() {
     for case in cases(&fx, "isprintable_sample") {
         let cp = case["cp"].as_u64().unwrap() as u32;
         if let Some(c) = char::from_u32(cp) {
-            assert_eq!(is_printable(c), case["printable"].as_bool().unwrap(), "{case}");
+            assert_eq!(
+                is_printable(c),
+                case["printable"].as_bool().unwrap(),
+                "{case}"
+            );
         }
     }
 }

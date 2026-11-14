@@ -1,0 +1,6382 @@
+{
+ "constants": {
+  "ENERGY_WORDS": [
+   [
+    "gasoline",
+    "gasoline"
+   ],
+   [
+    "diesel",
+    "diesel"
+   ],
+   [
+    "kerosine",
+    "kerosene"
+   ],
+   [
+    "n2o",
+    "nitrous"
+   ],
+   [
+    "electricEnergy",
+    "EV charging"
+   ],
+   [
+    "any",
+    "any fuel"
+   ],
+   [
+    "fuel",
+    "fuel"
+   ]
+  ],
+  "EVENT_PREFIX": "FS_EVENT:",
+  "ROW_PREFIX": "FS:"
+ },
+ "direction_phrase": [
+  {
+   "b": {
+    "bits": 0,
+    "repr": "0.0"
+   },
+   "out": "ahead"
+  },
+  {
+   "b": {
+    "bits": 9223372036854775808,
+    "repr": "-0.0"
+   },
+   "out": "ahead"
+  },
+  {
+   "b": {
+    "bits": 4627026376510620985,
+    "repr": "22.4999"
+   },
+   "out": "ahead"
+  },
+  {
+   "b": {
+    "bits": 4627026404658118656,
+    "repr": "22.5"
+   },
+   "out": "ahead left"
+  },
+  {
+   "b": {
+    "bits": 13850398441512894464,
+    "repr": "-22.5"
+   },
+   "out": "ahead right"
+  },
+  {
+   "b": {
+    "bits": 4634450307168862208,
+    "repr": "67.5"
+   },
+   "out": "to the left"
+  },
+  {
+   "b": {
+    "bits": 4637609863782439322,
+    "repr": "112.4"
+   },
+   "out": "to the left"
+  },
+  {
+   "b": {
+    "bits": 4637616900656857088,
+    "repr": "112.5"
+   },
+   "out": "behind left"
+  },
+  {
+   "b": {
+    "bits": 4639745203324510536,
+    "repr": "157.49"
+   },
+   "out": "behind left"
+  },
+  {
+   "b": {
+    "bits": 4639745555168231424,
+    "repr": "157.5"
+   },
+   "out": "behind"
+  },
+  {
+   "b": {
+    "bits": 13863117592023007232,
+    "repr": "-157.5"
+   },
+   "out": "behind"
+  },
+  {
+   "b": {
+    "bits": 4640537203540230144,
+    "repr": "180.0"
+   },
+   "out": "behind"
+  },
+  {
+   "b": {
+    "bits": 13863909240395005952,
+    "repr": "-180.0"
+   },
+   "out": "behind"
+  },
+  {
+   "b": {
+    "bits": 4641328851912228864,
+    "repr": "202.5"
+   },
+   "out": "behind"
+  },
+  {
+   "b": {
+    "bits": 4645023210981556224,
+    "repr": "359.0"
+   },
+   "out": "ahead"
+  },
+  {
+   "b": {
+    "bits": 4649544402794971136,
+    "repr": "720.0"
+   },
+   "out": "ahead"
+  },
+  {
+   "b": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "out": "behind"
+  },
+  {
+   "b": {
+    "bits": 13862562189092251458,
+    "repr": "-141.7144992852646"
+   },
+   "out": "behind right"
+  },
+  {
+   "b": {
+    "bits": 4645685810295106634,
+    "repr": "396.6644103170298"
+   },
+   "out": "ahead left"
+  },
+  {
+   "b": {
+    "bits": 4636245806791838912,
+    "repr": "93.01558428332191"
+   },
+   "out": "to the left"
+  },
+  {
+   "b": {
+    "bits": 13867080636135627598,
+    "repr": "-284.2729764575387"
+   },
+   "out": "to the left"
+  },
+  {
+   "b": {
+    "bits": 13853078163198085160,
+    "repr": "-32.04056777271063"
+   },
+   "out": "ahead right"
+  },
+  {
+   "b": {
+    "bits": 4645019438443280002,
+    "repr": "358.7855560265963"
+   },
+   "out": "ahead"
+  },
+  {
+   "b": {
+    "bits": 13863081439878733430,
+    "repr": "-156.47249426016396"
+   },
+   "out": "behind right"
+  },
+  {
+   "b": {
+    "bits": 4605452063878008320,
+    "repr": "0.8078920124812043"
+   },
+   "out": "ahead"
+  },
+  {
+   "b": {
+    "bits": 13862717599797641251,
+    "repr": "-146.1315371962274"
+   },
+   "out": "behind right"
+  },
+  {
+   "b": {
+    "bits": 13867187356410822740,
+    "repr": "-290.33932176139683"
+   },
+   "out": "to the left"
+  },
+  {
+   "b": {
+    "bits": 4643677846279176310,
+    "repr": "282.52487070207223"
+   },
+   "out": "to the right"
+  },
+  {
+   "b": {
+    "bits": 13868861167641762463,
+    "repr": "-385.48447465562816"
+   },
+   "out": "ahead right"
+  },
+  {
+   "b": {
+    "bits": 4643614901042655040,
+    "repr": "278.94684825720105"
+   },
+   "out": "to the right"
+  },
+  {
+   "b": {
+    "bits": 13866532143369950614,
+    "repr": "-254.54738621801943"
+   },
+   "out": "to the left"
+  },
+  {
+   "b": {
+    "bits": 4633243214790937704,
+    "repr": "57.17309279474358"
+   },
+   "out": "ahead left"
+  },
+  {
+   "b": {
+    "bits": 4638217780795758160,
+    "repr": "121.03902035517353"
+   },
+   "out": "behind left"
+  },
+  {
+   "b": {
+    "bits": 13868315098027900549,
+    "repr": "-354.4440108677157"
+   },
+   "out": "ahead"
+  },
+  {
+   "b": {
+    "bits": 13868608303288159427,
+    "repr": "-371.1108002888033"
+   },
+   "out": "ahead"
+  },
+  {
+   "b": {
+    "bits": 13856028441783241672,
+    "repr": "-53.00355794422609"
+   },
+   "out": "ahead right"
+  },
+  {
+   "b": {
+    "bits": 4639603800520777936,
+    "repr": "153.4710905996676"
+   },
+   "out": "behind left"
+  },
+  {
+   "b": {
+    "bits": 4641705177560665244,
+    "repr": "213.19581823106716"
+   },
+   "out": "behind right"
+  },
+  {
+   "b": {
+    "bits": 4643529802064359128,
+    "repr": "274.1095313892997"
+   },
+   "out": "to the right"
+  },
+  {
+   "b": {
+    "bits": 4639891253486404640,
+    "repr": "161.6409952636177"
+   },
+   "out": "behind"
+  },
+  {
+   "b": {
+    "bits": 4635787861673010612,
+    "repr": "86.50779273211703"
+   },
+   "out": "to the left"
+  },
+  {
+   "b": {
+    "bits": 13855288196844594152,
+    "repr": "-47.743801305834324"
+   },
+   "out": "ahead right"
+  },
+  {
+   "b": {
+    "bits": 4643069041334850576,
+    "repr": "251.95915812361682"
+   },
+   "out": "to the right"
+  },
+  {
+   "b": {
+    "bits": 4620795379053870016,
+    "repr": "8.18147505141485"
+   },
+   "out": "ahead"
+  },
+  {
+   "b": {
+    "bits": 4644919580564924608,
+    "repr": "353.109292820689"
+   },
+   "out": "ahead"
+  },
+  {
+   "b": {
+    "bits": 13866825334783131166,
+    "repr": "-269.7607747418532"
+   },
+   "out": "to the left"
+  },
+  {
+   "b": {
+    "bits": 13865311458796295736,
+    "repr": "-219.85344395942388"
+   },
+   "out": "behind left"
+  }
+ ],
+ "energy_phrase": [
+  {
+   "in": [],
+   "out": "fuel type not listed"
+  },
+  {
+   "in": [
+    ""
+   ],
+   "out": "fuel type not listed"
+  },
+  {
+   "in": [
+    "gasoline"
+   ],
+   "out": "gasoline"
+  },
+  {
+   "in": [
+    "gasoline",
+    "diesel"
+   ],
+   "out": "gasoline and diesel"
+  },
+  {
+   "in": [
+    "gasoline",
+    "diesel",
+    "n2o"
+   ],
+   "out": "gasoline, diesel and nitrous"
+  },
+  {
+   "in": [
+    "diesel",
+    "diesel"
+   ],
+   "out": "diesel"
+  },
+  {
+   "in": [
+    "fuel",
+    "any",
+    "electricEnergy",
+    "kerosine"
+   ],
+   "out": "fuel, any fuel, EV charging and kerosene"
+  },
+  {
+   "in": [
+    "hydrogen",
+    ""
+   ],
+   "out": "hydrogen"
+  },
+  {
+   "in": [
+    "gasoline",
+    "x",
+    "gasoline",
+    "y"
+   ],
+   "out": "gasoline, x and y"
+  }
+ ],
+ "events": [
+  {
+   "err": "ValueError",
+   "msg": "not a fuel station event",
+   "packet": ""
+  },
+  {
+   "err": "ValueError",
+   "msg": "invalid event JSON",
+   "packet": "FS_EVENT:"
+  },
+  {
+   "err": "ValueError",
+   "msg": "invalid event JSON",
+   "packet": "FS_EVENT:{"
+  },
+  {
+   "err": "ValueError",
+   "msg": "event has no kind",
+   "packet": "FS_EVENT:[]"
+  },
+  {
+   "err": "ValueError",
+   "msg": "event has no kind",
+   "packet": "FS_EVENT:{}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "event has no kind",
+   "packet": "FS_EVENT:{\"kind\":\"\"}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "event has no kind",
+   "packet": "FS_EVENT:{\"kind\":0}"
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "target"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\":\"target\"}",
+   "phrase": {
+    "t": "str",
+    "v": "Route set to the station. Fuel station assistance on"
+   }
+  },
+  {
+   "err": "ValueError",
+   "msg": "not a fuel station event",
+   "packet": "FS:{}"
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "target"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"target\"}",
+   "phrase": {
+    "t": "str",
+    "v": "Route set to the station. Fuel station assistance on"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "target"
+      }
+     ],
+     [
+      "here",
+      {
+       "t": "bool",
+       "v": true
+      }
+     ],
+     [
+      "station",
+      {
+       "t": "str",
+       "v": "Gas & Go"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"target\", \"here\": true, \"station\": \"Gas & Go\"}",
+   "phrase": {
+    "t": "str",
+    "v": "Gas & Go. You are here"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "target"
+      }
+     ],
+     [
+      "station",
+      {
+       "t": "str",
+       "v": ""
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"target\", \"station\": \"\"}",
+   "phrase": {
+    "t": "str",
+    "v": "Route set to the station. Fuel station assistance on"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "target"
+      }
+     ],
+     [
+      "station",
+      {
+       "t": "int",
+       "v": "5"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"target\", \"station\": 5}",
+   "phrase": {
+    "t": "str",
+    "v": "Route set to 5. Fuel station assistance on"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "in_range"
+      }
+     ],
+     [
+      "station",
+      {
+       "t": "str",
+       "v": "S"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"in_range\", \"station\": \"S\"}",
+   "phrase": {
+    "t": "str",
+    "v": "Arriving at S. Press F9 then Shift F to park at a pump"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "parking"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"parking\"}",
+   "phrase": {
+    "t": "str",
+    "v": "Parking at a pump. Brake to cancel"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "parking"
+      }
+     ],
+     [
+      "pump",
+      {
+       "t": "int",
+       "v": "3"
+      }
+     ],
+     [
+      "side",
+      {
+       "t": "str",
+       "v": "left"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"parking\", \"pump\": 3, \"side\": \"left\"}",
+   "phrase": {
+    "t": "str",
+    "v": "Parking at pump 3, on your left. Brake to cancel"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "parking"
+      }
+     ],
+     [
+      "pump",
+      {
+       "t": "int",
+       "v": "0"
+      }
+     ],
+     [
+      "side",
+      {
+       "t": "str",
+       "v": "up"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"parking\", \"pump\": 0, \"side\": \"up\"}",
+   "phrase": {
+    "t": "str",
+    "v": "Parking at a pump. Brake to cancel"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "parking"
+      }
+     ],
+     [
+      "pump",
+      {
+       "t": "str",
+       "v": "2B"
+      }
+     ],
+     [
+      "official",
+      {
+       "t": "bool",
+       "v": false
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"parking\", \"pump\": \"2B\", \"official\": false}",
+   "phrase": {
+    "t": "str",
+    "v": "Parking at the pumps. Brake to cancel"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "parking"
+      }
+     ],
+     [
+      "official",
+      {
+       "t": "none"
+      }
+     ],
+     [
+      "side",
+      {
+       "t": "str",
+       "v": "right"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"parking\", \"official\": null, \"side\": \"right\"}",
+   "phrase": {
+    "t": "str",
+    "v": "Parking at the pumps, on your right. Brake to cancel"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "parked"
+      }
+     ],
+     [
+      "official",
+      {
+       "t": "bool",
+       "v": false
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"parked\", \"official\": false}",
+   "phrase": {
+    "t": "str",
+    "v": "Stopped by the pumps. The game has no refuelling here"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "parked"
+      }
+     ],
+     [
+      "electric",
+      {
+       "t": "bool",
+       "v": true
+      }
+     ],
+     [
+      "inZone",
+      {
+       "t": "bool",
+       "v": true
+      }
+     ],
+     [
+      "pump",
+      {
+       "t": "int",
+       "v": "2"
+      }
+     ],
+     [
+      "side",
+      {
+       "t": "str",
+       "v": "right"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"parked\", \"electric\": true, \"inZone\": true, \"pump\": 2, \"side\": \"right\"}",
+   "phrase": {
+    "t": "str",
+    "v": "Stopped at pump 2, on your right. Put the car in park, then press Shift E to recharge"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "parked"
+      }
+     ],
+     [
+      "inZone",
+      {
+       "t": "bool",
+       "v": false
+      }
+     ],
+     [
+      "pump",
+      {
+       "t": "int",
+       "v": "1"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"parked\", \"inZone\": false, \"pump\": 1}",
+   "phrase": {
+    "t": "str",
+    "v": "Stopped beside pump 1, but the game has not registered the car at the pump. Move a little closer to it"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "parked"
+      }
+     ],
+     [
+      "inZone",
+      {
+       "t": "int",
+       "v": "1"
+      }
+     ],
+     [
+      "electric",
+      {
+       "t": "int",
+       "v": "0"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"parked\", \"inZone\": 1, \"electric\": 0}",
+   "phrase": {
+    "t": "str",
+    "v": "Stopped at a pump. Put the car in park, then press Shift E to refuel"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "park_refused"
+      }
+     ],
+     [
+      "message",
+      {
+       "t": "str",
+       "v": "Too fast"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"park_refused\", \"message\": \"Too fast\"}",
+   "phrase": {
+    "t": "str",
+    "v": "Too fast"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "park_refused"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"park_refused\"}",
+   "phrase": {
+    "t": "str",
+    "v": "Parking failed"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "park_failed"
+      }
+     ],
+     [
+      "message",
+      {
+       "t": "str",
+       "v": "Blocked"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"park_failed\", \"message\": \"Blocked\"}",
+   "phrase": {
+    "t": "str",
+    "v": "Parking stopped. Blocked"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "park_failed"
+      }
+     ],
+     [
+      "message",
+      {
+       "t": "str",
+       "v": ""
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"park_failed\", \"message\": \"\"}",
+   "phrase": {
+    "t": "str",
+    "v": "Parking stopped. Parking failed"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "error"
+      }
+     ],
+     [
+      "message",
+      {
+       "t": "list",
+       "v": [
+        {
+         "t": "str",
+         "v": "x"
+        }
+       ]
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"error\", \"message\": [\"x\"]}",
+   "phrase": {
+    "t": "list",
+    "v": [
+     {
+      "t": "str",
+      "v": "x"
+     }
+    ]
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "park_cancelled"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"park_cancelled\"}",
+   "phrase": {
+    "t": "str",
+    "v": "Parking cancelled"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "cancelled"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"cancelled\"}",
+   "phrase": {
+    "t": "str",
+    "v": "Fuel station assistance off"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "left_range"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"left_range\"}",
+   "phrase": {
+    "t": "none"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "scan_done"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"scan_done\"}",
+   "phrase": {
+    "t": "none"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "int",
+       "v": "5"
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": 5}",
+   "phrase": {
+    "t": "none"
+   }
+  },
+  {
+   "err": "ValueError",
+   "msg": "event has no kind",
+   "packet": "FS_EVENT:{}"
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "parking"
+      }
+     ],
+     [
+      "pump",
+      {
+       "t": "float",
+       "v": {
+        "bits": 4611686018427387904,
+        "repr": "2.0"
+       }
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"parking\", \"pump\": 2.0}",
+   "phrase": {
+    "t": "str",
+    "v": "Parking at pump 2.0. Brake to cancel"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "parking"
+      }
+     ],
+     [
+      "pump",
+      {
+       "t": "float",
+       "v": {
+        "bits": 9094988921128908188,
+        "repr": "1e+300"
+       }
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"parking\", \"pump\": 1e+300}",
+   "phrase": {
+    "t": "str",
+    "v": "Parking at pump 1e+300. Brake to cancel"
+   }
+  },
+  {
+   "ok": {
+    "t": "dict",
+    "v": [
+     [
+      "kind",
+      {
+       "t": "str",
+       "v": "target"
+      }
+     ],
+     [
+      "station",
+      {
+       "t": "dict",
+       "v": [
+        [
+         "a",
+         {
+          "t": "str",
+          "v": "b\"c"
+         }
+        ]
+       ]
+      }
+     ]
+    ]
+   },
+   "packet": "FS_EVENT:{\"kind\": \"target\", \"station\": {\"a\": \"b\\\"c\"}}",
+   "phrase": {
+    "t": "str",
+    "v": "Route set to {'a': 'b\"c'}. Fuel station assistance on"
+   }
+  }
+ ],
+ "parse_row": [
+  {
+   "err": "ValueError",
+   "msg": "not a station row",
+   "packet": ""
+  },
+  {
+   "err": "ValueError",
+   "msg": "not a station row",
+   "packet": "FS"
+  },
+  {
+   "err": "ValueError",
+   "msg": "invalid station JSON",
+   "packet": "FS:"
+  },
+  {
+   "err": "ValueError",
+   "msg": "invalid station JSON",
+   "packet": "FS:{"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:[]"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:null"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:{}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:{\"id\":\"\"}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:{\"id\":0}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "compatible": {
+     "t": "none"
+    },
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "energy": [],
+    "id": "1",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\":1}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has invalid navigation values",
+   "packet": "FS:{\"id\":\"a\",\"distance\":\"x\"}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has invalid navigation values",
+   "packet": "FS:{\"id\":\"a\",\"distance\":null}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has invalid navigation values",
+   "packet": "FS:{\"id\":\"a\",\"bearing\":[1]}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has non-finite navigation values",
+   "packet": "FS:{\"id\":\"a\",\"distance\":NaN}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has non-finite navigation values",
+   "packet": "FS:{\"id\":\"a\",\"bearing\":Infinity}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "invalid literal for int() with base 10: 'x'",
+   "packet": "FS:{\"id\":\"a\",\"pumps\":\"x\"}"
+  },
+  {
+   "err": "TypeError",
+   "msg": "int() argument must be a string, a bytes-like object or a real number, not 'list'",
+   "packet": "FS:{\"id\":\"a\",\"pumps\":[1]}"
+  },
+  {
+   "err": "OverflowError",
+   "msg": "cannot convert float infinity to integer",
+   "packet": "FS:{\"id\":\"a\",\"pumps\":Infinity}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "cannot convert float NaN to integer",
+   "packet": "FS:{\"id\":\"a\",\"pumps\":NaN}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "compatible": {
+     "t": "none"
+    },
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "energy": [],
+    "id": "a",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "2",
+    "target": false
+   },
+   "packet": "FS:{\"id\":\"a\",\"pumps\":2.9}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "compatible": {
+     "t": "none"
+    },
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "energy": [],
+    "id": "a",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "7",
+    "target": false
+   },
+   "packet": "FS:{\"id\":\"a\",\"pumps\":\"7\"}"
+  },
+  {
+   "err": "OverflowError",
+   "msg": "int too large to convert to float",
+   "packet": "FS:{\"id\":\"a\",\"distance\":10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "compatible": {
+     "t": "none"
+    },
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "energy": [],
+    "id": "a",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\":\"a\",\"energy\":\"gasoline\"}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "compatible": {
+     "t": "none"
+    },
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "energy": [
+     "1",
+     "None",
+     "True",
+     "2.5",
+     "{'x': \"it's\"}"
+    ],
+    "id": "a",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\":\"a\",\"energy\":[1,null,true,2.5,{\"x\":\"it's\"}]}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "compatible": {
+     "t": "none"
+    },
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "energy": [],
+    "id": "['x']",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\":[\"x\"],\"name\":0}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": false
+    },
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "energy": [],
+    "id": "a",
+    "name": "5",
+    "official": false,
+    "pumps": "0",
+    "target": true
+   },
+   "packet": "FS:{\"id\":\"a\",\"name\":5,\"official\":null,\"target\":\"no\",\"compatible\":false}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "not a station row",
+   "packet": "FS_EVENT:{}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "not a station row",
+   "packet": " FS:{}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "int",
+     "v": "3"
+    },
+    "distance": {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 1.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 3, \"target\": false}"
+  },
+  {
+   "err": "OverflowError",
+   "msg": "cannot convert float infinity to integer",
+   "packet": "FS:{\"id\": 2.7, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": Infinity, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "invalid literal for int() with base 10: '2.5'",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"hydrogen\", \"kerosine\"], \"distance\": 812.4, \"pumps\": \"2.5\", \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13850398441512894464,
+     "repr": "-22.5"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "fuel",
+     "",
+     "kerosine"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"fuel\", \"\", \"kerosine\"], \"distance\": 812.4, \"bearing\": -22.5, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "float",
+     "v": {
+      "bits": 4613262278296967578,
+      "repr": "2.7"
+     }
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": {}, \"official\": NaN, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": false, \"compatible\": 2.7, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4627026404658118656,
+     "repr": "22.5"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 22.5, \"pumps\": 4, \"compatible\": true, \"target\": \"x\"}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "1",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": 1, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4671226772094713856,
+     "repr": "20000.0"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "-2",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": -2, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 20000.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": -2}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "any",
+     "diesel",
+     "fuel",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"any\", \"diesel\", \"fuel\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "2.7",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": 2.7, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:{\"id\": {}, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "none"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": \"2.5\"}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel",
+     ""
+    ],
+    "id": "st1",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": {}, \"official\": true, \"energy\": [\"gasoline\", \"diesel\", \"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": -2, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "compatible": {
+     "t": "list",
+     "v": [
+      {
+       "t": "str",
+       "v": "a"
+      }
+     ]
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 540.0, \"pumps\": 4, \"compatible\": [\"a\"], \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "['a']",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": [\"a\"], \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "none"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "",
+     "kerosine",
+     "any"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": false,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": [], \"energy\": [\"\", \"kerosine\", \"any\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4644069714497948877,
+     "repr": "304.8"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": \"2.5\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 304.8, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "3",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 3, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "4",
+    "name": "1",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"4\", \"name\": 1, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4644069714497948877,
+     "repr": "304.8"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "nan",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": NaN, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 304.8, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "int",
+     "v": "0"
+    },
+    "distance": {
+     "bits": 4644069714497948877,
+     "repr": "304.8"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "-2",
+    "official": true,
+    "pumps": "2",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": -2, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 304.8, \"bearing\": -33.0, \"pumps\": 2.7, \"compatible\": 0, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "{'k': 1}",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": {\"k\": 1}, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "list",
+     "v": [
+      {
+       "t": "str",
+       "v": "a"
+      }
+     ]
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": [\"a\"], \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": {\"k\": 1}}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4654311885213007872,
+     "repr": "1500.0"
+    },
+    "energy": [],
+    "id": "2.7",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": 2.7, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 1500.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": []}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": \"\", \"compatible\": true, \"target\": false}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:{\"id\": -0.0, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "str",
+     "v": "4"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "nan",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": NaN, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": \"4\", \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": {\"k\": 1}, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": \"4\", \"compatible\": true, \"target\": false}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:{\"id\": {}, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 540.0, \"pumps\": 4, \"compatible\": true, \"target\": []}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "1",
+    "official": true,
+    "pumps": "0",
+    "target": true
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": 1, \"official\": 3, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": [], \"compatible\": true, \"target\": \"x\"}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "int",
+     "v": "3"
+    },
+    "distance": {
+     "bits": 4607092346807469998,
+     "repr": "0.99"
+    },
+    "energy": [],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"distance\": 0.99, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 3, \"target\": false, \"energy\": []}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "float",
+     "v": {
+      "bits": 9218868437227405312,
+      "repr": "inf"
+     }
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": Infinity, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": 1}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:{\"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"electricEnergy\"], \"distance\": -5.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13850398441512894464,
+     "repr": "-22.5"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "nan",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": NaN, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -22.5, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "{'k': 1}",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": {\"k\": 1}, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "float",
+     "v": {
+      "bits": 4613262278296967578,
+      "repr": "2.7"
+     }
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "fuel",
+     "kerosine",
+     "hydrogen",
+     ""
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": 1, \"energy\": [\"fuel\", \"kerosine\", \"hydrogen\", \"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 2.7, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4634450307168862208,
+     "repr": "67.5"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    "energy": [],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"distance\": 1.0, \"bearing\": 67.5, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "['a']",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false, \"id\": [\"a\"]}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "diesel",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"diesel\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Fuel station",
+    "official": false,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"official\": 0, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "energy": [
+     "hydrogen",
+     "",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"hydrogen\", \"\", \"diesel\"], \"distance\": 0.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "invalid literal for int() with base 10: '2.5'",
+   "packet": "FS:{\"id\": \"st1\", \"name\": 0, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": \"2.5\", \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": false,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": false, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "dict",
+     "v": []
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": {}, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "{'k': 1}",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": {\"k\": 1}, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:{\"id\": false, \"name\": \"Gas & Go\", \"official\": true, \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": [\"a\"]}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4639742036731022540,
+     "repr": "157.39999999999998"
+    },
+    "compatible": {
+     "t": "none"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "-2",
+    "target": true
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 157.4, \"pumps\": -2, \"target\": [\"a\"]}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13850398441512894464,
+     "repr": "-22.5"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -22.5, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4634443270294444442,
+     "repr": "67.4"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 67.4, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "none"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "fuel",
+     ""
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"fuel\", \"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"target\": \"x\"}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4639742036731022540,
+     "repr": "157.39999999999998"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4651998512748167168,
+     "repr": "999.0"
+    },
+    "energy": [
+     "gasoline",
+     "n2o"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"n2o\"], \"distance\": 999.0, \"bearing\": 157.4, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "list",
+     "v": []
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": []}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4637616900656857088,
+     "repr": "112.5"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "fuel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"fuel\"], \"distance\": 812.4, \"pumps\": 4, \"compatible\": true, \"target\": false, \"bearing\": 112.5}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:{\"id\": 0, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"kerosine\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": NaN}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": {\"k\": 1}}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:{\"id\": null, \"name\": [], \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:{\"id\": null, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "float",
+     "v": {
+      "bits": 9221120237041090560,
+      "repr": "nan"
+     }
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": [], \"compatible\": NaN, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "diesel",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"diesel\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "hydrogen",
+     "kerosine",
+     ""
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"hydrogen\", \"kerosine\", \"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "nan",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": NaN, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 0.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "none"
+    },
+    "distance": {
+     "bits": 4671226772094713856,
+     "repr": "20000.0"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"bearing\": -33.0, \"pumps\": 4, \"compatible\": null, \"target\": false, \"distance\": 20000.0}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4654311885213007872,
+     "repr": "1500.0"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": false,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": {}, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 1500.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4634293796222908512,
+     "repr": "65.2758456857132"
+    },
+    "compatible": {
+     "t": "str",
+     "v": "x"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "x",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"x\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -654.7241543142868, \"pumps\": 4, \"compatible\": \"x\", \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": false, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false, \"official\": NaN}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "int",
+     "v": "0"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 0}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "float",
+     "v": {
+      "bits": 9221120237041090560,
+      "repr": "nan"
+     }
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": NaN, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "none"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": {}, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"compatible\": null, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "{'k': 1}",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": {\"k\": 1}, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 0.0, \"pumps\": [], \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4639742036731022540,
+     "repr": "157.39999999999998"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "3",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": 3, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 157.4, \"pumps\": 4, \"compatible\": true}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:{\"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": 2.7, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "int",
+     "v": "3"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 3, \"target\": Infinity}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "float",
+     "v": {
+      "bits": 9223372036854775808,
+      "repr": "-0.0"
+     }
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "-2",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": -2, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": -0.0, \"target\": NaN}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4637616900656857088,
+     "repr": "112.5"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4644069714497948877,
+     "repr": "304.8"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 304.8, \"bearing\": 112.5, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": \"4\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"compatible\": true, \"target\": null}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4637616900656857088,
+     "repr": "112.5"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 112.5, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "energy": [],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "['a']",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": [\"a\"], \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": -2}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": Infinity, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": {\"k\": 1}}"
+  },
+  {
+   "err": "TypeError",
+   "msg": "int() argument must be a string, a bytes-like object or a real number, not 'list'",
+   "packet": "FS:{\"id\": \"st1\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 22.5, \"pumps\": [\"a\"], \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "True",
+    "official": true,
+    "pumps": "-2",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": true, \"official\": true, \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": -2, \"compatible\": true, \"target\": false, \"energy\": [\"diesel\"]}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4668858512849871158,
+     "repr": "13884.16152878162"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 13884.16152878162, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "fuel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"fuel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13850398441512894464,
+     "repr": "-22.5"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -22.5, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "2.7",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": 2.7, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:{\"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 1, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4634443270294444442,
+     "repr": "67.4"
+    },
+    "compatible": {
+     "t": "int",
+     "v": "-2"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "n2o",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"n2o\", \"diesel\"], \"distance\": 812.4, \"bearing\": 67.4, \"pumps\": 4, \"compatible\": -2, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "4",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"4\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "kerosine"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"kerosine\"], \"distance\": 812.4, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863117592023007232,
+     "repr": "-157.5"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"bearing\": -157.5, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "none"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "nan",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": NaN, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "invalid literal for int() with base 10: '2.5'",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": 0, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 20000.0, \"bearing\": -33.0, \"pumps\": \"2.5\", \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "fuel",
+     "",
+     "kerosine"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"fuel\", \"\", \"kerosine\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": false,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": false, \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4673638180974513902,
+     "repr": "28772.654399945335"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 28772.654399945335, \"bearing\": -33.0, \"pumps\": -0.0, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4644069714497948877,
+     "repr": "304.8"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "True",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": true, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 304.8, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "str",
+     "v": "x"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 0, \"compatible\": \"x\", \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4634450307168862208,
+     "repr": "67.5"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Fuel station",
+    "official": false,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": false, \"official\": \"\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 67.5, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "True",
+    "official": true,
+    "pumps": "3",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": true, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 3, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "cannot convert float NaN to integer",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": Infinity, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": NaN, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4654311885213007872,
+     "repr": "1500.0"
+    },
+    "energy": [
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"official\": true, \"energy\": [\"diesel\"], \"distance\": 1500.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4627026404658118656,
+     "repr": "22.5"
+    },
+    "compatible": {
+     "t": "str",
+     "v": "2.5"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Fuel station",
+    "official": false,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"official\": null, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 22.5, \"pumps\": 4, \"compatible\": \"2.5\", \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4651998512748167168,
+     "repr": "999.0"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 999.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": [], \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": null, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4629886622289774400,
+     "repr": "33.32306860865947"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 393.32306860865947, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": false,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": 0, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "int",
+     "v": "-2"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": -2, \"target\": \"2.5\"}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": {\"k\": 1}}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "int",
+     "v": "3"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "{'k': 1}",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": {\"k\": 1}, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": false, \"target\": false, \"compatible\": 3}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "inf",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": Infinity, \"official\": \"2.5\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": [\"a\"]}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4627026404658118656,
+     "repr": "22.5"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": false,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": {}, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 22.5, \"pumps\": 4, \"compatible\": true, \"target\": {\"k\": 1}}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "",
+     "n2o",
+     "gasoline"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": \"2.5\", \"energy\": [\"\", \"n2o\", \"gasoline\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": \"\", \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": \"2.5\"}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "int",
+     "v": "1"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 1, \"target\": false}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:{\"id\": {}, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 1500.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "none"
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "any",
+     "",
+     "diesel",
+     "fuel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"any\", \"\", \"diesel\", \"fuel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": null, \"target\": \"\"}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4671226772094713856,
+     "repr": "20000.0"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "inf",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": Infinity, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 20000.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": 1}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "cannot convert float NaN to integer",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 67.4, \"pumps\": NaN, \"compatible\": true}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": \"2.5\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     ""
+    ],
+    "id": "1",
+    "name": "True",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": 1, \"name\": true, \"official\": true, \"energy\": [\"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": -2}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "compatible": {
+     "t": "list",
+     "v": [
+      {
+       "t": "str",
+       "v": "a"
+      }
+     ]
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 0.0, \"pumps\": 4, \"compatible\": [\"a\"], \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "{'k': 1}",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": {\"k\": 1}, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Fuel station",
+    "official": true,
+    "pumps": "4",
+    "target": true
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": -0.0, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": 3}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863117592023007232,
+     "repr": "-157.5"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "['a']",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": [\"a\"], \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -157.5, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": false,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": {}, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"pumps\": 4, \"compatible\": true}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "none"
+    },
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "0",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": -5.0, \"bearing\": -33.0, \"pumps\": [], \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [],
+    "id": "4",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"4\", \"name\": \"Gas & Go\", \"official\": true, \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:{\"name\": [], \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 157.4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": -5.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13851413591642645888,
+     "repr": "-26.106537752003987"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 333.893462247996, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "kerosine",
+     ""
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": false,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": [], \"energy\": [\"kerosine\", \"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4627026404658118656,
+     "repr": "22.5"
+    },
+    "compatible": {
+     "t": "bool",
+     "v": true
+    },
+    "distance": {
+     "bits": 4650357161790223155,
+     "repr": "812.4"
+    },
+    "energy": [
+     "",
+     "n2o",
+     "diesel"
+    ],
+    "id": "st1",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"\", \"n2o\", \"diesel\"], \"distance\": 812.4, \"bearing\": 22.5, \"pumps\": 4, \"compatible\": true, \"target\": false}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13853213191280001024,
+     "repr": "-33.0"
+    },
+    "compatible": {
+     "t": "int",
+     "v": "-2"
+    },
+    "distance": {
+     "bits": 4670455758374029037,
+     "repr": "17195.0684241717"
+    },
+    "energy": [
+     "gasoline",
+     "diesel"
+    ],
+    "id": "['a']",
+    "name": "Gas & Go",
+    "official": true,
+    "pumps": "4",
+    "target": false
+   },
+   "packet": "FS:{\"id\": [\"a\"], \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 17195.0684241717, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": -2, \"target\": false}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "station row has no id",
+   "packet": "FS:{\"name\": {}, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 67.5, \"compatible\": true, \"target\": false}"
+  }
+ ],
+ "row_line": [
+  {
+   "out": "Fuel station, here, fuel type not listed",
+   "packet": "FS:{\"id\":1}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, here, fuel type not listed",
+   "packet": "FS:{\"id\":1}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, here, fuel type not listed",
+   "packet": "FS:{\"id\":\"a\",\"pumps\":2.9}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, here, fuel type not listed",
+   "packet": "FS:{\"id\":\"a\",\"pumps\":2.9}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, here, fuel type not listed",
+   "packet": "FS:{\"id\":\"a\",\"pumps\":\"7\"}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, here, fuel type not listed",
+   "packet": "FS:{\"id\":\"a\",\"pumps\":\"7\"}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, here, fuel type not listed",
+   "packet": "FS:{\"id\":\"a\",\"energy\":\"gasoline\"}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, here, fuel type not listed",
+   "packet": "FS:{\"id\":\"a\",\"energy\":\"gasoline\"}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, here, 1, None, True, 2.5 and {'x': \"it's\"}",
+   "packet": "FS:{\"id\":\"a\",\"energy\":[1,null,true,2.5,{\"x\":\"it's\"}]}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, here, 1, None, True, 2.5 and {'x': \"it's\"}",
+   "packet": "FS:{\"id\":\"a\",\"energy\":[1,null,true,2.5,{\"x\":\"it's\"}]}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, here, fuel type not listed",
+   "packet": "FS:{\"id\":[\"x\"],\"name\":0}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, here, fuel type not listed",
+   "packet": "FS:{\"id\":[\"x\"],\"name\":0}",
+   "units": "imperial"
+  },
+  {
+   "out": "5, here, fuel type not listed, unofficial, the game can't refuel here, current destination",
+   "packet": "FS:{\"id\":\"a\",\"name\":5,\"official\":null,\"target\":\"no\",\"compatible\":false}",
+   "units": "metric"
+  },
+  {
+   "out": "5, here, fuel type not listed, unofficial, the game can't refuel here, current destination",
+   "packet": "FS:{\"id\":\"a\",\"name\":5,\"official\":null,\"target\":\"no\",\"compatible\":false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 1 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 1.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 3, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 3 feet ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 1.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 3, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, fuel and kerosene",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"fuel\", \"\", \"kerosine\"], \"distance\": 812.4, \"bearing\": -22.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, fuel and kerosene",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"fuel\", \"\", \"kerosine\"], \"distance\": 812.4, \"bearing\": -22.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": {}, \"official\": NaN, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": false, \"compatible\": 2.7, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": {}, \"official\": NaN, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": false, \"compatible\": 2.7, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead left, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 22.5, \"pumps\": 4, \"compatible\": true, \"target\": \"x\"}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead left, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 22.5, \"pumps\": 4, \"compatible\": true, \"target\": \"x\"}",
+   "units": "imperial"
+  },
+  {
+   "out": "1, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": 1, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "1, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": 1, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 20.0 kilometers ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": -2, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 20000.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": -2}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 12.4 miles ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": -2, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 20000.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": -2}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, any fuel, diesel and fuel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"any\", \"diesel\", \"fuel\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, any fuel, diesel and fuel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"any\", \"diesel\", \"fuel\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "2.7, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": 2.7, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "2.7, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": 2.7, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": \"2.5\"}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": \"2.5\"}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": {}, \"official\": true, \"energy\": [\"gasoline\", \"diesel\", \"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": {}, \"official\": true, \"energy\": [\"gasoline\", \"diesel\", \"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": -2, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": -2, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters behind, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 540.0, \"pumps\": 4, \"compatible\": [\"a\"], \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles behind, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 540.0, \"pumps\": 4, \"compatible\": [\"a\"], \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": [\"a\"], \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": [\"a\"], \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, kerosene and any fuel, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": [], \"energy\": [\"\", \"kerosine\", \"any\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, kerosene and any fuel, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": [], \"energy\": [\"\", \"kerosine\", \"any\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 305 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": \"2.5\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 304.8, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.2 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": \"2.5\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 304.8, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 3, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 3, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "1, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"4\", \"name\": 1, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "1, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"4\", \"name\": 1, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 305 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": NaN, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 304.8, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.2 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": NaN, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 304.8, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "-2, 305 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": -2, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 304.8, \"bearing\": -33.0, \"pumps\": 2.7, \"compatible\": 0, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "-2, 0.2 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": -2, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 304.8, \"bearing\": -33.0, \"pumps\": 2.7, \"compatible\": 0, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "{'k': 1}, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": {\"k\": 1}, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "{'k': 1}, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": {\"k\": 1}, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": [\"a\"], \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": [\"a\"], \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": {\"k\": 1}}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": {\"k\": 1}}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 1.5 kilometers ahead right, fuel type not listed",
+   "packet": "FS:{\"id\": 2.7, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 1500.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": []}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.9 miles ahead right, fuel type not listed",
+   "packet": "FS:{\"id\": 2.7, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 1500.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": []}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": \"\", \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": \"\", \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": NaN, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": \"4\", \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": NaN, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": \"4\", \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": {\"k\": 1}, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": \"4\", \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": {\"k\": 1}, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": \"4\", \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "1, 812 meters ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": 1, \"official\": 3, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": [], \"compatible\": true, \"target\": \"x\"}",
+   "units": "metric"
+  },
+  {
+   "out": "1, 0.5 miles ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": 1, \"official\": 3, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": [], \"compatible\": true, \"target\": \"x\"}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, here, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"distance\": 0.99, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 3, \"target\": false, \"energy\": []}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, here, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"distance\": 0.99, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 3, \"target\": false, \"energy\": []}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": Infinity, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": Infinity, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": 1}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": 1}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": NaN, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -22.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": NaN, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -22.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": {\"k\": 1}, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": {\"k\": 1}, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, fuel, kerosene and hydrogen",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": 1, \"energy\": [\"fuel\", \"kerosine\", \"hydrogen\", \"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 2.7, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, fuel, kerosene and hydrogen",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": 1, \"energy\": [\"fuel\", \"kerosine\", \"hydrogen\", \"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 2.7, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 1 meters to the left, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"distance\": 1.0, \"bearing\": 67.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 3 feet to the left, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"distance\": 1.0, \"bearing\": 67.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, here, gasoline and diesel",
+   "packet": "FS:{\"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false, \"id\": [\"a\"]}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, here, gasoline and diesel",
+   "packet": "FS:{\"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false, \"id\": [\"a\"]}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"diesel\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"diesel\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, 812 meters ahead right, gasoline and diesel, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"official\": 0, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, 0.5 miles ahead right, gasoline and diesel, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"official\": 0, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, here, hydrogen and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"hydrogen\", \"\", \"diesel\"], \"distance\": 0.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, here, hydrogen and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"hydrogen\", \"\", \"diesel\"], \"distance\": 0.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": false, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": false, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": {}, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": {}, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": {\"k\": 1}, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": {\"k\": 1}, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters behind left, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 157.4, \"pumps\": -2, \"target\": [\"a\"]}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles behind left, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 157.4, \"pumps\": -2, \"target\": [\"a\"]}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -22.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -22.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead left, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 67.4, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead left, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 67.4, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, fuel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"fuel\", \"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"target\": \"x\"}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, fuel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"fuel\", \"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"target\": \"x\"}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 999 meters behind left, gasoline and nitrous",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"n2o\"], \"distance\": 999.0, \"bearing\": 157.4, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.6 miles behind left, gasoline and nitrous",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"n2o\"], \"distance\": 999.0, \"bearing\": 157.4, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": []}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": []}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters behind left, fuel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"fuel\"], \"distance\": 812.4, \"pumps\": 4, \"compatible\": true, \"target\": false, \"bearing\": 112.5}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles behind left, fuel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"fuel\"], \"distance\": 812.4, \"pumps\": 4, \"compatible\": true, \"target\": false, \"bearing\": 112.5}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, fuel type not listed, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": {\"k\": 1}}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, fuel type not listed, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": {\"k\": 1}}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": [], \"compatible\": NaN, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": [], \"compatible\": NaN, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"diesel\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"diesel\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, hydrogen and kerosene",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"hydrogen\", \"kerosine\", \"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, hydrogen and kerosene",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"hydrogen\", \"kerosine\", \"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, here, gasoline and diesel",
+   "packet": "FS:{\"id\": NaN, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 0.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, here, gasoline and diesel",
+   "packet": "FS:{\"id\": NaN, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 0.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 20.0 kilometers ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"bearing\": -33.0, \"pumps\": 4, \"compatible\": null, \"target\": false, \"distance\": 20000.0}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 12.4 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"bearing\": -33.0, \"pumps\": 4, \"compatible\": null, \"target\": false, \"distance\": 20000.0}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 1.5 kilometers ahead right, gasoline and diesel, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": {}, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 1500.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.9 miles ahead right, gasoline and diesel, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": {}, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 1500.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead left, gasoline and diesel",
+   "packet": "FS:{\"id\": \"x\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -654.7241543142868, \"pumps\": 4, \"compatible\": \"x\", \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead left, gasoline and diesel",
+   "packet": "FS:{\"id\": \"x\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -654.7241543142868, \"pumps\": 4, \"compatible\": \"x\", \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": false, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false, \"official\": NaN}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": false, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false, \"official\": NaN}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 0}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 0}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": NaN, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": NaN, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": {}, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"compatible\": null, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": {}, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"compatible\": null, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "{'k': 1}, 812 meters ahead, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": {\"k\": 1}, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 0.0, \"pumps\": [], \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "{'k': 1}, 0.5 miles ahead, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": {\"k\": 1}, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 0.0, \"pumps\": [], \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "3, 812 meters behind left, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": 3, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 157.4, \"pumps\": 4, \"compatible\": true}",
+   "units": "metric"
+  },
+  {
+   "out": "3, 0.5 miles behind left, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": 3, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 157.4, \"pumps\": 4, \"compatible\": true}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": 2.7, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": 2.7, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 3, \"target\": Infinity}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 3, \"target\": Infinity}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": -2, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": -0.0, \"target\": NaN}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": -2, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": -0.0, \"target\": NaN}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 305 meters behind left, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 304.8, \"bearing\": 112.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.2 miles behind left, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 304.8, \"bearing\": 112.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": \"4\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"compatible\": true, \"target\": null}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": \"4\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"compatible\": true, \"target\": null}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters behind left, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 112.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles behind left, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 112.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, here, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, here, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": [\"a\"], \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": -2}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": [\"a\"], \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": -2}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": Infinity, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": {\"k\": 1}}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": Infinity, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": {\"k\": 1}}",
+   "units": "imperial"
+  },
+  {
+   "out": "True, 812 meters ahead right, diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": true, \"official\": true, \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": -2, \"compatible\": true, \"target\": false, \"energy\": [\"diesel\"]}",
+   "units": "metric"
+  },
+  {
+   "out": "True, 0.5 miles ahead right, diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": true, \"official\": true, \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": -2, \"compatible\": true, \"target\": false, \"energy\": [\"diesel\"]}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 13.9 kilometers ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 13884.16152878162, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 8.6 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 13884.16152878162, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, fuel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"fuel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, fuel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"fuel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -22.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -22.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "2.7, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": 2.7, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true}",
+   "units": "metric"
+  },
+  {
+   "out": "2.7, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": 2.7, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead left, nitrous and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"n2o\", \"diesel\"], \"distance\": 812.4, \"bearing\": 67.4, \"pumps\": 4, \"compatible\": -2, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead left, nitrous and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"n2o\", \"diesel\"], \"distance\": 812.4, \"bearing\": 67.4, \"pumps\": 4, \"compatible\": -2, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "4, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"4\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "4, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"4\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead, kerosene",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"kerosine\"], \"distance\": 812.4, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead, kerosene",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"kerosine\"], \"distance\": 812.4, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, here, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"bearing\": -157.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, here, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"bearing\": -157.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": NaN, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": NaN, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, fuel and kerosene",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"fuel\", \"\", \"kerosine\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, fuel and kerosene",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"fuel\", \"\", \"kerosine\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, fuel type not listed, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": false, \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, fuel type not listed, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": false, \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 28.8 kilometers ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 28772.654399945335, \"bearing\": -33.0, \"pumps\": -0.0, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 17.9 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 28772.654399945335, \"bearing\": -33.0, \"pumps\": -0.0, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "True, 305 meters ahead, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": true, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 304.8, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "True, 0.2 miles ahead, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": true, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 304.8, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 0, \"compatible\": \"x\", \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 0, \"compatible\": \"x\", \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, 812 meters to the left, gasoline and diesel, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"name\": false, \"official\": \"\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 67.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, 0.5 miles to the left, gasoline and diesel, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"name\": false, \"official\": \"\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 67.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "True, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": true, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 3, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "True, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": true, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 3, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, 1.5 kilometers ahead right, diesel",
+   "packet": "FS:{\"id\": \"st1\", \"official\": true, \"energy\": [\"diesel\"], \"distance\": 1500.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, 0.9 miles ahead right, diesel",
+   "packet": "FS:{\"id\": \"st1\", \"official\": true, \"energy\": [\"diesel\"], \"distance\": 1500.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, 812 meters ahead left, gasoline and diesel, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"official\": null, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 22.5, \"pumps\": 4, \"compatible\": \"2.5\", \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, 0.5 miles ahead left, gasoline and diesel, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"official\": null, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 22.5, \"pumps\": 4, \"compatible\": \"2.5\", \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 999 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 999.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.6 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 999.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": [], \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": null, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": [], \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": null, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead left, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 393.32306860865947, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead left, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 393.32306860865947, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": 0, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": 0, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": -2, \"target\": \"2.5\"}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": -2, \"target\": \"2.5\"}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": {\"k\": 1}}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": {\"k\": 1}}",
+   "units": "imperial"
+  },
+  {
+   "out": "{'k': 1}, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": {\"k\": 1}, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": false, \"target\": false, \"compatible\": 3}",
+   "units": "metric"
+  },
+  {
+   "out": "{'k': 1}, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": {\"k\": 1}, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": false, \"target\": false, \"compatible\": 3}",
+   "units": "imperial"
+  },
+  {
+   "out": "inf, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": Infinity, \"official\": \"2.5\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "inf, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": Infinity, \"official\": \"2.5\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": [\"a\"]}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": [\"a\"]}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead left, gasoline and diesel, unofficial, the game can't refuel here, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": {}, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 22.5, \"pumps\": 4, \"compatible\": true, \"target\": {\"k\": 1}}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead left, gasoline and diesel, unofficial, the game can't refuel here, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": {}, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 22.5, \"pumps\": 4, \"compatible\": true, \"target\": {\"k\": 1}}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, nitrous and gasoline",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": \"2.5\", \"energy\": [\"\", \"n2o\", \"gasoline\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": \"\", \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, nitrous and gasoline",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": \"2.5\", \"energy\": [\"\", \"n2o\", \"gasoline\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": \"\", \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": \"2.5\"}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": \"2.5\"}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 1, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": 1, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, any fuel, diesel and fuel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"any\", \"\", \"diesel\", \"fuel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": null, \"target\": \"\"}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, any fuel, diesel and fuel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"any\", \"\", \"diesel\", \"fuel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": null, \"target\": \"\"}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, 20.0 kilometers ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": Infinity, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 20000.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": 1}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, 12.4 miles ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": Infinity, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 20000.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": 1}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": \"2.5\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": \"2.5\", \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, fuel type not listed",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "True, 812 meters ahead right, fuel type not listed, current destination",
+   "packet": "FS:{\"id\": 1, \"name\": true, \"official\": true, \"energy\": [\"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": -2}",
+   "units": "metric"
+  },
+  {
+   "out": "True, 0.5 miles ahead right, fuel type not listed, current destination",
+   "packet": "FS:{\"id\": 1, \"name\": true, \"official\": true, \"energy\": [\"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": -2}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, 812 meters ahead, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 0.0, \"pumps\": 4, \"compatible\": [\"a\"], \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, 0.5 miles ahead, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 0.0, \"pumps\": 4, \"compatible\": [\"a\"], \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": {\"k\": 1}, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": {\"k\": 1}, \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Fuel station, 812 meters ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": -0.0, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": 3}",
+   "units": "metric"
+  },
+  {
+   "out": "Fuel station, 0.5 miles ahead right, gasoline and diesel, current destination",
+   "packet": "FS:{\"id\": \"st1\", \"name\": -0.0, \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": 3}",
+   "units": "imperial"
+  },
+  {
+   "out": "['a'], 812 meters behind, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": [\"a\"], \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -157.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "['a'], 0.5 miles behind, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": [\"a\"], \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": -157.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead, gasoline and diesel, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": {}, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"pumps\": 4, \"compatible\": true}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead, gasoline and diesel, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": {}, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"pumps\": 4, \"compatible\": true}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, here, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": -5.0, \"bearing\": -33.0, \"pumps\": [], \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, here, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": -5.0, \"bearing\": -33.0, \"pumps\": [], \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, fuel type not listed",
+   "packet": "FS:{\"id\": \"4\", \"name\": \"Gas & Go\", \"official\": true, \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, fuel type not listed",
+   "packet": "FS:{\"id\": \"4\", \"name\": \"Gas & Go\", \"official\": true, \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, here, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": -5.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, here, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": -5.0, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 333.893462247996, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 812.4, \"bearing\": 333.893462247996, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead right, kerosene, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": [], \"energy\": [\"kerosine\", \"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead right, kerosene, unofficial, the game can't refuel here",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": [], \"energy\": [\"kerosine\", \"\"], \"distance\": 812.4, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 812 meters ahead left, nitrous and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"\", \"n2o\", \"diesel\"], \"distance\": 812.4, \"bearing\": 22.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 0.5 miles ahead left, nitrous and diesel",
+   "packet": "FS:{\"id\": \"st1\", \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"\", \"n2o\", \"diesel\"], \"distance\": 812.4, \"bearing\": 22.5, \"pumps\": 4, \"compatible\": true, \"target\": false}",
+   "units": "imperial"
+  },
+  {
+   "out": "Gas & Go, 17.2 kilometers ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": [\"a\"], \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 17195.0684241717, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": -2, \"target\": false}",
+   "units": "metric"
+  },
+  {
+   "out": "Gas & Go, 10.7 miles ahead right, gasoline and diesel",
+   "packet": "FS:{\"id\": [\"a\"], \"name\": \"Gas & Go\", \"official\": true, \"energy\": [\"gasoline\", \"diesel\"], \"distance\": 17195.0684241717, \"bearing\": -33.0, \"pumps\": 4, \"compatible\": -2, \"target\": false}",
+   "units": "imperial"
+  }
+ ]
+}

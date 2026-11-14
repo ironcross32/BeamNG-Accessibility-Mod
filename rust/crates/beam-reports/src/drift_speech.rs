@@ -80,7 +80,10 @@ pub fn drift_phrase(event: &PyValue) -> Result<Option<(String, bool)>, PyErr> {
     let Some(ev) = event.as_dict() else {
         return Ok(None);
     };
-    let kind = ev.get("event").and_then(PyValue::as_str).unwrap_or("\u{0}none");
+    let kind = ev
+        .get("event")
+        .and_then(PyValue::as_str)
+        .unwrap_or("\u{0}none");
     match kind {
         "shown" => {
             let pts = points(ev.get("points"))?;
@@ -91,7 +94,10 @@ pub fn drift_phrase(event: &PyValue) -> Result<Option<(String, bool)>, PyErr> {
                 Err(e) => return Err(e),
             };
             if let Some(p) = pts.filter(|p| !p.is_empty() && p != "0") {
-                return ok(format!("Drift. {p} points, combo {}", py_f(combo, 1)), false);
+                return ok(
+                    format!("Drift. {p} points, combo {}", py_f(combo, 1)),
+                    false,
+                );
             }
             ok("Drift", false)
         }
@@ -120,7 +126,11 @@ pub fn drift_phrase(event: &PyValue) -> Result<Option<(String, bool)>, PyErr> {
                 text = format!("{text} {lost} points lost");
             }
             if let Some(total) = points(ev.get("total"))?.filter(|t| !t.is_empty() && t != "0") {
-                let sep = if text.ends_with(['!', '.', '?']) { " " } else { ". " };
+                let sep = if text.ends_with(['!', '.', '?']) {
+                    " "
+                } else {
+                    ". "
+                };
                 text = format!("{text}{sep}Total {total}");
             }
             ok(text, true)

@@ -315,7 +315,7 @@ fn a_missing_set_fails_to_load_without_panicking() {
 
 #[test]
 fn load_message_matches_python_format() {
-    let path = beam_base::paths::find_data_file("hrtf_mit_kemar.npz").expect("bundled set");
+    let path = set_path("hrtf_mit_kemar.npz");
     let set = HrtfSet::load_quiet(&path, None, None);
     let msg = &set.load_message;
     let expected_tail = ": elevation -3.0 deg (from rings -10, +0), equalised, max ITD 699 us, ";

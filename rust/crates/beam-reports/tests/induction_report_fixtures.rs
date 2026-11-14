@@ -28,8 +28,10 @@ fn constants() {
         .iter()
         .map(|p| (s(&p[0]).to_string(), s(&p[1]).to_string()))
         .collect();
-    let ours: Vec<(String, String)> =
-        TYPE_NAMES.iter().map(|(a, b)| (a.to_string(), b.to_string())).collect();
+    let ours: Vec<(String, String)> = TYPE_NAMES
+        .iter()
+        .map(|(a, b)| (a.to_string(), b.to_string()))
+        .collect();
     assert_eq!(ours, names);
 }
 
@@ -46,7 +48,10 @@ fn parse_reply_matches_python() {
             Err(e) => panic!("{text:?}: {e:?}"),
         };
         if !same_pv(&got, &dec(&case["out"])) {
-            failures.push(format!("parse_reply({text:?}) = {got:?}, want {}", case["out"]));
+            failures.push(format!(
+                "parse_reply({text:?}) = {got:?}, want {}",
+                case["out"]
+            ));
         }
     }
     check_failures(failures, all.len());
@@ -59,7 +64,10 @@ fn report_phrase_matches_python() {
     let mut failures = Vec::new();
     for case in all {
         let report = dec_dict(&case["report"]);
-        for (name, fmt) in [("psi", &psi as &dyn Fn(f64) -> (String, String)), ("bar", &bar)] {
+        for (name, fmt) in [
+            ("psi", &psi as &dyn Fn(f64) -> (String, String)),
+            ("bar", &bar),
+        ] {
             let got = report_phrase(&report, fmt);
             // Messages too: they are Python's own for every exception this can raise.
             if !matches_outcome(&got, &case[name], true, |p, want| p == s(want)) {

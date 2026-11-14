@@ -124,13 +124,21 @@ fn unit(x: f64, y: f64) -> Option<(f64, f64)> {
     Some((x / n, y / n))
 }
 
-pub fn target_point(geom: &Geometry, mode: &str, offset_m: f64, depth_m: f64) -> Option<(f64, f64)> {
+pub fn target_point(
+    geom: &Geometry,
+    mode: &str,
+    offset_m: f64,
+    depth_m: f64,
+) -> Option<(f64, f64)> {
     let cf = unit(geom.cam_fx, geom.cam_fy)?;
     if mode == CROSSING {
         return Some((geom.cam_x + cf.0 * depth_m, geom.cam_y + cf.1 * depth_m));
     }
     let left = (-cf.1, cf.0); // up x forward, positive LEFT
-    Some((geom.cam_x + left.0 * offset_m, geom.cam_y + left.1 * offset_m))
+    Some((
+        geom.cam_x + left.0 * offset_m,
+        geom.cam_y + left.1 * offset_m,
+    ))
 }
 
 pub const STATUS_OK: &str = "ok";
@@ -281,7 +289,12 @@ pub fn mode_name(mode: &str) -> &'static str {
 }
 
 /// `Err` as [`value_phrase`].
-pub fn target_phrase(mode: &str, offset_m: f64, depth_m: f64, units: &str) -> Result<String, PyErr> {
+pub fn target_phrase(
+    mode: &str,
+    offset_m: f64,
+    depth_m: f64,
+    units: &str,
+) -> Result<String, PyErr> {
     let mut v = value_phrase(mode, offset_m, depth_m, units)?;
     if mode == HEAD_ON && offset_m.abs() >= 0.05 {
         v.push_str(" of the camera");

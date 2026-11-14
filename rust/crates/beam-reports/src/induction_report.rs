@@ -182,7 +182,10 @@ fn turbo_parts(
         rpm(get_or(charger, "turboRPM", &zero)?)?
     );
     if let Some(max_rpm) = get(charger, "maxTurboRPM")?.filter(|v| v.truthy()) {
-        let share = div(get_or(charger, "turboRPM", &zero)?.py_float()?, max_rpm.py_float()?)?;
+        let share = div(
+            get_or(charger, "turboRPM", &zero)?.py_float()?,
+            max_rpm.py_float()?,
+        )?;
         speed.push_str(&format!(", {} percent of maximum", percent_f(share)?));
     }
     let live = vec![
@@ -215,7 +218,10 @@ fn turbo_parts(
 /// Float `/`: Python raises `ZeroDivisionError` for a zero divisor.
 fn div(a: f64, b: f64) -> Result<f64, PyErr> {
     if b == 0.0 {
-        return Err(PyErr::new(PyErrKind::ZeroDivisionError, "float division by zero"));
+        return Err(PyErr::new(
+            PyErrKind::ZeroDivisionError,
+            "float division by zero",
+        ));
     }
     Ok(a / b)
 }

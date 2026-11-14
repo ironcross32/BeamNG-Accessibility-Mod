@@ -57,7 +57,7 @@ Update this table as work lands. One line per workstream from `04-workstreams.md
 | B3 | beam-road: road guidance, assistant, recorders | in progress | |
 | S1 | beam-speech: Prism FFI and speech | done | 29 tests; matches Python backend/voice listing on this machine; app must call `speech::atexit()` on exit; ship `prism.dll` beside the exe |
 | AH | beam-audio: hrtf, terrain scan render, waveform generators | in progress | |
-| AA | beam-audio: controller state, API, device, callback skeleton | in progress | |
+| AA | beam-audio: controller state, API, device, callback skeleton | done | split in `audio-callback-split.md`; crate builds once AH lands `waveforms.rs`; scanner diag hookup and device run untested |
 | A1-A3 | beam-audio: callback voices | not started | split decided by AA |
 | EA | beam-engine: skeleton, shared state, say(), units, engine start | in progress | |
 | E1 | Telemetry decode and telemetry loop | not started | |

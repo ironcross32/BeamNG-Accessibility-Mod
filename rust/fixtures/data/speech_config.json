@@ -1,0 +1,200 @@
+{
+ "AUTO_BACKEND": "auto",
+ "cases": [
+  {
+   "after": "{}",
+   "before": "{}",
+   "changed": false
+  },
+  {
+   "after": "{\"units\": \"metric\"}",
+   "before": "{\"units\": \"metric\"}",
+   "changed": false
+  },
+  {
+   "after": "{\"speech_backend\": \"SAPI\"}",
+   "before": "{\"force_sapi\": true}",
+   "changed": true
+  },
+  {
+   "after": "{}",
+   "before": "{\"force_sapi\": false}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_backend\": \"NVDA\"}",
+   "before": "{\"force_sapi\": \"no\", \"speech_backend\": \"NVDA\"}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_backend\": \"NVDA\"}",
+   "before": "{\"force_sapi\": [], \"speech_backend\": \"NVDA\"}",
+   "changed": true
+  },
+  {
+   "after": "{\"a\": 1, \"b\": 2, \"speech_voice_name\": \"David\"}",
+   "before": "{\"a\": 1, \"sapi_voice_name\": \"David\", \"b\": 2}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_voice_name\": \"Zira\"}",
+   "before": "{\"sapi_voice_name\": \"\", \"speech_voice_name\": \"Zira\"}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_voice_name\": \"Zira\"}",
+   "before": "{\"sapi_voice_name\": \"David\", \"speech_voice_name\": \"Zira\"}",
+   "changed": true
+  },
+  {
+   "after": "{}",
+   "before": "{\"sapi_voice_name\": null}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_voice_name\": 5}",
+   "before": "{\"sapi_voice_name\": 5}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_rate\": 50}",
+   "before": "{\"sapi_rate\": 0}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_rate\": 65}",
+   "before": "{\"sapi_rate\": 3}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_rate\": 0}",
+   "before": "{\"sapi_rate\": -20}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_rate\": 100}",
+   "before": "{\"sapi_rate\": 15}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_rate\": 65}",
+   "before": "{\"sapi_rate\": 3.9}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_rate\": 35}",
+   "before": "{\"sapi_rate\": -3.9}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_rate\": 70}",
+   "before": "{\"sapi_rate\": \"4\"}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_rate\": 40}",
+   "before": "{\"sapi_rate\": \" -2 \"}",
+   "changed": true
+  },
+  {
+   "after": "{}",
+   "before": "{\"sapi_rate\": \"x\"}",
+   "changed": true
+  },
+  {
+   "after": "{}",
+   "before": "{\"sapi_rate\": \"4.5\"}",
+   "changed": true
+  },
+  {
+   "after": "{}",
+   "before": "{\"sapi_rate\": null}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_rate\": 55}",
+   "before": "{\"sapi_rate\": true}",
+   "changed": true
+  },
+  {
+   "after": "{}",
+   "before": "{\"sapi_rate\": NaN}",
+   "changed": true
+  },
+  {
+   "after": "{}",
+   "before": "{\"sapi_rate\": Infinity}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_rate\": 100}",
+   "before": "{\"sapi_rate\": 1000000000000000000000000000000}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_rate\": 0}",
+   "before": "{\"sapi_rate\": -1000000000000000000000000000000}",
+   "changed": true
+  },
+  {
+   "after": "{}",
+   "before": "{\"sapi_rate\": [1]}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_rate\": 80}",
+   "before": "{\"sapi_rate\": 5, \"speech_rate\": 80}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_volume\": 50}",
+   "before": "{\"sapi_volume\": 50}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_volume\": 100}",
+   "before": "{\"sapi_volume\": 150}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_volume\": 0}",
+   "before": "{\"sapi_volume\": -4}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_volume\": 70}",
+   "before": "{\"sapi_volume\": \"70\"}",
+   "changed": true
+  },
+  {
+   "after": "{}",
+   "before": "{\"sapi_volume\": \"loud\"}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_volume\": 99}",
+   "before": "{\"sapi_volume\": 99.9}",
+   "changed": true
+  },
+  {
+   "after": "{}",
+   "before": "{\"sapi_volume\": -Infinity}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_volume\": 100}",
+   "before": "{\"sapi_volume\": 1000000000000000000000000000000}",
+   "changed": true
+  },
+  {
+   "after": "{\"speech_volume\": 10}",
+   "before": "{\"sapi_volume\": 30, \"speech_volume\": 10}",
+   "changed": true
+  },
+  {
+   "after": "{\"z\": 0, \"y\": 1, \"speech_backend\": \"SAPI\", \"speech_voice_name\": \"V\", \"speech_rate\": 100, \"speech_volume\": 100}",
+   "before": "{\"z\": 0, \"force_sapi\": 1, \"sapi_voice_name\": \"V\", \"sapi_rate\": 10, \"sapi_volume\": 100, \"y\": 1}",
+   "changed": true
+  }
+ ]
+}

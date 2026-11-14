@@ -1,0 +1,976 @@
+{
+ "all_config_keys": [
+  "ai_describer_provider",
+  "ai_describer_disable_ui_toggle",
+  "ai_describer_api_key",
+  "ai_describer_model",
+  "ai_describer_openai_api_key",
+  "ai_describer_openai_model",
+  "ai_describer_openai_base_url",
+  "ai_describer_openai_reasoning_effort",
+  "ai_describer_openai_detail"
+ ],
+ "constants": {
+  "DEFAULT_PROVIDER": "gemini",
+  "GEMINI_BASE": "https://generativelanguage.googleapis.com/v1beta",
+  "GEMINI_DEFAULT_MODEL": "models/gemini-3-flash-preview",
+  "OPENAI_BASE": "https://api.openai.com/v1",
+  "OPENAI_DEFAULT_BASE_URL": "https://api.openai.com/v1",
+  "OPENAI_DEFAULT_MODEL": "gpt-5.6-terra",
+  "OPENAI_DETAIL_LEVELS": [
+   [
+    "auto",
+    "Auto (full resolution)"
+   ],
+   [
+    "high",
+    "High"
+   ],
+   [
+    "low",
+    "Low"
+   ]
+  ],
+  "OPENAI_REASONING_EFFORTS": [
+   [
+    "none",
+    "None (fastest)"
+   ],
+   [
+    "minimal",
+    "Minimal"
+   ],
+   [
+    "low",
+    "Low"
+   ],
+   [
+    "medium",
+    "Medium"
+   ],
+   [
+    "high",
+    "High"
+   ]
+  ],
+  "PROVIDERS": [
+   [
+    "gemini",
+    "Google Gemini"
+   ],
+   [
+    "openai",
+    "OpenAI"
+   ]
+  ],
+  "PROVIDER_CFG_KEY": "ai_describer_provider"
+ },
+ "display_names": [
+  {
+   "display": "gpt-4o",
+   "model": "gpt-4o",
+   "pid": "gemini"
+  },
+  {
+   "display": "Gemini 2.5 Pro",
+   "model": "models/gemini-2.5-pro",
+   "pid": "gemini"
+  },
+  {
+   "display": "o3",
+   "model": "o3",
+   "pid": "gemini"
+  },
+  {
+   "display": "",
+   "model": "",
+   "pid": "gemini"
+  },
+  {
+   "display": "unknown",
+   "model": "unknown",
+   "pid": "gemini"
+  },
+  {
+   "display": "GPT-4o",
+   "model": "gpt-4o",
+   "pid": "openai"
+  },
+  {
+   "display": "models/gemini-2.5-pro",
+   "model": "models/gemini-2.5-pro",
+   "pid": "openai"
+  },
+  {
+   "display": "o3",
+   "model": "o3",
+   "pid": "openai"
+  },
+  {
+   "display": "",
+   "model": "",
+   "pid": "openai"
+  },
+  {
+   "display": "unknown",
+   "model": "unknown",
+   "pid": "openai"
+  },
+  {
+   "display": "gpt-4o",
+   "model": "gpt-4o",
+   "pid": "x"
+  },
+  {
+   "display": "Gemini 2.5 Pro",
+   "model": "models/gemini-2.5-pro",
+   "pid": "x"
+  },
+  {
+   "display": "o3",
+   "model": "o3",
+   "pid": "x"
+  },
+  {
+   "display": "",
+   "model": "",
+   "pid": "x"
+  },
+  {
+   "display": "unknown",
+   "model": "unknown",
+   "pid": "x"
+  }
+ ],
+ "extra_args": [
+  {
+   "cfg": "null",
+   "ok": [
+    [
+     "base_url",
+     "https://api.openai.com/v1"
+    ],
+    [
+     "reasoning_effort",
+     "low"
+    ],
+    [
+     "detail",
+     "auto"
+    ]
+   ],
+   "pid": "openai"
+  },
+  {
+   "cfg": "{}",
+   "ok": [
+    [
+     "base_url",
+     "https://api.openai.com/v1"
+    ],
+    [
+     "reasoning_effort",
+     "low"
+    ],
+    [
+     "detail",
+     "auto"
+    ]
+   ],
+   "pid": "openai"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": \"  https://x/v1/ \", \"ai_describer_openai_reasoning_effort\": \"high\", \"ai_describer_openai_detail\": \"low\"}",
+   "ok": [
+    [
+     "base_url",
+     "https://x/v1/"
+    ],
+    [
+     "reasoning_effort",
+     "high"
+    ],
+    [
+     "detail",
+     "low"
+    ]
+   ],
+   "pid": "openai"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": \"   \", \"ai_describer_openai_reasoning_effort\": \"HIGH\", \"ai_describer_openai_detail\": null}",
+   "ok": [
+    [
+     "base_url",
+     "https://api.openai.com/v1"
+    ],
+    [
+     "reasoning_effort",
+     "low"
+    ],
+    [
+     "detail",
+     "auto"
+    ]
+   ],
+   "pid": "openai"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": null, \"ai_describer_openai_reasoning_effort\": 3}",
+   "ok": [
+    [
+     "base_url",
+     "https://api.openai.com/v1"
+    ],
+    [
+     "reasoning_effort",
+     "low"
+    ],
+    [
+     "detail",
+     "auto"
+    ]
+   ],
+   "pid": "openai"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": 0}",
+   "ok": [
+    [
+     "base_url",
+     "https://api.openai.com/v1"
+    ],
+    [
+     "reasoning_effort",
+     "low"
+    ],
+    [
+     "detail",
+     "auto"
+    ]
+   ],
+   "pid": "openai"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": 5}",
+   "err": "AttributeError",
+   "msg": "'int' object has no attribute 'strip'",
+   "pid": "openai"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": [\"x\"]}",
+   "err": "AttributeError",
+   "msg": "'list' object has no attribute 'strip'",
+   "pid": "openai"
+  },
+  {
+   "cfg": "null",
+   "ok": [],
+   "pid": "gemini"
+  },
+  {
+   "cfg": "{}",
+   "ok": [],
+   "pid": "gemini"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": \"  https://x/v1/ \", \"ai_describer_openai_reasoning_effort\": \"high\", \"ai_describer_openai_detail\": \"low\"}",
+   "ok": [],
+   "pid": "gemini"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": \"   \", \"ai_describer_openai_reasoning_effort\": \"HIGH\", \"ai_describer_openai_detail\": null}",
+   "ok": [],
+   "pid": "gemini"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": null, \"ai_describer_openai_reasoning_effort\": 3}",
+   "ok": [],
+   "pid": "gemini"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": 0}",
+   "ok": [],
+   "pid": "gemini"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": 5}",
+   "ok": [],
+   "pid": "gemini"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": [\"x\"]}",
+   "ok": [],
+   "pid": "gemini"
+  },
+  {
+   "cfg": "null",
+   "ok": [],
+   "pid": "bogus"
+  },
+  {
+   "cfg": "{}",
+   "ok": [],
+   "pid": "bogus"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": \"  https://x/v1/ \", \"ai_describer_openai_reasoning_effort\": \"high\", \"ai_describer_openai_detail\": \"low\"}",
+   "ok": [],
+   "pid": "bogus"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": \"   \", \"ai_describer_openai_reasoning_effort\": \"HIGH\", \"ai_describer_openai_detail\": null}",
+   "ok": [],
+   "pid": "bogus"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": null, \"ai_describer_openai_reasoning_effort\": 3}",
+   "ok": [],
+   "pid": "bogus"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": 0}",
+   "ok": [],
+   "pid": "bogus"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": 5}",
+   "ok": [],
+   "pid": "bogus"
+  },
+  {
+   "cfg": "{\"ai_describer_openai_base_url\": [\"x\"]}",
+   "ok": [],
+   "pid": "bogus"
+  }
+ ],
+ "providers": [
+  {
+   "config_keys": [
+    "ai_describer_api_key",
+    "ai_describer_model"
+   ],
+   "default_model": "models/gemini-3-flash-preview",
+   "display": "Google Gemini",
+   "extras": [],
+   "key_help": "Paste your Google Gemini API key:",
+   "model_names": [
+    "models/gemini-3-flash-preview",
+    "models/gemini-3-pro-preview",
+    "models/gemini-3.1-pro-preview",
+    "models/gemini-3.1-flash-lite-preview",
+    "models/gemini-3.1-flash-lite",
+    "models/gemini-3.5-flash",
+    "models/gemini-2.5-flash",
+    "models/gemini-2.5-pro",
+    "models/gemini-2.5-flash-lite",
+    "models/gemini-2.0-flash",
+    "models/gemini-2.0-flash-001",
+    "models/gemini-2.0-flash-lite",
+    "models/gemini-2.0-flash-lite-001",
+    "models/gemini-flash-latest",
+    "models/gemini-flash-lite-latest",
+    "models/gemini-pro-latest"
+   ],
+   "models": [
+    [
+     "models/gemini-3-flash-preview",
+     "Gemini 3 Flash Preview"
+    ],
+    [
+     "models/gemini-3-pro-preview",
+     "Gemini 3 Pro Preview"
+    ],
+    [
+     "models/gemini-3.1-pro-preview",
+     "Gemini 3.1 Pro Preview"
+    ],
+    [
+     "models/gemini-3.1-flash-lite-preview",
+     "Gemini 3.1 Flash Lite Preview"
+    ],
+    [
+     "models/gemini-3.1-flash-lite",
+     "Gemini 3.1 Flash Lite"
+    ],
+    [
+     "models/gemini-3.5-flash",
+     "Gemini 3.5 Flash"
+    ],
+    [
+     "models/gemini-2.5-flash",
+     "Gemini 2.5 Flash"
+    ],
+    [
+     "models/gemini-2.5-pro",
+     "Gemini 2.5 Pro"
+    ],
+    [
+     "models/gemini-2.5-flash-lite",
+     "Gemini 2.5 Flash-Lite"
+    ],
+    [
+     "models/gemini-2.0-flash",
+     "Gemini 2.0 Flash"
+    ],
+    [
+     "models/gemini-2.0-flash-001",
+     "Gemini 2.0 Flash 001"
+    ],
+    [
+     "models/gemini-2.0-flash-lite",
+     "Gemini 2.0 Flash-Lite"
+    ],
+    [
+     "models/gemini-2.0-flash-lite-001",
+     "Gemini 2.0 Flash-Lite 001"
+    ],
+    [
+     "models/gemini-flash-latest",
+     "Gemini Flash Latest"
+    ],
+    [
+     "models/gemini-flash-lite-latest",
+     "Gemini Flash-Lite Latest"
+    ],
+    [
+     "models/gemini-pro-latest",
+     "Gemini Pro Latest"
+    ]
+   ],
+   "pid": "gemini"
+  },
+  {
+   "config_keys": [
+    "ai_describer_openai_api_key",
+    "ai_describer_openai_model"
+   ],
+   "default_model": "gpt-5.6-terra",
+   "display": "OpenAI",
+   "extras": [
+    {
+     "arg": "base_url",
+     "default": "https://api.openai.com/v1",
+     "help": "The API endpoint. Change this only to reach a proxy or an OpenAI-compatible server.",
+     "key": "ai_describer_openai_base_url",
+     "kind": "text",
+     "label": "Base URL:",
+     "values": []
+    },
+    {
+     "arg": "reasoning_effort",
+     "default": "low",
+     "help": "How long the model thinks before answering. Higher settings are slower and cost more. Ignored by models without reasoning.",
+     "key": "ai_describer_openai_reasoning_effort",
+     "kind": "choice",
+     "label": "Reasoning effort:",
+     "values": [
+      [
+       "none",
+       "None (fastest)"
+      ],
+      [
+       "minimal",
+       "Minimal"
+      ],
+      [
+       "low",
+       "Low"
+      ],
+      [
+       "medium",
+       "Medium"
+      ],
+      [
+       "high",
+       "High"
+      ]
+     ]
+    },
+    {
+     "arg": "detail",
+     "default": "auto",
+     "help": "How much image resolution is sent. Low costs less but loses on-screen text.",
+     "key": "ai_describer_openai_detail",
+     "kind": "choice",
+     "label": "Image detail:",
+     "values": [
+      [
+       "auto",
+       "Auto (full resolution)"
+      ],
+      [
+       "high",
+       "High"
+      ],
+      [
+       "low",
+       "Low"
+      ]
+     ]
+    }
+   ],
+   "key_help": "Paste your OpenAI API key:",
+   "model_names": [
+    "gpt-5.6-terra",
+    "gpt-5.6-sol",
+    "gpt-5.6-luna",
+    "gpt-5.5",
+    "gpt-5.4",
+    "gpt-5.4-mini",
+    "gpt-5.2",
+    "gpt-5.1",
+    "gpt-5-mini",
+    "gpt-5-nano",
+    "gpt-4.1",
+    "gpt-4.1-mini",
+    "gpt-4o",
+    "gpt-4o-mini",
+    "o3"
+   ],
+   "models": [
+    [
+     "gpt-5.6-terra",
+     "GPT-5.6 Terra (balanced)"
+    ],
+    [
+     "gpt-5.6-sol",
+     "GPT-5.6 Sol (frontier)"
+    ],
+    [
+     "gpt-5.6-luna",
+     "GPT-5.6 Luna (fast, low cost)"
+    ],
+    [
+     "gpt-5.5",
+     "GPT-5.5"
+    ],
+    [
+     "gpt-5.4",
+     "GPT-5.4"
+    ],
+    [
+     "gpt-5.4-mini",
+     "GPT-5.4 Mini"
+    ],
+    [
+     "gpt-5.2",
+     "GPT-5.2"
+    ],
+    [
+     "gpt-5.1",
+     "GPT-5.1"
+    ],
+    [
+     "gpt-5-mini",
+     "GPT-5 Mini"
+    ],
+    [
+     "gpt-5-nano",
+     "GPT-5 Nano"
+    ],
+    [
+     "gpt-4.1",
+     "GPT-4.1"
+    ],
+    [
+     "gpt-4.1-mini",
+     "GPT-4.1 Mini"
+    ],
+    [
+     "gpt-4o",
+     "GPT-4o"
+    ],
+    [
+     "gpt-4o-mini",
+     "GPT-4o Mini"
+    ],
+    [
+     "o3",
+     "o3"
+    ]
+   ],
+   "pid": "openai"
+  },
+  {
+   "config_keys": [
+    "ai_describer_api_key",
+    "ai_describer_model"
+   ],
+   "default_model": "models/gemini-3-flash-preview",
+   "display": "Google Gemini",
+   "extras": [],
+   "key_help": "Paste your Google Gemini API key:",
+   "model_names": [
+    "models/gemini-3-flash-preview",
+    "models/gemini-3-pro-preview",
+    "models/gemini-3.1-pro-preview",
+    "models/gemini-3.1-flash-lite-preview",
+    "models/gemini-3.1-flash-lite",
+    "models/gemini-3.5-flash",
+    "models/gemini-2.5-flash",
+    "models/gemini-2.5-pro",
+    "models/gemini-2.5-flash-lite",
+    "models/gemini-2.0-flash",
+    "models/gemini-2.0-flash-001",
+    "models/gemini-2.0-flash-lite",
+    "models/gemini-2.0-flash-lite-001",
+    "models/gemini-flash-latest",
+    "models/gemini-flash-lite-latest",
+    "models/gemini-pro-latest"
+   ],
+   "models": [
+    [
+     "models/gemini-3-flash-preview",
+     "Gemini 3 Flash Preview"
+    ],
+    [
+     "models/gemini-3-pro-preview",
+     "Gemini 3 Pro Preview"
+    ],
+    [
+     "models/gemini-3.1-pro-preview",
+     "Gemini 3.1 Pro Preview"
+    ],
+    [
+     "models/gemini-3.1-flash-lite-preview",
+     "Gemini 3.1 Flash Lite Preview"
+    ],
+    [
+     "models/gemini-3.1-flash-lite",
+     "Gemini 3.1 Flash Lite"
+    ],
+    [
+     "models/gemini-3.5-flash",
+     "Gemini 3.5 Flash"
+    ],
+    [
+     "models/gemini-2.5-flash",
+     "Gemini 2.5 Flash"
+    ],
+    [
+     "models/gemini-2.5-pro",
+     "Gemini 2.5 Pro"
+    ],
+    [
+     "models/gemini-2.5-flash-lite",
+     "Gemini 2.5 Flash-Lite"
+    ],
+    [
+     "models/gemini-2.0-flash",
+     "Gemini 2.0 Flash"
+    ],
+    [
+     "models/gemini-2.0-flash-001",
+     "Gemini 2.0 Flash 001"
+    ],
+    [
+     "models/gemini-2.0-flash-lite",
+     "Gemini 2.0 Flash-Lite"
+    ],
+    [
+     "models/gemini-2.0-flash-lite-001",
+     "Gemini 2.0 Flash-Lite 001"
+    ],
+    [
+     "models/gemini-flash-latest",
+     "Gemini Flash Latest"
+    ],
+    [
+     "models/gemini-flash-lite-latest",
+     "Gemini Flash-Lite Latest"
+    ],
+    [
+     "models/gemini-pro-latest",
+     "Gemini Pro Latest"
+    ]
+   ],
+   "pid": ""
+  },
+  {
+   "config_keys": [
+    "ai_describer_api_key",
+    "ai_describer_model"
+   ],
+   "default_model": "models/gemini-3-flash-preview",
+   "display": "Google Gemini",
+   "extras": [],
+   "key_help": "Paste your Google Gemini API key:",
+   "model_names": [
+    "models/gemini-3-flash-preview",
+    "models/gemini-3-pro-preview",
+    "models/gemini-3.1-pro-preview",
+    "models/gemini-3.1-flash-lite-preview",
+    "models/gemini-3.1-flash-lite",
+    "models/gemini-3.5-flash",
+    "models/gemini-2.5-flash",
+    "models/gemini-2.5-pro",
+    "models/gemini-2.5-flash-lite",
+    "models/gemini-2.0-flash",
+    "models/gemini-2.0-flash-001",
+    "models/gemini-2.0-flash-lite",
+    "models/gemini-2.0-flash-lite-001",
+    "models/gemini-flash-latest",
+    "models/gemini-flash-lite-latest",
+    "models/gemini-pro-latest"
+   ],
+   "models": [
+    [
+     "models/gemini-3-flash-preview",
+     "Gemini 3 Flash Preview"
+    ],
+    [
+     "models/gemini-3-pro-preview",
+     "Gemini 3 Pro Preview"
+    ],
+    [
+     "models/gemini-3.1-pro-preview",
+     "Gemini 3.1 Pro Preview"
+    ],
+    [
+     "models/gemini-3.1-flash-lite-preview",
+     "Gemini 3.1 Flash Lite Preview"
+    ],
+    [
+     "models/gemini-3.1-flash-lite",
+     "Gemini 3.1 Flash Lite"
+    ],
+    [
+     "models/gemini-3.5-flash",
+     "Gemini 3.5 Flash"
+    ],
+    [
+     "models/gemini-2.5-flash",
+     "Gemini 2.5 Flash"
+    ],
+    [
+     "models/gemini-2.5-pro",
+     "Gemini 2.5 Pro"
+    ],
+    [
+     "models/gemini-2.5-flash-lite",
+     "Gemini 2.5 Flash-Lite"
+    ],
+    [
+     "models/gemini-2.0-flash",
+     "Gemini 2.0 Flash"
+    ],
+    [
+     "models/gemini-2.0-flash-001",
+     "Gemini 2.0 Flash 001"
+    ],
+    [
+     "models/gemini-2.0-flash-lite",
+     "Gemini 2.0 Flash-Lite"
+    ],
+    [
+     "models/gemini-2.0-flash-lite-001",
+     "Gemini 2.0 Flash-Lite 001"
+    ],
+    [
+     "models/gemini-flash-latest",
+     "Gemini Flash Latest"
+    ],
+    [
+     "models/gemini-flash-lite-latest",
+     "Gemini Flash-Lite Latest"
+    ],
+    [
+     "models/gemini-pro-latest",
+     "Gemini Pro Latest"
+    ]
+   ],
+   "pid": "nonexistent"
+  },
+  {
+   "config_keys": [
+    "ai_describer_api_key",
+    "ai_describer_model"
+   ],
+   "default_model": "models/gemini-3-flash-preview",
+   "display": "Google Gemini",
+   "extras": [],
+   "key_help": "Paste your Google Gemini API key:",
+   "model_names": [
+    "models/gemini-3-flash-preview",
+    "models/gemini-3-pro-preview",
+    "models/gemini-3.1-pro-preview",
+    "models/gemini-3.1-flash-lite-preview",
+    "models/gemini-3.1-flash-lite",
+    "models/gemini-3.5-flash",
+    "models/gemini-2.5-flash",
+    "models/gemini-2.5-pro",
+    "models/gemini-2.5-flash-lite",
+    "models/gemini-2.0-flash",
+    "models/gemini-2.0-flash-001",
+    "models/gemini-2.0-flash-lite",
+    "models/gemini-2.0-flash-lite-001",
+    "models/gemini-flash-latest",
+    "models/gemini-flash-lite-latest",
+    "models/gemini-pro-latest"
+   ],
+   "models": [
+    [
+     "models/gemini-3-flash-preview",
+     "Gemini 3 Flash Preview"
+    ],
+    [
+     "models/gemini-3-pro-preview",
+     "Gemini 3 Pro Preview"
+    ],
+    [
+     "models/gemini-3.1-pro-preview",
+     "Gemini 3.1 Pro Preview"
+    ],
+    [
+     "models/gemini-3.1-flash-lite-preview",
+     "Gemini 3.1 Flash Lite Preview"
+    ],
+    [
+     "models/gemini-3.1-flash-lite",
+     "Gemini 3.1 Flash Lite"
+    ],
+    [
+     "models/gemini-3.5-flash",
+     "Gemini 3.5 Flash"
+    ],
+    [
+     "models/gemini-2.5-flash",
+     "Gemini 2.5 Flash"
+    ],
+    [
+     "models/gemini-2.5-pro",
+     "Gemini 2.5 Pro"
+    ],
+    [
+     "models/gemini-2.5-flash-lite",
+     "Gemini 2.5 Flash-Lite"
+    ],
+    [
+     "models/gemini-2.0-flash",
+     "Gemini 2.0 Flash"
+    ],
+    [
+     "models/gemini-2.0-flash-001",
+     "Gemini 2.0 Flash 001"
+    ],
+    [
+     "models/gemini-2.0-flash-lite",
+     "Gemini 2.0 Flash-Lite"
+    ],
+    [
+     "models/gemini-2.0-flash-lite-001",
+     "Gemini 2.0 Flash-Lite 001"
+    ],
+    [
+     "models/gemini-flash-latest",
+     "Gemini Flash Latest"
+    ],
+    [
+     "models/gemini-flash-lite-latest",
+     "Gemini Flash-Lite Latest"
+    ],
+    [
+     "models/gemini-pro-latest",
+     "Gemini Pro Latest"
+    ]
+   ],
+   "pid": "OpenAI"
+  },
+  {
+   "config_keys": [
+    "ai_describer_api_key",
+    "ai_describer_model"
+   ],
+   "default_model": "models/gemini-3-flash-preview",
+   "display": "Google Gemini",
+   "extras": [],
+   "key_help": "Paste your Google Gemini API key:",
+   "model_names": [
+    "models/gemini-3-flash-preview",
+    "models/gemini-3-pro-preview",
+    "models/gemini-3.1-pro-preview",
+    "models/gemini-3.1-flash-lite-preview",
+    "models/gemini-3.1-flash-lite",
+    "models/gemini-3.5-flash",
+    "models/gemini-2.5-flash",
+    "models/gemini-2.5-pro",
+    "models/gemini-2.5-flash-lite",
+    "models/gemini-2.0-flash",
+    "models/gemini-2.0-flash-001",
+    "models/gemini-2.0-flash-lite",
+    "models/gemini-2.0-flash-lite-001",
+    "models/gemini-flash-latest",
+    "models/gemini-flash-lite-latest",
+    "models/gemini-pro-latest"
+   ],
+   "models": [
+    [
+     "models/gemini-3-flash-preview",
+     "Gemini 3 Flash Preview"
+    ],
+    [
+     "models/gemini-3-pro-preview",
+     "Gemini 3 Pro Preview"
+    ],
+    [
+     "models/gemini-3.1-pro-preview",
+     "Gemini 3.1 Pro Preview"
+    ],
+    [
+     "models/gemini-3.1-flash-lite-preview",
+     "Gemini 3.1 Flash Lite Preview"
+    ],
+    [
+     "models/gemini-3.1-flash-lite",
+     "Gemini 3.1 Flash Lite"
+    ],
+    [
+     "models/gemini-3.5-flash",
+     "Gemini 3.5 Flash"
+    ],
+    [
+     "models/gemini-2.5-flash",
+     "Gemini 2.5 Flash"
+    ],
+    [
+     "models/gemini-2.5-pro",
+     "Gemini 2.5 Pro"
+    ],
+    [
+     "models/gemini-2.5-flash-lite",
+     "Gemini 2.5 Flash-Lite"
+    ],
+    [
+     "models/gemini-2.0-flash",
+     "Gemini 2.0 Flash"
+    ],
+    [
+     "models/gemini-2.0-flash-001",
+     "Gemini 2.0 Flash 001"
+    ],
+    [
+     "models/gemini-2.0-flash-lite",
+     "Gemini 2.0 Flash-Lite"
+    ],
+    [
+     "models/gemini-2.0-flash-lite-001",
+     "Gemini 2.0 Flash-Lite 001"
+    ],
+    [
+     "models/gemini-flash-latest",
+     "Gemini Flash Latest"
+    ],
+    [
+     "models/gemini-flash-lite-latest",
+     "Gemini Flash-Lite Latest"
+    ],
+    [
+     "models/gemini-pro-latest",
+     "Gemini Pro Latest"
+    ]
+   ],
+   "pid": null
+  }
+ ]
+}

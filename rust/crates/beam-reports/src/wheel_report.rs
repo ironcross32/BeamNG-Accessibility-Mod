@@ -14,8 +14,7 @@
 use beam_base::pyfmt::py_strip;
 
 use crate::pyops::{
-    PyErr, int_text_to_i128, py_max_iter, py_min_iter, py_sort_by, py_str_to_float,
-    py_str_to_int,
+    PyErr, int_text_to_i128, py_max_iter, py_min_iter, py_sort_by, py_str_to_float, py_str_to_int,
 };
 
 /// Wheels whose centres are closer than this along the vehicle are one axle. Duals share
@@ -199,7 +198,11 @@ pub fn vehicle_rows(vehicle: &Vehicle, trailer_count: usize) -> Vec<WheelRow> {
     }
     let mut axles: Vec<Vec<Wheel>> = vec![vec![wheels[0].clone()]];
     for w in &wheels[1..] {
-        let last_lon = axles.last().and_then(|a| a.last()).map(|x| x.lon).unwrap_or(0.0);
+        let last_lon = axles
+            .last()
+            .and_then(|a| a.last())
+            .map(|x| x.lon)
+            .unwrap_or(0.0);
         if last_lon - w.lon > AXLE_GAP_M {
             axles.push(vec![w.clone()]);
         } else if let Some(a) = axles.last_mut() {
@@ -207,7 +210,11 @@ pub fn vehicle_rows(vehicle: &Vehicle, trailer_count: usize) -> Vec<WheelRow> {
         }
     }
 
-    let widths: Vec<f64> = wheels.iter().map(|w| w.width).filter(|&x| x > 0.0).collect();
+    let widths: Vec<f64> = wheels
+        .iter()
+        .map(|w| w.width)
+        .filter(|&x| x > 0.0)
+        .collect();
     let narrowest = py_min_iter(&widths).unwrap_or(0.0);
     let prefix = vehicle_prefix(vehicle.role, trailer_count);
     let names = axle_names(axles.len());
@@ -216,14 +223,20 @@ pub fn vehicle_rows(vehicle: &Vehicle, trailer_count: usize) -> Vec<WheelRow> {
     for (axle_name, axle) in names.iter().zip(axles.iter()) {
         // Positive lateral is LEFT, so the left end reads first.
         let ends: [(&str, Vec<&Wheel>); 3] = [
-            ("left", axle.iter().filter(|w| w.lat > CENTRE_LAT_M).collect()),
+            (
+                "left",
+                axle.iter().filter(|w| w.lat > CENTRE_LAT_M).collect(),
+            ),
             (
                 "",
                 axle.iter()
                     .filter(|w| -CENTRE_LAT_M <= w.lat && w.lat <= CENTRE_LAT_M)
                     .collect(),
             ),
-            ("right", axle.iter().filter(|w| w.lat < -CENTRE_LAT_M).collect()),
+            (
+                "right",
+                axle.iter().filter(|w| w.lat < -CENTRE_LAT_M).collect(),
+            ),
         ];
         for (side, mut group) in ends {
             if group.is_empty() {
@@ -232,12 +245,14 @@ pub fn vehicle_rows(vehicle: &Vehicle, trailer_count: usize) -> Vec<WheelRow> {
             py_sort_by(&mut group, |a, b| a.lat.abs() < b.lat.abs());
             let stack = stack_names(group.len());
             // Read outward on the left and inward on the right: left to right across.
-            let mut order: Vec<(&String, &Wheel)> = stack.iter().zip(group.iter().copied()).collect();
+            let mut order: Vec<(&String, &Wheel)> =
+                stack.iter().zip(group.iter().copied()).collect();
             if side == "left" {
                 order.reverse();
             }
             for (stack_name, w) in order {
-                let dual = vehicle.dual && narrowest > 0.0 && w.width >= narrowest * DUAL_WIDTH_RATIO;
+                let dual =
+                    vehicle.dual && narrowest > 0.0 && w.width >= narrowest * DUAL_WIDTH_RATIO;
                 let words = [
                     prefix.as_str(),
                     axle_name.as_str(),

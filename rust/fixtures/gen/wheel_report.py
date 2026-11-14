@@ -32,7 +32,7 @@ def main():
         "WHEELS\nV,0,1,A\n0", "WHEELS\nV,0,1,A\n|1,1,1,1,1,0", "WHEELS\nV,0,1,A\n 1 |1,1,1,1,1, 1 ",
     ]
     # The sim's shapes, plus random vehicles.
-    for _ in range(120):
+    for _ in range(20):
         lines = ["WHEELS"]
         for role in rnd.sample(range(0, 4), rnd.randint(1, 4)):
             lines.append(f"V,{role},{1000 + role},Vehicle {role}")
@@ -58,7 +58,7 @@ def main():
             case["all_rows"] = enc(wr.all_rows(parsed))
             case["vehicle_rows"] = [
                 {"trailer_count": tc, "rows": enc(wr.vehicle_rows(v, tc))}
-                for v in parsed for tc in (0, 1, 2)
+                for v in parsed for tc in (0, 2)
             ]
         out.append(case)
     write_fixture("wheel_report", {

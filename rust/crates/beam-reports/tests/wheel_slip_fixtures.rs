@@ -117,7 +117,10 @@ fn classify_matches_python() {
                 && same_f64(c.slide_deg, fl("slide_deg"))
         });
         if !ok {
-            failures.push(format!("classify {}: got {got:?}, want {case}", case["sample"]));
+            failures.push(format!(
+                "classify {}: got {got:?}, want {case}",
+                case["sample"]
+            ));
         }
     }
     check_failures(failures, all.len());

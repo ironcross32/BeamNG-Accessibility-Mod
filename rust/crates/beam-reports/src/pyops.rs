@@ -406,7 +406,11 @@ pub fn decimal_value(c: char) -> Option<u32> {
         return None;
     }
     let zero = DECIMAL_ZEROS[idx - 1];
-    if cp - zero < 10 { Some(cp - zero) } else { None }
+    if cp - zero < 10 {
+        Some(cp - zero)
+    } else {
+        None
+    }
 }
 
 /// The whitespace `int()` and `float()` strip: `str.isspace()` without U+001C..U+001F.
@@ -534,7 +538,8 @@ pub fn int_text_add(a: &str, b: &str) -> String {
     fn cmp(x: &[u8], y: &[u8]) -> std::cmp::Ordering {
         let tx = x.len() - x.iter().rev().take_while(|&&d| d == 0).count();
         let ty = y.len() - y.iter().rev().take_while(|&&d| d == 0).count();
-        tx.cmp(&ty).then_with(|| x[..tx].iter().rev().cmp(y[..ty].iter().rev()))
+        tx.cmp(&ty)
+            .then_with(|| x[..tx].iter().rev().cmp(y[..ty].iter().rev()))
     }
     fn add(x: &[u8], y: &[u8]) -> Vec<u8> {
         let mut out = Vec::with_capacity(x.len().max(y.len()) + 1);
@@ -707,7 +712,9 @@ fn match_charref(c: &[char], start: usize) -> Option<usize> {
         return None;
     }
     let mut j = start;
-    while j < n && j - start < 32 && !matches!(c[j], '\t' | '\n' | '\u{0c}' | ' ' | '<' | '&' | '#' | ';')
+    while j < n
+        && j - start < 32
+        && !matches!(c[j], '\t' | '\n' | '\u{0c}' | ' ' | '<' | '&' | '#' | ';')
     {
         j += 1;
     }
@@ -800,7 +807,9 @@ const JSON_MAX_DEPTH: usize = 1000;
 /// surrogate escape (`"\ud800"`), which Python keeps in the str, becomes U+FFFD.
 pub fn json_loads(text: &str) -> Result<PyValue, PyErr> {
     if text.starts_with('\u{feff}') {
-        return Err(PyErr::value("Unexpected UTF-8 BOM (decode using utf-8-sig)"));
+        return Err(PyErr::value(
+            "Unexpected UTF-8 BOM (decode using utf-8-sig)",
+        ));
     }
     let chars: Vec<char> = text.chars().collect();
     let mut p = JsonParser { c: &chars, i: 0 };

@@ -106,8 +106,8 @@ through `Snapshot`; `Voice` fields through `&mut Voice`. All voices write `bufL`
 | 25 | `lineup.rs` | 6974-6977 + `_render_lineup` 3311-3399 | line-up FM tone, HRIR crossfade | R `lineup_live`, target; W smoothers, phases, `_lineup_ir`, overlaps | - | `camera_lineup_sim.py` (render half, if any) |
 | 26 | `scan_playback.rs` | 6979-7016 | pre-rendered terrain scan + crossfade of the replaced one | R `_scan_tones_enabled`; W `_scan_buf`, `_scan_pos`, `_scan_old_*` | `scan_tone*` | `terrain_scan_sim.py` is AH's (render) |
 | 27 | `junction_proximity.rs` | 7018 + `_mix_junction_proximity` 2413-2460 + `_stop_bar_render_state` 2381-2411 | stop-bar tone (under `lock`) | RW `_junction_proximity*`, `_stop_bar_*` | `road_junction_*` | `junction_proximity_sim.py` |
-| 28 | `assistant_cues.rs` | 7019 + `_mix_assistant_cues` 2490-2506 | queued assistant cues (under `lock`) | RW `_assistant_cue_queue` | - | `assistant_audio_sim.py` |
-| 29 | `gear_tones.rs` | 7020 + `_mix_gear_tones` 2477-2488 | in-flight gear tones (under `lock`) | RW `_gear_tones` | `gear_tone_*` | `gear_report_sim.py` (render is B1's) |
+| 28 | `assistant_cues.rs` **(ported by AA)** | 7019 + `_mix_assistant_cues` 2490-2506 | queued assistant cues (under `lock`) | RW `_assistant_cue_queue` | - | `assistant_audio_sim.py` |
+| 29 | `gear_tones.rs` **(ported by AA)** | 7020 + `_mix_gear_tones` 2477-2488 | in-flight gear tones (under `lock`) | RW `_gear_tones` | `gear_tone_*` | `gear_report_sim.py` (render is B1's) |
 
 ### The duck buses (obstacle duck)
 
@@ -193,7 +193,8 @@ Roughly 950-1,100 Python callback lines each, grouped so coupled voices share an
 **A1: vehicle, attitude and one-shot voices**
 - Files: `placement_ping.rs`, `compass_clicks.rs`, `pedals_steer.rs`, `attitude.rs`,
   `drift.rs`, `node_clickspot.rs`, `lowspeed.rs`, `slip.rs`, `heading_guidance.rs`,
-  `lineup.rs`, `assistant_cues.rs`, `gear_tones.rs`.
+  `lineup.rs`. (`assistant_cues.rs` and `gear_tones.rs` were small enough that AA ported them;
+  A1 owns their sims.)
 - Sims: `wheel_slip_sim.py` (callback half), `assistant_audio_sim.py`, `camera_lineup_sim.py`
   (any render checks), and golden buffers for clicks, pedals, attitude, drift, low speed,
   slip (noise voice by property), heading, line-up.
@@ -217,3 +218,29 @@ Each agent fills only its own `callback/<voice>.rs` bodies (and may add private 
 those files, or new files `callback/<voice>_*.rs` declared from its own module) plus its
 own `tests/*`. `callback/mod.rs`, `block.rs`, `common.rs` and `controller.rs` are AA's; a
 missing helper or field goes back to the orchestrator rather than being edited in.
+
+## Interfaces the wave 2 agents fill (as stubbed by AA)
+
+- Every voice: `pub fn render(b: &mut Block<'_>, v: &mut Voice)`. `b.snap` is the
+  snapshot, `b.snap.hrtf()` the HRTF set when the user has it enabled, `b.waves` the
+  waveforms, `b.clock` the clocks, `b.shared` the lock (only for the voices Python
+  mixes under it), `b.buf_l`/`b.buf_r` the `f32` block. Never lock `voice` inside a
+  voice; the frame already holds it.
+- Extra entry points with fixed signatures, because the Python sims call the private
+  methods directly and `AudioController` exposes wrappers for them:
+  `scanner::smooth_bearing` (runs before the scanner duck copy),
+  `road_correction::render_road_correction_block`, `slip::slip_voice_tables`,
+  `lineup::render_lineup`, `junction_proximity::{mix_junction_proximity,
+  stop_bar_render_state}`, `assistant_cues::mix_assistant_cues`,
+  `gear_tones::mix_gear_tones`.
+- Helpers in `callback/common.rs`: `clamp`/`clamp01`, `pan_gains`,
+  `linspace_open_at`/`linspace_open_into`, `convolve_full_into`/`convolve_f32_into`,
+  `add_tail`/`keep_tail`/`add_conv_f32`/`drain_tails` (overlap-add), `play_centred`,
+  `play_resampled`, `PulseEntry` + `mix_pulse_queue`, `render_directional_pulse`,
+  `db_to_amp`. AH's `dsp` also has numpy's `default_rng` (PCG64), so the slip noise
+  tables and the centre click can be compared sample for sample.
+- Tests: `tests/audio_harness/mod.rs` (`mod audio_harness;`) builds a controller with no
+  stream and a `FakeClock`, zero detune, waveforms and config; `run_blocks(n, frames)`.
+  `rust/fixtures/gen/audio_callback_harness.py`'s `run_script(script, config)` produces
+  the matching Python blocks (steps: `call`, `set`, `clock`, `advance`, `blocks`).
+  `tests/common` belongs to AH.

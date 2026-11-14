@@ -148,7 +148,8 @@ impl AudioController {
 
         let sr = s.samplerate;
         let obstacle_hazard = s._obstacle_hazard.clone();
-        let obstacle_duck = obstacle_duck_gain(obstacle_hazard.as_ref().map(|h| h.state).unwrap_or(0));
+        let obstacle_duck =
+            obstacle_duck_gain(obstacle_hazard.as_ref().map(|h| h.state).unwrap_or(0));
 
         // One channel, two sources, never both: the frame bend wins whenever the vehicle
         // has hydraulic steering. "Exactly zero" is the wire contract for "no such thing".
@@ -158,7 +159,11 @@ impl AudioController {
             hydro_actual = s._trailer_artic;
         }
         // Duck only the trailer source, and only going forward. Glided, never stepped.
-        let trailer_duck_target = if hydro_from_trailer && !s._trailer_reverse { 1.0 } else { 0.0 };
+        let trailer_duck_target = if hydro_from_trailer && !s._trailer_reverse {
+            1.0
+        } else {
+            0.0
+        };
         s._trailer_duck_env += (trailer_duck_target - s._trailer_duck_env)
             * crate::consts::py_min(1.0, (frames as f64 / sr) / TRAILER_DUCK_TAU);
 

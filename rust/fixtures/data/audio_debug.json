@@ -1,0 +1,8391 @@
+{
+ "parse_fields": [
+  {
+   "out": [],
+   "payload": ""
+  },
+  {
+   "out": [],
+   "payload": ";"
+  },
+  {
+   "out": [
+    [
+     "a",
+     "1"
+    ]
+   ],
+   "payload": "a=1"
+  },
+  {
+   "out": [
+    [
+     "a",
+     "1"
+    ],
+    [
+     "b",
+     "2"
+    ]
+   ],
+   "payload": "a=1;b=2"
+  },
+  {
+   "out": [
+    [
+     "a",
+     "1"
+    ],
+    [
+     "b",
+     "x=y"
+    ]
+   ],
+   "payload": " a = 1 ;b= x=y "
+  },
+  {
+   "out": [
+    [
+     "count",
+     "20"
+    ],
+    [
+     "soundCount",
+     "2"
+    ]
+   ],
+   "payload": "20;soundCount=2"
+  },
+  {
+   "out": [
+    [
+     "count",
+     "9"
+    ]
+   ],
+   "payload": "20;7;count=9"
+  },
+  {
+   "out": [
+    [
+     "count",
+     "3"
+    ]
+   ],
+   "payload": "count=3;5"
+  },
+  {
+   "out": [
+    [
+     "",
+     "v"
+    ]
+   ],
+   "payload": "=v"
+  },
+  {
+   "out": [
+    [
+     "k",
+     ""
+    ]
+   ],
+   "payload": "k="
+  },
+  {
+   "out": [
+    [
+     "count",
+     "noeq"
+    ]
+   ],
+   "payload": "noeq"
+  },
+  {
+   "out": [
+    [
+     "a",
+     "1"
+    ],
+    [
+     "b",
+     "2"
+    ]
+   ],
+   "payload": "a=1;;b=2"
+  },
+  {
+   "out": [
+    [
+     "a",
+     "2"
+    ]
+   ],
+   "payload": "a=1;a=2"
+  },
+  {
+   "out": [
+    [
+     "count",
+     ""
+    ],
+    [
+     "",
+     ""
+    ]
+   ],
+   "payload": " ; =;"
+  },
+  {
+   "out": [
+    [
+     "x",
+     "a=b=c"
+    ]
+   ],
+   "payload": "x=a=b=c"
+  },
+  {
+   "out": [
+    [
+     "key",
+     "mainGain"
+    ],
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "futureField",
+     "x"
+    ],
+    [
+     "label",
+     "Main gain"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "-3.5"
+    ],
+    [
+     "min",
+     "-30"
+    ],
+    [
+     "max",
+     "10"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ],
+   "payload": "key=mainGain;kind=number;futureField=x;label=Main gain;unit=dB;value=-3.5;min=-30;max=10;step=0.5"
+  }
+ ],
+ "row_line": [
+  {
+   "ok": "L",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     ""
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "L",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "x"
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "0"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "-0"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "-0.0001"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "0.004"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 0.01",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "0.005"
+    ]
+   ],
+   "spoken": {
+    "ok": "0.01"
+   }
+  },
+  {
+   "ok": "L, minus 0.01",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "-0.005"
+    ]
+   ],
+   "spoken": {
+    "ok": "minus 0.01"
+   }
+  },
+  {
+   "ok": "L, 0.01",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "0.015"
+    ]
+   ],
+   "spoken": {
+    "ok": "0.01"
+   }
+  },
+  {
+   "ok": "L, 1",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "1"
+    ]
+   ],
+   "spoken": {
+    "ok": "1"
+   }
+  },
+  {
+   "ok": "L, minus 3.5",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "-3.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "minus 3.5"
+   }
+  },
+  {
+   "ok": "L, 2.67",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "2.675"
+    ]
+   ],
+   "spoken": {
+    "ok": "2.67"
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "1e-7"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 123457",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "123456.789"
+    ]
+   ],
+   "spoken": {
+    "ok": "123457"
+   }
+  },
+  {
+   "ok": "L, 1e+21",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "1e21"
+    ]
+   ],
+   "spoken": {
+    "ok": "1e+21"
+   }
+  },
+  {
+   "ok": "L, nan",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "nan"
+    ]
+   ],
+   "spoken": {
+    "ok": "nan"
+   }
+  },
+  {
+   "ok": "L, inf",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "inf"
+    ]
+   ],
+   "spoken": {
+    "ok": "inf"
+   }
+  },
+  {
+   "ok": "L, minus inf",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "-inf"
+    ]
+   ],
+   "spoken": {
+    "ok": "minus inf"
+   }
+  },
+  {
+   "ok": "L, 10",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "1_0"
+    ]
+   ],
+   "spoken": {
+    "ok": "10"
+   }
+  },
+  {
+   "ok": "L, 7",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     " 7 "
+    ]
+   ],
+   "spoken": {
+    "ok": "7"
+   }
+  },
+  {
+   "ok": "L, 0.5",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "0.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "0.5"
+   }
+  },
+  {
+   "ok": "L, 1.5",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "1.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "1.5"
+   }
+  },
+  {
+   "ok": "L, 2.5",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "2.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "2.5"
+   }
+  },
+  {
+   "ok": "L, minus 2.5",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     ""
+    ],
+    [
+     "value",
+     "-2.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "minus 2.5"
+   }
+  },
+  {
+   "ok": "L",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     ""
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "L",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "x"
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "L, 0 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "0"
+    ]
+   ],
+   "spoken": {
+    "ok": "0 decibels"
+   }
+  },
+  {
+   "ok": "L, 0 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "-0"
+    ]
+   ],
+   "spoken": {
+    "ok": "0 decibels"
+   }
+  },
+  {
+   "ok": "L, 0 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "-0.0001"
+    ]
+   ],
+   "spoken": {
+    "ok": "0 decibels"
+   }
+  },
+  {
+   "ok": "L, 0 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "0.004"
+    ]
+   ],
+   "spoken": {
+    "ok": "0 decibels"
+   }
+  },
+  {
+   "ok": "L, 0.01 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "0.005"
+    ]
+   ],
+   "spoken": {
+    "ok": "0.01 decibels"
+   }
+  },
+  {
+   "ok": "L, minus 0.01 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "-0.005"
+    ]
+   ],
+   "spoken": {
+    "ok": "minus 0.01 decibels"
+   }
+  },
+  {
+   "ok": "L, 0.01 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "0.015"
+    ]
+   ],
+   "spoken": {
+    "ok": "0.01 decibels"
+   }
+  },
+  {
+   "ok": "L, 1 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "1"
+    ]
+   ],
+   "spoken": {
+    "ok": "1 decibels"
+   }
+  },
+  {
+   "ok": "L, minus 3.5 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "-3.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "minus 3.5 decibels"
+   }
+  },
+  {
+   "ok": "L, 2.67 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "2.675"
+    ]
+   ],
+   "spoken": {
+    "ok": "2.67 decibels"
+   }
+  },
+  {
+   "ok": "L, 0 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "1e-7"
+    ]
+   ],
+   "spoken": {
+    "ok": "0 decibels"
+   }
+  },
+  {
+   "ok": "L, 123457 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "123456.789"
+    ]
+   ],
+   "spoken": {
+    "ok": "123457 decibels"
+   }
+  },
+  {
+   "ok": "L, 1e+21 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "1e21"
+    ]
+   ],
+   "spoken": {
+    "ok": "1e+21 decibels"
+   }
+  },
+  {
+   "ok": "L, nan decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "nan"
+    ]
+   ],
+   "spoken": {
+    "ok": "nan decibels"
+   }
+  },
+  {
+   "ok": "L, inf decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "inf"
+    ]
+   ],
+   "spoken": {
+    "ok": "inf decibels"
+   }
+  },
+  {
+   "ok": "L, minus inf decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "-inf"
+    ]
+   ],
+   "spoken": {
+    "ok": "minus inf decibels"
+   }
+  },
+  {
+   "ok": "L, 10 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "1_0"
+    ]
+   ],
+   "spoken": {
+    "ok": "10 decibels"
+   }
+  },
+  {
+   "ok": "L, 7 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     " 7 "
+    ]
+   ],
+   "spoken": {
+    "ok": "7 decibels"
+   }
+  },
+  {
+   "ok": "L, 0.5 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "0.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "0.5 decibels"
+   }
+  },
+  {
+   "ok": "L, 1.5 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "1.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "1.5 decibels"
+   }
+  },
+  {
+   "ok": "L, 2.5 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "2.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "2.5 decibels"
+   }
+  },
+  {
+   "ok": "L, minus 2.5 decibels",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "dB"
+    ],
+    [
+     "value",
+     "-2.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "minus 2.5 decibels"
+   }
+  },
+  {
+   "ok": "L",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     ""
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "L",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "x"
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "0"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "-0"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "-0.0001"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "0.004"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "0.005"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "-0.005"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "0.015"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 1",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "1"
+    ]
+   ],
+   "spoken": {
+    "ok": "1"
+   }
+  },
+  {
+   "ok": "L, -4",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "-3.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "-4"
+   }
+  },
+  {
+   "ok": "L, 3",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "2.675"
+    ]
+   ],
+   "spoken": {
+    "ok": "3"
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "1e-7"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 123457",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "123456.789"
+    ]
+   ],
+   "spoken": {
+    "ok": "123457"
+   }
+  },
+  {
+   "ok": "L, 1000000000000000000000",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "1e21"
+    ]
+   ],
+   "spoken": {
+    "ok": "1000000000000000000000"
+   }
+  },
+  {
+   "err": "ValueError",
+   "msg": "cannot convert float NaN to integer",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "nan"
+    ]
+   ],
+   "spoken": {
+    "err": "ValueError",
+    "msg": "cannot convert float NaN to integer"
+   }
+  },
+  {
+   "err": "OverflowError",
+   "msg": "cannot convert float infinity to integer",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "inf"
+    ]
+   ],
+   "spoken": {
+    "err": "OverflowError",
+    "msg": "cannot convert float infinity to integer"
+   }
+  },
+  {
+   "err": "OverflowError",
+   "msg": "cannot convert float infinity to integer",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "-inf"
+    ]
+   ],
+   "spoken": {
+    "err": "OverflowError",
+    "msg": "cannot convert float infinity to integer"
+   }
+  },
+  {
+   "ok": "L, 10",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "1_0"
+    ]
+   ],
+   "spoken": {
+    "ok": "10"
+   }
+  },
+  {
+   "ok": "L, 7",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     " 7 "
+    ]
+   ],
+   "spoken": {
+    "ok": "7"
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "0.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 2",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "1.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "2"
+   }
+  },
+  {
+   "ok": "L, 2",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "2.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "2"
+   }
+  },
+  {
+   "ok": "L, -2",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "count"
+    ],
+    [
+     "value",
+     "-2.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "-2"
+   }
+  },
+  {
+   "ok": "L",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     ""
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "L",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     "x"
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "L, 0 hertz",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     "0"
+    ]
+   ],
+   "spoken": {
+    "ok": "0 hertz"
+   }
+  },
+  {
+   "ok": "L, 20 hertz",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     "20"
+    ]
+   ],
+   "spoken": {
+    "ok": "20 hertz"
+   }
+  },
+  {
+   "ok": "L, 120 hertz",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     "120"
+    ]
+   ],
+   "spoken": {
+    "ok": "120 hertz"
+   }
+  },
+  {
+   "ok": "L, 382 hertz",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     "382.35"
+    ]
+   ],
+   "spoken": {
+    "ok": "382 hertz"
+   }
+  },
+  {
+   "ok": "L, 999 hertz",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     "999.4"
+    ]
+   ],
+   "spoken": {
+    "ok": "999 hertz"
+   }
+  },
+  {
+   "ok": "L, 1000 hertz",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     "999.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "1000 hertz"
+   }
+  },
+  {
+   "ok": "L, 1 kilohertz",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     "1000"
+    ]
+   ],
+   "spoken": {
+    "ok": "1 kilohertz"
+   }
+  },
+  {
+   "ok": "L, 1.04 kilohertz",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     "1044"
+    ]
+   ],
+   "spoken": {
+    "ok": "1.04 kilohertz"
+   }
+  },
+  {
+   "ok": "L, 2.5 kilohertz",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     "2500"
+    ]
+   ],
+   "spoken": {
+    "ok": "2.5 kilohertz"
+   }
+  },
+  {
+   "ok": "L, 22 kilohertz",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     "22000"
+    ]
+   ],
+   "spoken": {
+    "ok": "22 kilohertz"
+   }
+  },
+  {
+   "ok": "L, 100 kilohertz",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     "99999"
+    ]
+   ],
+   "spoken": {
+    "ok": "100 kilohertz"
+   }
+  },
+  {
+   "ok": "L, 1e+06 kilohertz",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     "1e9"
+    ]
+   ],
+   "spoken": {
+    "ok": "1e+06 kilohertz"
+   }
+  },
+  {
+   "ok": "L, nan hertz",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     "nan"
+    ]
+   ],
+   "spoken": {
+    "ok": "nan hertz"
+   }
+  },
+  {
+   "ok": "L, inf kilohertz",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     "inf"
+    ]
+   ],
+   "spoken": {
+    "ok": "inf kilohertz"
+   }
+  },
+  {
+   "ok": "L, -50 hertz",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "hz",
+     "-50"
+    ]
+   ],
+   "spoken": {
+    "ok": "-50 hertz"
+   }
+  },
+  {
+   "ok": "L",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     ""
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "L",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "x"
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "0"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "-0"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "-0.0001"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "0.004"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 0.01",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "0.005"
+    ]
+   ],
+   "spoken": {
+    "ok": "0.01"
+   }
+  },
+  {
+   "ok": "L, minus 0.01",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "-0.005"
+    ]
+   ],
+   "spoken": {
+    "ok": "minus 0.01"
+   }
+  },
+  {
+   "ok": "L, 0.01",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "0.015"
+    ]
+   ],
+   "spoken": {
+    "ok": "0.01"
+   }
+  },
+  {
+   "ok": "L, 1",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "1"
+    ]
+   ],
+   "spoken": {
+    "ok": "1"
+   }
+  },
+  {
+   "ok": "L, minus 3.5",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "-3.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "minus 3.5"
+   }
+  },
+  {
+   "ok": "L, 2.67",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "2.675"
+    ]
+   ],
+   "spoken": {
+    "ok": "2.67"
+   }
+  },
+  {
+   "ok": "L, 0",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "1e-7"
+    ]
+   ],
+   "spoken": {
+    "ok": "0"
+   }
+  },
+  {
+   "ok": "L, 123457",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "123456.789"
+    ]
+   ],
+   "spoken": {
+    "ok": "123457"
+   }
+  },
+  {
+   "ok": "L, 1e+21",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "1e21"
+    ]
+   ],
+   "spoken": {
+    "ok": "1e+21"
+   }
+  },
+  {
+   "ok": "L, nan",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "nan"
+    ]
+   ],
+   "spoken": {
+    "ok": "nan"
+   }
+  },
+  {
+   "ok": "L, inf",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "inf"
+    ]
+   ],
+   "spoken": {
+    "ok": "inf"
+   }
+  },
+  {
+   "ok": "L, minus inf",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "-inf"
+    ]
+   ],
+   "spoken": {
+    "ok": "minus inf"
+   }
+  },
+  {
+   "ok": "L, 10",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "1_0"
+    ]
+   ],
+   "spoken": {
+    "ok": "10"
+   }
+  },
+  {
+   "ok": "L, 7",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     " 7 "
+    ]
+   ],
+   "spoken": {
+    "ok": "7"
+   }
+  },
+  {
+   "ok": "L, 0.5",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "0.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "0.5"
+   }
+  },
+  {
+   "ok": "L, 1.5",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "1.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "1.5"
+   }
+  },
+  {
+   "ok": "L, 2.5",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "2.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "2.5"
+   }
+  },
+  {
+   "ok": "L, minus 2.5",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "L"
+    ],
+    [
+     "unit",
+     "%"
+    ],
+    [
+     "value",
+     "-2.5"
+    ]
+   ],
+   "spoken": {
+    "ok": "minus 2.5"
+   }
+  },
+  {
+   "ok": "Only label",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "label",
+     "Only label"
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "",
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "unit",
+     "Hz"
+    ],
+    [
+     "value",
+     "500"
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "Sound 2 of 2: exhaust, mainEngine, V8_cross_exhaust, changed",
+   "row": [
+    [
+     "kind",
+     "select"
+    ],
+    [
+     "index",
+     "1"
+    ],
+    [
+     "count",
+     "2"
+    ],
+    [
+     "ref",
+     "exhaust"
+    ],
+    [
+     "device",
+     "mainEngine"
+    ],
+    [
+     "blend",
+     "V8_cross_exhaust"
+    ],
+    [
+     "modified",
+     "1"
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "Sound 1 of 1: ",
+   "row": [
+    [
+     "kind",
+     "select"
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "Sound 1 of 1: ",
+   "row": [
+    [
+     "kind",
+     "select"
+    ],
+    [
+     "index",
+     "x"
+    ],
+    [
+     "count",
+     "3"
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "Sound 1 of 1: ",
+   "row": [
+    [
+     "kind",
+     "select"
+    ],
+    [
+     "index",
+     "2"
+    ],
+    [
+     "count",
+     ""
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "Sound 5 of 9: d",
+   "row": [
+    [
+     "kind",
+     "select"
+    ],
+    [
+     "index",
+     " 4 "
+    ],
+    [
+     "count",
+     "+9"
+    ],
+    [
+     "ref",
+     ""
+    ],
+    [
+     "device",
+     "d"
+    ],
+    [
+     "modified",
+     "0"
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "Sound 100000000000000000000 of 2: ",
+   "row": [
+    [
+     "kind",
+     "select"
+    ],
+    [
+     "index",
+     "99999999999999999999"
+    ],
+    [
+     "count",
+     "2"
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "Restore vehicle defaults, nothing changed",
+   "row": [
+    [
+     "kind",
+     "action"
+    ],
+    [
+     "key",
+     "restore"
+    ],
+    [
+     "label",
+     "Restore vehicle defaults"
+    ],
+    [
+     "editable",
+     "0"
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "R",
+   "row": [
+    [
+     "kind",
+     "action"
+    ],
+    [
+     "key",
+     "restore"
+    ],
+    [
+     "label",
+     "R"
+    ],
+    [
+     "editable",
+     "1"
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "Other",
+   "row": [
+    [
+     "kind",
+     "action"
+    ],
+    [
+     "key",
+     "other"
+    ],
+    [
+     "label",
+     "Other"
+    ],
+    [
+     "editable",
+     "0"
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "",
+   "row": [],
+   "spoken": {
+    "ok": ""
+   }
+  },
+  {
+   "ok": "Bare",
+   "row": [
+    [
+     "label",
+     "Bare"
+    ]
+   ],
+   "spoken": {
+    "ok": ""
+   }
+  }
+ ],
+ "select_target": [
+  {
+   "delta": -10,
+   "out": 0,
+   "row": [
+    [
+     "index",
+     "1"
+    ],
+    [
+     "count",
+     "2"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": 0,
+   "row": [
+    [
+     "index",
+     "1"
+    ],
+    [
+     "count",
+     "2"
+    ]
+   ]
+  },
+  {
+   "delta": 0,
+   "out": 0,
+   "row": [
+    [
+     "index",
+     "1"
+    ],
+    [
+     "count",
+     "2"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": 0,
+   "row": [
+    [
+     "index",
+     "1"
+    ],
+    [
+     "count",
+     "2"
+    ]
+   ]
+  },
+  {
+   "delta": 5,
+   "out": 0,
+   "row": [
+    [
+     "index",
+     "1"
+    ],
+    [
+     "count",
+     "2"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": 2,
+   "row": [
+    [
+     "index",
+     "0"
+    ],
+    [
+     "count",
+     "3"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": 2,
+   "row": [
+    [
+     "index",
+     "0"
+    ],
+    [
+     "count",
+     "3"
+    ]
+   ]
+  },
+  {
+   "delta": 0,
+   "out": 2,
+   "row": [
+    [
+     "index",
+     "0"
+    ],
+    [
+     "count",
+     "3"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": 1,
+   "row": [
+    [
+     "index",
+     "0"
+    ],
+    [
+     "count",
+     "3"
+    ]
+   ]
+  },
+  {
+   "delta": 5,
+   "out": 1,
+   "row": [
+    [
+     "index",
+     "0"
+    ],
+    [
+     "count",
+     "3"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": null,
+   "row": [
+    [
+     "index",
+     "0"
+    ],
+    [
+     "count",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": null,
+   "row": [
+    [
+     "index",
+     "0"
+    ],
+    [
+     "count",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": 0,
+   "out": null,
+   "row": [
+    [
+     "index",
+     "0"
+    ],
+    [
+     "count",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": null,
+   "row": [
+    [
+     "index",
+     "0"
+    ],
+    [
+     "count",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": 5,
+   "out": null,
+   "row": [
+    [
+     "index",
+     "0"
+    ],
+    [
+     "count",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": null,
+   "row": []
+  },
+  {
+   "delta": -1,
+   "out": null,
+   "row": []
+  },
+  {
+   "delta": 0,
+   "out": null,
+   "row": []
+  },
+  {
+   "delta": 1,
+   "out": null,
+   "row": []
+  },
+  {
+   "delta": 5,
+   "out": null,
+   "row": []
+  },
+  {
+   "delta": -10,
+   "out": null,
+   "row": [
+    [
+     "index",
+     "x"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": null,
+   "row": [
+    [
+     "index",
+     "x"
+    ]
+   ]
+  },
+  {
+   "delta": 0,
+   "out": null,
+   "row": [
+    [
+     "index",
+     "x"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": null,
+   "row": [
+    [
+     "index",
+     "x"
+    ]
+   ]
+  },
+  {
+   "delta": 5,
+   "out": null,
+   "row": [
+    [
+     "index",
+     "x"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": 1,
+   "row": [
+    [
+     "index",
+     "5"
+    ],
+    [
+     "count",
+     "3"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": 1,
+   "row": [
+    [
+     "index",
+     "5"
+    ],
+    [
+     "count",
+     "3"
+    ]
+   ]
+  },
+  {
+   "delta": 0,
+   "out": 1,
+   "row": [
+    [
+     "index",
+     "5"
+    ],
+    [
+     "count",
+     "3"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": 0,
+   "row": [
+    [
+     "index",
+     "5"
+    ],
+    [
+     "count",
+     "3"
+    ]
+   ]
+  },
+  {
+   "delta": 5,
+   "out": 0,
+   "row": [
+    [
+     "index",
+     "5"
+    ],
+    [
+     "count",
+     "3"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": 1,
+   "row": [
+    [
+     "index",
+     "-4"
+    ],
+    [
+     "count",
+     "3"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": 1,
+   "row": [
+    [
+     "index",
+     "-4"
+    ],
+    [
+     "count",
+     "3"
+    ]
+   ]
+  },
+  {
+   "delta": 0,
+   "out": 1,
+   "row": [
+    [
+     "index",
+     "-4"
+    ],
+    [
+     "count",
+     "3"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": 0,
+   "row": [
+    [
+     "index",
+     "-4"
+    ],
+    [
+     "count",
+     "3"
+    ]
+   ]
+  },
+  {
+   "delta": 5,
+   "out": 0,
+   "row": [
+    [
+     "index",
+     "-4"
+    ],
+    [
+     "count",
+     "3"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": 1,
+   "row": [
+    [
+     "index",
+     " 2"
+    ],
+    [
+     "count",
+     "4 "
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": 1,
+   "row": [
+    [
+     "index",
+     " 2"
+    ],
+    [
+     "count",
+     "4 "
+    ]
+   ]
+  },
+  {
+   "delta": 0,
+   "out": 1,
+   "row": [
+    [
+     "index",
+     " 2"
+    ],
+    [
+     "count",
+     "4 "
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": 3,
+   "row": [
+    [
+     "index",
+     " 2"
+    ],
+    [
+     "count",
+     "4 "
+    ]
+   ]
+  },
+  {
+   "delta": 5,
+   "out": 3,
+   "row": [
+    [
+     "index",
+     " 2"
+    ],
+    [
+     "count",
+     "4 "
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": 4,
+   "row": [
+    [
+     "count",
+     "5"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": 4,
+   "row": [
+    [
+     "count",
+     "5"
+    ]
+   ]
+  },
+  {
+   "delta": 0,
+   "out": 4,
+   "row": [
+    [
+     "count",
+     "5"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": 1,
+   "row": [
+    [
+     "count",
+     "5"
+    ]
+   ]
+  },
+  {
+   "delta": 5,
+   "out": 1,
+   "row": [
+    [
+     "count",
+     "5"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": null,
+   "row": [
+    [
+     "index",
+     "2"
+    ],
+    [
+     "count",
+     "0"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": null,
+   "row": [
+    [
+     "index",
+     "2"
+    ],
+    [
+     "count",
+     "0"
+    ]
+   ]
+  },
+  {
+   "delta": 0,
+   "out": null,
+   "row": [
+    [
+     "index",
+     "2"
+    ],
+    [
+     "count",
+     "0"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": null,
+   "row": [
+    [
+     "index",
+     "2"
+    ],
+    [
+     "count",
+     "0"
+    ]
+   ]
+  },
+  {
+   "delta": 5,
+   "out": null,
+   "row": [
+    [
+     "index",
+     "2"
+    ],
+    [
+     "count",
+     "0"
+    ]
+   ]
+  }
+ ],
+ "sfx_line": [
+  {
+   "out": "UI, folder, 71 items",
+   "row": [
+    [
+     "kind",
+     "dir"
+    ],
+    [
+     "name",
+     "UI"
+    ],
+    [
+     "count",
+     "71"
+    ]
+   ]
+  },
+  {
+   "out": "DLC, folder, 1 item",
+   "row": [
+    [
+     "kind",
+     "dir"
+    ],
+    [
+     "name",
+     "DLC"
+    ],
+    [
+     "count",
+     "1"
+    ]
+   ]
+  },
+  {
+   "out": "X, folder",
+   "row": [
+    [
+     "kind",
+     "dir"
+    ],
+    [
+     "name",
+     "X"
+    ]
+   ]
+  },
+  {
+   "out": "X, folder",
+   "row": [
+    [
+     "kind",
+     "dir"
+    ],
+    [
+     "name",
+     "X"
+    ],
+    [
+     "count",
+     ""
+    ]
+   ]
+  },
+  {
+   "out": "n",
+   "row": [
+    [
+     "kind",
+     "file"
+    ],
+    [
+     "name",
+     "n"
+    ]
+   ]
+  },
+  {
+   "out": "",
+   "row": []
+  },
+  {
+   "out": ", folder",
+   "row": [
+    [
+     "kind",
+     "dir"
+    ]
+   ]
+  }
+ ],
+ "stepped_value": [
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4643674820938591266,
+    "repr": "282.3529"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "382.3529"
+    ],
+    [
+     "min",
+     "0"
+    ],
+    [
+     "max",
+     "1000"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4645258117682588706,
+    "repr": "372.3529"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "382.3529"
+    ],
+    [
+     "min",
+     "0"
+    ],
+    [
+     "max",
+     "1000"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4645609961403477026,
+    "repr": "392.3529"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "382.3529"
+    ],
+    [
+     "min",
+     "0"
+    ],
+    [
+     "max",
+     "1000"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4647193258147474466,
+    "repr": "482.3529"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "382.3529"
+    ],
+    [
+     "min",
+     "0"
+    ],
+    [
+     "max",
+     "1000"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4651127699538968576,
+    "repr": "900.0"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1000"
+    ],
+    [
+     "min",
+     "0"
+    ],
+    [
+     "max",
+     "1000"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4651919347910967296,
+    "repr": "990.0"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1000"
+    ],
+    [
+     "min",
+     "0"
+    ],
+    [
+     "max",
+     "1000"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1000"
+    ],
+    [
+     "min",
+     "0"
+    ],
+    [
+     "max",
+     "1000"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1000"
+    ],
+    [
+     "min",
+     "0"
+    ],
+    [
+     "max",
+     "1000"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 0,
+    "repr": "0.0"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "5"
+    ],
+    [
+     "min",
+     "0"
+    ],
+    [
+     "max",
+     "1000"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 0,
+    "repr": "0.0"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "5"
+    ],
+    [
+     "min",
+     "0"
+    ],
+    [
+     "max",
+     "1000"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4624633867356078080,
+    "repr": "15.0"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "5"
+    ],
+    [
+     "min",
+     "0"
+    ],
+    [
+     "max",
+     "1000"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4637089135075524608,
+    "repr": "105.0"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "5"
+    ],
+    [
+     "min",
+     "0"
+    ],
+    [
+     "max",
+     "1000"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4603129179135383962,
+    "repr": "0.55"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.65"
+    ],
+    [
+     "min",
+     "0"
+    ],
+    [
+     "max",
+     "1"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4603939827068310651,
+    "repr": "0.64"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.65"
+    ],
+    [
+     "min",
+     "0"
+    ],
+    [
+     "max",
+     "1"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4604119971053405471,
+    "repr": "0.66"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.65"
+    ],
+    [
+     "min",
+     "0"
+    ],
+    [
+     "max",
+     "1"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4604930618986332160,
+    "repr": "0.75"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.65"
+    ],
+    [
+     "min",
+     "0"
+    ],
+    [
+     "max",
+     "1"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.65"
+    ],
+    [
+     "step",
+     "0"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.65"
+    ],
+    [
+     "step",
+     "0"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.65"
+    ],
+    [
+     "step",
+     "0"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.65"
+    ],
+    [
+     "step",
+     "0"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.65"
+    ],
+    [
+     "step",
+     "-0"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.65"
+    ],
+    [
+     "step",
+     "-0"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.65"
+    ],
+    [
+     "step",
+     "-0"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.65"
+    ],
+    [
+     "step",
+     "-0"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.65"
+    ],
+    [
+     "step",
+     "x"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.65"
+    ],
+    [
+     "step",
+     "x"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.65"
+    ],
+    [
+     "step",
+     "x"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.65"
+    ],
+    [
+     "step",
+     "x"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "x"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "x"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "x"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "x"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "nan"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "nan"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "nan"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "nan"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "nan"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "nan"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "nan"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "nan"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "1"
+    ],
+    [
+     "min",
+     "nan"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "1"
+    ],
+    [
+     "min",
+     "nan"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "1"
+    ],
+    [
+     "min",
+     "nan"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "1"
+    ],
+    [
+     "min",
+     "nan"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "1"
+    ],
+    [
+     "max",
+     "nan"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "1"
+    ],
+    [
+     "max",
+     "nan"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "1"
+    ],
+    [
+     "max",
+     "nan"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "1"
+    ],
+    [
+     "max",
+     "nan"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "1"
+    ],
+    [
+     "min",
+     "5"
+    ],
+    [
+     "max",
+     "2"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "1"
+    ],
+    [
+     "min",
+     "5"
+    ],
+    [
+     "max",
+     "2"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "1"
+    ],
+    [
+     "min",
+     "5"
+    ],
+    [
+     "max",
+     "2"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4611686018427387904,
+    "repr": "2.0"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "1"
+    ],
+    [
+     "min",
+     "5"
+    ],
+    [
+     "max",
+     "2"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 13770379158873719597,
+    "repr": "-0.0001"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.00001"
+    ],
+    [
+     "step",
+     "0.00001"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.00001"
+    ],
+    [
+     "step",
+     "0.00001"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.00001"
+    ],
+    [
+     "step",
+     "0.00001"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4547007122018943789,
+    "repr": "0.0001"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "0.00001"
+    ],
+    [
+     "step",
+     "0.00001"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-30"
+    ],
+    [
+     "step",
+     "0.5"
+    ],
+    [
+     "min",
+     "-30"
+    ],
+    [
+     "max",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-30"
+    ],
+    [
+     "step",
+     "0.5"
+    ],
+    [
+     "min",
+     "-30"
+    ],
+    [
+     "max",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 13852368766349869056,
+    "repr": "-29.5"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-30"
+    ],
+    [
+     "step",
+     "0.5"
+    ],
+    [
+     "min",
+     "-30"
+    ],
+    [
+     "max",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 13851102128954671104,
+    "repr": "-25.0"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-30"
+    ],
+    [
+     "step",
+     "0.5"
+    ],
+    [
+     "min",
+     "-30"
+    ],
+    [
+     "max",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "select"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "select"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "select"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": null,
+   "row": [
+    [
+     "kind",
+     "select"
+    ],
+    [
+     "value",
+     "1"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": null,
+   "row": []
+  },
+  {
+   "delta": -1,
+   "out": null,
+   "row": []
+  },
+  {
+   "delta": 1,
+   "out": null,
+   "row": []
+  },
+  {
+   "delta": 10,
+   "out": null,
+   "row": []
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 13853266291534357489,
+    "repr": "-33.3773"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-30.816553233632536"
+    ],
+    [
+     "min",
+     "-33.3773315223424"
+    ],
+    [
+     "max",
+     "18.021572846586274"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 13852880093792561634,
+    "repr": "-31.3166"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-30.816553233632536"
+    ],
+    [
+     "min",
+     "-33.3773315223424"
+    ],
+    [
+     "max",
+     "18.021572846586274"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 13852598618815850978,
+    "repr": "-30.3166"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-30.816553233632536"
+    ],
+    [
+     "min",
+     "-33.3773315223424"
+    ],
+    [
+     "max",
+     "18.021572846586274"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 13851331981420653026,
+    "repr": "-25.8166"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-30.816553233632536"
+    ],
+    [
+     "min",
+     "-33.3773315223424"
+    ],
+    [
+     "max",
+     "18.021572846586274"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 13850050566589177764,
+    "repr": "-21.2641"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-21.164130900417856"
+    ],
+    [
+     "min",
+     "-32.70627155266314"
+    ],
+    [
+     "max",
+     "18.121289049573196"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 13850025233841273805,
+    "repr": "-21.1741"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-21.164130900417856"
+    ],
+    [
+     "min",
+     "-32.70627155266314"
+    ],
+    [
+     "max",
+     "18.121289049573196"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 13850019604341739592,
+    "repr": "-21.1541"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-21.164130900417856"
+    ],
+    [
+     "min",
+     "-32.70627155266314"
+    ],
+    [
+     "max",
+     "18.121289049573196"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 13849994271593835633,
+    "repr": "-21.0641"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-21.164130900417856"
+    ],
+    [
+     "min",
+     "-32.70627155266314"
+    ],
+    [
+     "max",
+     "18.121289049573196"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4632496181216797314,
+    "repr": "51.8651"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "63.45834213626145"
+    ],
+    [
+     "min",
+     "-32.671052397580056"
+    ],
+    [
+     "max",
+     "51.86514997090649"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4632496181216797314,
+    "repr": "51.8651"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "63.45834213626145"
+    ],
+    [
+     "min",
+     "-32.671052397580056"
+    ],
+    [
+     "max",
+     "51.86514997090649"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4632496181216797314,
+    "repr": "51.8651"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "63.45834213626145"
+    ],
+    [
+     "min",
+     "-32.671052397580056"
+    ],
+    [
+     "max",
+     "51.86514997090649"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4632496181216797314,
+    "repr": "51.8651"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "63.45834213626145"
+    ],
+    [
+     "min",
+     "-32.671052397580056"
+    ],
+    [
+     "max",
+     "51.86514997090649"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 13855100692105078505,
+    "repr": "-46.4115"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-41.41146407311236"
+    ],
+    [
+     "min",
+     "-58.409790034285116"
+    ],
+    [
+     "max",
+     "35.142130881246494"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 13854467373407479529,
+    "repr": "-41.9115"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-41.41146407311236"
+    ],
+    [
+     "min",
+     "-58.409790034285116"
+    ],
+    [
+     "max",
+     "35.142130881246494"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 13854326635919124201,
+    "repr": "-40.9115"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-41.41146407311236"
+    ],
+    [
+     "min",
+     "-58.409790034285116"
+    ],
+    [
+     "max",
+     "35.142130881246494"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 13853693317221525225,
+    "repr": "-36.4115"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-41.41146407311236"
+    ],
+    [
+     "min",
+     "-58.409790034285116"
+    ],
+    [
+     "max",
+     "35.142130881246494"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4629111317958112156,
+    "repr": "29.9071"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "39.907134380198556"
+    ],
+    [
+     "min",
+     "-73.73609257130788"
+    ],
+    [
+     "max",
+     "82.95705783609316"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4630672504842688974,
+    "repr": "38.9071"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "39.907134380198556"
+    ],
+    [
+     "min",
+     "-73.73609257130788"
+    ],
+    [
+     "max",
+     "82.95705783609316"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4630953979819399630,
+    "repr": "40.9071"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "39.907134380198556"
+    ],
+    [
+     "min",
+     "-73.73609257130788"
+    ],
+    [
+     "max",
+     "82.95705783609316"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4632220617214597582,
+    "repr": "49.9071"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "39.907134380198556"
+    ],
+    [
+     "min",
+     "-73.73609257130788"
+    ],
+    [
+     "max",
+     "82.95705783609316"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4617300768672821386,
+    "repr": "4.9869"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "9.986894995634216"
+    ],
+    [
+     "min",
+     "-71.53617471336852"
+    ],
+    [
+     "max",
+     "63.91697894907885"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4621530267967871045,
+    "repr": "9.4869"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "9.986894995634216"
+    ],
+    [
+     "min",
+     "-71.53617471336852"
+    ],
+    [
+     "max",
+     "63.91697894907885"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4622093217921292357,
+    "repr": "10.4869"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "9.986894995634216"
+    ],
+    [
+     "min",
+     "-71.53617471336852"
+    ],
+    [
+     "max",
+     "63.91697894907885"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4624626492711688261,
+    "repr": "14.9869"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "9.986894995634216"
+    ],
+    [
+     "min",
+     "-71.53617471336852"
+    ],
+    [
+     "max",
+     "63.91697894907885"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4623433826940369869,
+    "repr": "12.8683"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "56.461213701499545"
+    ],
+    [
+     "min",
+     "-38.19909643441895"
+    ],
+    [
+     "max",
+     "12.868349522662337"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4623433826940369869,
+    "repr": "12.8683"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "56.461213701499545"
+    ],
+    [
+     "min",
+     "-38.19909643441895"
+    ],
+    [
+     "max",
+     "12.868349522662337"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4623433826940369869,
+    "repr": "12.8683"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "56.461213701499545"
+    ],
+    [
+     "min",
+     "-38.19909643441895"
+    ],
+    [
+     "max",
+     "12.868349522662337"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4623433826940369869,
+    "repr": "12.8683"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "56.461213701499545"
+    ],
+    [
+     "min",
+     "-38.19909643441895"
+    ],
+    [
+     "max",
+     "12.868349522662337"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 13856002706815445474,
+    "repr": "-52.8207"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "47.17934618762608"
+    ],
+    [
+     "min",
+     "-94.44927675191734"
+    ],
+    [
+     "max",
+     "93.21794198523521"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4630429338610308638,
+    "repr": "37.1793"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "47.17934618762608"
+    ],
+    [
+     "min",
+     "-94.44927675191734"
+    ],
+    [
+     "max",
+     "93.21794198523521"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4633244088377415198,
+    "repr": "57.1793"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "47.17934618762608"
+    ],
+    [
+     "min",
+     "-94.44927675191734"
+    ],
+    [
+     "max",
+     "93.21794198523521"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4636260043494748953,
+    "repr": "93.2179"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "47.17934618762608"
+    ],
+    [
+     "min",
+     "-94.44927675191734"
+    ],
+    [
+     "max",
+     "93.21794198523521"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4634288824974723305,
+    "repr": "65.2052"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "96.20286861208264"
+    ],
+    [
+     "min",
+     "-9.717310978846882"
+    ],
+    [
+     "max",
+     "65.20521278885602"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4634288824974723305,
+    "repr": "65.2052"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "96.20286861208264"
+    ],
+    [
+     "min",
+     "-9.717310978846882"
+    ],
+    [
+     "max",
+     "65.20521278885602"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4634288824974723305,
+    "repr": "65.2052"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "96.20286861208264"
+    ],
+    [
+     "min",
+     "-9.717310978846882"
+    ],
+    [
+     "max",
+     "65.20521278885602"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4634288824974723305,
+    "repr": "65.2052"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "96.20286861208264"
+    ],
+    [
+     "min",
+     "-9.717310978846882"
+    ],
+    [
+     "max",
+     "65.20521278885602"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4624299418788750479,
+    "repr": "14.4059"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "15.925282739500261"
+    ],
+    [
+     "min",
+     "-20.460090147526685"
+    ],
+    [
+     "max",
+     "14.405866294049996"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4624299418788750479,
+    "repr": "14.4059"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "15.925282739500261"
+    ],
+    [
+     "min",
+     "-20.460090147526685"
+    ],
+    [
+     "max",
+     "14.405866294049996"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4624299418788750479,
+    "repr": "14.4059"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "15.925282739500261"
+    ],
+    [
+     "min",
+     "-20.460090147526685"
+    ],
+    [
+     "max",
+     "14.405866294049996"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4624299418788750479,
+    "repr": "14.4059"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "15.925282739500261"
+    ],
+    [
+     "min",
+     "-20.460090147526685"
+    ],
+    [
+     "max",
+     "14.405866294049996"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4620462745971198211,
+    "repr": "7.7953"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "10.844123503456608"
+    ],
+    [
+     "min",
+     "-55.827900184592316"
+    ],
+    [
+     "max",
+     "7.795259950511357"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4620462745971198211,
+    "repr": "7.7953"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "10.844123503456608"
+    ],
+    [
+     "min",
+     "-55.827900184592316"
+    ],
+    [
+     "max",
+     "7.795259950511357"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4620462745971198211,
+    "repr": "7.7953"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "10.844123503456608"
+    ],
+    [
+     "min",
+     "-55.827900184592316"
+    ],
+    [
+     "max",
+     "7.795259950511357"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4620462745971198211,
+    "repr": "7.7953"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "10.844123503456608"
+    ],
+    [
+     "min",
+     "-55.827900184592316"
+    ],
+    [
+     "max",
+     "7.795259950511357"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4625505285736476600,
+    "repr": "17.0959"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "54.702363670069474"
+    ],
+    [
+     "min",
+     "-27.355921127905503"
+    ],
+    [
+     "max",
+     "17.095948120739457"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4625505285736476600,
+    "repr": "17.0959"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "54.702363670069474"
+    ],
+    [
+     "min",
+     "-27.355921127905503"
+    ],
+    [
+     "max",
+     "17.095948120739457"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4625505285736476600,
+    "repr": "17.0959"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "54.702363670069474"
+    ],
+    [
+     "min",
+     "-27.355921127905503"
+    ],
+    [
+     "max",
+     "17.095948120739457"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4625505285736476600,
+    "repr": "17.0959"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "54.702363670069474"
+    ],
+    [
+     "min",
+     "-27.355921127905503"
+    ],
+    [
+     "max",
+     "17.095948120739457"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 13839828943547418647,
+    "repr": "-4.2374"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "5.76262742739965"
+    ],
+    [
+     "min",
+     "-81.95820594104879"
+    ],
+    [
+     "max",
+     "14.79310525190678"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4617048229323716585,
+    "repr": "4.7626"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "5.76262742739965"
+    ],
+    [
+     "min",
+     "-81.95820594104879"
+    ],
+    [
+     "max",
+     "14.79310525190678"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4619300029137401833,
+    "repr": "6.7626"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "5.76262742739965"
+    ],
+    [
+     "min",
+     "-81.95820594104879"
+    ],
+    [
+     "max",
+     "14.79310525190678"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4624517393010715211,
+    "repr": "14.7931"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "5.76262742739965"
+    ],
+    [
+     "min",
+     "-81.95820594104879"
+    ],
+    [
+     "max",
+     "14.79310525190678"
+    ],
+    [
+     "step",
+     "1"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4618522144891764264,
+    "repr": "6.0717"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "61.58360817497197"
+    ],
+    [
+     "min",
+     "-2.8764082878935398"
+    ],
+    [
+     "max",
+     "6.071719880537019"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4618522144891764264,
+    "repr": "6.0717"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "61.58360817497197"
+    ],
+    [
+     "min",
+     "-2.8764082878935398"
+    ],
+    [
+     "max",
+     "6.071719880537019"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4618522144891764264,
+    "repr": "6.0717"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "61.58360817497197"
+    ],
+    [
+     "min",
+     "-2.8764082878935398"
+    ],
+    [
+     "max",
+     "6.071719880537019"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4618522144891764264,
+    "repr": "6.0717"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "61.58360817497197"
+    ],
+    [
+     "min",
+     "-2.8764082878935398"
+    ],
+    [
+     "max",
+     "6.071719880537019"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4618523158201680423,
+    "repr": "6.0726"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "32.682054031872156"
+    ],
+    [
+     "min",
+     "-73.13795047338417"
+    ],
+    [
+     "max",
+     "6.072565449483747"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4618523158201680423,
+    "repr": "6.0726"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "32.682054031872156"
+    ],
+    [
+     "min",
+     "-73.13795047338417"
+    ],
+    [
+     "max",
+     "6.072565449483747"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4618523158201680423,
+    "repr": "6.0726"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "32.682054031872156"
+    ],
+    [
+     "min",
+     "-73.13795047338417"
+    ],
+    [
+     "max",
+     "6.072565449483747"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4618523158201680423,
+    "repr": "6.0726"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "32.682054031872156"
+    ],
+    [
+     "min",
+     "-73.13795047338417"
+    ],
+    [
+     "max",
+     "6.072565449483747"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 13849064081238299928,
+    "repr": "-17.7594"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-12.759413313212619"
+    ],
+    [
+     "min",
+     "-74.05624160873538"
+    ],
+    [
+     "max",
+     "13.920326918458414"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 13847026033521928752,
+    "repr": "-13.2594"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-12.759413313212619"
+    ],
+    [
+     "min",
+     "-74.05624160873538"
+    ],
+    [
+     "max",
+     "13.920326918458414"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 13846463083568507440,
+    "repr": "-12.2594"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-12.759413313212619"
+    ],
+    [
+     "min",
+     "-74.05624160873538"
+    ],
+    [
+     "max",
+     "13.920326918458414"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 13843794363019318369,
+    "repr": "-7.7594"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-12.759413313212619"
+    ],
+    [
+     "min",
+     "-74.05624160873538"
+    ],
+    [
+     "max",
+     "13.920326918458414"
+    ],
+    [
+     "step",
+     "0.5"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 13853605665913777527,
+    "repr": "-35.7887"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-35.68866029195709"
+    ],
+    [
+     "min",
+     "-78.1401244693808"
+    ],
+    [
+     "max",
+     "59.342385843956905"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 13853592999539825548,
+    "repr": "-35.6987"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-35.68866029195709"
+    ],
+    [
+     "min",
+     "-78.1401244693808"
+    ],
+    [
+     "max",
+     "59.342385843956905"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 13853590184790058441,
+    "repr": "-35.6787"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-35.68866029195709"
+    ],
+    [
+     "min",
+     "-78.1401244693808"
+    ],
+    [
+     "max",
+     "59.342385843956905"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 13853577518416106462,
+    "repr": "-35.5887"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-35.68866029195709"
+    ],
+    [
+     "min",
+     "-78.1401244693808"
+    ],
+    [
+     "max",
+     "59.342385843956905"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 13840795190847470987,
+    "repr": "-5.0956"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "94.9044254856109"
+    ],
+    [
+     "min",
+     "-92.81546258550689"
+    ],
+    [
+     "max",
+     "46.58116283489164"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4631752538402076597,
+    "repr": "46.5812"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "94.9044254856109"
+    ],
+    [
+     "min",
+     "-92.81546258550689"
+    ],
+    [
+     "max",
+     "46.58116283489164"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4631752538402076597,
+    "repr": "46.5812"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "94.9044254856109"
+    ],
+    [
+     "min",
+     "-92.81546258550689"
+    ],
+    [
+     "max",
+     "46.58116283489164"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4631752538402076597,
+    "repr": "46.5812"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "94.9044254856109"
+    ],
+    [
+     "min",
+     "-92.81546258550689"
+    ],
+    [
+     "max",
+     "46.58116283489164"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4627734961616992390,
+    "repr": "25.0173"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "47.7746938138141"
+    ],
+    [
+     "min",
+     "-55.10442048381007"
+    ],
+    [
+     "max",
+     "25.017346035847687"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4627734961616992390,
+    "repr": "25.0173"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "47.7746938138141"
+    ],
+    [
+     "min",
+     "-55.10442048381007"
+    ],
+    [
+     "max",
+     "25.017346035847687"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4627734961616992390,
+    "repr": "25.0173"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "47.7746938138141"
+    ],
+    [
+     "min",
+     "-55.10442048381007"
+    ],
+    [
+     "max",
+     "25.017346035847687"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4627734961616992390,
+    "repr": "25.0173"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "47.7746938138141"
+    ],
+    [
+     "min",
+     "-55.10442048381007"
+    ],
+    [
+     "max",
+     "25.017346035847687"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4618875902642494217,
+    "repr": "6.3859"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "6.3958859750923835"
+    ],
+    [
+     "min",
+     "-52.06450183800585"
+    ],
+    [
+     "max",
+     "48.164063431925875"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4618886035741655800,
+    "repr": "6.3949"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "6.3958859750923835"
+    ],
+    [
+     "min",
+     "-52.06450183800585"
+    ],
+    [
+     "max",
+     "48.164063431925875"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4618888287541469485,
+    "repr": "6.3969"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "6.3958859750923835"
+    ],
+    [
+     "min",
+     "-52.06450183800585"
+    ],
+    [
+     "max",
+     "48.164063431925875"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4618898420640631069,
+    "repr": "6.4059"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "6.3958859750923835"
+    ],
+    [
+     "min",
+     "-52.06450183800585"
+    ],
+    [
+     "max",
+     "48.164063431925875"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 13853797294077922142,
+    "repr": "-37.1503"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "62.84965240378557"
+    ],
+    [
+     "min",
+     "-88.53616328947717"
+    ],
+    [
+     "max",
+     "39.25217313216996"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4630721073349920398,
+    "repr": "39.2522"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "62.84965240378557"
+    ],
+    [
+     "min",
+     "-88.53616328947717"
+    ],
+    [
+     "max",
+     "39.25217313216996"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4630721073349920398,
+    "repr": "39.2522"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "62.84965240378557"
+    ],
+    [
+     "min",
+     "-88.53616328947717"
+    ],
+    [
+     "max",
+     "39.25217313216996"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4630721073349920398,
+    "repr": "39.2522"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "62.84965240378557"
+    ],
+    [
+     "min",
+     "-88.53616328947717"
+    ],
+    [
+     "max",
+     "39.25217313216996"
+    ],
+    [
+     "step",
+     "10"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4626925045519005149,
+    "repr": "22.1399"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "28.294424126955853"
+    ],
+    [
+     "min",
+     "-38.816519761756616"
+    ],
+    [
+     "max",
+     "22.139941119449436"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4626925045519005149,
+    "repr": "22.1399"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "28.294424126955853"
+    ],
+    [
+     "min",
+     "-38.816519761756616"
+    ],
+    [
+     "max",
+     "22.139941119449436"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4626925045519005149,
+    "repr": "22.1399"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "28.294424126955853"
+    ],
+    [
+     "min",
+     "-38.816519761756616"
+    ],
+    [
+     "max",
+     "22.139941119449436"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4626925045519005149,
+    "repr": "22.1399"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "28.294424126955853"
+    ],
+    [
+     "min",
+     "-38.816519761756616"
+    ],
+    [
+     "max",
+     "22.139941119449436"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 13858273569521928451,
+    "repr": "-73.9123"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-73.9023441787093"
+    ],
+    [
+     "min",
+     "-73.94606190513451"
+    ],
+    [
+     "max",
+     "12.201512295758176"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 13858272936203230852,
+    "repr": "-73.9033"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-73.9023441787093"
+    ],
+    [
+     "min",
+     "-73.94606190513451"
+    ],
+    [
+     "max",
+     "12.201512295758176"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 13858272795465742497,
+    "repr": "-73.9013"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-73.9023441787093"
+    ],
+    [
+     "min",
+     "-73.94606190513451"
+    ],
+    [
+     "max",
+     "12.201512295758176"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 13858272162147044898,
+    "repr": "-73.8923"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-73.9023441787093"
+    ],
+    [
+     "min",
+     "-73.94606190513451"
+    ],
+    [
+     "max",
+     "12.201512295758176"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 13841513514988036581,
+    "repr": "-5.7336"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-5.723590720336521"
+    ],
+    [
+     "min",
+     "-31.108113996030568"
+    ],
+    [
+     "max",
+     "6.45328180054624"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 13841503381888874997,
+    "repr": "-5.7246"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-5.723590720336521"
+    ],
+    [
+     "min",
+     "-31.108113996030568"
+    ],
+    [
+     "max",
+     "6.45328180054624"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 13841501130089061312,
+    "repr": "-5.7226"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-5.723590720336521"
+    ],
+    [
+     "min",
+     "-31.108113996030568"
+    ],
+    [
+     "max",
+     "6.45328180054624"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 13841490996989899728,
+    "repr": "-5.7136"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "-5.723590720336521"
+    ],
+    [
+     "min",
+     "-31.108113996030568"
+    ],
+    [
+     "max",
+     "6.45328180054624"
+    ],
+    [
+     "step",
+     "0.001"
+    ]
+   ]
+  },
+  {
+   "delta": -10,
+   "out": {
+    "bits": 4628409600841172491,
+    "repr": "27.4141"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "80.33912896216653"
+    ],
+    [
+     "min",
+     "-17.58847680054248"
+    ],
+    [
+     "max",
+     "27.41407202330307"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": -1,
+   "out": {
+    "bits": 4628409600841172491,
+    "repr": "27.4141"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "80.33912896216653"
+    ],
+    [
+     "min",
+     "-17.58847680054248"
+    ],
+    [
+     "max",
+     "27.41407202330307"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": 1,
+   "out": {
+    "bits": 4628409600841172491,
+    "repr": "27.4141"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "80.33912896216653"
+    ],
+    [
+     "min",
+     "-17.58847680054248"
+    ],
+    [
+     "max",
+     "27.41407202330307"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  },
+  {
+   "delta": 10,
+   "out": {
+    "bits": 4628409600841172491,
+    "repr": "27.4141"
+   },
+   "row": [
+    [
+     "kind",
+     "number"
+    ],
+    [
+     "value",
+     "80.33912896216653"
+    ],
+    [
+     "min",
+     "-17.58847680054248"
+    ],
+    [
+     "max",
+     "27.41407202330307"
+    ],
+    [
+     "step",
+     "0.01"
+    ]
+   ]
+  }
+ ],
+ "wire_number": [
+  {
+   "out": "0.66",
+   "v": {
+    "bits": 4604119971053405471,
+    "repr": "0.66"
+   }
+  },
+  {
+   "out": "-3.5",
+   "v": {
+    "bits": 13838435755002691584,
+    "repr": "-3.5"
+   }
+  },
+  {
+   "out": "0",
+   "v": {
+    "bits": 0,
+    "repr": "0.0"
+   }
+  },
+  {
+   "out": "-0",
+   "v": {
+    "bits": 9223372036854775808,
+    "repr": "-0.0"
+   }
+  },
+  {
+   "out": "382.353",
+   "v": {
+    "bits": 4645434039543032866,
+    "repr": "382.3529"
+   }
+  },
+  {
+   "out": "1e-05",
+   "v": {
+    "bits": 4532020583610935537,
+    "repr": "1e-05"
+   }
+  },
+  {
+   "out": "123456",
+   "v": {
+    "bits": 4683220244930494464,
+    "repr": "123456.0"
+   }
+  },
+  {
+   "out": "1.23457e+06",
+   "v": {
+    "bits": 4698053236609777664,
+    "repr": "1234567.0"
+   }
+  },
+  {
+   "out": "0.3",
+   "v": {
+    "bits": 4599075939470750516,
+    "repr": "0.30000000000000004"
+   }
+  },
+  {
+   "out": "nan",
+   "v": {
+    "bits": 9221120237041090560,
+    "repr": "nan"
+   }
+  },
+  {
+   "out": "inf",
+   "v": {
+    "bits": 9218868437227405312,
+    "repr": "inf"
+   }
+  },
+  {
+   "out": "1e+21",
+   "v": {
+    "bits": 4921056587992461136,
+    "repr": "1e+21"
+   }
+  },
+  {
+   "out": "1e+06",
+   "v": {
+    "bits": 4696837142389719040,
+    "repr": "999999.5"
+   }
+  }
+ ]
+}

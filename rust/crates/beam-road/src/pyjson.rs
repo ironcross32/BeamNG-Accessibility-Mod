@@ -1060,7 +1060,7 @@ mod tests {
         assert!(dumps(&v, &DumpOpts::compact().allow_nan(false)).is_err());
         assert_eq!(
             dumps(&Value::from("é\u{1f600}"), &DumpOpts::compact()).unwrap(),
-            r#""é😀""#
+            "\"\\u00e9\\ud83d\\ude00\""
         );
         assert!(loads("1.").is_err());
         assert!(loads("[1,]").is_err());

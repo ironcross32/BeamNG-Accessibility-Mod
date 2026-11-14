@@ -1,0 +1,1885 @@
+{
+ "constants": {
+  "POI_PACKET_PREFIX": "POI:",
+  "POI_PARKED_RADIUS_M": {
+   "bits": 4620693217682128896,
+   "repr": "8.0"
+  }
+ },
+ "packets": [
+  {
+   "err": "ValueError",
+   "msg": "not a POI packet",
+   "packet": "SCAN,1"
+  },
+  {
+   "err": "ValueError",
+   "msg": "invalid POI JSON",
+   "packet": "POI:"
+  },
+  {
+   "err": "ValueError",
+   "msg": "invalid POI JSON",
+   "packet": "POI:not-json"
+  },
+  {
+   "err": "ValueError",
+   "msg": "POI payload is not an object",
+   "packet": "POI:[]"
+  },
+  {
+   "err": "ValueError",
+   "msg": "POI payload is not an object",
+   "packet": "POI:null"
+  },
+  {
+   "err": "ValueError",
+   "msg": "POI payload has invalid navigation values",
+   "packet": "POI:{\"name\":\"Broken\"}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "POI distance is negative",
+   "packet": "POI:{\"distance\":-1,\"bearing\":0}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"distance\":0,\"bearing\":0}",
+   "phrases": {
+    "Imperial": "Point of interest. Parked on it.",
+    "imperial": "Point of interest. Parked on it.",
+    "metric": "Point of interest. Parked on it."
+   }
+  },
+  {
+   "err": "ValueError",
+   "msg": "POI payload has invalid navigation values",
+   "packet": "POI:{\"distance\":\"5\",\"bearing\":\"x\"}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "POI payload has invalid navigation values",
+   "packet": "POI:{\"distance\":null,\"bearing\":0}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "POI payload has non-finite navigation values",
+   "packet": "POI:{\"distance\":NaN,\"bearing\":0}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "POI payload has non-finite navigation values",
+   "packet": "POI:{\"distance\":1,\"bearing\":Infinity}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "POI payload has invalid navigation values",
+   "packet": "POI:{\"distance\":1,\"bearing\":0,\"radius\":\"r\"}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"distance\":1,\"bearing\":0,\"radius\":-3}",
+   "phrases": {
+    "Imperial": "Point of interest. Parked on it.",
+    "imperial": "Point of interest. Parked on it.",
+    "metric": "Point of interest. Parked on it."
+   }
+  },
+  {
+   "err": "ValueError",
+   "msg": "POI payload has invalid navigation values",
+   "packet": "POI:{\"distance\":1,\"bearing\":0,\"radius\":null}"
+  },
+  {
+   "err": "ValueError",
+   "msg": "POI payload has non-finite navigation values",
+   "packet": "POI:{\"distance\":1e400,\"bearing\":0}"
+  },
+  {
+   "err": "OverflowError",
+   "msg": "int too large to convert to float",
+   "packet": "POI:{\"distance\":10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,\"bearing\":0}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 9223372036854775808,
+     "repr": "-0.0"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"distance\":-0.0,\"bearing\":-0.0}",
+   "phrases": {
+    "Imperial": "Point of interest. Parked on it.",
+    "imperial": "Point of interest. Parked on it.",
+    "metric": "Point of interest. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4613937818241073152,
+     "repr": "3.0"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\":5,\"description\":[\"x\"],\"distance\":3,\"bearing\":540}",
+   "phrases": {
+    "Imperial": "Point of interest. Parked on it.",
+    "imperial": "Point of interest. Parked on it.",
+    "metric": "Point of interest. Parked on it."
+   }
+  },
+  {
+   "err": "ValueError",
+   "msg": "not a POI packet",
+   "packet": "poi:{\"distance\":1,\"bearing\":0}"
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4636103972657037312,
+     "repr": "91.0"
+    },
+    "description": "Foot & start. Asphalt",
+    "distance": {
+     "bits": 4614388178203810202,
+     "repr": "3.2"
+    },
+    "name": "Hill Climb - Base",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\":\"Hill Climb - Base\",\"description\":\"Foot &amp; start<br/>Asphalt\",\"distance\":3.2,\"bearing\":91,\"radius\":0}",
+   "phrases": {
+    "Imperial": "Hill Climb - Base. Foot & start. Asphalt. Parked on it.",
+    "imperial": "Hill Climb - Base. Foot & start. Asphalt. Parked on it.",
+    "metric": "Hill Climb - Base. Foot & start. Asphalt. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13851777668898776680,
+     "repr": "-27.400000000000006"
+    },
+    "description": "Repairs",
+    "distance": {
+     "bits": 4637300241308057600,
+     "repr": "108.0"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 4620693217682128896,
+     "repr": "8.0"
+    }
+   },
+   "packet": "POI:{\"name\":\"Garage\",\"description\":\"Repairs\",\"distance\":108,\"bearing\":-27.4,\"radius\":8}",
+   "phrases": {
+    "Imperial": "Garage. Repairs. 100 meters, bearing 27 degrees right.",
+    "imperial": "Garage. Repairs. 328 feet, bearing 27 degrees right.",
+    "metric": "Garage. Repairs. 100 meters, bearing 27 degrees right."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4596373779694327808,
+     "repr": "0.19999999999998863"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4625759767262920704,
+     "repr": "18.0"
+    },
+    "name": "Fuel",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\":\"Fuel\",\"distance\":18,\"bearing\":0.2,\"radius\":0}",
+   "phrases": {
+    "Imperial": "Fuel. 10 meters, bearing 0 degrees, straight ahead.",
+    "imperial": "Fuel. 33 feet, bearing 0 degrees, straight ahead.",
+    "metric": "Fuel. 10 meters, bearing 0 degrees, straight ahead."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\":\"\",\"distance\":1,\"bearing\":true}",
+   "phrases": {
+    "Imperial": "Point of interest. Parked on it.",
+    "imperial": "Point of interest. Parked on it.",
+    "metric": "Point of interest. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\":\"<br>\",\"distance\":1,\"bearing\":0}",
+   "phrases": {
+    "Imperial": "Point of interest. Parked on it.",
+    "imperial": "Point of interest. Parked on it.",
+    "metric": "Point of interest. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620777660175142093,
+     "repr": "8.15"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 8.15, \"bearing\": -180.0, \"radius\": 0}",
+   "phrases": {
+    "Imperial": "Garage. 0 meters, bearing 180 degrees right.",
+    "imperial": "Garage. 0 feet, bearing 180 degrees right.",
+    "metric": "Garage. 0 meters, bearing 180 degrees right."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13826050856027422720,
+     "repr": "-0.5"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"\", \"distance\": 50.0, \"bearing\": -0.5}",
+   "phrases": {
+    "Imperial": "Point of interest. 42 meters, bearing 0 degrees right.",
+    "imperial": "Point of interest. 138 feet, bearing 0 degrees right.",
+    "metric": "Point of interest. 42 meters, bearing 0 degrees right."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13826050856027422720,
+     "repr": "-0.5"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4659348987065765766,
+     "repr": "3242.6087236869525"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 4620580627691444634,
+     "repr": "7.9"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 3242.6087236869525, \"bearing\": -0.5, \"radius\": 7.9}",
+   "phrases": {
+    "Imperial": "X. 3235 meters, bearing 0 degrees right.",
+    "imperial": "X. 10612 feet, bearing 0 degrees right.",
+    "metric": "X. 3235 meters, bearing 0 degrees right."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13826050856027422720,
+     "repr": "-0.5"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620693217682128896,
+     "repr": "8.0"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 8.0, \"bearing\": -0.5}",
+   "phrases": {
+    "Imperial": "X. Parked on it.",
+    "imperial": "X. Parked on it.",
+    "metric": "X. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13826050856027422720,
+     "repr": "-0.5"
+    },
+    "description": "Repairs",
+    "distance": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 4620580627691444634,
+     "repr": "7.9"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 50.0, \"bearing\": -0.5, \"radius\": 7.9, \"description\": \"Repairs\"}",
+   "phrases": {
+    "Imperial": "Garage. Repairs. 42 meters, bearing 0 degrees right.",
+    "imperial": "Garage. Repairs. 138 feet, bearing 0 degrees right.",
+    "metric": "Garage. Repairs. 42 meters, bearing 0 degrees right."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620777660175142093,
+     "repr": "8.15"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 4620580627691444634,
+     "repr": "7.9"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 8.15, \"bearing\": 180.0, \"radius\": 7.9, \"description\": \"\"}",
+   "phrases": {
+    "Imperial": "Garage. 0 meters, bearing 180 degrees right.",
+    "imperial": "Garage. 0 feet, bearing 180 degrees right.",
+    "metric": "Garage. 0 meters, bearing 180 degrees right."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 50.0, \"bearing\": 0.0}",
+   "phrases": {
+    "Imperial": "Garage. 42 meters, bearing 0 degrees, straight ahead.",
+    "imperial": "Garage. 138 feet, bearing 0 degrees, straight ahead.",
+    "metric": "Garage. 42 meters, bearing 0 degrees, straight ahead."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620580627691444634,
+     "repr": "7.9"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 4623226492472524800,
+     "repr": "12.5"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 7.9, \"bearing\": 180.0, \"radius\": 12.5}",
+   "phrases": {
+    "Imperial": "Garage. Parked on it.",
+    "imperial": "Garage. Parked on it.",
+    "metric": "Garage. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620693217682128896,
+     "repr": "8.0"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 8.0, \"bearing\": 0.0}",
+   "phrases": {
+    "Imperial": "Garage. Parked on it.",
+    "imperial": "Garage. Parked on it.",
+    "metric": "Garage. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"\", \"distance\": 0.0, \"bearing\": 0.0}",
+   "phrases": {
+    "Imperial": "Point of interest. Parked on it.",
+    "imperial": "Point of interest. Parked on it.",
+    "metric": "Point of interest. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4640519611354185728,
+     "repr": "179.5"
+    },
+    "description": "Repairs",
+    "distance": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"\", \"distance\": 50.0, \"bearing\": 179.5, \"description\": \"Repairs\"}",
+   "phrases": {
+    "Imperial": "Point of interest. Repairs. 42 meters, bearing 180 degrees left.",
+    "imperial": "Point of interest. Repairs. 138 feet, bearing 180 degrees left.",
+    "metric": "Point of interest. Repairs. 42 meters, bearing 180 degrees left."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "description": "Repairs",
+    "distance": {
+     "bits": 4620783289674676306,
+     "repr": "8.16"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 4623226492472524800,
+     "repr": "12.5"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 8.16, \"bearing\": -180.0, \"radius\": 12.5, \"description\": \"Repairs\"}",
+   "phrases": {
+    "Imperial": "X. Repairs. Parked on it.",
+    "imperial": "X. Repairs. Parked on it.",
+    "metric": "X. Repairs. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4602498675187552256,
+     "repr": "0.4900000000000091"
+    },
+    "description": "Repairs",
+    "distance": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"\", \"distance\": 50.0, \"bearing\": 0.49, \"radius\": 0, \"description\": \"Repairs\"}",
+   "phrases": {
+    "Imperial": "Point of interest. Repairs. 42 meters, bearing 0 degrees, straight ahead.",
+    "imperial": "Point of interest. Repairs. 138 feet, bearing 0 degrees, straight ahead.",
+    "metric": "Point of interest. Repairs. 42 meters, bearing 0 degrees, straight ahead."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "description": "a. b",
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 0.0, \"bearing\": 0.0, \"description\": \"a<br>b\"}",
+   "phrases": {
+    "Imperial": "X. a. b. Parked on it.",
+    "imperial": "X. a. b. Parked on it.",
+    "metric": "X. a. b. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4662009497936352708,
+     "repr": "4808.93798818201"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 4629137466983448576,
+     "repr": "30.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"\", \"distance\": 4808.93798818201, \"bearing\": 0.0, \"radius\": 30.0, \"description\": \"\"}",
+   "phrases": {
+    "Imperial": "Point of interest. 4779 meters, bearing 0 degrees, straight ahead.",
+    "imperial": "Point of interest. 15679 feet, bearing 0 degrees, straight ahead.",
+    "metric": "Point of interest. 4779 meters, bearing 0 degrees, straight ahead."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4602498675187552256,
+     "repr": "0.4900000000000091"
+    },
+    "description": "",
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 0.0, \"bearing\": 0.49, \"radius\": 0}",
+   "phrases": {
+    "Imperial": "Garage. Parked on it.",
+    "imperial": "Garage. Parked on it.",
+    "metric": "Garage. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4602678819172646912,
+     "repr": "0.5"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4649899983147785961,
+     "repr": "760.424805867454"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 760.424805867454, \"bearing\": 0.5}",
+   "phrases": {
+    "Imperial": "X. 752 meters, bearing 0 degrees left.",
+    "imperial": "X. 2469 feet, bearing 0 degrees left.",
+    "metric": "X. 752 meters, bearing 0 degrees left."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620580627691444634,
+     "repr": "7.9"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 4620580627691444634,
+     "repr": "7.9"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 7.9, \"bearing\": 180.0, \"radius\": 7.9}",
+   "phrases": {
+    "Imperial": "X. Parked on it.",
+    "imperial": "X. Parked on it.",
+    "metric": "X. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4640519611354185728,
+     "repr": "179.5"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 50.0, \"bearing\": 179.5, \"radius\": -1.0, \"description\": \"\"}",
+   "phrases": {
+    "Imperial": "X. 42 meters, bearing 180 degrees left.",
+    "imperial": "X. 138 feet, bearing 180 degrees left.",
+    "metric": "X. 42 meters, bearing 180 degrees left."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13825870712042328064,
+     "repr": "-0.4900000000000091"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4657268693342756937,
+     "repr": "2296.600664082948"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 4620580627691444634,
+     "repr": "7.9"
+    }
+   },
+   "packet": "POI:{\"name\": \"\", \"distance\": 2296.600664082948, \"bearing\": -0.49, \"radius\": 7.9, \"description\": \"\"}",
+   "phrases": {
+    "Imperial": "Point of interest. 2289 meters, bearing 0 degrees, straight ahead.",
+    "imperial": "Point of interest. 7509 feet, bearing 0 degrees, straight ahead.",
+    "metric": "Point of interest. 2289 meters, bearing 0 degrees, straight ahead."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 50.0, \"bearing\": 0.0, \"radius\": -1.0}",
+   "phrases": {
+    "Imperial": "Garage. 42 meters, bearing 0 degrees, straight ahead.",
+    "imperial": "Garage. 138 feet, bearing 0 degrees, straight ahead.",
+    "metric": "Garage. 42 meters, bearing 0 degrees, straight ahead."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "description": "Repairs",
+    "distance": {
+     "bits": 4620749512677471027,
+     "repr": "8.1"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"\", \"distance\": 8.1, \"bearing\": 180.0, \"description\": \"Repairs\"}",
+   "phrases": {
+    "Imperial": "Point of interest. Repairs. 0 meters, bearing 180 degrees right.",
+    "imperial": "Point of interest. Repairs. 0 feet, bearing 180 degrees right.",
+    "metric": "Point of interest. Repairs. 0 meters, bearing 180 degrees right."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620777660175142093,
+     "repr": "8.15"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 4629137466983448576,
+     "repr": "30.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 8.15, \"bearing\": 0.0, \"radius\": 30.0}",
+   "phrases": {
+    "Imperial": "Garage. Parked on it.",
+    "imperial": "Garage. Parked on it.",
+    "metric": "Garage. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4602498675187552256,
+     "repr": "0.4900000000000091"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620777660175142093,
+     "repr": "8.15"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 4620693217682128896,
+     "repr": "8.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 8.15, \"bearing\": 0.49, \"radius\": 8.0, \"description\": \"\"}",
+   "phrases": {
+    "Imperial": "X. 0 meters, bearing 0 degrees, straight ahead.",
+    "imperial": "X. 0 feet, bearing 0 degrees, straight ahead.",
+    "metric": "X. 0 meters, bearing 0 degrees, straight ahead."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4651870684336840355,
+     "repr": "984.4675921452766"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 984.4675921452766, \"bearing\": 180.0, \"radius\": 0}",
+   "phrases": {
+    "Imperial": "Garage. 976 meters, bearing 180 degrees right.",
+    "imperial": "Garage. 3204 feet, bearing 180 degrees right.",
+    "metric": "Garage. 976 meters, bearing 180 degrees right."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 4623226492472524800,
+     "repr": "12.5"
+    }
+   },
+   "packet": "POI:{\"name\": \"\", \"distance\": 0.0, \"bearing\": -180.0, \"radius\": 12.5, \"description\": \"\"}",
+   "phrases": {
+    "Imperial": "Point of interest. Parked on it.",
+    "imperial": "Point of interest. Parked on it.",
+    "metric": "Point of interest. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4640519611354185728,
+     "repr": "179.5"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620693217682128896,
+     "repr": "8.0"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 8.0, \"bearing\": 179.5}",
+   "phrases": {
+    "Imperial": "Garage. Parked on it.",
+    "imperial": "Garage. Parked on it.",
+    "metric": "Garage. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13825870712042328064,
+     "repr": "-0.4900000000000091"
+    },
+    "description": "a. b",
+    "distance": {
+     "bits": 4620580627691444634,
+     "repr": "7.9"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"\", \"distance\": 7.9, \"bearing\": -0.49, \"description\": \"a<br>b\"}",
+   "phrases": {
+    "Imperial": "Point of interest. a. b. Parked on it.",
+    "imperial": "Point of interest. a. b. Parked on it.",
+    "metric": "Point of interest. a. b. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4640519611354185728,
+     "repr": "179.5"
+    },
+    "description": "Repairs",
+    "distance": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 50.0, \"bearing\": 179.5, \"description\": \"Repairs\"}",
+   "phrases": {
+    "Imperial": "X. Repairs. 42 meters, bearing 180 degrees left.",
+    "imperial": "X. Repairs. 138 feet, bearing 180 degrees left.",
+    "metric": "X. Repairs. 42 meters, bearing 180 degrees left."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13825870712042328064,
+     "repr": "-0.4900000000000091"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620749512677471027,
+     "repr": "8.1"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 8.1, \"bearing\": -0.49, \"radius\": -1.0}",
+   "phrases": {
+    "Imperial": "X. 0 meters, bearing 0 degrees, straight ahead.",
+    "imperial": "X. 0 feet, bearing 0 degrees, straight ahead.",
+    "metric": "X. 0 meters, bearing 0 degrees, straight ahead."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 4620693217682128896,
+     "repr": "8.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"\", \"distance\": 0.0, \"bearing\": 0.0, \"radius\": 8.0, \"description\": \"\"}",
+   "phrases": {
+    "Imperial": "Point of interest. Parked on it.",
+    "imperial": "Point of interest. Parked on it.",
+    "metric": "Point of interest. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4640519611354185728,
+     "repr": "179.5"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620783289674676306,
+     "repr": "8.16"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 8.16, \"bearing\": 179.5}",
+   "phrases": {
+    "Imperial": "Garage. 0 meters, bearing 180 degrees left.",
+    "imperial": "Garage. 1 feet, bearing 180 degrees left.",
+    "metric": "Garage. 0 meters, bearing 180 degrees left."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4602498675187552256,
+     "repr": "0.4900000000000091"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620749512677471027,
+     "repr": "8.1"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"\", \"distance\": 8.1, \"bearing\": 0.49}",
+   "phrases": {
+    "Imperial": "Point of interest. 0 meters, bearing 0 degrees, straight ahead.",
+    "imperial": "Point of interest. 0 feet, bearing 0 degrees, straight ahead.",
+    "metric": "Point of interest. 0 meters, bearing 0 degrees, straight ahead."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13859405640767635456,
+     "repr": "-90.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620693217682128896,
+     "repr": "8.0"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 8.0, \"bearing\": 270.0, \"description\": \"\"}",
+   "phrases": {
+    "Imperial": "X. Parked on it.",
+    "imperial": "X. Parked on it.",
+    "metric": "X. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620777660175142093,
+     "repr": "8.15"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 4620693217682128896,
+     "repr": "8.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 8.15, \"bearing\": -180.0, \"radius\": 8.0}",
+   "phrases": {
+    "Imperial": "Garage. 0 meters, bearing 180 degrees right.",
+    "imperial": "Garage. 0 feet, bearing 180 degrees right.",
+    "metric": "Garage. 0 meters, bearing 180 degrees right."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4602678819172646912,
+     "repr": "0.5"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620580627691444634,
+     "repr": "7.9"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 7.9, \"bearing\": 0.5}",
+   "phrases": {
+    "Imperial": "X. Parked on it.",
+    "imperial": "X. Parked on it.",
+    "metric": "X. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620693217682128896,
+     "repr": "8.0"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 8.0, \"bearing\": -180.0, \"description\": \"\"}",
+   "phrases": {
+    "Imperial": "Garage. Parked on it.",
+    "imperial": "Garage. Parked on it.",
+    "metric": "Garage. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13859405640767635456,
+     "repr": "-90.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620783289674676306,
+     "repr": "8.16"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"\", \"distance\": 8.16, \"bearing\": 270.0, \"description\": \"\"}",
+   "phrases": {
+    "Imperial": "Point of interest. 0 meters, bearing 90 degrees right.",
+    "imperial": "Point of interest. 1 feet, bearing 90 degrees right.",
+    "metric": "Point of interest. 0 meters, bearing 90 degrees right."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 50.0, \"bearing\": 180.0, \"radius\": -1.0}",
+   "phrases": {
+    "Imperial": "Garage. 42 meters, bearing 180 degrees right.",
+    "imperial": "Garage. 138 feet, bearing 180 degrees right.",
+    "metric": "Garage. 42 meters, bearing 180 degrees right."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13859059827646693568,
+     "repr": "-85.08569997968425"
+    },
+    "description": "a. b",
+    "distance": {
+     "bits": 4620693217682128896,
+     "repr": "8.0"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 4620693217682128896,
+     "repr": "8.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 8.0, \"bearing\": 634.9143000203157, \"radius\": 8.0, \"description\": \"a<br>b\"}",
+   "phrases": {
+    "Imperial": "Garage. a. b. Parked on it.",
+    "imperial": "Garage. a. b. Parked on it.",
+    "metric": "Garage. a. b. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4626228780524449792,
+     "repr": "19.666269829773228"
+    },
+    "description": "Repairs",
+    "distance": {
+     "bits": 4620580627691444634,
+     "repr": "7.9"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 7.9, \"bearing\": -700.3337301702268, \"description\": \"Repairs\"}",
+   "phrases": {
+    "Imperial": "X. Repairs. Parked on it.",
+    "imperial": "X. Repairs. Parked on it.",
+    "metric": "X. Repairs. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4640519611354185728,
+     "repr": "179.5"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620777660175142093,
+     "repr": "8.15"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 4623226492472524800,
+     "repr": "12.5"
+    }
+   },
+   "packet": "POI:{\"name\": \"\", \"distance\": 8.15, \"bearing\": 179.5, \"radius\": 12.5}",
+   "phrases": {
+    "Imperial": "Point of interest. Parked on it.",
+    "imperial": "Point of interest. Parked on it.",
+    "metric": "Point of interest. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4639838834937055912,
+     "repr": "160.15117048526486"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 4620580627691444634,
+     "repr": "7.9"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 50.0, \"bearing\": -559.8488295147351, \"radius\": 7.9}",
+   "phrases": {
+    "Imperial": "Garage. 42 meters, bearing 160 degrees left.",
+    "imperial": "Garage. 138 feet, bearing 160 degrees left.",
+    "metric": "Garage. 42 meters, bearing 160 degrees left."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4602498675187552256,
+     "repr": "0.4900000000000091"
+    },
+    "description": "Repairs",
+    "distance": {
+     "bits": 4653076870237553559,
+     "repr": "1219.1901058035198"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"\", \"distance\": 1219.1901058035198, \"bearing\": 0.49, \"description\": \"Repairs\"}",
+   "phrases": {
+    "Imperial": "Point of interest. Repairs. 1211 meters, bearing 0 degrees, straight ahead.",
+    "imperial": "Point of interest. Repairs. 3974 feet, bearing 0 degrees, straight ahead.",
+    "metric": "Point of interest. Repairs. 1211 meters, bearing 0 degrees, straight ahead."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13859405640767635456,
+     "repr": "-90.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620580627691444634,
+     "repr": "7.9"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 4623226492472524800,
+     "repr": "12.5"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 7.9, \"bearing\": 270.0, \"radius\": 12.5}",
+   "phrases": {
+    "Imperial": "X. Parked on it.",
+    "imperial": "X. Parked on it.",
+    "metric": "X. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4602498675187552256,
+     "repr": "0.4900000000000091"
+    },
+    "description": "a. b",
+    "distance": {
+     "bits": 4620777660175142093,
+     "repr": "8.15"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 8.15, \"bearing\": 0.49, \"radius\": -1.0, \"description\": \"a<br>b\"}",
+   "phrases": {
+    "Imperial": "Garage. a. b. 0 meters, bearing 0 degrees, straight ahead.",
+    "imperial": "Garage. a. b. 0 feet, bearing 0 degrees, straight ahead.",
+    "metric": "Garage. a. b. 0 meters, bearing 0 degrees, straight ahead."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4640417603820873736,
+     "repr": "176.6007715284943"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620693217682128896,
+     "repr": "8.0"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 8.0, \"bearing\": -183.3992284715057, \"radius\": -1.0}",
+   "phrases": {
+    "Imperial": "X. Parked on it.",
+    "imperial": "X. Parked on it.",
+    "metric": "X. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 0.0, \"bearing\": 180.0}",
+   "phrases": {
+    "Imperial": "X. Parked on it.",
+    "imperial": "X. Parked on it.",
+    "metric": "X. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620783289674676306,
+     "repr": "8.16"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 8.16, \"bearing\": -180.0, \"radius\": -1.0}",
+   "phrases": {
+    "Imperial": "Garage. 0 meters, bearing 180 degrees right.",
+    "imperial": "Garage. 1 feet, bearing 180 degrees right.",
+    "metric": "Garage. 0 meters, bearing 180 degrees right."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13859405640767635456,
+     "repr": "-90.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 0.0, \"bearing\": 270.0, \"radius\": 0, \"description\": \"\"}",
+   "phrases": {
+    "Imperial": "Garage. Parked on it.",
+    "imperial": "Garage. Parked on it.",
+    "metric": "Garage. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 0.0, \"bearing\": 180.0}",
+   "phrases": {
+    "Imperial": "Garage. Parked on it.",
+    "imperial": "Garage. Parked on it.",
+    "metric": "Garage. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4602498675187552256,
+     "repr": "0.4900000000000091"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620693217682128896,
+     "repr": "8.0"
+    },
+    "name": "Point of interest",
+    "radius": {
+     "bits": 4623226492472524800,
+     "repr": "12.5"
+    }
+   },
+   "packet": "POI:{\"name\": \"\", \"distance\": 8.0, \"bearing\": 0.49, \"radius\": 12.5}",
+   "phrases": {
+    "Imperial": "Point of interest. Parked on it.",
+    "imperial": "Point of interest. Parked on it.",
+    "metric": "Point of interest. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 50.0, \"bearing\": 0.0, \"radius\": 0, \"description\": \"\"}",
+   "phrases": {
+    "Imperial": "Garage. 42 meters, bearing 0 degrees, straight ahead.",
+    "imperial": "Garage. 138 feet, bearing 0 degrees, straight ahead.",
+    "metric": "Garage. 42 meters, bearing 0 degrees, straight ahead."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13863909240395005952,
+     "repr": "-180.0"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620580627691444634,
+     "repr": "7.9"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 7.9, \"bearing\": -180.0, \"radius\": -1.0}",
+   "phrases": {
+    "Imperial": "Garage. Parked on it.",
+    "imperial": "Garage. Parked on it.",
+    "metric": "Garage. Parked on it."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13825870712042328064,
+     "repr": "-0.4900000000000091"
+    },
+    "description": "a. b",
+    "distance": {
+     "bits": 4620777660175142093,
+     "repr": "8.15"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 8.15, \"bearing\": -0.49, \"description\": \"a<br>b\"}",
+   "phrases": {
+    "Imperial": "Garage. a. b. 0 meters, bearing 0 degrees, straight ahead.",
+    "imperial": "Garage. a. b. 0 feet, bearing 0 degrees, straight ahead.",
+    "metric": "Garage. a. b. 0 meters, bearing 0 degrees, straight ahead."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4602498675187552256,
+     "repr": "0.4900000000000091"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4641947352237920247,
+     "repr": "220.07883653941073"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 220.07883653941073, \"bearing\": 0.49, \"radius\": -1.0}",
+   "phrases": {
+    "Imperial": "X. 212 meters, bearing 0 degrees, straight ahead.",
+    "imperial": "X. 696 feet, bearing 0 degrees, straight ahead.",
+    "metric": "X. 212 meters, bearing 0 degrees, straight ahead."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4602678819172646912,
+     "repr": "0.5"
+    },
+    "description": "Repairs",
+    "distance": {
+     "bits": 4620749512677471027,
+     "repr": "8.1"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 8.1, \"bearing\": 0.5, \"description\": \"Repairs\"}",
+   "phrases": {
+    "Imperial": "X. Repairs. 0 meters, bearing 0 degrees left.",
+    "imperial": "X. Repairs. 0 feet, bearing 0 degrees left.",
+    "metric": "X. Repairs. 0 meters, bearing 0 degrees left."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4640519611354185728,
+     "repr": "179.5"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4620783289674676306,
+     "repr": "8.16"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 4620693217682128896,
+     "repr": "8.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 8.16, \"bearing\": 179.5, \"radius\": 8.0}",
+   "phrases": {
+    "Imperial": "X. 0 meters, bearing 180 degrees left.",
+    "imperial": "X. 1 feet, bearing 180 degrees left.",
+    "metric": "X. 0 meters, bearing 180 degrees left."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 13826050856027422720,
+     "repr": "-0.5"
+    },
+    "description": "",
+    "distance": {
+     "bits": 4656749141394184347,
+     "repr": "2060.335791821662"
+    },
+    "name": "X",
+    "radius": {
+     "bits": 0,
+     "repr": "0.0"
+    }
+   },
+   "packet": "POI:{\"name\": \"<b>X</b>\", \"distance\": 2060.335791821662, \"bearing\": -0.5, \"radius\": -1.0}",
+   "phrases": {
+    "Imperial": "X. 2052 meters, bearing 0 degrees right.",
+    "imperial": "X. 6733 feet, bearing 0 degrees right.",
+    "metric": "X. 2052 meters, bearing 0 degrees right."
+   }
+  },
+  {
+   "ok": {
+    "bearing": {
+     "bits": 4640519611354185728,
+     "repr": "179.5"
+    },
+    "description": "a. b",
+    "distance": {
+     "bits": 4620777660175142093,
+     "repr": "8.15"
+    },
+    "name": "Garage",
+    "radius": {
+     "bits": 4620580627691444634,
+     "repr": "7.9"
+    }
+   },
+   "packet": "POI:{\"name\": \"Garage\", \"distance\": 8.15, \"bearing\": 179.5, \"radius\": 7.9, \"description\": \"a<br>b\"}",
+   "phrases": {
+    "Imperial": "Garage. a. b. 0 meters, bearing 180 degrees left.",
+    "imperial": "Garage. a. b. 0 feet, bearing 180 degrees left.",
+    "metric": "Garage. a. b. 0 meters, bearing 180 degrees left."
+   }
+  }
+ ],
+ "spoken_text": [
+  {
+   "in": "Foot &amp; start<br/>Asphalt",
+   "out": "Foot & start. Asphalt"
+  },
+  {
+   "in": "<BR>",
+   "out": ""
+  },
+  {
+   "in": "a< br / >b",
+   "out": "a. b"
+  },
+  {
+   "in": "a<bR  >b",
+   "out": "a. b"
+  },
+  {
+   "in": "a<br/ >b",
+   "out": "a. b"
+  },
+  {
+   "in": "a< b r>b",
+   "out": "a b"
+  },
+  {
+   "in": "<b>bold</b> text",
+   "out": "bold text"
+  },
+  {
+   "in": "x<y",
+   "out": "x<y"
+  },
+  {
+   "in": "x>y",
+   "out": "x>y"
+  },
+  {
+   "in": "<<a>>",
+   "out": ">"
+  },
+  {
+   "in": "a <br> . b",
+   "out": "a . . b"
+  },
+  {
+   "in": "...dots...",
+   "out": "dots"
+  },
+  {
+   "in": " . ",
+   "out": ""
+  },
+  {
+   "in": ".",
+   "out": ""
+  },
+  {
+   "in": "tabs\tand\nnewlines",
+   "out": "tabs and newlines"
+  },
+  {
+   "in": " nbsp em ",
+   "out": "nbsp em"
+  },
+  {
+   "in": "&lt;b&gt; escaped",
+   "out": "<b> escaped"
+  },
+  {
+   "in": "&amp;lt;",
+   "out": "&lt;"
+  },
+  {
+   "in": "&notin; &noti",
+   "out": "∉ ¬i"
+  },
+  {
+   "in": "&#60;br&#62;",
+   "out": "<br>"
+  },
+  {
+   "in": "<p>para</p><p>two</p>",
+   "out": "para two"
+  },
+  {
+   "in": "<a href='x'>link</a>",
+   "out": "link"
+  },
+  {
+   "in": "<br/><br/>",
+   "out": ""
+  },
+  {
+   "in": "",
+   "out": ""
+  },
+  {
+   "in": "unterminated <tag",
+   "out": "unterminated <tag"
+  },
+  {
+   "in": "x y",
+   "out": "x y"
+  },
+  {
+   "in": "&nbsp;&nbsp;x",
+   "out": "x"
+  },
+  {
+   "in": "< br>",
+   "out": ""
+  },
+  {
+   "in": "<br　/>",
+   "out": ""
+  },
+  {
+   "in": "<ＢＲ>",
+   "out": ""
+  },
+  {
+   "in": "Hill Climb - Base",
+   "out": "Hill Climb - Base"
+  },
+  {
+   "in": "A&B",
+   "out": "A&B"
+  },
+  {
+   "in": "&#x1F600; smile",
+   "out": "😀 smile"
+  },
+  {
+   "in": "&",
+   "out": "&"
+  }
+ ]
+}
