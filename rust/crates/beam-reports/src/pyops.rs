@@ -558,8 +558,8 @@ pub fn int_text_add(a: &str, b: &str) -> String {
     fn sub(x: &[u8], y: &[u8]) -> Vec<u8> {
         let mut out = Vec::with_capacity(x.len());
         let mut borrow = 0i8;
-        for i in 0..x.len() {
-            let mut d = x[i] as i8 - y.get(i).copied().unwrap_or(0) as i8 - borrow;
+        for (i, &xi) in x.iter().enumerate() {
+            let mut d = xi as i8 - y.get(i).copied().unwrap_or(0) as i8 - borrow;
             borrow = 0;
             if d < 0 {
                 d += 10;
@@ -843,14 +843,9 @@ impl JsonParser<'_> {
     }
 
     fn starts(&self, lit: &str) -> bool {
-        let mut j = self.i;
-        for ch in lit.chars() {
-            if self.c.get(j) != Some(&ch) {
-                return false;
-            }
-            j += 1;
-        }
-        true
+        lit.chars()
+            .enumerate()
+            .all(|(k, ch)| self.c.get(self.i + k) == Some(&ch))
     }
 
     fn value(&mut self, depth: usize) -> Result<PyValue, PyErr> {

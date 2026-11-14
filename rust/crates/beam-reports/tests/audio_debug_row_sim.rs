@@ -307,7 +307,7 @@ fn lua_source() {
 
     // The GE conversion, mirrored, against values measured in game.
     let fmod_to_hz = |f: f64| {
-        let f = f.min(1000.0).max(0.0);
+        let f = f.clamp(0.0, 1000.0);
         let seg = ((f / 100.0).floor() as usize).min(9);
         ours[seg] + (f - seg as f64 * 100.0) / 100.0 * (ours[seg + 1] - ours[seg])
     };

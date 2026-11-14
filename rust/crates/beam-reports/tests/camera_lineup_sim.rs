@@ -129,6 +129,8 @@ fn scenario_7_pointed_away_is_behind() {
 }
 
 #[test]
+// 0.70710678 is the Python sim's literal, not exactly FRAC_1_SQRT_2.
+#[allow(clippy::approx_constant)]
 fn scenario_8_crossing() {
     let gg = geom((0.0, 0.0), (0.0, 1.0), (-30.0, 10.0), (1.0, 0.0));
     let (st, m) = cl::miss_left_m(&gg, cl::CROSSING, 0.0, 10.0);

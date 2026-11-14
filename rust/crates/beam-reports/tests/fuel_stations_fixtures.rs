@@ -53,7 +53,7 @@ fn parse_row_and_row_line_match_python() {
     for case in all {
         let p = s(&case["packet"]);
         let got = parse_row(p);
-        if !matches_outcome(&got, case, true, |r, w| same_row(r, w)) {
+        if !matches_outcome(&got, case, true, same_row) {
             failures.push(format!("parse_row({p:?}) = {got:?}, want {case}"));
         }
     }

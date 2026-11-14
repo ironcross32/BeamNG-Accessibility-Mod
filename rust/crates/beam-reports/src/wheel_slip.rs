@@ -368,6 +368,8 @@ impl SlipDetector {
     /// Sideways travel.
     fn step_slide(&mut self, now: f64, ground_ms: f64, bearing_deg: Option<f64>) -> (bool, f64) {
         let bearing_deg = match bearing_deg {
+            // Negated on purpose: a NaN ground speed is not "<= 3" in Python either.
+            #[allow(clippy::neg_cmp_op_on_partial_ord)]
             Some(b) if !(ground_ms <= SLIDE_MIN_GROUND_MS) => b,
             _ => {
                 self.slide_on = false;
