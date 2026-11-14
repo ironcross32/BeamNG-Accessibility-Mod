@@ -1,0 +1,293 @@
+/* BEAM interface. System font and system colours; one column of groups like the wx
+   panels. No fixed heights, so nothing clips at 200% zoom. */
+
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, "Segoe UI", sans-serif;
+  font-size: 100%;
+  line-height: 1.4;
+}
+
+body {
+  margin: 0;
+  background: Canvas;
+  color: CanvasText;
+}
+
+/* Visually hidden but still in the accessibility tree: used where the wx accessible name
+   (SetName / _label_spin) carries words the visible caption does not show. */
+.vh {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The "hidden" attribute must win over every display rule below. */
+[hidden] {
+  display: none !important;
+}
+
+/* ---- Tab strip ---- */
+
+[role="tablist"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem 0;
+  border-bottom: 1px solid GrayText;
+}
+
+[role="tab"] {
+  font: inherit;
+  padding: 0.35rem 0.9rem;
+  border: 1px solid GrayText;
+  border-bottom: none;
+  border-radius: 0.3rem 0.3rem 0 0;
+  background: ButtonFace;
+  color: ButtonText;
+  cursor: pointer;
+}
+
+[role="tab"][aria-selected="true"] {
+  background: Canvas;
+  color: CanvasText;
+  font-weight: bold;
+  /* Forced colours drop backgrounds; keep the selected tab distinguishable. */
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+/* ---- Panels and groups ---- */
+
+main {
+  padding: 0.5rem 0.75rem 1rem;
+}
+
+.panel {
+  max-width: 60rem;
+}
+
+h1 {
+  font-size: 1.3rem;
+  margin: 0.4rem 0 0.6rem;
+}
+
+fieldset {
+  margin: 0 0 0.75rem;
+  padding: 0.4rem 0.75rem 0.6rem;
+  border: 1px solid GrayText;
+  border-radius: 0.3rem;
+  min-width: 0;
+}
+
+/* A heading inside a legend keeps the group name both announced on entry (fieldset) and
+   reachable by heading navigation. */
+legend h2,
+legend h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+legend h2 {
+  font-size: 1.1rem;
+}
+
+fieldset.radiobox {
+  margin: 0.25rem 0 0.5rem;
+}
+
+fieldset.radiobox .check {
+  display: block;
+}
+
+/* "&" shown, "and" announced: CSS generated-content alternative text. */
+.amp-and::before {
+  content: "&" / "and";
+}
+
+/* ---- Rows ---- */
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.5rem;
+  margin: 0.35rem 0;
+}
+
+.row.tight {
+  margin: 0;
+  gap: 0.25rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  margin: 0.35rem 0;
+}
+
+.grid > select,
+.grid > input {
+  justify-self: start;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0.35rem 0;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.3rem 0;
+}
+
+.grid > .check {
+  margin: 0;
+}
+
+.cap {
+  white-space: normal;
+}
+
+.grow {
+  flex: 1 1 12rem;
+  min-width: 8rem;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
+}
+
+.buttons.end {
+  justify-content: flex-end;
+}
+
+.buttons.spread {
+  justify-content: space-between;
+}
+
+.buttons > span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+p {
+  margin: 0.35rem 0;
+  max-width: 45rem;
+}
+
+.pre {
+  white-space: pre-line;
+}
+
+/* ---- Controls ---- */
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  padding: 0.25rem 0.8rem;
+}
+
+select {
+  max-width: 100%;
+}
+
+input[type="number"] {
+  width: 8rem;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: 1.1em;
+  height: 1.1em;
+  margin: 0;
+}
+
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  font-family: ui-monospace, Consolas, monospace;
+  white-space: pre;
+}
+
+progress {
+  width: 100%;
+}
+
+/* Visible focus everywhere, including in forced colours. */
+:focus-visible {
+  outline: 2px solid Highlight;
+  outline-offset: 2px;
+}
+
+/* Programmatic focus on a dialog or a tab should still be visible. */
+dialog:focus,
+[role="tab"]:focus {
+  outline: 2px solid Highlight;
+  outline-offset: 2px;
+}
+
+/* ---- Dialogs ---- */
+
+dialog {
+  background: Canvas;
+  color: CanvasText;
+  border: 1px solid CanvasText;
+  border-radius: 0.3rem;
+  padding: 0.75rem 1rem;
+  width: min(32rem, calc(100vw - 2rem));
+  box-sizing: border-box;
+}
+
+dialog h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+
+dialog input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
+
+/* ---- Windows high contrast ---- */
+
+@media (forced-colors: active) {
+  [role="tab"][aria-selected="true"] {
+    border-color: Highlight;
+  }
+
+  fieldset,
+  dialog {
+    border-color: CanvasText;
+  }
+
+  dialog::backdrop {
+    background: transparent;
+  }
+}

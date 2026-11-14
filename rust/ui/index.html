@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- The backend sets the real window title; this is replaced from app_info() at boot. -->
+<title>BeamNG Accessibility</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="styles.css">
+<script type="module" src="js/main.js"></script>
+</head>
+<body>
+
+<!-- wx: notebook.SetName("BEAM Tabs"). HTML has no tab element, so the strip uses the
+     ARIA tab pattern; a tablist has no native labelling element, hence aria-label.
+     Removed entirely in configurator mode. -->
+<div role="tablist" aria-label="BEAM Tabs" id="tablist">
+  <button type="button" role="tab" id="tab_main" aria-selected="true" aria-controls="panel_main" tabindex="0">Main</button>
+  <button type="button" role="tab" id="tab_config" aria-selected="false" aria-controls="panel_config" tabindex="-1">Configuration</button>
+  <button type="button" role="tab" id="tab_describer" aria-selected="false" aria-controls="panel_describer" tabindex="-1">AI Describer</button>
+</div>
+
+<main>
+
+<!-- =====================================================================
+     Main tab (beamtel.py BeamTelFrame)
+     ===================================================================== -->
+<section role="tabpanel" id="panel_main" aria-labelledby="tab_main" class="panel">
+  <h1>Main</h1>
+
+  <div class="stack">
+    <!-- wx gave this control a name but no visible caption; the label is visible here. -->
+    <label for="log_text">Application Log</label>
+    <!-- No live region: log lines must stay silent until the user reads them. -->
+    <textarea id="log_text" readonly wrap="off" rows="12" spellcheck="false"></textarea>
+  </div>
+
+  <!-- Tooltips: wx tooltips were hover-only and never announced. A title on a <button>
+       becomes its accessible description and would be read on focus, so each button's
+       tooltip sits on a wrapping span.tip instead (hover still shows it). Inputs carry
+       theirs on their <label>, which does not change what the input announces. -->
+  <div class="buttons">
+    <span class="tip" title="Open one of the log files BEAM writes, or the folder holding them."><button type="button" id="btn_view_logs">View Logs...</button></span>
+  </div>
+
+  <fieldset id="sb_console">
+    <legend><h2>Developer Console</h2></legend>
+
+    <div class="row">
+      <span class="cap"><label for="console_ctx_choice"><span class="vh">Console </span>Context</label>:</span>
+      <select id="console_ctx_choice"></select>
+      <button type="button" id="console_btn_refresh">Refresh Contexts</button>
+    </div>
+
+    <div class="row">
+      <span class="cap"><label for="console_input"><span class="vh">Console </span>Command</label>:</span>
+      <input type="text" id="console_input" class="grow" autocomplete="off" spellcheck="false">
+      <button type="button" id="console_btn_run">Run</button>
+    </div>
+
+    <div class="stack">
+      <!-- wx: SetName("Console Output") with no visible caption; the label is visible here. -->
+      <label for="console_output">Console Output</label>
+      <textarea id="console_output" readonly wrap="off" rows="14" spellcheck="false"></textarea>
+    </div>
+
+    <div class="row">
+      <span class="cap"><label for="console_filter"><span class="vh">Console Output </span>Filter</label>:</span>
+      <input type="text" id="console_filter" class="grow" autocomplete="off" spellcheck="false">
+      <span class="check"><input type="checkbox" id="console_log_check"><label for="console_log_check">Stream game log</label></span>
+      <button type="button" id="console_btn_clear">Clear Output</button>
+    </div>
+  </fieldset>
+
+  <div class="buttons spread">
+    <span>
+      <span class="tip" title="Install the BeamNG.drive mod and activate its screen-reader UI app."><button type="button" id="btn_install_mod">Install Mod</button></span>
+      <span class="tip" title="Ask GitHub whether a newer version of BEAM has been released."><button type="button" id="btn_check_updates">Check for Updates</button></span>
+    </span>
+    <button type="button" id="btn_exit">Exit</button>
+  </div>
+</section>
+
+<!-- =====================================================================
+     Configuration tab (config_ui.py ConfigPanel)
+     ===================================================================== -->
+<section role="tabpanel" id="panel_config" aria-labelledby="tab_config" class="panel" hidden>
+  <h1>Configuration</h1>
+
+  <!-- Speech -->
+  <fieldset id="sb_speech">
+    <legend><h2>Speech</h2></legend>
+    <div class="row">
+      <span class="cap"><label for="choice_backend" title="Which screen reader or speech engine to talk to. Auto picks the best one that is running.">Speech Backend</label>:</span>
+      <select id="choice_backend"></select>
+    </div>
+    <div class="row">
+      <span class="cap"><label for="choice_voice" title="Voice to use, where the backend allows choosing one. Screen readers use their own voice settings.">Voice</label>:</span>
+      <select id="choice_voice"></select>
+    </div>
+    <div class="row">
+      <!-- wx accessible name "Speech Rate" (_label_spin); the word "Speech" is visually hidden. -->
+      <span class="cap"><label for="spin_rate" title="Speech rate: 0 (slow) to 100 (fast)."><span class="vh">Speech </span>Rate</label> (0 to 100):</span>
+      <input type="number" id="spin_rate" min="0" max="100" step="any" data-inc="1" data-digits="0" data-int inputmode="numeric">
+    </div>
+    <div class="row">
+      <span class="cap"><label for="spin_volume" title="Speech volume: 0 to 100."><span class="vh">Speech </span>Volume</label> (0 to 100):</span>
+      <input type="number" id="spin_volume" min="0" max="100" step="any" data-inc="1" data-digits="0" data-int inputmode="numeric">
+    </div>
+    <!-- wx: StaticText named "Backend Capabilities". Plain text, deliberately not a live region. -->
+    <p id="lbl_speech_caps"></p>
+    <div class="buttons end">
+      <span class="tip" title="Re-detect speech backends and voices."><button type="button" id="btn_refresh_voices">Refresh Voices</button></span>
+      <span class="tip" title="Speak a short test line with the selected voice, rate, and volume."><button type="button" id="btn_test_voice">Test Voice</button></span>
+    </div>
+  </fieldset>
+
+  <!-- General -->
+  <fieldset id="sb_gen">
+    <legend><h2>General</h2></legend>
+    <fieldset id="rb_units" class="radiobox">
+      <legend title="Choose how speeds, temps, and pressures are spoken."><h3>Display Units</h3></legend>
+      <!-- Radio buttons are built from ui_choices().units. -->
+    </fieldset>
+    <fieldset id="rb_proto" class="radiobox">
+      <legend title="Must match the protocol selected in the BeamNG.drive UI app."><h3>Telemetry Protocol</h3></legend>
+      <!-- Radio buttons are built from ui_choices().telemetry_protocols. -->
+    </fieldset>
+    <div class="check">
+      <input type="checkbox" id="chk_launch_beamng">
+      <label for="chk_launch_beamng" title="Automatically launch BeamNG.drive via Steam when BeamTel starts.">Launch BeamNG.drive on startup</label>
+    </div>
+    <div class="row" id="renderer_row">
+      <span class="cap"><label for="choice_renderer" title="Which graphics API BeamNG.drive should use when launched automatically.">Graphics API</label>:</span>
+      <select id="choice_renderer"></select>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_update_check">
+      <label for="chk_update_check" title="Ask GitHub for the newest release when BeamTel starts, and offer to install it. Nothing is downloaded without your answer.">Check for updates on startup</label>
+    </div>
+  </fieldset>
+
+  <!-- Automatic announcements -->
+  <fieldset id="sb_auto">
+    <legend><h2>Automatic announcements</h2></legend>
+    <div class="check">
+      <input type="checkbox" id="chk_announce_turn_signals">
+      <label for="chk_announce_turn_signals" title="Speak when the left, right, or hazard turn signals are activated or deactivated.">Announce turn signals</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_announce_speed">
+      <label for="chk_announce_speed" title="Automatically speak the current speed each time it crosses an interval threshold.">Speed announcements</label>
+    </div>
+    <div class="row" id="speed_interval_row">
+      <!-- wx: caption "Announce every:", accessible name "Speed announcement interval".
+           The caption shares no words with the name, so the label holding the name is
+           visually hidden and the caption stays as plain text beside it, as in wx. -->
+      <span class="cap" title="How many speed units must be crossed before a speed announcement is made.">Announce every:<label for="choice_speed_interval" class="vh">Speed announcement interval</label></span>
+      <select id="choice_speed_interval"></select>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_drift_speech">
+      <label for="chk_drift_speech" title="With the game's drift display on in free roam, read its messages: tiers, bonuses, combo, crashes and the points scored, plus drift zone results. While the display shows, automatic speed and compass speech pause; compass sounds keep playing.">Speak drift scoring</label>
+    </div>
+    <div class="row">
+      <span class="cap"><label for="choice_gear_mode" title="Speak the new gear each time the vehicle changes gears, play a short tone whose pitch says which gear it is, or report nothing.">Report gear changes</label>:</span>
+      <select id="choice_gear_mode"></select>
+    </div>
+    <!-- Shown while "As speech" or "As audio" is selected. -->
+    <div class="check" id="gear_sport_row">
+      <input type="checkbox" id="chk_gear_sport_once">
+      <label for="chk_gear_sport_once" title="Report sport mode once when you shift into it, as the word &quot;Sport&quot; or one brighter tone, and stay silent while the transmission steps through sport 1, sport 2 and so on, as a CVT does on its own.">Report sport mode only once</label>
+    </div>
+    <!-- Shown only while "As speech" is selected. -->
+    <div class="row" id="gear_speech_row">
+      <span class="cap"><label for="choice_gear_number_style" title="Whether forward gears are spoken as ordinals or as plain numbers.">Forward gears</label>:</span>
+      <select id="choice_gear_number_style"></select>
+    </div>
+    <!-- Shown only while "As audio" is selected. -->
+    <div class="grid" id="gear_audio_grid">
+      <span class="cap"><label for="choice_gear_root" title="The note neutral plays. Each forward gear steps one note up the scale from it; reverse is one note below and park two.">Root note</label>:</span>
+      <select id="choice_gear_root"></select>
+      <span class="cap"><label for="choice_gear_octave" title="The octave of the root note. Octave 4 holds middle C.">Octave</label>:</span>
+      <select id="choice_gear_octave"></select>
+      <span class="cap"><label for="choice_gear_scale" title="Which notes the gears step through. The quarter-tone scales include notes between the keys of a piano.">Scale</label>:</span>
+      <select id="choice_gear_scale"></select>
+      <span class="cap"><label for="spin_gear_tone_level" title="Peak level of the gear change tone.">Gear Tone Volume</label> (dBFS):</span>
+      <input type="number" id="spin_gear_tone_level" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+      <span></span>
+      <span><span class="tip" title="Play reverse, neutral, first to sixth gear, then drive and sport with these settings. Sport gears play brighter."><button type="button" id="btn_gear_preview">Preview gear tones</button></span></span>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_announce_clickspot_actions">
+      <label for="chk_announce_clickspot_actions" title="Speak success or failure feedback after activating a clickspot.">Announce clickspot actions</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_scanner_callout">
+      <label for="chk_scanner_callout" title="When the vehicle scanner is active and has a target, periodically announce the distance and direction to that target.">Periodic scanner distance callouts</label>
+    </div>
+    <div class="row" id="callout_interval_row">
+      <!-- wx: caption "Callout every:", accessible name "Scanner callout interval" (see the
+           speed interval row for why the named label is visually hidden). -->
+      <span class="cap" title="How often (in seconds) to announce the scanner target distance and direction.">Callout every:<label for="choice_callout_interval" class="vh">Scanner callout interval</label></span>
+      <select id="choice_callout_interval"></select>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_ui_nav_hold">
+      <label for="chk_ui_nav_hold" title="When holding a direction to move quickly through a menu, list, or slider, speak the first item and then stay silent until you stop, announcing where you landed.">Quiet menu navigation while holding a direction</label>
+    </div>
+  </fieldset>
+
+  <!-- Road guidance -->
+  <fieldset id="sb_road">
+    <legend><h2>Road guidance</h2></legend>
+    <div class="check">
+      <input type="checkbox" id="chk_road_follow">
+      <label for="chk_road_follow" title="Play directional correction pips, a centred straighten-now double pip, and a short recovery confirmation while on a road.">Lane correction guidance</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_road_junction_speech">
+      <label for="chk_road_junction_speech" title="Announce intersection shape and available exits about seven seconds ahead.">Speak approaching intersections</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_road_stop_signs">
+      <label for="chk_road_stop_signs" title="While road guidance or steering assistance is on, announce stop signs ahead and remind you within 12 meters.">Speak approaching stop signs</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_road_traffic_lights">
+      <label for="chk_road_traffic_lights" title="While road guidance or steering assistance is on, announce the light on your approach and changes while waiting.">Speak traffic lights and state changes</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_road_speed_limits">
+      <label for="chk_road_speed_limits" title="Announce the current map speed limit and changes with road detection or steering assistance on. BeamNG may estimate these limits; they may differ from signs and are not safe turn speeds. F9, S still reads the limit when this option is off.">Speak map speed limit changes</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_road_surface">
+      <label for="chk_road_surface" title="Always on, with or without road detection: say the surface under the tires when it changes, such as dirt road, asphalt road or grass. No stock map names its streets, so the surface is what is announced.">Speak road surface changes</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_road_junction_proximity">
+      <label for="chk_road_junction_proximity" title="A tone that pulses faster towards the stop bar before a junction, stop point, gated road or dead end, holds steady while you are on the bar, and quietens once you stop there. Speech still announces stop signs and lights. Manual driving requires road guidance on. Uses Intersection Tone Volume.">Stop bar tone (manual driving and AI assist)</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_road_junction_earcon">
+      <label for="chk_road_junction_earcon" title="Play an entry tone, plus a near-junction double pip when the stop bar tone is disabled.">Intersection proximity and entry tones</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_road_private">
+      <label for="chk_road_private" title="List private roads as exits from public roads in manual guidance: driveways, lots, yards and closed courses the map keeps traffic off. Most have no gate. Once you are on a private road its exits are always listed.">Include private roads</label>
+    </div>
+    <div class="grid">
+      <span class="cap"><label for="spin_road_beep" title="Volume for the beacon that guides you back to a road.">Off-road Beacon Volume</label> (dBFS):</span>
+      <input type="number" id="spin_road_beep" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+      <span class="cap"><label for="spin_road_correction" title="Volume for lane-correction, straighten-now, and recovery-confirmation cues.">Lane Correction Volume</label> (dBFS):</span>
+      <input type="number" id="spin_road_correction" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+      <span class="cap"><label for="spin_road_junction" title="Volume for the near-intersection double pip and intersection-entry tone.">Intersection Tone Volume</label> (dBFS):</span>
+      <input type="number" id="spin_road_junction" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+    </div>
+  </fieldset>
+
+  <!-- Compass Clicks -->
+  <fieldset id="sb_compass">
+    <legend><h2>Compass Clicks</h2></legend>
+    <div class="grid">
+      <span class="cap"><label for="spin_compass_interval" title="The number of degrees of rotation before a compass click is heard (1-90)."><span class="vh">Compass </span>Click Interval</label> (degrees):</span>
+      <input type="number" id="spin_compass_interval" min="1" max="90" step="any" data-inc="1" data-digits="0" data-int inputmode="numeric">
+
+      <span class="check">
+        <input type="checkbox" id="chk_compass_highlight">
+        <label for="chk_compass_highlight" title="Play a distinct sound on a certain click.">Highlight Every:</label>
+      </span>
+      <!-- wx folded the unit into the name ("Highlight every N clicks") because the
+           " clicks" text beside the spin is never focused. The named label is visually
+           hidden; the checkbox before it is the visible caption, as in wx. The tooltip sits
+           on the row because the label itself cannot be hovered. -->
+      <span class="row tight" id="highlight_row" title="Play the highlight sound on every Nth click (e.g., 4 for quadrants).">
+        <label for="spin_compass_highlight_nth" class="vh">Highlight every N clicks</label>
+        <input type="number" id="spin_compass_highlight_nth" min="2" max="100" step="any" data-inc="1" data-digits="0" data-int inputmode="numeric">
+        <span> clicks</span>
+      </span>
+
+      <span class="cap"><label for="spin_compass_click_level" title="Volume level for compass clicks. 0 is loudest, negatives are quieter.">Compass Click Volume</label> (dBFS):</span>
+      <input type="number" id="spin_compass_click_level" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+      <span class="cap"><label for="spin_lowspeed_click_level" title="Volume level for low speed detection clicks.">Low Speed Click Volume</label> (dBFS):</span>
+      <input type="number" id="spin_lowspeed_click_level" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+      <span class="cap"><label for="spin_lowspeed_stop_level" title="Volume level for the tone that confirms the vehicle has come to a stop.">Low Speed Stop Tone Volume</label> (dBFS):</span>
+      <input type="number" id="spin_lowspeed_stop_level" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+      <span class="cap"><label for="spin_slip_tone_level" title="Loudest the wheel lockup, wheelspin and side-slide tones will play. They start quieter than this and reach it as the slip grows.">Wheel Slip Tone Max Volume</label> (dBFS):</span>
+      <input type="number" id="spin_slip_tone_level" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+      <span class="cap"><label for="spin_placement_ping_level" title="Volume level for the movement pings in the vehicle spawner's 3D placement editor.">Placement Ping Volume</label> (dBFS):</span>
+      <input type="number" id="spin_placement_ping_level" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+    </div>
+
+    <div class="check">
+      <input type="checkbox" id="chk_hrtf_enabled">
+      <label for="chk_hrtf_enabled" title="Enable HRTF for 3D spatial audio on compass and low speed clicks.">HRTF Binaural Processing</label>
+    </div>
+    <div class="grid" id="hrtf_grid">
+      <span class="cap"><label for="choice_hrtf_set" title="The head measurements used to place sounds around you. Each one sounds a little different; pick whichever makes directions clearest for you. Takes effect within a few seconds, no restart needed.">HRTF Dataset</label>:</span>
+      <select id="choice_hrtf_set"></select>
+      <!-- min and max come from ui_choices().hrtf_elevation at boot. -->
+      <span class="cap"><label for="spin_hrtf_elevation" title="How far below (negative) or above ear level directional sounds are placed. Small values mostly change the tone slightly; try around -10 or -15 to hear whether a lower placement suits you.">HRTF Elevation</label> (degrees):</span>
+      <input type="number" id="spin_hrtf_elevation" min="-20" max="10" step="any" data-inc="1" data-digits="0" inputmode="decimal">
+      <span class="check">
+        <input type="checkbox" id="chk_hrtf_equalise">
+        <label for="chk_hrtf_equalise" title="Removes the tone colouring that a dataset adds to every direction alike, such as the boxy or harsh sound of the measurement equipment, and keeps only the differences that tell directions apart.">Equalise HRTF Tone</label>
+      </span>
+      <span></span>
+      <span class="cap"><label for="spin_hrtf_front_emphasis" title="Attenuation applied to sounds behind you. More negative = rear sounds quieter relative to front.">HRTF Front Emphasis</label> (dB):</span>
+      <input type="number" id="spin_hrtf_front_emphasis" min="-24" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+      <span class="cap"><label for="spin_hrtf_distance_gain" title="Additional gain after HRTF processing. Negative values make sounds appear farther away.">HRTF Distance Gain</label> (dB):</span>
+      <input type="number" id="spin_hrtf_distance_gain" min="-24" max="6" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+    </div>
+  </fieldset>
+
+  <!-- Vehicle Scanner -->
+  <fieldset id="sb_scanner">
+    <legend><h2>Vehicle Scanner</h2></legend>
+    <div class="check">
+      <input type="checkbox" id="chk_scanner_steer_tone">
+      <label for="chk_scanner_steer_tone" title="When the scanner is active and you are steering, morph the target beeps into a continuous directional tone so you can lock onto the target's direction even when the beeps are slow. Releasing the steering restores the normal beeps.">Solid tone while steering</label>
+    </div>
+    <div class="grid">
+      <span class="cap"><label for="spin_scanner_base_freq" title="Resting pitch of the scanner beeps/tone (when the target is directly behind). The pitch rises toward the target."><span class="vh">Scanner </span>Base Frequency</label> (Hz):</span>
+      <input type="number" id="spin_scanner_base_freq" min="100" max="8000" step="any" data-inc="1" data-digits="0" data-int inputmode="numeric">
+      <!-- data-inc is 1/12: one semitone, in octaves. -->
+      <span class="cap"><label for="spin_scanner_offset" title="How far the pitch rises (in octaves) when the target is dead-center, above the base frequency. Steps by one semitone; minimum half an octave, maximum two octaves."><span class="vh">Scanner </span>Alignment Pitch Offset</label> (octaves):</span>
+      <input type="number" id="spin_scanner_offset" min="0.5" max="2" step="any" data-inc="0.08333333333333333" data-digits="2" inputmode="decimal">
+    </div>
+  </fieldset>
+
+  <!-- Pitch & Roll. wx shows "Pitch & Roll" and names the group "Pitch and Roll". The
+       ampersand is CSS generated content with alternative text "and" (content: "&" / "and"),
+       so the heading and the group are announced "Pitch and Roll" with no ARIA. -->
+  <fieldset id="sb_pitchroll">
+    <legend><h2>Pitch <span class="amp-and"></span> Roll</h2></legend>
+    <div class="check">
+      <input type="checkbox" id="chk_pitch_roll_enabled">
+      <label for="chk_pitch_roll_enabled" title="Enable continuous tones that indicate vehicle pitch and roll angle.">Pitch and Roll Tones</label>
+    </div>
+    <div class="grid">
+      <span class="cap"><label for="spin_pitch_roll_max" title="Volume level at maximum tilt angle."><span class="vh">Pitch Roll </span>Maximum Volume</label> (dBFS):</span>
+      <input type="number" id="spin_pitch_roll_max" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+      <span class="cap"><label for="spin_pitch_roll_min" title="Volume level when the vehicle is stable (faded down)."><span class="vh">Pitch Roll </span>Stabilized Volume</label> (dBFS):</span>
+      <input type="number" id="spin_pitch_roll_min" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+    </div>
+  </fieldset>
+
+  <!-- Shift Tone -->
+  <fieldset id="sb_shift">
+    <legend><h2>Shift Tone</h2></legend>
+    <div class="grid">
+      <span class="cap"><label for="spin_freq" title="Triangle tone frequency when shift light is on.">Shift Tone Frequency</label> (Hz):</span>
+      <input type="number" id="spin_freq" min="20" max="20000" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+      <span class="cap"><label for="spin_level" title="Tone level; 0 is loudest, negatives are quieter.">Shift Tone Level</label> (dBFS):</span>
+      <input type="number" id="spin_level" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+    </div>
+    <div class="buttons">
+      <!-- Disabled at boot when ui_choices().audio_test_ok is false (wx: Enable(AUDIO_TEST_OK)). -->
+      <span class="tip" title="Plays the shift tone using the current frequency and level settings."><button type="button" id="btn_test_tone">Test Shift Tone</button></span>
+    </div>
+  </fieldset>
+
+  <!-- Warning Sounds -->
+  <fieldset id="sb_warnings">
+    <legend><h2>Warning Sounds</h2></legend>
+    <div class="check">
+      <input type="checkbox" id="chk_oil_chime_enabled">
+      <label for="chk_oil_chime_enabled" title="Enable the oil warning chime when the oil pressure warning light is on.">Oil Overheating Alert</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_tc_clicks_enabled">
+      <label for="chk_tc_clicks_enabled" title="Enable the traction control activation click sound.">TC (Traction Control) Clicks</label>
+    </div>
+    <div class="grid">
+      <span class="cap"><label for="spin_buzzer_level" title="Level for the check engine warning sound.">Check Engine Buzzer Level</label> (dBFS):</span>
+      <input type="number" id="spin_buzzer_level" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+      <span class="cap"><label for="spin_chime_level" title="Level for the oil pressure warning chime.">Oil Warning Chime Level</label> (dBFS):</span>
+      <input type="number" id="spin_chime_level" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+      <span class="cap"><label for="spin_obstacle_level" title="Level of predictive static-obstacle cues; advisory cues play 6 dB lower.">Obstacle Cue Volume</label> (dBFS):</span>
+      <input type="number" id="spin_obstacle_level" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+      <span class="cap"><label for="choice_obstacle_sensitivity" title="Changes advisory and urgent timing; emergency stopping distance is unchanged.">Obstacle Warning Sensitivity</label>:</span>
+      <select id="choice_obstacle_sensitivity"></select>
+    </div>
+  </fieldset>
+
+  <!-- Loader Implement -->
+  <fieldset id="sb_impl">
+    <legend><h2>Loader Implement</h2></legend>
+    <div class="check">
+      <input type="checkbox" id="chk_impl_tones">
+      <label for="chk_impl_tones" title="Ground proximity tone and tilt tone for a loader's bucket or forks. Both fade out when the controls are idle.">Bucket / Fork Tones</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_impl_proximity">
+      <label for="chk_impl_proximity" title="Speak the name of a vehicle or prop the bucket or forks are approaching, and whether they are above, below or level with it.">Announce Nearby Vehicles and Props</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="chk_dock_tones">
+      <label for="chk_dock_tones" title="Alignment tones for lining the bucket or forks up with something: a pulse that pans left and right and speeds up as you close, and a pair of tones that beat against each other until the implement is level with the reference band. Only heard while the instrument is switched on in game with F9 then Ctrl+I.">Docking Instrument Tones</label>
+    </div>
+    <div class="grid">
+      <span class="cap"><label for="spin_impl_ground" title="Level of the tone that gets rougher as the bucket or forks near the ground.">Ground Proximity Tone Level</label> (dBFS):</span>
+      <input type="number" id="spin_impl_ground" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+      <span class="cap"><label for="spin_impl_tilt" title="Level of the quarter-tone tilt scale. 400 Hz is level, lower is tipped forward, higher is curled back.">Tilt Tone Level</label> (dBFS):</span>
+      <input type="number" id="spin_impl_tilt" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+      <span class="cap"><label for="spin_dock" title="Level of the docking pulse. The beating alignment pair is fixed relative to it, so that the two stay separable.">Docking Tone Level</label> (dBFS):</span>
+      <input type="number" id="spin_dock" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+    </div>
+  </fieldset>
+
+  <!-- Terrain Scanner -->
+  <fieldset id="sb_scan">
+    <legend><h2>Terrain Scanner</h2></legend>
+    <div class="check">
+      <input type="checkbox" id="chk_scan_tones">
+      <label for="chk_scan_tones" title="The terrain sonification scan, fired in game with F9 then Space while you are driving. Plays a reference tone and then a two second sweep of the ground ahead, where pitch is height, time is distance and the stereo position is the direction. Water is brighter, and vehicles and props are short bright pings.">Terrain Scan Tones</label>
+    </div>
+    <div class="grid">
+      <span class="cap"><label for="spin_scan" title="Level of the whole scan. Water and the vehicle pings sit at fixed offsets from it, so they stay in proportion at any setting.">Terrain Scan Level</label> (dBFS):</span>
+      <input type="number" id="spin_scan" min="-120" max="0" step="any" data-inc="1" data-digits="1" inputmode="decimal">
+    </div>
+  </fieldset>
+
+  <!-- Large Cannon -->
+  <fieldset id="sb_cannon">
+    <legend><h2>Large Cannon</h2></legend>
+    <div class="check">
+      <input type="checkbox" id="chk_cannon_shot">
+      <label for="chk_cannon_shot" title="After a car is fired out of the large cannon, speak where it ended up once it comes to rest: how far downrange it went, how far off the firing line, and how much further or shorter than your previous shot. There is no key to press; the readout announces itself, because the moment the car stops is the only moment it has anything to say.">Announce Shot Outcome</label>
+    </div>
+  </fieldset>
+
+  <!-- Learn Bindings -->
+  <fieldset id="sb_learn">
+    <legend><h2>Learn Bindings</h2></legend>
+    <div class="check">
+      <input type="checkbox" id="chk_learn_desc">
+      <label for="chk_learn_desc" title="In learn bindings mode (F9 then Shift+B, or the Functions menu on a controller), every control you press is named along with what it does, and the binding does not fire -- so you can find the handbrake without the car spinning. By default each press is announced as just the control and the action, such as &quot;A button. Shift up.&quot; Turn this on to also hear the game's full sentence of description for the action, which helps the first time through a pad and gets tiring once you know it.">Speak Full Action Description</label>
+    </div>
+  </fieldset>
+
+  <!-- Audio Device -->
+  <fieldset id="sb_audio">
+    <legend><h2>Audio Device</h2></legend>
+    <div class="check">
+      <input type="checkbox" id="chk_follow_device">
+      <label for="chk_follow_device" title="Automatically switch the audio output when the OS default device changes (recommended).">Follow Default Audio Device</label>
+    </div>
+    <!-- Shown only while "Follow Default Audio Device" is unchecked. -->
+    <div class="row" id="device_row">
+      <span class="cap"><label for="choice_device" title="WASAPI output device to use when not following the OS default.">Fixed Output Device</label>:</span>
+      <select id="choice_device" class="grow"></select>
+      <span class="tip" title="Re-scan for WASAPI output devices."><button type="button" id="btn_refresh_device">Refresh Devices</button></span>
+    </div>
+    <div class="grid">
+      <span class="cap"><label for="spin_poll" title="How often to check for default audio device changes (in seconds).">Device Poll Interval</label> (sec):</span>
+      <input type="number" id="spin_poll" min="0.1" max="10" step="any" data-inc="0.1" data-digits="1" inputmode="decimal">
+    </div>
+  </fieldset>
+
+  <!-- Developer -->
+  <fieldset id="sb_dev">
+    <legend><h2>Developer</h2></legend>
+    <div class="check">
+      <input type="checkbox" id="chk_mcp_server">
+      <label for="chk_mcp_server" title="Lets an AI assistant running on this computer drive the mod and execute code inside BeamNG.drive, so it can test features without you having to set each one up by hand. Listens on this machine only. Leave this off unless you are actively working with an assistant. Takes effect the next time BeamTel starts.">Enable MCP automation server</label>
+    </div>
+    <div class="grid">
+      <span class="cap"><label for="spin_mcp_port" title="Which local port the automation server listens on. Change this only if another program already uses it.">MCP Server Port</label>:</span>
+      <input type="number" id="spin_mcp_port" min="1024" max="65535" step="any" data-inc="1" data-digits="0" data-int inputmode="numeric">
+    </div>
+  </fieldset>
+
+  <div class="buttons end">
+    <button type="button" id="btn_reset">Reset to Defaults</button>
+  </div>
+</section>
+
+<!-- =====================================================================
+     AI Describer tab (config_ui.py AIDescriberPanel)
+     ===================================================================== -->
+<section role="tabpanel" id="panel_describer" aria-labelledby="tab_describer" class="panel" hidden>
+  <h1>AI Describer</h1>
+
+  <!-- Text set by _retitle_for_provider. Not a live region. -->
+  <p id="lbl_intro"></p>
+
+  <fieldset id="sb_prov">
+    <legend><h2>Provider</h2></legend>
+    <div class="row">
+      <span class="cap"><label for="choice_provider" title="Which AI service describes the scene. Each service keeps its own API key and model.">Service:</label></span>
+      <select id="choice_provider"></select>
+    </div>
+  </fieldset>
+
+  <fieldset id="sb_key">
+    <!-- The heading text becomes "<Provider> API Key" (_retitle_for_provider). -->
+    <legend><h2 id="sb_key_heading">API Key</h2></legend>
+    <div class="buttons">
+      <!-- Label flips between "Set API key" and "Clear API key". -->
+      <button type="button" id="btn_api_key">Set API key</button>
+    </div>
+    <!-- wx: StaticText named "API key status". Plain text, deliberately not a live region. -->
+    <p id="lbl_key_status"></p>
+  </fieldset>
+
+  <fieldset id="sb_model">
+    <legend><h2>Vision Model</h2></legend>
+    <div class="row">
+      <!-- title is "The <Provider> model used to describe the scene." -->
+      <span class="cap"><label for="choice_model" id="lbl_model">Model:</label></span>
+      <select id="choice_model"></select>
+    </div>
+  </fieldset>
+
+  <!-- Hidden entirely when the active provider declares no extras. Rows are built from
+       ui_choices().ai_providers[*].extras for every provider; only the active one's show. -->
+  <fieldset id="sb_extra">
+    <legend><h2>Advanced</h2></legend>
+  </fieldset>
+
+  <fieldset id="sb_opt">
+    <legend><h2>Capture</h2></legend>
+    <div class="check">
+      <input type="checkbox" id="chk_disable_ui_toggle">
+      <label for="chk_disable_ui_toggle" title="When unchecked, the game UI is briefly hidden while the screenshot is taken so HUD elements don't appear in the description. Check this to leave the UI visible (e.g. to have it described).">Disable automatic UI hiding during capture</label>
+    </div>
+  </fieldset>
+</section>
+
+</main>
+
+<!-- wx.TextEntryDialog(parent, key_help, "Set API Key"). <dialog> has no native caption
+     element, so aria-labelledby names it from its title heading. -->
+<dialog id="dlg_api_key" aria-labelledby="dlg_api_key_title">
+  <form method="dialog" id="dlg_api_key_form">
+    <h2 id="dlg_api_key_title">Set API Key</h2>
+    <div class="stack">
+      <!-- Text is the provider's key_help, e.g. "Paste your Google Gemini API key:". -->
+      <label for="dlg_api_key_input" id="dlg_api_key_help"></label>
+      <input type="text" id="dlg_api_key_input" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="buttons end">
+      <button type="submit" id="dlg_api_key_ok" value="ok">OK</button>
+      <button type="submit" id="dlg_api_key_cancel" value="cancel" formnovalidate>Cancel</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- updater._run_with_progress: wx.ProgressDialog(title, message). Driven by the
+     update-progress / update-progress-close events. aria-labelledby for the same reason as
+     the API key dialog. tabindex="-1" lets the dialog itself take focus when it has no
+     Cancel button. The text is not a live region. -->
+<dialog id="dlg_update" aria-labelledby="dlg_update_title" tabindex="-1">
+  <h2 id="dlg_update_title"></h2>
+  <p id="dlg_update_text" class="pre"></p>
+  <!-- No value attribute = indeterminate (wx Pulse). The wx gauge had no caption; the
+       visually hidden label repeats the dialog title so the bar is not unnamed. -->
+  <label for="dlg_update_progress" id="dlg_update_progress_label" class="vh"></label>
+  <progress id="dlg_update_progress" max="1"></progress>
+  <div class="buttons end">
+    <button type="button" id="dlg_update_cancel">Cancel</button>
+  </div>
+</dialog>
+
+</body>
+</html>

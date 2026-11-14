@@ -52,14 +52,14 @@ Update this table as work lands. One line per workstream from `04-workstreams.md
 | ID | Workstream | State | Notes |
 |----|-----------|-------|-------|
 | W0 | Scaffold workspace, Tauri shell, fixture harness, seed modules | done | builds, 22 tests pass, window opens; admin-elevated launch not yet checked |
-| B1 | beam-base: config, logger, secretstore, gear_report, AI registry | not started | |
-| B2 | beam-reports: pure report modules | not started | |
-| B3 | beam-road: road guidance, assistant, recorders | not started | |
-| S1 | beam-speech: Prism FFI and speech | not started | |
-| AH | beam-audio: hrtf, terrain scan render, waveform generators | not started | |
-| AA | beam-audio: controller state, API, device, callback skeleton | not started | |
+| B1 | beam-base: config, logger, secretstore, gear_report, AI registry | in progress | |
+| B2 | beam-reports: pure report modules | in progress | |
+| B3 | beam-road: road guidance, assistant, recorders | in progress | |
+| S1 | beam-speech: Prism FFI and speech | in progress | |
+| AH | beam-audio: hrtf, terrain scan render, waveform generators | in progress | |
+| AA | beam-audio: controller state, API, device, callback skeleton | in progress | |
 | A1-A3 | beam-audio: callback voices | not started | split decided by AA |
-| EA | beam-engine: skeleton, shared state, say(), units, engine start | not started | |
+| EA | beam-engine: skeleton, shared state, say(), units, engine start | in progress | |
 | E1 | Telemetry decode and telemetry loop | not started | |
 | E2 | Listeners A: scanner, obstacle, road, hill climb, fuel | not started | |
 | E3 | Implement, dock, ramp, cannon, terrain scan, line-up, trailer, wheel, beacon | not started | |
@@ -70,7 +70,7 @@ Update this table as work lands. One line per workstream from `04-workstreams.md
 | E8 | Vehicle spawner | not started | |
 | E9 | UI bridge (WS 8765, TCP 8766) and MCP server | not started | |
 | E10 | Updater, mod installer | not started | |
-| U1 | Frontend: HTML, CSS, JS | in progress | launched 2026-11-13, runs alongside W0 (touches only `rust/ui/`) |
+| U1 | Frontend: HTML, CSS, JS | done | browser-verified against the mock backend; not yet run in WebView2 or with a screen reader. Contract in `rust/ui/CONTRACT.md` |
 | U2 | Tauri backend: commands, events, console, logs menu, dialogs | not started | |
 | I1 | Integration: whole workspace builds, engine wired to shell | not started | |
 | V1 | Parity audits, module by module | not started | |
