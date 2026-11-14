@@ -29,9 +29,7 @@ use crate::ai_registry;
 use crate::gear_report;
 use crate::hrtf_sets;
 use crate::pyfmt::py_strip;
-use crate::pyval::{
-    PyDict, PyExc, PyInt, PyValue, json_dumps_dict_indent2, json_loads, py_clamp,
-};
+use crate::pyval::{PyDict, PyExc, PyInt, PyValue, json_dumps_dict_indent2, json_loads, py_clamp};
 use crate::secretstore;
 use crate::speech_config;
 
@@ -126,7 +124,10 @@ pub const DEFAULT_CONFIG: &[(&str, ConfigDefault)] = &[
     // Replaces the old announce_gear boolean; gear_report::migrate_config carries it over.
     ("gear_report_mode", S(gear_report::DEFAULT_MODE)),
     ("gear_speech_sport_once", B(false)),
-    ("gear_speech_number_style", S(gear_report::DEFAULT_NUMBER_STYLE)),
+    (
+        "gear_speech_number_style",
+        S(gear_report::DEFAULT_NUMBER_STYLE),
+    ),
     ("gear_tone_root", S(gear_report::DEFAULT_ROOT)),
     ("gear_tone_octave", I(gear_report::DEFAULT_OCTAVE)),
     ("gear_tone_scale", S(gear_report::DEFAULT_SCALE)),
@@ -155,7 +156,10 @@ pub const DEFAULT_CONFIG: &[(&str, ConfigDefault)] = &[
     ("ai_describer_api_key", S("")),
     ("ai_describer_model", S(ai_registry::GEMINI_DEFAULT_MODEL)),
     ("ai_describer_openai_api_key", S("")),
-    ("ai_describer_openai_model", S(ai_registry::OPENAI_DEFAULT_MODEL)),
+    (
+        "ai_describer_openai_model",
+        S(ai_registry::OPENAI_DEFAULT_MODEL),
+    ),
     (
         "ai_describer_openai_base_url",
         S(ai_registry::OPENAI_DEFAULT_BASE_URL),
@@ -583,8 +587,16 @@ enum Cast {
 
 /// `_coerce(key, caster, fallback)`: ValueError and TypeError fall back; anything else
 /// (OverflowError) propagates to the corruption path.
-fn coerce(merged: &mut PyDict, key: &str, cast: Cast, fallback: ConfigDefault) -> Result<(), Corrupt> {
-    let current = merged.get(key).cloned().unwrap_or_else(|| fallback.to_value());
+fn coerce(
+    merged: &mut PyDict,
+    key: &str,
+    cast: Cast,
+    fallback: ConfigDefault,
+) -> Result<(), Corrupt> {
+    let current = merged
+        .get(key)
+        .cloned()
+        .unwrap_or_else(|| fallback.to_value());
     let result = match cast {
         Cast::Str => Ok(PyValue::Str(current.py_str())),
         Cast::Bool => Ok(PyValue::Bool(current.truthy())),
@@ -918,7 +930,11 @@ fn configurator_body(path: &Path) -> Result<PyDict, Corrupt> {
     let renderer = get_str(&merged, "beamng_renderer").to_lowercase();
     merged.insert(
         "beamng_renderer".into(),
-        PyValue::from(if renderer == "vulkan" { "vulkan" } else { "d3d" }),
+        PyValue::from(if renderer == "vulkan" {
+            "vulkan"
+        } else {
+            "d3d"
+        }),
     );
     Ok(merged)
 }

@@ -8,8 +8,7 @@ use std::path::Path;
 
 use base64::Engine as _;
 use beam_base::config::{
-    self, default_config, default_config_engine, load_config_configurator_at,
-    load_config_engine_at,
+    self, default_config, default_config_engine, load_config_configurator_at, load_config_engine_at,
 };
 use beam_base::pyval::{PyDict, json_dumps_indent2};
 use beam_base::secretstore;

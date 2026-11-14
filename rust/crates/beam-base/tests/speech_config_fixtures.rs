@@ -18,7 +18,9 @@ fn migrate_config_matches_python() {
         let want = json_loads(s(&case["after"])).unwrap();
         let got = json_dumps_indent2(&PyValue::Dict(cfg));
         if changed != case["changed"].as_bool().unwrap() || got != json_dumps_indent2(&want) {
-            failures.push(format!("{before}: got {got} changed {changed}, want {case}"));
+            failures.push(format!(
+                "{before}: got {got} changed {changed}, want {case}"
+            ));
         }
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));

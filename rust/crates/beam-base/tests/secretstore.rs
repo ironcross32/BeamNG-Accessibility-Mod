@@ -22,11 +22,19 @@ fn constants_and_names_match_python() {
     );
     for case in fx["names"].as_array().unwrap() {
         let n = s(&case["name"]);
-        assert_eq!(is_secret_setting(n), case["secret"].as_bool().unwrap(), "{n:?}");
+        assert_eq!(
+            is_secret_setting(n),
+            case["secret"].as_bool().unwrap(),
+            "{n:?}"
+        );
     }
     for case in fx["protected"].as_array().unwrap() {
         let v = s(&case["value"]);
-        assert_eq!(is_protected(v), case["protected"].as_bool().unwrap(), "{v:?}");
+        assert_eq!(
+            is_protected(v),
+            case["protected"].as_bool().unwrap(),
+            "{v:?}"
+        );
     }
     for case in fx["unprotect_plain"].as_array().unwrap() {
         let v = s(&case["value"]);
@@ -39,7 +47,8 @@ fn b64decode_matches_python() {
     let fx = load("secretstore");
     for case in fx["b64decode"].as_array().unwrap() {
         let text = s(&case["text"]);
-        let got = py_b64decode(text).map(|b| b.iter().map(|x| format!("{x:02x}")).collect::<String>());
+        let got =
+            py_b64decode(text).map(|b| b.iter().map(|x| format!("{x:02x}")).collect::<String>());
         assert_eq!(got.as_deref(), case["ok"].as_str(), "b64decode({text:?})");
     }
 }

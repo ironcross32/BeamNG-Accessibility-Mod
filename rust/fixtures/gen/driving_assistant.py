@@ -136,7 +136,8 @@ def run_script(rnd, units):
                 except Exception as exc:  # noqa: BLE001
                     op["error"] = [type(exc).__name__, str(exc)]
             snap = client.snapshot()
-            op.update(now=fbits(clock.now), log=log[start:],
+            op.update(now=fbits(clock.now),
+                      log=[[e[0], tok(e[1])] + e[2:] if e[0] == "send" else e for e in log[start:]],
                       snapshot=json.dumps({k: v for k, v in snap.items() if k != "response_age_s"}),
                       response_age=None if snap["response_age_s"] is None else fbits(snap["response_age_s"]),
                       since_arrival=(lambda v: None if v is None else fbits(v))(client.seconds_since_arrival()),

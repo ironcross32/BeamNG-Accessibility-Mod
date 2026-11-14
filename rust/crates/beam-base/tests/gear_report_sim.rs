@@ -160,8 +160,8 @@ fn gear_report_sim() {
         "collapse off still names each step",
         r(&cvt)
             == strs(&[
-                "drive", "sport 1", "sport 2", "sport 3", "sport 2", "sport 1", "drive",
-                "sport 1", "neutral",
+                "drive", "sport 1", "sport 2", "sport 3", "sport 2", "sport 1", "drive", "sport 1",
+                "neutral",
             ]),
         "",
     );
@@ -369,9 +369,8 @@ fn gear_report_sim() {
     let sport = gr::render_tone(330.0, -3.0, SR, true);
     let (f, mp) = spectrum(&plain);
     let (_, ms) = spectrum(&sport);
-    let centroid = |m: &[f64]| {
-        f.iter().zip(m).map(|(a, b)| a * b).sum::<f64>() / m.iter().sum::<f64>()
-    };
+    let centroid =
+        |m: &[f64]| f.iter().zip(m).map(|(a, b)| a * b).sum::<f64>() / m.iter().sum::<f64>();
     let c_plain = centroid(&mp);
     let c_sport = centroid(&ms);
     sim.check(
@@ -448,5 +447,10 @@ fn gear_report_sim() {
         "",
     );
 
-    assert!(sim.failures.is_empty(), "{} FAILED: {:?}", sim.failures.len(), sim.failures);
+    assert!(
+        sim.failures.is_empty(),
+        "{} FAILED: {:?}",
+        sim.failures.len(),
+        sim.failures
+    );
 }

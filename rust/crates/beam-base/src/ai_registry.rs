@@ -34,9 +34,15 @@ pub const GEMINI_VISION_MODELS: [(&str, &str); 16] = [
     ("models/gemini-2.0-flash", "Gemini 2.0 Flash"),
     ("models/gemini-2.0-flash-001", "Gemini 2.0 Flash 001"),
     ("models/gemini-2.0-flash-lite", "Gemini 2.0 Flash-Lite"),
-    ("models/gemini-2.0-flash-lite-001", "Gemini 2.0 Flash-Lite 001"),
+    (
+        "models/gemini-2.0-flash-lite-001",
+        "Gemini 2.0 Flash-Lite 001",
+    ),
     ("models/gemini-flash-latest", "Gemini Flash Latest"),
-    ("models/gemini-flash-lite-latest", "Gemini Flash-Lite Latest"),
+    (
+        "models/gemini-flash-lite-latest",
+        "Gemini Flash-Lite Latest",
+    ),
     ("models/gemini-pro-latest", "Gemini Pro Latest"),
 ];
 
@@ -210,7 +216,10 @@ pub fn vision_models_for(provider: &str) -> &'static [(&'static str, &'static st
 }
 
 pub fn model_names_for(provider: &str) -> Vec<&'static str> {
-    vision_models_for(provider).iter().map(|(n, _)| *n).collect()
+    vision_models_for(provider)
+        .iter()
+        .map(|(n, _)| *n)
+        .collect()
 }
 
 pub fn default_model_for(provider: &str) -> &'static str {

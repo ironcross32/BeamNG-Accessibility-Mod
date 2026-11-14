@@ -44,7 +44,10 @@ fn constants_match_python() {
         assert_eq!(c["ORDINAL_WORDS"][i][0].as_i64(), Some(*k));
         assert_eq!(s(&c["ORDINAL_WORDS"][i][1]), *w);
     }
-    assert_eq!(c["ORDINAL_WORDS"].as_array().unwrap().len(), ORDINAL_WORDS.len());
+    assert_eq!(
+        c["ORDINAL_WORDS"].as_array().unwrap().len(),
+        ORDINAL_WORDS.len()
+    );
     for (i, (k, l)) in ROOT_NOTES.iter().enumerate() {
         assert_eq!(s(&c["ROOT_NOTES"][i][0]), *k);
         assert_eq!(s(&c["ROOT_NOTES"][i][1]), *l);
@@ -108,7 +111,9 @@ fn phrases_match_python() {
         let st = s(&case["style"]);
         let got = extended_gear_to_phrase(g, st);
         if got != s(&case["phrase"]) {
-            failures.push(format!("extended_gear_to_phrase({g:?}, {st}) = {got:?}, want {case}"));
+            failures.push(format!(
+                "extended_gear_to_phrase({g:?}, {st}) = {got:?}, want {case}"
+            ));
         }
     }
     for case in fx["singles"].as_array().unwrap() {
@@ -123,12 +128,18 @@ fn phrases_match_python() {
         let want = &case["degree"];
         let ok = if let Some(big) = want.get("big") {
             // Beyond i64: saturates (documented).
-            got == Some(if s(big).starts_with('-') { i64::MIN } else { i64::MAX })
+            got == Some(if s(big).starts_with('-') {
+                i64::MIN
+            } else {
+                i64::MAX
+            })
         } else {
             got == want["ok"].as_i64()
         };
         if !ok {
-            failures.push(format!("extended_gear_degree({g:?}) = {got:?}, want {want}"));
+            failures.push(format!(
+                "extended_gear_degree({g:?}) = {got:?}, want {want}"
+            ));
         }
     }
     for case in fx["bytes"].as_array().unwrap() {
@@ -166,7 +177,11 @@ fn pitch_matches_python() {
     for case in fx["notes"].as_array().unwrap() {
         let n = s(&case["name"]);
         if note_semitone(n) != case["semitone"].as_i64() {
-            failures.push(format!("note_semitone({n:?}) = {:?}, want {}", note_semitone(n), case));
+            failures.push(format!(
+                "note_semitone({n:?}) = {:?}, want {}",
+                note_semitone(n),
+                case
+            ));
         }
     }
     for case in fx["semitones"].as_array().unwrap() {
@@ -182,7 +197,10 @@ fn pitch_matches_python() {
         let octave = case["octave"].as_i64().unwrap();
         let got = root_frequency(root, octave);
         if !same_f64(got, f(&case["root_hz"])) {
-            failures.push(format!("root_frequency({root:?}, {octave}) = {got:?}, want {}", case["root_hz"]));
+            failures.push(format!(
+                "root_frequency({root:?}, {octave}) = {got:?}, want {}",
+                case["root_hz"]
+            ));
         }
         let mut i = 0;
         for d in [-40, -2, -1, 0, 1, 5, 9, 40] {
@@ -225,7 +243,10 @@ fn config_matches_python() {
             _ => false,
         };
         if !ok {
-            failures.push(format!("settings_from_config({}) = {got:?}, want {case}", case["cfg"]));
+            failures.push(format!(
+                "settings_from_config({}) = {got:?}, want {case}",
+                case["cfg"]
+            ));
         }
     }
     for case in fx["migrations"].as_array().unwrap() {
@@ -240,7 +261,9 @@ fn config_matches_python() {
         };
         let same_order = cfg.keys().eq(want.keys());
         if changed != case["changed"].as_bool().unwrap() || cfg != want || !same_order {
-            failures.push(format!("migrate_config {case}: got {cfg:?} changed {changed}"));
+            failures.push(format!(
+                "migrate_config {case}: got {cfg:?} changed {changed}"
+            ));
         }
     }
     check(failures);
@@ -250,7 +273,9 @@ fn hex_f32(hex: &str) -> Vec<f32> {
     (0..hex.len())
         .step_by(8)
         .map(|i| {
-            let b = u32::from_str_radix(&hex[i..i + 8], 16).unwrap().to_be_bytes();
+            let b = u32::from_str_radix(&hex[i..i + 8], 16)
+                .unwrap()
+                .to_be_bytes();
             f32::from_le_bytes(b)
         })
         .collect()
@@ -260,7 +285,9 @@ fn hex_f64(hex: &str) -> Vec<f64> {
     (0..hex.len())
         .step_by(16)
         .map(|i| {
-            let b = u64::from_str_radix(&hex[i..i + 16], 16).unwrap().to_be_bytes();
+            let b = u64::from_str_radix(&hex[i..i + 16], 16)
+                .unwrap()
+                .to_be_bytes();
             f64::from_le_bytes(b)
         })
         .collect()
@@ -278,7 +305,11 @@ fn tone_and_envelope_match_python() {
         let want = hex_f64(s(&case["f64_hex"]));
         let got = tone_envelope(sr);
         if got.len() != want.len() {
-            failures.push(format!("envelope {sr}: len {} want {}", got.len(), want.len()));
+            failures.push(format!(
+                "envelope {sr}: len {} want {}",
+                got.len(),
+                want.len()
+            ));
             continue;
         }
         let worst = got
@@ -298,7 +329,11 @@ fn tone_and_envelope_match_python() {
         let want = hex_f32(s(&case["f32_hex"]));
         let got = render_tone(freq, db, sr, sport);
         if got.len() != want.len() {
-            failures.push(format!("tone {freq} {db} {sr} {sport}: len {} want {}", got.len(), want.len()));
+            failures.push(format!(
+                "tone {freq} {db} {sr} {sport}: len {} want {}",
+                got.len(),
+                want.len()
+            ));
             continue;
         }
         let worst = got
@@ -307,7 +342,9 @@ fn tone_and_envelope_match_python() {
             .map(|(a, b)| (a - b).abs())
             .fold(0.0f32, f32::max);
         if worst > 1e-6 {
-            failures.push(format!("tone {freq} {db} {sr} {sport}: max error {worst:e}"));
+            failures.push(format!(
+                "tone {freq} {db} {sr} {sport}: max error {worst:e}"
+            ));
         }
     }
     check(failures);

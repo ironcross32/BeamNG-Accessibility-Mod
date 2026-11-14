@@ -383,8 +383,10 @@ fn py_is_printable(c: char) -> bool {
         return true;
     }
     // Zs other than space, Zl, Zp.
-    if matches!(u, 0xa0 | 0x1680 | 0x202f | 0x205f | 0x3000 | 0x2028 | 0x2029)
-        || (0x2000..=0x200a).contains(&u)
+    if matches!(
+        u,
+        0xa0 | 0x1680 | 0x202f | 0x205f | 0x3000 | 0x2028 | 0x2029
+    ) || (0x2000..=0x200a).contains(&u)
     {
         return false;
     }
@@ -492,7 +494,9 @@ const MAX_DEPTH: usize = 900;
 /// a Rust `String` cannot hold one; Python keeps the surrogate.
 pub fn json_loads(text: &str) -> Result<PyValue, JsonError> {
     if text.starts_with('\u{feff}') {
-        return Err(JsonError("Unexpected UTF-8 BOM (decode using utf-8-sig)".into()));
+        return Err(JsonError(
+            "Unexpected UTF-8 BOM (decode using utf-8-sig)".into(),
+        ));
     }
     let mut p = Parser {
         s: text.as_bytes(),
@@ -620,7 +624,9 @@ impl Parser<'_> {
         } else {
             let digits = &self.src[int_start..int_end];
             if digits.len() > INT_MAX_STR_DIGITS {
-                return Err(JsonError("Exceeds the limit for integer string conversion".into()));
+                return Err(JsonError(
+                    "Exceeds the limit for integer string conversion".into(),
+                ));
             }
             Ok(PyValue::Int(PyInt::from_decimal(neg, digits)))
         }
@@ -954,11 +960,14 @@ mod tests {
             "['a', 1.0]"
         );
         let v = json_loads(r#"{"a": [1, 2.5e0, NaN], "b": {}, "a": -0}"#).unwrap();
-        assert_eq!(
-            json_dumps_indent2(&v),
-            "{\n  \"a\": 0,\n  \"b\": {}\n}"
+        assert_eq!(json_dumps_indent2(&v), "{\n  \"a\": 0,\n  \"b\": {}\n}");
+        assert!(
+            json_loads("1e400")
+                .unwrap()
+                .py_float()
+                .unwrap()
+                .is_infinite()
         );
-        assert!(json_loads("1e400").unwrap().py_float().unwrap().is_infinite());
         assert!(json_loads("01").is_err());
         assert_eq!(py_clamp(f64::NAN, -120.0, 0.0), 0.0);
     }

@@ -74,7 +74,11 @@ pub const SCALES: [Scale; 16] = [
         &[0.0, 2.0, 3.0, 5.0, 7.0, 9.0, 11.0],
     ),
     scale("dorian", "Dorian", &[0.0, 2.0, 3.0, 5.0, 7.0, 9.0, 10.0]),
-    scale("phrygian", "Phrygian", &[0.0, 1.0, 3.0, 5.0, 7.0, 8.0, 10.0]),
+    scale(
+        "phrygian",
+        "Phrygian",
+        &[0.0, 1.0, 3.0, 5.0, 7.0, 8.0, 10.0],
+    ),
     scale("lydian", "Lydian", &[0.0, 2.0, 4.0, 6.0, 7.0, 9.0, 11.0]),
     scale(
         "mixolydian",
@@ -219,7 +223,9 @@ pub fn settings_from_config(cfg: &PyDict) -> Result<GearSettings, PyExc> {
     let scale_keys: Vec<&str> = SCALES.iter().map(|s| s.key).collect();
     Ok(GearSettings {
         mode: choice(cfg.get("gear_report_mode"), &MODES, DEFAULT_MODE),
-        collapse_sport: cfg.get("gear_speech_sport_once").is_some_and(PyValue::truthy),
+        collapse_sport: cfg
+            .get("gear_speech_sport_once")
+            .is_some_and(PyValue::truthy),
         number_style: choice(
             cfg.get("gear_speech_number_style"),
             &NUMBER_STYLES,
@@ -401,8 +407,7 @@ pub fn extended_gear_degree(gear_str: &str) -> Option<i64> {
         "D" | "S" | "M" => return Some(1),
         _ => {}
     }
-    if s.chars().count() > 1 && (s.starts_with('S') || s.starts_with('M')) && is_digits(tail(&s))
-    {
+    if s.chars().count() > 1 && (s.starts_with('S') || s.starts_with('M')) && is_digits(tail(&s)) {
         return Some(saturate(&crate::pyval::py_int_parse(tail(&s))?));
     }
     let num = crate::pyval::py_int_parse(&s)?;

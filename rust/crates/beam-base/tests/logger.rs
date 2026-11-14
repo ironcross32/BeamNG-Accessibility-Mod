@@ -78,17 +78,23 @@ fn facade_reaches_file_and_sink() {
     init_with(&path, false);
     let cap = Arc::new(Capture(Mutex::new(Vec::new())));
     let id = add_sink(cap.clone());
-    log::info!("from beam-base test {}", 42);
-    log::debug!("dropped at INFO");
+    log::info!(target: "beam_base::test", "from beam-base test {}", 42);
+    log::debug!(target: "beam_base::test", "dropped at INFO");
     log::warn!(target: "some_dependency", "dropped: not ours");
     remove_sink(id);
-    log::info!("after removal");
+    log::info!(target: "beam_base::test", "after removal");
     let lines = cap.0.lock().clone();
     assert_eq!(lines.len(), 1, "{lines:?}");
-    assert!(lines[0].ends_with(" [INFO] from beam-base test 42"), "{lines:?}");
+    assert!(
+        lines[0].ends_with(" [INFO] from beam-base test 42"),
+        "{lines:?}"
+    );
     let text = std::fs::read_to_string(&path).unwrap();
     let file_lines: Vec<&str> = text.split("\r\n").collect();
-    assert!(file_lines[0].ends_with(" [INFO] ==================== Logger Initialized ===================="));
+    assert!(
+        file_lines[0]
+            .ends_with(" [INFO] ==================== Logger Initialized ====================")
+    );
     assert!(file_lines[1].ends_with(" [INFO] from beam-base test 42"));
     assert!(file_lines[2].ends_with(" [INFO] after removal"));
     assert_eq!(file_lines.len(), 4, "{text:?}");

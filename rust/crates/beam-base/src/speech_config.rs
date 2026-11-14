@@ -38,7 +38,11 @@ pub fn migrate_config(cfg: &mut PyDict) -> bool {
         // SAPI's -10..10 becomes a 0..100 percentage. A value int() rejects is dropped.
         if let Ok(n) = v.py_int() {
             let rate = n.clamp_py(-10, 10);
-            setdefault(cfg, "speech_rate", PyValue::Int(PyInt::Small((rate + 10) * 5)));
+            setdefault(
+                cfg,
+                "speech_rate",
+                PyValue::Int(PyInt::Small((rate + 10) * 5)),
+            );
         }
         changed = true;
     }

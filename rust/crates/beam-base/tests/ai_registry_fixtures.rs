@@ -35,8 +35,16 @@ fn constants_match_python() {
         pairs(&c["OPENAI_REASONING_EFFORTS"]),
         own(&OPENAI_REASONING_EFFORTS)
     );
-    assert_eq!(pairs(&c["OPENAI_DETAIL_LEVELS"]), own(&OPENAI_DETAIL_LEVELS));
-    let keys: Vec<&str> = fx["all_config_keys"].as_array().unwrap().iter().map(s).collect();
+    assert_eq!(
+        pairs(&c["OPENAI_DETAIL_LEVELS"]),
+        own(&OPENAI_DETAIL_LEVELS)
+    );
+    let keys: Vec<&str> = fx["all_config_keys"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(s)
+        .collect();
     assert_eq!(all_config_keys(), keys);
 }
 
@@ -48,11 +56,19 @@ fn provider_lookups_match_python() {
         let pid = case["pid"].as_str().unwrap_or("\u{0}none");
         assert_eq!(provider_display_name(pid), s(&case["display"]), "{pid}");
         assert_eq!(own(vision_models_for(pid)), pairs(&case["models"]), "{pid}");
-        let names: Vec<&str> = case["model_names"].as_array().unwrap().iter().map(s).collect();
+        let names: Vec<&str> = case["model_names"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(s)
+            .collect();
         assert_eq!(model_names_for(pid), names);
         assert_eq!(default_model_for(pid), s(&case["default_model"]));
         let (k, m) = config_keys_for(pid);
-        assert_eq!(vec![k, m], vec![s(&case["config_keys"][0]), s(&case["config_keys"][1])]);
+        assert_eq!(
+            vec![k, m],
+            vec![s(&case["config_keys"][0]), s(&case["config_keys"][1])]
+        );
         assert_eq!(key_help_for(pid), s(&case["key_help"]));
         let extras = extras_for(pid);
         let want = case["extras"].as_array().unwrap();

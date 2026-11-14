@@ -36,7 +36,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:a2ddfbc1de0749a9bace6ba9fccdf082"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -145,7 +145,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:4fb94d00b440468880d49ed5ad8702ab"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -454,7 +454,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:6225cac18f0444a9adae78e2b8c9a25c"
+       "ASSISTANT_TOGGLE:<tok3>"
       ]
      ],
      "now": {
@@ -737,7 +737,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:3b58ab92d73c483dbf3542151cb3bcba"
+       "ASSISTANT_TOGGLE:<tok4>"
       ]
      ],
      "now": {
@@ -859,7 +859,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:8218bbabeb5e4c598b87587fce3aefe8"
+       "ASSISTANT_TOGGLE:<tok5>"
       ]
      ],
      "now": {
@@ -1174,7 +1174,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:c8f9c3f9d5184b9e8f5eebf5a2be1f18"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -1279,7 +1279,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:28c5fba8591e436c93a85ef7d11e7d1c"
+       "ASSISTANT_TOGGLE:<tok2>"
       ]
      ],
      "now": {
@@ -1463,7 +1463,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:61f86eb7a9ab474baea017808063db2a"
+       "ASSISTANT_TOGGLE:<tok3>"
       ]
      ],
      "now": {
@@ -1644,7 +1644,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:f54cfa62c6e948bc8b7e3f635b6c9651"
+       "ASSISTANT_TOGGLE:<tok4>"
       ]
      ],
      "now": {
@@ -1725,7 +1725,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:3af49c453aae41b0a636a94e3ec9e4d5"
+       "ASSISTANT_STATUS:<tok5>"
       ]
      ],
      "now": {
@@ -1846,7 +1846,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:65f0e0d5ff5f4431be8b9a10322e70a9"
+       "ASSISTANT_TOGGLE:<tok6>"
       ]
      ],
      "now": {
@@ -1922,7 +1922,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:7997b5b5c1b54560bf2c60a33694c926"
+       "ASSISTANT_STATUS:<tok7>"
       ]
      ],
      "now": {
@@ -2057,7 +2057,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:69604e4e543e40469b3a497dde0cb744"
+       "ASSISTANT_STATUS:<tok8>"
       ]
      ],
      "now": {
@@ -2378,7 +2378,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:2b8d9269fac84d5b9d3f8cc027fee9ab"
+       "ASSISTANT_TOGGLE:<tok9>"
       ]
      ],
      "now": {
@@ -2467,7 +2467,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:d003f67b84fc421ebe409ba3ca703a51"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -2786,7 +2786,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:69ca957b1e1b491ea7664425c4033a53"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -3390,7 +3390,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:b0cb8338cd894b60ba52b3612f9e593a"
+       "ASSISTANT_STATUS:<tok1>"
       ]
      ],
      "now": {
@@ -3423,7 +3423,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:1ea1c44ff6c34e46941c4c0c12d3395e"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -3486,7 +3486,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:3298ab51e9b947ffb32a9038a319defd"
+       "ASSISTANT_TOGGLE:<tok3>"
       ]
      ],
      "now": {
@@ -3723,7 +3723,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:19422b7b926d43738f48cf62cef1511b"
+       "ASSISTANT_TOGGLE:<tok4>"
       ]
      ],
      "now": {
@@ -3957,7 +3957,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:a4bc14eb77e249acb8faa6d2924200fe"
+       "ASSISTANT_TOGGLE:<tok5>"
       ]
      ],
      "now": {
@@ -4263,7 +4263,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:569bedc7c16f486197fc9221a1d24115"
+       "ASSISTANT_TOGGLE:<tok6>"
       ]
      ],
      "now": {
@@ -4292,7 +4292,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:827b76ea2856444a9259ff95bccbb640"
+       "ASSISTANT_STATUS:<tok1>"
       ]
      ],
      "now": {
@@ -4355,7 +4355,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:2a09b09f917b4f2885213e2c061055f8"
+       "ASSISTANT_TOGGLE:<tok2>"
       ]
      ],
      "now": {
@@ -4543,7 +4543,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:2fb1ad44e0e442faaa967c2b8a6397f3"
+       "ASSISTANT_STATUS:<tok3>"
       ]
      ],
      "now": {
@@ -4600,7 +4600,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:a5b34e167b614eaab3b2cb5d7630b9a5"
+       "ASSISTANT_TOGGLE:<tok4>"
       ]
      ],
      "now": {
@@ -4664,7 +4664,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:99c2ec7b69c445a39da771188a48a630"
+       "ASSISTANT_STATUS:<tok5>"
       ]
      ],
      "now": {
@@ -5008,7 +5008,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:8826bd6a88eb4bfbb7306098c8ab96cc"
+       "ASSISTANT_STATUS:<tok6>"
       ]
      ],
      "now": {
@@ -5462,7 +5462,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:42c3693ab65341c498b9891537c1da6d"
+       "ASSISTANT_TOGGLE:<tok7>"
       ]
      ],
      "now": {
@@ -5488,7 +5488,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:21a87b11bd4f4dce8879be2259471d1c"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -5810,7 +5810,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:d816353fc71343069f55fb03251feb80"
+       "ASSISTANT_TOGGLE:<tok2>"
       ]
      ],
      "now": {
@@ -5852,7 +5852,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:d21967e6766a4b6c95f5768d7a5219af"
+       "ASSISTANT_STATUS:<tok3>"
       ]
      ],
      "now": {
@@ -6615,7 +6615,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:2033af95229246ae8653e7e7e829d060"
+       "ASSISTANT_TOGGLE:<tok4>"
       ]
      ],
      "now": {
@@ -7130,7 +7130,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:3f37f7e29f164149841ca9563065dd98"
+       "ASSISTANT_STATUS:<tok1>"
       ]
      ],
      "now": {
@@ -7206,7 +7206,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:8e2b02c3edfb49469e5b27deeefd4911"
+       "ASSISTANT_TOGGLE:<tok2>"
       ]
      ],
      "now": {
@@ -7343,7 +7343,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:c8a64639a1f54397bd8a8deadacc5eb4"
+       "ASSISTANT_STATUS:<tok1>"
       ]
      ],
      "now": {
@@ -7612,7 +7612,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:fd7fa3ae30854b5bb4bfc93e1da09904"
+       "ASSISTANT_TOGGLE:<tok2>"
       ]
      ],
      "now": {
@@ -7656,7 +7656,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:28ee941f870c420b847a786fcf1907bc"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -7746,7 +7746,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:72d294d3aad14eec9f78b13ebfe720e3"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -7947,7 +7947,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:ee41593507fb4d7b8116684fa6ebee6b"
+       "ASSISTANT_TOGGLE:<tok3>"
       ]
      ],
      "now": {
@@ -7968,7 +7968,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:2a016d7ab877440788decae916eea413"
+       "ASSISTANT_STATUS:<tok4>"
       ]
      ],
      "now": {
@@ -8078,7 +8078,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:e404ed6292de41598308c06635bb410a"
+       "ASSISTANT_TOGGLE:<tok5>"
       ]
      ],
      "now": {
@@ -8419,7 +8419,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:9cd91065087a4f55b1f92bae40084279"
+       "ASSISTANT_STATUS:<tok1>"
       ]
      ],
      "now": {
@@ -8437,7 +8437,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:f29195ca976148f3afd36d0451f09369"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -8470,7 +8470,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:3eaf81bd79414bd19b12a5776019d14e"
+       "ASSISTANT_TOGGLE:<tok3>"
       ]
      ],
      "now": {
@@ -8811,7 +8811,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:7f52dceb72264d65adc966ca3820baba"
+       "ASSISTANT_STATUS:<tok1>"
       ]
      ],
      "now": {
@@ -8931,7 +8931,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:add1e7c445d74fcaa798b81712c13a0f"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -8949,7 +8949,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:8320bccd1fb34c96ae711e5d0a6ef35d"
+       "ASSISTANT_TOGGLE:<tok3>"
       ]
      ],
      "now": {
@@ -9167,7 +9167,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:5abb589a467c4a4583fc1be455ae4179"
+       "ASSISTANT_TOGGLE:<tok4>"
       ]
      ],
      "now": {
@@ -9242,7 +9242,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:62c219da38fd42d38b51b5c3a2d39b46"
+       "ASSISTANT_STATUS:<tok5>"
       ]
      ],
      "now": {
@@ -9671,7 +9671,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:762e92f7ac1f49f1869538d35bd01dc8"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -9766,7 +9766,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:1022f562c3c14bc39c158659827166a9"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -9926,7 +9926,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:a802db9aa79c46d2ac324e965bb1a9ff"
+       "ASSISTANT_TOGGLE:<tok3>"
       ]
      ],
      "now": {
@@ -9965,7 +9965,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:ab3d99ae3d614688b36446559f3b4959"
+       "ASSISTANT_STATUS:<tok4>"
       ]
      ],
      "now": {
@@ -10248,7 +10248,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:1f2de0e1af44477392470b0b21f79a05"
+       "ASSISTANT_TOGGLE:<tok5>"
       ]
      ],
      "now": {
@@ -10503,7 +10503,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:973c5db969a34484873734bd3579c2b9"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -10545,7 +10545,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:08f89de2eb614b2686b304e20a035ea1"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -10762,7 +10762,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:8d1c9841bfb34266bb91b1552519a1cd"
+       "ASSISTANT_TOGGLE:<tok3>"
       ]
      ],
      "now": {
@@ -11089,7 +11089,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:77160644a8264ab3afbec79832726a6b"
+       "ASSISTANT_STATUS:<tok4>"
       ]
      ],
      "now": {
@@ -11128,7 +11128,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:0d4600f512c54df8be55e9bfbb2982c4"
+       "ASSISTANT_STATUS:<tok5>"
       ]
      ],
      "now": {
@@ -11361,7 +11361,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:7cbe301869564be1b2cb56c3dbe551bf"
+       "ASSISTANT_TOGGLE:<tok6>"
       ]
      ],
      "now": {
@@ -11387,7 +11387,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:5f36b67a45824131883654ea54e3c080"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -11516,7 +11516,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:ea85da284f9e4793b431675f91d89cb1"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -11992,7 +11992,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:0bcdfce829e146019081214f5aa05174"
+       "ASSISTANT_STATUS:<tok3>"
       ]
      ],
      "now": {
@@ -12446,7 +12446,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:dc4db319e8604ee58c5125d149525a7b"
+       "ASSISTANT_STATUS:<tok4>"
       ]
      ],
      "now": {
@@ -12533,7 +12533,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:e8cf84bbaece4ca19e2f6310607ad5e8"
+       "ASSISTANT_TOGGLE:<tok5>"
       ]
      ],
      "now": {
@@ -12661,7 +12661,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:7c6a1576d04a49f1bbd07793f132ee48"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -12895,7 +12895,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:dba41d5a8d46440cb70d7019292bef98"
+       "ASSISTANT_TOGGLE:<tok2>"
       ]
      ],
      "now": {
@@ -12952,7 +12952,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:5e4f9b4effb54daba0711a13c9dd905d"
+       "ASSISTANT_STATUS:<tok3>"
       ]
      ],
      "now": {
@@ -13095,7 +13095,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:3cde499b0ca5489ca35392d0a78c66a8"
+       "ASSISTANT_STATUS:<tok4>"
       ]
      ],
      "now": {
@@ -13572,7 +13572,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:20b7879a317442cd8bc12573822132b2"
+       "ASSISTANT_STATUS:<tok1>"
       ]
      ],
      "now": {
@@ -13590,7 +13590,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:3e0c851ebd6c4c5b916a225b66a8ce0b"
+       "ASSISTANT_TOGGLE:<tok2>"
       ]
      ],
      "now": {
@@ -13814,7 +13814,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:7bb2c448abad439cb8421683f9f39dfc"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -13934,7 +13934,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:944130ef0a07424f9e2fffca8037b741"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -14095,7 +14095,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:d2bee0264c2b47198efea1a5d73282f7"
+       "ASSISTANT_STATUS:<tok3>"
       ]
      ],
      "now": {
@@ -14167,7 +14167,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:c1e8ce0725bc40db8e499d81a4605c08"
+       "ASSISTANT_TOGGLE:<tok4>"
       ]
      ],
      "now": {
@@ -14446,7 +14446,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:385a2e8093674838855c9ff75bddfd97"
+       "ASSISTANT_TOGGLE:<tok5>"
       ]
      ],
      "now": {
@@ -14509,7 +14509,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:e0fb28bb22bb42e0b9326c07d573cd78"
+       "ASSISTANT_STATUS:<tok6>"
       ]
      ],
      "now": {
@@ -14800,7 +14800,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:68f13ed3404d46ebb4a5233b5c19bec8"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -15096,7 +15096,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:f0640b6c6af14ee39842afb2e587e10d"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -15300,7 +15300,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:8e396077fcb24b34bffa06a5846e2565"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -15642,7 +15642,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:b6bc973205224768b0a5f0b4891bdb6e"
+       "ASSISTANT_STATUS:<tok3>"
       ]
      ],
      "now": {
@@ -15735,7 +15735,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:7a3fd90a33bf488cb405dec902a5405c"
+       "ASSISTANT_TOGGLE:<tok4>"
       ]
      ],
      "now": {
@@ -15983,7 +15983,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:22e6fb1fe4d340d480d2ab72d44e2969"
+       "ASSISTANT_STATUS:<tok5>"
       ]
      ],
      "now": {
@@ -16108,7 +16108,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:d1ae242662f1484ab7976f5d4287ab8a"
+       "ASSISTANT_TOGGLE:<tok6>"
       ]
      ],
      "now": {
@@ -16454,7 +16454,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:4a833b05c50d48b7b3304559be3cb1c7"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -16547,7 +16547,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:d5492e8994a244169d19d1116bd1a677"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -16782,7 +16782,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:37e8aae1ffa94cb1acf6a2a634796921"
+       "ASSISTANT_TOGGLE:<tok3>"
       ]
      ],
      "now": {
@@ -16923,7 +16923,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:e255ca86711d407eb92df90ccf1997b1"
+       "ASSISTANT_TOGGLE:<tok4>"
       ]
      ],
      "now": {
@@ -17258,7 +17258,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:a38846b28e0f44a287707177aea33af2"
+       "ASSISTANT_TOGGLE:<tok5>"
       ]
      ],
      "now": {
@@ -17612,7 +17612,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:848d7c98bb204ea999f0a7c050f3be90"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -17755,7 +17755,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:fd5259bd604747dfbe1229c576c78980"
+       "ASSISTANT_TOGGLE:<tok2>"
       ]
      ],
      "now": {
@@ -17952,7 +17952,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:329fe5488b7d481f8d9fede77d70ddc9"
+       "ASSISTANT_STATUS:<tok3>"
       ]
      ],
      "now": {
@@ -18109,7 +18109,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:fb6a85d99c7049a2ae40d92da7f6c160"
+       "ASSISTANT_STATUS:<tok1>"
       ]
      ],
      "now": {
@@ -18246,7 +18246,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:0b4053d0d48548248341d13e98d1ee16"
+       "ASSISTANT_TOGGLE:<tok2>"
       ]
      ],
      "now": {
@@ -18699,7 +18699,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:ec1b48a7c0ad43d3ab7d88151c65eb18"
+       "ASSISTANT_STATUS:<tok1>"
       ]
      ],
      "now": {
@@ -18732,7 +18732,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:74cbab6a1e1a47f0891b1e5947a6e2c1"
+       "ASSISTANT_TOGGLE:<tok2>"
       ]
      ],
      "now": {
@@ -18898,7 +18898,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:514bab09ea6442fdaf43573143101c2f"
+       "ASSISTANT_TOGGLE:<tok3>"
       ]
      ],
      "now": {
@@ -19076,7 +19076,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:679fd2da1dc64822b6b9ea0892de005a"
+       "ASSISTANT_STATUS:<tok4>"
       ]
      ],
      "now": {
@@ -19287,7 +19287,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:e2adbb50aa1a49e89e03a6df0beabf64"
+       "ASSISTANT_STATUS:<tok5>"
       ]
      ],
      "now": {
@@ -19329,7 +19329,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:1a217fcb89f14e83b4da319cf5fa2584"
+       "ASSISTANT_STATUS:<tok6>"
       ]
      ],
      "now": {
@@ -19554,7 +19554,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:483cf44806a949b985f8500fb479d116"
+       "ASSISTANT_TOGGLE:<tok7>"
       ]
      ],
      "now": {
@@ -19740,7 +19740,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:70a3ce1a7c6b43d797e0c9f5f5c910ff"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -19807,7 +19807,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:d88d19109a414e279175363c90e0a0b2"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -19828,7 +19828,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:f5ddae77964344d4af179c11c9480125"
+       "ASSISTANT_TOGGLE:<tok3>"
       ]
      ],
      "now": {
@@ -20157,7 +20157,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:828b3074cedf42bb8e290ad57b15b8bd"
+       "ASSISTANT_STATUS:<tok4>"
       ]
      ],
      "now": {
@@ -20464,7 +20464,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:98dfaae4771344c289048d74a7340d38"
+       "ASSISTANT_TOGGLE:<tok5>"
       ]
      ],
      "now": {
@@ -20824,7 +20824,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:03b61642e44e4bf288cb9ced46952725"
+       "ASSISTANT_TOGGLE:<tok6>"
       ]
      ],
      "now": {
@@ -21013,7 +21013,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:fa50509eb53b414ea07edfca50c00649"
+       "ASSISTANT_STATUS:<tok1>"
       ]
      ],
      "now": {
@@ -21059,7 +21059,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:ac6a3f4a4d2747a6bc06f91802f4f55b"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -21173,7 +21173,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:d45e5e38bc194233b3fa95aa5878d75d"
+       "ASSISTANT_TOGGLE:<tok3>"
       ]
      ],
      "now": {
@@ -21272,7 +21272,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:5ed7a7d5a0c64e838142ae5427c35c0e"
+       "ASSISTANT_STATUS:<tok4>"
       ]
      ],
      "now": {
@@ -21500,7 +21500,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:0d0fcf516adb4ceab9382f42fb244839"
+       "ASSISTANT_STATUS:<tok5>"
       ]
      ],
      "now": {
@@ -21539,7 +21539,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:6167c7617973403e97487218a119ca2d"
+       "ASSISTANT_TOGGLE:<tok6>"
       ]
      ],
      "now": {
@@ -21736,7 +21736,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:d4d0a17e6b6d40e5b8690124a02b99e4"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -22193,7 +22193,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:eb6fd781023746ce9988a7beea6499af"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -22498,7 +22498,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:ad01221769304c588f2155024f8ed1b7"
+       "ASSISTANT_TOGGLE:<tok2>"
       ]
      ],
      "now": {
@@ -22720,7 +22720,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:56117a341ab1400cae3328026c03b8d0"
+       "ASSISTANT_STATUS:<tok3>"
       ]
      ],
      "now": {
@@ -22741,7 +22741,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:0108e43af3b24c6aa532b126331a2d0c"
+       "ASSISTANT_TOGGLE:<tok4>"
       ]
      ],
      "now": {
@@ -22909,7 +22909,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:023f2bf9fa5b4446a9757ff806497e47"
+       "ASSISTANT_STATUS:<tok5>"
       ]
      ],
      "now": {
@@ -23251,7 +23251,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:ad58f1ad677d4585b44f4943573d0980"
+       "ASSISTANT_STATUS:<tok1>"
       ]
      ],
      "now": {
@@ -23299,7 +23299,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:3d9d88c0359846aeb968aaa168273a70"
+       "ASSISTANT_TOGGLE:<tok2>"
       ]
      ],
      "now": {
@@ -23783,7 +23783,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:e6e6932fd7df441fbfab86644a4bded2"
+       "ASSISTANT_STATUS:<tok3>"
       ]
      ],
      "now": {
@@ -24174,7 +24174,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:e711494a0ffe4315aa36b28a954dd689"
+       "ASSISTANT_TOGGLE:<tok4>"
       ]
      ],
      "now": {
@@ -24447,7 +24447,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:4f5edc9a17db4fa4803013bdb6ed4039"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -24824,7 +24824,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:5efebb2f23d844f38dee3c42fa87d971"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -25002,7 +25002,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:5ca2c22f480f46dea528e5832335e49a"
+       "ASSISTANT_TOGGLE:<tok3>"
       ]
      ],
      "now": {
@@ -25071,7 +25071,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:92f7335a55164bfdb280baac6da7259b"
+       "ASSISTANT_TOGGLE:<tok4>"
       ]
      ],
      "now": {
@@ -25258,7 +25258,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:4a5c177ce9a34153be3585003c2ae402"
+       "ASSISTANT_STATUS:<tok5>"
       ]
      ],
      "now": {
@@ -25557,7 +25557,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:a68e30e3cfca435e91a606314511879b"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -25827,7 +25827,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:a7cd1a11cbac436e96c141acd1739887"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -25884,7 +25884,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:95f3b777bd784e7a994e75dd6df95f39"
+       "ASSISTANT_TOGGLE:<tok3>"
       ]
      ],
      "now": {
@@ -26001,7 +26001,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:3257d420361b44d0b1c34168282d5369"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -26320,7 +26320,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:19031714fbf1408d9066d69952a2a5d4"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -26481,7 +26481,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:88988b08116b4f629ccd1c37c6a671dd"
+       "ASSISTANT_TOGGLE:<tok3>"
       ]
      ],
      "now": {
@@ -26502,7 +26502,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:f9ab1ef26d4747b99428985a20010e53"
+       "ASSISTANT_STATUS:<tok4>"
       ]
      ],
      "now": {
@@ -26991,7 +26991,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:f7852197066a470fac44492294125dca"
+       "ASSISTANT_TOGGLE:<tok5>"
       ]
      ],
      "now": {
@@ -27244,7 +27244,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:f3c1c432becf46bc8694d5aba03a3283"
+       "ASSISTANT_TOGGLE:<tok6>"
       ]
      ],
      "now": {
@@ -27363,7 +27363,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:feec593250ca40f3bbde8b7a2b9b581a"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -27427,7 +27427,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:8aead93d89ab4d97bd73b7ce70f43632"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -27448,7 +27448,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:46f6964292904c1eb80f2636a207793d"
+       "ASSISTANT_STATUS:<tok3>"
       ]
      ],
      "now": {
@@ -27845,7 +27845,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:c462e579010a488bb9e537faeb7f9347"
+       "ASSISTANT_TOGGLE:<tok4>"
       ]
      ],
      "now": {
@@ -27884,7 +27884,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:c8d14f9cc512495d9acd5796a59ef10d"
+       "ASSISTANT_STATUS:<tok5>"
       ]
      ],
      "now": {
@@ -27943,7 +27943,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:f434015498464b91bab617c0de20c524"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -28021,7 +28021,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:80bb42eb6d864c10939b6825251c5093"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -28060,7 +28060,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:98f33f0090c943708dc3e49bd60f9eab"
+       "ASSISTANT_STATUS:<tok3>"
       ]
      ],
      "now": {
@@ -28166,7 +28166,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:b5c8b29466fb45878a72f6bee01df84f"
+       "ASSISTANT_STATUS:<tok4>"
       ]
      ],
      "now": {
@@ -28571,7 +28571,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:1210ab93c47b4cc8b40f47eb2dd8ee5f"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -28688,7 +28688,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:f1c5eb13574d47389460eb01b262fe33"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -28939,7 +28939,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:54aa386f60a64e6fb936be18adcad2ec"
+       "ASSISTANT_TOGGLE:<tok3>"
       ]
      ],
      "now": {
@@ -29252,7 +29252,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:03d662a6c0cd4700b56816ed5516f2a8"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -29486,7 +29486,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:f9e4c25b99544af6a207a3b284b0ef5a"
+       "ASSISTANT_TOGGLE:<tok2>"
       ]
      ],
      "now": {
@@ -29643,7 +29643,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:8653989297b74e318245bd3cb18ced7b"
+       "ASSISTANT_STATUS:<tok3>"
       ]
      ],
      "now": {
@@ -29713,7 +29713,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:86a1a555eeb145bd8908883e4b5fcef7"
+       "ASSISTANT_TOGGLE:<tok4>"
       ]
      ],
      "now": {
@@ -30316,7 +30316,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:00cedb1a0b344f879c81ad6023dac066"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -30874,7 +30874,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:984168a8b5fc44f087d0362ac49e3d87"
+       "ASSISTANT_TOGGLE:<tok2>"
       ]
      ],
      "now": {
@@ -31003,7 +31003,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:56bde6d58e594ffe814764b4c3a001f5"
+       "ASSISTANT_STATUS:<tok3>"
       ]
      ],
      "now": {
@@ -31249,7 +31249,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:69eb96b61c45471abd4885901dd5bdb6"
+       "ASSISTANT_STATUS:<tok4>"
       ]
      ],
      "now": {
@@ -31380,7 +31380,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:5268c229d6b9471fba74f96cb6dcab2c"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -31714,7 +31714,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:c1cc8e6f1f0c4b0c8b46a08f11861bf0"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -32144,7 +32144,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:5609d610eb234c7fbcd041d4e4f51ff4"
+       "ASSISTANT_STATUS:<tok1>"
       ]
      ],
      "now": {
@@ -32220,7 +32220,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:b8c015edc1fa409db94e322ecf466d2e"
+       "ASSISTANT_TOGGLE:<tok2>"
       ]
      ],
      "now": {
@@ -32295,7 +32295,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:eab1eb21fed1418faa41476025604449"
+       "ASSISTANT_STATUS:<tok3>"
       ]
      ],
      "now": {
@@ -32486,7 +32486,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:15d6add275cd48c5be6d79a86da518eb"
+       "ASSISTANT_TOGGLE:<tok4>"
       ]
      ],
      "now": {
@@ -32854,7 +32854,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:6f8af9a7f18148bcb8697d899e6e9595"
+       "ASSISTANT_STATUS:<tok5>"
       ]
      ],
      "now": {
@@ -32907,7 +32907,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:3cd551dff40f4ac79f8509b605265f53"
+       "ASSISTANT_STATUS:<tok6>"
       ]
      ],
      "now": {
@@ -32981,7 +32981,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:02e59ac3186e46279083a4eeeee29a5d"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {
@@ -33027,7 +33027,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:b94433356dfd47a9adcc1bb755052363"
+       "ASSISTANT_STATUS:<tok2>"
       ]
      ],
      "now": {
@@ -33478,7 +33478,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_STATUS:66c14f4ef9db491e9185c7f94be5e1fb"
+       "ASSISTANT_STATUS:<tok3>"
       ]
      ],
      "now": {
@@ -33652,7 +33652,7 @@
      "log": [
       [
        "send",
-       "ASSISTANT_TOGGLE:336c6cbe339d4be495eaf756ddb99ae5"
+       "ASSISTANT_TOGGLE:<tok1>"
       ]
      ],
      "now": {

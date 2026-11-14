@@ -44,7 +44,11 @@ fn coercions_match_python() {
             _ => false,
         };
         if !int_ok {
-            failures.push(format!("int({short}) = {:?}, want {}", v.py_int(), case["int"]));
+            failures.push(format!(
+                "int({short}) = {:?}, want {}",
+                v.py_int(),
+                case["int"]
+            ));
         }
         let float_ok = match (v.py_float(), case["float"].get("ok")) {
             (Ok(x), Some(want)) => same_f64(x, f(want)),

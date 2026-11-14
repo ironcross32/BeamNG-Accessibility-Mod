@@ -52,7 +52,7 @@ Update this table as work lands. One line per workstream from `04-workstreams.md
 | ID | Workstream | State | Notes |
 |----|-----------|-------|-------|
 | W0 | Scaffold workspace, Tauri shell, fixture harness, seed modules | done | builds, 22 tests pass, window opens; admin-elevated launch not yet checked |
-| B1 | beam-base: config, logger, secretstore, gear_report, AI registry | in progress | |
+| B1 | beam-base: config, logger, secretstore, gear_report, AI registry | done | 51 tests; both Python loaders reproduced (`load_config_engine`, `load_config_configurator`). Config is held as `pyval::PyDict`. Configurator audio-test helpers belong to U2 |
 | B2 | beam-reports: pure report modules | done | 87 tests, bit-exact fixtures. Has its own `pyops` (PyValue, json_loads); B1 is writing a similar `pyval` in beam-base: reconcile at I1. wheel_slip_sim scenario 7 belongs to A1 |
 | B3 | beam-road: road guidance, assistant, recorders | in progress | |
 | S1 | beam-speech: Prism FFI and speech | done | 29 tests; matches Python backend/voice listing on this machine; app must call `speech::atexit()` on exit; ship `prism.dll` beside the exe |
