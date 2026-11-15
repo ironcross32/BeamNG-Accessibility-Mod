@@ -7,7 +7,6 @@
 use std::sync::LazyLock;
 
 use indexmap::IndexMap;
-use serde_json::Value;
 
 use crate::f9_commands::HelpKey;
 use crate::keyboard::KeyEvent;
@@ -32,8 +31,9 @@ pub fn assistant_cue(kind: &str, choices: &[String]) {
     not_ported!("ai_layer::assistant_cue");
 }
 
-/// `_assistant_arrival(arrival)`, the driving assistant's arrival callback.
-pub fn assistant_arrival(arrival: &Value) {
+/// `_assistant_arrival(arrival)`, the driving assistant's arrival callback. `arrival` is
+/// the assistant's decoded dict (beam-road's value type; see `crate::convert`).
+pub fn assistant_arrival(arrival: &beam_road::pyjson::Value) {
     let _ = arrival;
     not_ported!("ai_layer::assistant_arrival");
 }

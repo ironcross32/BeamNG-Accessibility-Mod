@@ -24,18 +24,22 @@ use parking_lot::{Mutex, MutexGuard, RwLock};
 use serde::Serialize;
 use serde_json::{Map, Value, json};
 
-use crate::compat::beam_audio::controller::AudioController;
-use crate::compat::beam_reports::drift_speech::DriftAnnouncer;
-use crate::compat::beam_road::challenge_results::HillClimbChallengeRecorder;
-use crate::compat::beam_road::driving_assistant::{Callbacks, DrivingAssistant};
-use crate::compat::beam_road::road_guidance::RoadGuidanceFeed;
+pub use crate::convert::pyjson_to_json;
+use crate::convert::{
+    assistant_snapshot_json, feed_snapshot_json, junction_proximity_snapshot_json,
+};
 use crate::timer::{Event, Timer, monotonic, time_time};
 use crate::units::{has_air_system, has_electric_drive, has_engine_temp};
+use beam_audio::controller::AudioController;
 use beam_base::gear_report::{self, GearSettings};
 use beam_reports::camera_lineup::{self, Geometry};
+use beam_reports::drift_speech::{self, DriftAnnouncer};
 use beam_reports::wheel_slip::{self, SlipDetector, SlipResult};
 use beam_road::assistant_diagnostics::AssistantDiagnosticRecorder;
+use beam_road::challenge_results::HillClimbChallengeRecorder;
+use beam_road::driving_assistant::{DrivingAssistant, SpeakOpts};
 use beam_road::road_diagnostics::RoadDiagnosticRecorder;
+use beam_road::road_guidance::RoadGuidanceFeed;
 
 // ---- Constants that sit in the shared-state section --------------------------------------
 
@@ -1018,25 +1022,52 @@ fn config_dir() -> std::path::PathBuf {
     beam_base::paths::config_dir()
 }
 
-static ASSISTANT_DIAGNOSTICS: LazyLock<AssistantDiagnosticRecorder> =
-    LazyLock::new(|| AssistantDiagnosticRecorder::new(config_dir().join("assistant_diagnostics")));
+/// Shared with the driving assistant, which records into it (`ASSISTANT_DIAGNOSTICS`).
+static ASSISTANT_DIAGNOSTICS: LazyLock<Arc<AssistantDiagnosticRecorder>> = LazyLock::new(|| {
+    Arc::new(AssistantDiagnosticRecorder::new(
+        config_dir().join("assistant_diagnostics"),
+    ))
+});
 static ROAD_DIAGNOSTICS: LazyLock<RoadDiagnosticRecorder> =
     LazyLock::new(|| RoadDiagnosticRecorder::new(config_dir().join("road_diagnostics")));
+/// The Python constructor creates the directory at import; a failure there stops the app
+/// from starting, so it is a panic here (on first use).
 static HILL_CLIMB_CHALLENGE: LazyLock<HillClimbChallengeRecorder> = LazyLock::new(|| {
-    HillClimbChallengeRecorder::new(config_dir().join("challenges").join("hill_climb"))
+    let dir = config_dir().join("challenges").join("hill_climb");
+    HillClimbChallengeRecorder::new(&dir)
+        .unwrap_or_else(|e| panic!("HillClimbChallengeRecorder({}): {e}", dir.display()))
 });
-static DRIFT_ANNOUNCER: LazyLock<DriftAnnouncer> = LazyLock::new(DriftAnnouncer::new);
+/// `DriftAnnouncer(lambda *args, **kwargs: say(*args, **kwargs))`: enabled, on
+/// `time.monotonic`. It calls `say(phrase, interrupt=..., source="drift")`.
+static DRIFT_ANNOUNCER: LazyLock<DriftAnnouncer> = LazyLock::new(|| {
+    DriftAnnouncer::new(
+        Box::new(|text, interrupt, source| crate::speech_out::say(text, interrupt, false, source)),
+        true,
+        Box::new(drift_speech::monotonic),
+    )
+});
 static ROAD_GUIDANCE_FEED: LazyLock<RoadGuidanceFeed> = LazyLock::new(RoadGuidanceFeed::new);
+/// `DrivingAssistant(_send_ai_command, say, _assistant_cue, ASSISTANT_DIAGNOSTICS,
+/// units=lambda: UNITS_MODE, on_arrival=_assistant_arrival)`. The assistant calls
+/// `speak(text, [interrupt=...], exclude_from_buffer=...)`, so `say`'s own defaults fill
+/// the rest (interrupt True, source "python").
 static DRIVING_ASSISTANT: LazyLock<DrivingAssistant> = LazyLock::new(|| {
-    DrivingAssistant::new(Callbacks {
-        send_ai_command: Box::new(|cmd| crate::ai_layer::send_ai_command(cmd)),
-        say: Box::new(|text, interrupt, exclude, source| {
-            crate::speech_out::say(text, interrupt, exclude, source)
-        }),
-        cue: Box::new(|kind, choices| crate::ai_layer::assistant_cue(kind, choices)),
-        units: Box::new(crate::units::units_mode),
-        on_arrival: Box::new(|arrival| crate::ai_layer::assistant_arrival(arrival)),
-    })
+    let da = DrivingAssistant::new(
+        crate::ai_layer::send_ai_command,
+        |text: &str, opts: SpeakOpts| {
+            crate::speech_out::say(
+                text,
+                opts.interrupt.unwrap_or(true),
+                opts.exclude_from_buffer,
+                "python",
+            )
+        },
+        Some(Arc::new(crate::units::units_mode)),
+        Some(Box::new(crate::ai_layer::assistant_arrival)),
+    );
+    da.set_cue(Arc::new(crate::ai_layer::assistant_cue));
+    da.set_diagnostics(Some(Arc::clone(&ASSISTANT_DIAGNOSTICS)));
+    da
 });
 
 /// `ASSISTANT_DIAGNOSTICS`.
@@ -1065,28 +1096,6 @@ pub fn driving_assistant() -> &'static DrivingAssistant {
 }
 
 // ---- Snapshot helpers (beamtel.py:4679-4876) ---------------------------------------------
-
-/// beam-road's Python-shaped JSON value as serde_json (NaN/inf floats become null).
-pub fn pyjson_to_json(v: &beam_road::pyjson::Value) -> Value {
-    use beam_road::pyjson::Value as P;
-    match v {
-        P::Null => Value::Null,
-        P::Bool(b) => Value::Bool(*b),
-        P::Int(i) => Value::from(*i),
-        P::BigInt(s) => s
-            .parse::<serde_json::Number>()
-            .map(Value::Number)
-            .unwrap_or(Value::Null),
-        P::Float(x) => jf(*x),
-        P::Str(s) => Value::String(s.clone()),
-        P::List(items) => Value::Array(items.iter().map(pyjson_to_json).collect()),
-        P::Dict(d) => Value::Object(
-            d.iter()
-                .map(|(k, v)| (k.clone(), pyjson_to_json(v)))
-                .collect(),
-        ),
-    }
-}
 
 /// `_world_is_active()` with the state already locked.
 pub fn world_is_active_in(st: &State) -> bool {
@@ -1325,7 +1334,7 @@ pub fn mcp_snapshot_state(sections: Option<&[&str]>) -> Value {
         }
     }
     if on("assistant") {
-        let mut snap = driving_assistant().snapshot_json();
+        let mut snap = assistant_snapshot_json(&driving_assistant().snapshot());
         if let Value::Object(m) = &mut snap {
             m.insert(
                 "diagnostics".into(),
@@ -1335,13 +1344,9 @@ pub fn mcp_snapshot_state(sections: Option<&[&str]>) -> Value {
         out.insert("assistant".into(), snap);
     }
     if on("road") {
-        let mut snap = road_guidance_feed().snapshot_json();
+        let mut snap = feed_snapshot_json(&road_guidance_feed().snapshot());
         let proximity = audio_controller_ref()
-            .map(|c| {
-                crate::compat::beam_audio::controller::junction_proximity_snapshot_json(
-                    &c.junction_proximity_snapshot(),
-                )
-            })
+            .map(|c| junction_proximity_snapshot_json(&c.junction_proximity_snapshot()))
             .unwrap_or(Value::Null);
         if let Value::Object(m) = &mut snap {
             m.insert("proximity_audio".into(), proximity);
@@ -1412,6 +1417,13 @@ mod tests {
         assert_eq!(snap["scanner"]["distance_m"], Value::Null);
         assert_eq!(snap["liveness"]["telemetry_ever_seen"], Value::Bool(false));
         assert_eq!(snap["liveness"]["seconds_since_telemetry"], Value::Null);
+        // The real driving assistant, feed and (absent) audio controller.
+        assert_eq!(snap["assistant"]["following_route"], Value::Bool(false));
+        assert_eq!(snap["assistant"]["sequence"], json!(-1));
+        assert!(snap["assistant"]["diagnostics"].is_object());
+        assert_eq!(snap["road"]["mode"], json!("unavailable"));
+        assert_eq!(snap["road"]["packet"], Value::Null);
+        assert_eq!(snap["road"]["proximity_audio"], Value::Null);
         let only = mcp_snapshot_state(Some(&["modes"]));
         assert_eq!(only.as_object().unwrap().len(), 1);
         let road = road_diagnostic_telemetry_snapshot();

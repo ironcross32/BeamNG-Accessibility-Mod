@@ -1,4 +1,4 @@
-﻿//! Owner: E6. The F9 command handler: `_F9_HELP`, `_invoke_f9_command`,
+//! Owner: E6. The F9 command handler: `_F9_HELP`, `_invoke_f9_command`,
 //! `_mcp_press_command`, `_on_next_key_press` (`beamtel.py:5260-5341, 8259-9352`).
 //!
 //! STUB: signatures fixed by EA; bodies to be ported by E6.
@@ -7,7 +7,7 @@ use std::sync::{Arc, LazyLock};
 
 use indexmap::IndexMap;
 
-use crate::compat::beam_audio::controller::AudioController;
+use beam_audio::controller::AudioController;
 use crate::keyboard::KeyEvent;
 
 /// A help key: (name, ctrl, shift, alt).

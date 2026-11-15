@@ -651,6 +651,28 @@ impl HrtfSet {
         Ok((scale(out_l), scale(out_r), sr, info, gain))
     }
 
+    /// A loaded set built directly from finished rows, one per whole degree (0..359), with
+    /// no processing. For tests that stand in a known IR (the Python sims' `FakeHRTF`).
+    /// Returns `None` unless both sides have exactly 360 rows.
+    pub fn from_rows(
+        irs_left: Vec<Vec<f32>>,
+        irs_right: Vec<Vec<f32>>,
+        samplerate: f64,
+    ) -> Option<HrtfSet> {
+        if irs_left.len() != N_OUTPUT_AZIMUTHS || irs_right.len() != N_OUTPUT_AZIMUTHS {
+            return None;
+        }
+        Some(HrtfSet {
+            azimuths: Some(output_azimuths()),
+            irs_left,
+            irs_right,
+            samplerate,
+            load_message: String::new(),
+            info: None,
+            gain: 1.0,
+        })
+    }
+
     pub fn is_loaded(&self) -> bool {
         self.azimuths.is_some()
     }

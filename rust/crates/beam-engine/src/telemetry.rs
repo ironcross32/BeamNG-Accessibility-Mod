@@ -1,4 +1,4 @@
-﻿//! Owner: E1. Telemetry decode and the telemetry loop (`beamtel.py:644-735`,
+//! Owner: E1. Telemetry decode and the telemetry loop (`beamtel.py:644-735`,
 //! `_report_gear_change` at 4306-4316, `telemetry_loop` at 10526-11481): OutGauge, the
 //! Extended layouts V1..V6 with their padding, MotionSim, and everything the loop drives.
 //!
@@ -6,7 +6,7 @@
 
 use std::sync::Arc;
 
-use crate::compat::beam_audio::controller::AudioController;
+use beam_audio::controller::AudioController;
 use crate::state::State;
 use crate::timer::Event;
 

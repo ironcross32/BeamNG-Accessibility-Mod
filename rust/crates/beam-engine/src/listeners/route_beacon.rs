@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use crate::compat::beam_audio::controller::AudioController;
+use beam_audio::controller::AudioController;
 use crate::state::{ROUTE_STALE_SEC, State};
 use crate::timer::Event;
 

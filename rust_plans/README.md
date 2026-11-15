@@ -58,7 +58,7 @@ Update this table as work lands. One line per workstream from `04-workstreams.md
 | S1 | beam-speech: Prism FFI and speech | done | 29 tests; matches Python backend/voice listing on this machine; app must call `speech::atexit()` on exit; ship `prism.dll` beside the exe |
 | AH | beam-audio: hrtf, terrain scan render, waveform generators | done | 34 tests; numpy default_rng reproduced exactly in `dsp`, so all 76 waveforms and scan jitter are bit-identical to Python. beam-audio now builds |
 | AA | beam-audio: controller state, API, device, callback skeleton | done | split in `audio-callback-split.md`; crate builds once AH lands `waveforms.rs`; scanner diag hookup and device run untested |
-| A1-A3 | beam-audio: callback voices | not started | split decided by AA |
+| A1-A3 | beam-audio: callback voices | in progress | A1 done: 10 voices, bit-exact without HRTF, within 2.7e-7 with. A2, A3 running |
 | EA | beam-engine: skeleton, shared state, say(), units, engine start | done | 20 tests; `engine-map.md` covers all 848 top-level statements. beam-audio dependency is commented out in beam-engine/Cargo.toml with stand-ins in `compat.rs` until AH lands waveforms: undo at I1 |
 | I0 | Pre-wave-2 integration: re-enable beam-audio in beam-engine, drop audio stand-ins, adapt the four state objects | in progress | |
 | E1 | Telemetry decode and telemetry loop | not started | |

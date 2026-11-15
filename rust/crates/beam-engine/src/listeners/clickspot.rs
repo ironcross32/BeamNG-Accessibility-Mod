@@ -1,10 +1,10 @@
-﻿//! Owner: E4. Clickspot listener, staged list, activation and toggle (`beamtel.py:3574-3784, 7314-7356`).
+//! Owner: E4. Clickspot listener, staged list, activation and toggle (`beamtel.py:3574-3784, 7314-7356`).
 //!
 //! STUB: signatures fixed by EA (every `pub fn` here is called from another module); bodies to be ported by E4.
 
 use std::sync::Arc;
 
-use crate::compat::beam_audio::controller::AudioController;
+use beam_audio::controller::AudioController;
 use crate::timer::Event;
 
 /// `clickspot_listener(audio_controller, stop_event)`. Runs until `stop_event` is set.

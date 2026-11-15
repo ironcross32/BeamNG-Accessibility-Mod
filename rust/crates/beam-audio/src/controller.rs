@@ -695,6 +695,10 @@ pub struct Voice {
     pub mix_r: Vec<f32>,
     /// Set when a block panicked: Python's paAbort. Every later block is silence.
     pub callback_aborted: bool,
+
+    /// Scanner/HRTF correlation diagnostic (a no-op unless BEAM_SCANNER_DIAG is set).
+    /// Written by the scanner voice; `stop()` stops its writer.
+    pub _scanner_diag: Option<Arc<crate::scanner_hrtf_diag::ScannerHrtfDiagnostic>>,
 }
 
 /// `threading.Event` for `_stop_event`.
@@ -1003,6 +1007,9 @@ fn new_voice() -> Voice {
         _detune_c: detune.first().copied().unwrap_or(0.0),
         _detune_b: detune.get(1).copied().unwrap_or(0.0),
         _detune_t: detune.get(2).copied().unwrap_or(0.0),
+        _scanner_diag: Some(Arc::new(
+            crate::scanner_hrtf_diag::ScannerHrtfDiagnostic::new(None),
+        )),
         ..Voice::default()
     }
 }

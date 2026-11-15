@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use crate::compat::beam_audio::controller::AudioController;
+use beam_audio::controller::AudioController;
 use crate::timer::Event;
 
 /// `implement_listener(audio_controller, stop_event)`. Runs until `stop_event` is set.

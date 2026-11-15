@@ -405,6 +405,10 @@ impl AudioController {
         // Outside the lock, as in restart_audio_stream.
         let stream = self.lock.lock()._audio_stream.take();
         drop(stream);
+        let diag = self.voice.lock()._scanner_diag.clone();
+        if let Some(d) = diag {
+            d.stop();
+        }
         log::info!("Audio system stopped.");
     }
 }

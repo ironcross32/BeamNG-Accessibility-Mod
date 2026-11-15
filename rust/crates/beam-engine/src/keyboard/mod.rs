@@ -1,4 +1,4 @@
-﻿//! Owner: E5. The low-level keyboard hook, the shared F9/F10 layer hook, the
+//! Owner: E5. The low-level keyboard hook, the shared F9/F10 layer hook, the
 //! command-dispatch worker, suppressed-key hook records, arrow ownership and
 //! `install_hotkeys` (`beamtel.py:5046-5259, 5393-5408, 5978-6034, 9355-9363, 10481-10520`).
 //!
@@ -12,7 +12,7 @@
 
 use std::sync::Arc;
 
-use crate::compat::beam_audio::controller::AudioController;
+use beam_audio::controller::AudioController;
 use crate::state::HookRecord;
 
 /// `command_timeout_sec`.

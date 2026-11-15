@@ -1136,3 +1136,54 @@ Kinds: `def`, `class`, `global` (module-level assignment; one row per name bound
 | 12624-12638 | def | `_run_update_flow` | engine::run_update_flow (+ updater) | EA/E10 |
 | 12641-12671 | def | `main` | engine::main_sequence (+ src-tauri main) | EA/U2 |
 | 12674-12675 | stmt | `if __name__ == "__main__":` | engine (+ src-tauri for the wx parts) | EA |
+
+
+## 8. Value types and conversions (I0)
+
+Added by I0 when beam-engine was wired to the real crates. **`compat.rs` is gone**: section 2's
+paragraph about it is history. Every item it stood in for is now the real one:
+`beam_audio::controller::AudioController` (and `beam_audio::scan::*`,
+`beam_audio::controller::{TelemetryState, HazardIn, JunctionProximitySnapshot,
+RoadGuidanceResult, JsonMap}`), `beam_road::driving_assistant::DrivingAssistant`,
+`beam_road::road_guidance::RoadGuidanceFeed`,
+`beam_road::challenge_results::HillClimbChallengeRecorder` and
+`beam_reports::drift_speech::DriftAnnouncer`. `ConfigMap` moved to `crate::convert`.
+
+### Reaching the module-level objects
+
+| Python | Rust | Notes |
+|---|---|---|
+| `audio_controller_ref` | `state::audio_controller_ref()` -> `Option<Arc<beam_audio::AudioController>>` | listeners get their own `Arc` from `run_engine`. Methods take `&self` except `apply_config`, `start`, `restart_audio_stream` (`self: &Arc<Self>`) |
+| `driving_assistant` | `state::driving_assistant()` -> `&'static DrivingAssistant` | `.active()`, `.snapshot().following_route`, `.seconds_since_arrival()`, `.receive(payload)?`, `.toggle()`, `.status()`. Built with `ai_layer::send_ai_command`, `speech_out::say` (interrupt default True, source "python"), `ai_layer::assistant_cue`, `ASSISTANT_DIAGNOSTICS`, `units::units_mode`, `ai_layer::assistant_arrival` |
+| `ROAD_GUIDANCE_FEED` | `state::road_guidance_feed()` -> `&'static RoadGuidanceFeed` | typed: `accept_r2(&R2Packet, ..)`, `speed_limit(enabled)`, `snapshot()` (a `FeedSnapshot`; `.to_value()` is the Python dict) |
+| `HILL_CLIMB_CHALLENGE` | `state::hill_climb_challenge()` -> `&'static HillClimbChallengeRecorder` | everything in and out is `beam_road::pyjson::Value`; the finalize callback is `listeners::hill_climb::hill_climb_finalized(&PyJson, bool)`. Methods that raise in Python return `Result<_, beam_road::pyjson::PyErr>` |
+| `DRIFT_ANNOUNCER` | `state::drift_announcer()` -> `&'static DriftAnnouncer` | `.quiet()`, `.set_enabled(bool)`, `.handle(&beam_reports::pyops::PyValue) -> Result` |
+| `ASSISTANT_DIAGNOSTICS` / `ROAD_DIAGNOSTICS` | `state::assistant_diagnostics()` / `state::road_diagnostics()` | `.status()` is a `beam_road::pyjson::Value` |
+
+### Which value type each dependency API takes
+
+| Type (alias in `crate::convert`) | Crate | APIs that take or return it |
+|---|---|---|
+| `PyVal` = `beam_base::pyval::PyValue` (dicts: `PyDict`) | beam-base | the config loaders, `AudioController::apply_config(&PyDict)`, `gear_report::settings_from_config`, `secretstore`, `speech_config` |
+| `PyOps` = `beam_reports::pyops::PyValue` | beam-reports | `DriftAnnouncer::handle`, `drift_phrase`, and the report modules that take a decoded dict (`json_loads` there returns it) |
+| `PyJson` = `beam_road::pyjson::Value` | beam-road | the driving assistant (vehicle, arrival, snapshots), road guidance `to_value()`s, the hill-climb recorder (events, telemetry rows, summaries, `list_reports`, `report_lines`), both diagnostic recorders |
+| `serde_json::Value` | - | the engine's own JSON: UI bridge payloads and callbacks (`ui_bridge::JsonCallback`), the MCP snapshot, `ConfigMap`, `beam_speech::speech::configure/init`, beam-audio's `JsonMap` targets |
+
+### The conversions (all in `crate::convert`, all tested there)
+
+| From -> to | Function |
+|---|---|
+| `PyVal` <-> JSON | `pyval_to_json`, `json_to_pyval`; dicts: `pydict_to_config_map`, `config_map_to_pydict` |
+| `PyJson` <-> JSON | `pyjson_to_json` (also re-exported as `state::pyjson_to_json`), `json_to_pyjson` |
+| `PyOps` <-> JSON | `pyops_to_json`, `json_to_pyops` |
+| `PyVal` -> `PyJson` / `PyOps` (a config value handed to beam-road / beam-reports) | `pyval_to_pyjson`, `pyval_to_pyops` |
+| `PyJson` <-> `PyOps` | `pyjson_to_pyops`, `pyops_to_pyjson` |
+| typed snapshots -> JSON | `junction_proximity_snapshot_json` (audio.py's dict: `target` None when empty), `assistant_snapshot_json`, `feed_snapshot_json` |
+| a float -> JSON | `json_float` (NaN/inf -> null) |
+
+Rules: conversions between the three Python types are lossless (big ints, NaN, inf, key
+order). Conversions to JSON lose only what JSON cannot hold (NaN/inf -> `null`, ints beyond
+`u64` -> nearest float). When the original is text off the wire, decode it with the target
+crate's own loader (`beam_road::pyjson::loads`, `beam_reports::pyops::json_loads`,
+`beam_base::pyval::json_loads`) rather than going through `serde_json`. Do not write another
+converter in a wave-2 file; add it here with a test.

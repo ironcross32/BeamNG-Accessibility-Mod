@@ -980,6 +980,48 @@ pub struct FeedSnapshot {
     pub junction: Option<Junction>,
 }
 
+impl LegacyState {
+    /// `legacy_state` as the Python dict, in its key order.
+    pub fn to_value(&self) -> Value {
+        dict([
+            ("state", self.state.as_str().into()),
+            ("bearing", self.bearing.into()),
+            ("distance", self.distance.into()),
+            ("directions", floats(&self.directions)),
+        ])
+    }
+}
+
+impl FeedSnapshot {
+    /// The dict Python's `snapshot()` returns, in its key order.
+    pub fn to_value(&self) -> Value {
+        dict([
+            ("mode", self.mode.as_str().into()),
+            (
+                "packet",
+                self.packet
+                    .as_ref()
+                    .map(R2Packet::to_value)
+                    .unwrap_or(Value::Null),
+            ),
+            (
+                "legacy",
+                self.legacy
+                    .as_ref()
+                    .map(LegacyState::to_value)
+                    .unwrap_or(Value::Null),
+            ),
+            (
+                "junction",
+                self.junction
+                    .as_ref()
+                    .map(Junction::to_value)
+                    .unwrap_or(Value::Null),
+            ),
+        ])
+    }
+}
+
 struct FeedState {
     mode: String,
     packet: Option<R2Packet>,

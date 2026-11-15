@@ -1,10 +1,15 @@
 //! Owner: E2. Hill-climb challenge glue: report browsers and the challenge event callbacks (`beamtel.py:6462-6494, 6693-6725`).
 //!
 //! STUB: signatures fixed by EA (every `pub fn` here is called from another module); bodies to be ported by E2.
+//!
+//! Summaries are beam-road's value type, as the recorder (`state::hill_climb_challenge()`)
+//! produces and consumes them (`list_reports`, `report_lines`, the finalize callback).
+
+use beam_road::pyjson::Value as PyJson;
 
 /// `open_hill_climb_report(summary, return_to_history=None, announce_interrupt=True)`.
 pub fn open_hill_climb_report(
-    summary: serde_json::Value,
+    summary: PyJson,
     return_to_history: Option<i64>,
     announce_interrupt: bool,
 ) {
@@ -19,12 +24,13 @@ pub fn open_hill_climb_history(start_index: i64) {
 }
 
 /// `_hill_climb_finalized(summary, auto_open)`: the recorder's finalize callback.
-pub fn hill_climb_finalized(summary: serde_json::Value, auto_open: bool) {
+pub fn hill_climb_finalized(summary: &PyJson, auto_open: bool) {
     let _ = (summary, auto_open);
     not_ported!("hill_climb_finalized");
 }
 
-/// `_on_hill_climb_event(data)`: the UI bridge's challenge-event callback.
+/// `_on_hill_climb_event(data)`: the UI bridge's challenge-event callback. The recorder's
+/// `handle_event` takes beam-road's value: `crate::convert::json_to_pyjson(data)`.
 pub fn on_hill_climb_event(data: &serde_json::Value) {
     let _ = data;
     not_ported!("on_hill_climb_event");

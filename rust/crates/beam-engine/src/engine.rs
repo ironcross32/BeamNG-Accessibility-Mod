@@ -30,8 +30,7 @@ use std::time::{Duration, Instant, SystemTime};
 use beam_speech::speech;
 use serde_json::{Map, Value, json};
 
-use crate::compat::ConfigMap;
-use crate::compat::beam_audio::controller::AudioController;
+use crate::convert::{ConfigMap, json_to_pyops};
 use crate::listeners;
 use crate::state::{
     self, State, drift_announcer, driving_assistant, hill_climb_challenge, road_diagnostics, state,
@@ -39,6 +38,7 @@ use crate::state::{
 use crate::timer::{Event, STOP, Timer, spawn_daemon};
 use crate::ui_sink::UiSink;
 use crate::{browsers, console, keyboard, menus, speech_out, ui_bridge, units, updater};
+use beam_audio::controller::AudioController;
 use beam_base::config::{default_config_engine, load_config_engine};
 use beam_base::gear_report;
 use beam_base::pyval::{from_json_map, to_json_map};
@@ -593,16 +593,12 @@ pub fn run_engine() {
 
     start_listener("config-watcher", || config_watcher(&STOP));
 
-    hill_climb_challenge().set_finalize_callback(Some(Arc::new(|summary, auto_open| {
-        listeners::hill_climb::hill_climb_finalized(summary, auto_open)
-    })));
+    hill_climb_challenge()
+        .set_finalize_callback(Some(Arc::new(listeners::hill_climb::hill_climb_finalized)));
     let ws_stop =
         match ui_bridge::start_server_in_thread(Arc::new(|text: &str, interrupt: bool| {
             let da = driving_assistant();
-            let following = da
-                .snapshot_json()
-                .get("following_route")
-                .is_some_and(py_truthy);
+            let following = da.snapshot().following_route;
             if !suppressed_toast(text, following, da.seconds_since_arrival()) {
                 speech_out::say(text, interrupt, false, "ui_bridge");
             }
@@ -622,8 +618,12 @@ pub fn run_engine() {
     ui_bridge::register_challenge_event_callback(Arc::new(
         listeners::hill_climb::on_hill_climb_event,
     ));
+    // `register_drift_event_callback(DRIFT_ANNOUNCER.handle)`; the bridge logs what the
+    // handler raises as "drift_event callback error: ...", which the closure does here.
     ui_bridge::register_drift_event_callback(Arc::new(|data: &Value| {
-        drift_announcer().handle(data)
+        if let Err(e) = drift_announcer().handle(&json_to_pyops(data)) {
+            log::error!("drift_event callback error: {e}");
+        }
     }));
 
     // Wait for the updater's answer before touching the game; the timeout is the failure path.
@@ -649,7 +649,9 @@ pub fn run_engine() {
     start_listener("scanner-listener", move || {
         scanner::scanner_listener(a, &STOP)
     });
-    start_listener("driving-assistant", || driving_assistant().run(&STOP));
+    start_listener("driving-assistant", || {
+        driving_assistant().run(|timeout| STOP.wait(Some(timeout)))
+    });
     start_listener("scanner-callout", || {
         scanner::scanner_callout_thread_fn(&STOP)
     });
