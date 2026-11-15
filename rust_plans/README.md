@@ -45,6 +45,10 @@ Read in this order:
 - Developer tooling (`tools/mapgen`, `tools/dynorig`, `tools/checkerboard`, `bake_hrtf.py`,
   `diagnostic/map_survey`) is the last phase, after the application reaches parity.
 
+## Batching
+
+Each interrupted agent re-reads its whole transcript when resumed, so wave 2 runs in batches of about five agents rather than all at once. Order: E1, E2, E5 (with A2, A3), then E3, E4, E6, E7, then E8a, E8b, E9, E10, U2.
+
 ## Status
 
 Update this table as work lands. One line per workstream from `04-workstreams.md`.
@@ -60,12 +64,12 @@ Update this table as work lands. One line per workstream from `04-workstreams.md
 | AA | beam-audio: controller state, API, device, callback skeleton | done | split in `audio-callback-split.md`; crate builds once AH lands `waveforms.rs`; scanner diag hookup and device run untested |
 | A1-A3 | beam-audio: callback voices | in progress | A1 done: 10 voices, bit-exact without HRTF, within 2.7e-7 with. A2, A3 running |
 | EA | beam-engine: skeleton, shared state, say(), units, engine start | done | 20 tests; `engine-map.md` covers all 848 top-level statements. beam-audio dependency is commented out in beam-engine/Cargo.toml with stand-ins in `compat.rs` until AH lands waveforms: undo at I1 |
-| I0 | Pre-wave-2 integration: re-enable beam-audio in beam-engine, drop audio stand-ins, adapt the four state objects | in progress | |
-| E1 | Telemetry decode and telemetry loop | not started | |
-| E2 | Listeners A: scanner, obstacle, road, hill climb, fuel | not started | |
+| I0 | Pre-wave-2 integration: re-enable beam-audio in beam-engine, drop audio stand-ins, adapt the four state objects | done | workspace builds; 302 tests pass; `compat.rs` deleted; conversions in `beam_engine::convert`; see engine-map.md section 8 |
+| E1 | Telemetry decode and telemetry loop | in progress | |
+| E2 | Listeners A: scanner, obstacle, road, hill climb, fuel | in progress | |
 | E3 | Implement, dock, ramp, cannon, terrain scan, line-up, trailer, wheel, beacon | not started | |
 | E4 | Listeners B and their browsers | not started | |
-| E5 | Keyboard hook, layers, menus, virtual browser | not started | |
+| E5 | Keyboard hook, layers, menus, virtual browser | in progress | |
 | E6 | F9 command handler and remaining toggles | not started | |
 | E7 | F10 AI layer, describer, capture, window utilities | not started | |
 | E8 | Vehicle spawner | not started | |
