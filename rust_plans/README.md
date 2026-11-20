@@ -72,7 +72,7 @@ Update this table as work lands. One line per workstream from `04-workstreams.md
 | E2 | Listeners A: scanner, obstacle, road, hill climb, fuel | done | 20 tests (`e2_listeners_fixtures`, `obstacle_audio_sim`) against beamtel's real listeners over a fake socket. `ObstaclePacket::Static` now holds a typed `StaticHazard` (inf margin). Untested paths: socket loops, gate/private-road callouts, junction earcons, hill-climb browsers, `AI_STATUS_ALL`. Needs E9 to `catch_unwind` around `on_hill_climb_event`. Bugs 34-40 |
 | E3 | Implement, dock, ramp, cannon, terrain scan, line-up, trailer, wheel, beacon | not started | |
 | E4 | Listeners B and their browsers | not started | |
-| E5 | Keyboard hook, layers, menus, virtual browser | in progress | relaunched 2026-11-19; as E1: `keyboard/`, `menus.rs`, `virtual_browser.rs` are still EA stubs |
+| E5 | Keyboard hook, layers, menus, virtual browser | done | `keyboard` package semantics ported (check order, exact-match hotkeys, scan-code matching, its own key-name tables). Tests: `controller_menu_sim`, `menus_golden`, `keyboard_layers`, 12 unit. OS hook installs only once the worker or hotkeys start (accepted). Sim checks owned by E4/E9/B1 listed at the end of `controller_menu_sim.rs`. Bugs 41-43 |
 | E6 | F9 command handler and remaining toggles | not started | |
 | E7 | F10 AI layer, describer, capture, window utilities | not started | |
 | E8 | Vehicle spawner | not started | |

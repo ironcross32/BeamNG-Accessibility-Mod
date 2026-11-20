@@ -1,0 +1,7596 @@
+{
+ "base": {
+  "_env_ambient_c": null,
+  "_fuel_in_range": false,
+  "_fuel_parking": false,
+  "_fuel_target_id": null,
+  "_ui_screen_context": "",
+  "clickspot_list_loading": false,
+  "clickspot_mode_active": false,
+  "clickspot_trigger_list": [],
+  "dock_mode_active": false,
+  "free_cam_active": false,
+  "last_air_pressure": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_air_pressure_max": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_articulation_deg": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_brake_temp_f": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_brake_temp_fl": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_brake_temp_fr": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_brake_temp_r": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_brake_temp_rl": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_brake_temp_rr": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_clutch_temp": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_engtemp": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_ev_range_m": {
+   "bits": 13830554455654793216,
+   "repr": "-1.0"
+  },
+  "last_fuel": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_gear_byte": null,
+  "last_gear_str": null,
+  "last_heading": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_implement_edge_height": {
+   "bits": 13830554455654793216,
+   "repr": "-1.0"
+  },
+  "last_implement_flags": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_implement_tilt_deg": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_lifetime_m": {
+   "bits": 13830554455654793216,
+   "repr": "-1.0"
+  },
+  "last_motor_power_kw": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_motor_torque_nm": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_odometer_m": {
+   "bits": 13830554455654793216,
+   "repr": "-1.0"
+  },
+  "last_oiltemp": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_protocol_flags": 0,
+  "last_rpm": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_speed_ms": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_telemetry_presence": 15,
+  "last_tire_pressure_f": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_tire_pressure_fl": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_tire_pressure_fr": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_tire_pressure_r": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_tire_pressure_rl": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_tire_pressure_rr": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_trailer_deg": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_trailer_id": null,
+  "last_trailer_name": "",
+  "last_trip_m": {
+   "bits": 13830554455654793216,
+   "repr": "-1.0"
+  },
+  "last_turbo": {
+   "bits": 0,
+   "repr": "0.0"
+  },
+  "last_wheel_rows": [],
+  "marked_coord_x": null,
+  "protocol_mode": "outgauge",
+  "route_live": false,
+  "scan_mode_active": false,
+  "trailer_live": false,
+  "units": "imperial",
+  "wheel_live": false,
+  "world_active": false
+ },
+ "buffer": [
+  {
+   "buffer": [
+    "one",
+    "two",
+    "three"
+   ],
+   "end_index": 2,
+   "keys": [
+    "[",
+    "[",
+    "[",
+    "[",
+    "]",
+    "]",
+    "]",
+    "x"
+   ],
+   "name": "three",
+   "spoken": [
+    [
+     "Buffer mode on",
+     true,
+     true
+    ],
+    [
+     "two",
+     true,
+     true
+    ],
+    [
+     "one",
+     true,
+     true
+    ],
+    [
+     "Top: one",
+     true,
+     true
+    ],
+    [
+     "Top: one",
+     true,
+     true
+    ],
+    [
+     "two",
+     true,
+     true
+    ],
+    [
+     "three",
+     true,
+     true
+    ],
+    [
+     "Bottom: three",
+     true,
+     true
+    ],
+    [
+     "Buffer mode off",
+     true,
+     true
+    ]
+   ],
+   "start_index": 2
+  },
+  {
+   "buffer": [],
+   "end_index": -1,
+   "keys": [
+    "[",
+    "]"
+   ],
+   "name": "empty",
+   "spoken": [
+    [
+     "Buffer mode on",
+     true,
+     true
+    ],
+    [
+     "Buffer empty",
+     true,
+     true
+    ],
+    [
+     "Buffer empty",
+     true,
+     true
+    ],
+    [
+     "Buffer mode off",
+     true,
+     true
+    ]
+   ],
+   "start_index": -1
+  },
+  {
+   "buffer": [
+    "only"
+   ],
+   "end_index": 0,
+   "keys": [
+    "]",
+    "[",
+    "["
+   ],
+   "name": "single",
+   "spoken": [
+    [
+     "Buffer mode on",
+     true,
+     true
+    ],
+    [
+     "Bottom: only",
+     true,
+     true
+    ],
+    [
+     "Top: only",
+     true,
+     true
+    ],
+    [
+     "Top: only",
+     true,
+     true
+    ],
+    [
+     "Buffer mode off",
+     true,
+     true
+    ]
+   ],
+   "start_index": 0
+  }
+ ],
+ "function_catalog": [
+  {
+   "category": "Vehicle scanner",
+   "command": [
+    "v",
+    true,
+    false,
+    false
+   ],
+   "label": "Toggle vehicle scanner"
+  },
+  {
+   "category": "Vehicle scanner",
+   "command": [
+    "tab",
+    false,
+    false,
+    false
+   ],
+   "label": "Next vehicle scanner target"
+  },
+  {
+   "category": "Vehicle scanner",
+   "command": [
+    "tab",
+    false,
+    true,
+    false
+   ],
+   "label": "Previous vehicle scanner target"
+  },
+  {
+   "category": "Vehicle scanner",
+   "command": [
+    "tab",
+    true,
+    false,
+    false
+   ],
+   "label": "Lock onto nearest vehicle"
+  },
+  {
+   "category": "Vehicle scanner",
+   "command": [
+    "d",
+    false,
+    false,
+    false
+   ],
+   "label": "Distance and orientation"
+  },
+  {
+   "category": "Vehicle scanner",
+   "command": [
+    "d",
+    false,
+    true,
+    false
+   ],
+   "label": "Relative bearing"
+  },
+  {
+   "category": "Vehicle scanner",
+   "command": [
+    "v",
+    false,
+    true,
+    false
+   ],
+   "label": "Trailer or ramp alignment"
+  },
+  {
+   "category": "Vehicle scanner",
+   "command": [
+    "d",
+    true,
+    true,
+    false
+   ],
+   "label": "Coupler distance callouts"
+  },
+  {
+   "category": "Alignment",
+   "command": [
+    "i",
+    true,
+    false,
+    false
+   ],
+   "label": "Toggle alignment instrument"
+  },
+  {
+   "category": "Alignment",
+   "command": [
+    "i",
+    false,
+    false,
+    false
+   ],
+   "label": "Alignment or cannon readout"
+  },
+  {
+   "category": "Alignment",
+   "command": [
+    "i",
+    false,
+    true,
+    false
+   ],
+   "label": "Cycle reference band"
+  },
+  {
+   "category": "Driving assistance",
+   "command": [
+    "c",
+    true,
+    false,
+    false
+   ],
+   "label": "Pedal tones"
+  },
+  {
+   "category": "Driving assistance",
+   "command": [
+    "h",
+    true,
+    false,
+    false
+   ],
+   "label": "Heading guidance"
+  },
+  {
+   "category": "Driving assistance",
+   "command": [
+    "g",
+    true,
+    false,
+    false
+   ],
+   "label": "Coordinate guidance"
+  },
+  {
+   "category": "Driving assistance",
+   "command": [
+    "d",
+    true,
+    false,
+    false
+   ],
+   "label": "Drift detection"
+  },
+  {
+   "category": "Driving assistance",
+   "command": [
+    "l",
+    true,
+    true,
+    false
+   ],
+   "label": "Low-speed detection"
+  },
+  {
+   "category": "Driving assistance",
+   "command": [
+    "k",
+    true,
+    false,
+    false
+   ],
+   "label": "Wheel-slip detection"
+  },
+  {
+   "category": "Driving assistance",
+   "command": [
+    "o",
+    true,
+    false,
+    false
+   ],
+   "label": "Obstacle detection"
+  },
+  {
+   "category": "Driving assistance",
+   "command": [
+    "r",
+    true,
+    false,
+    false
+   ],
+   "label": "Road detection"
+  },
+  {
+   "category": "Driving assistance",
+   "command": [
+    "r",
+    true,
+    true,
+    false
+   ],
+   "label": "Road-status readout"
+  },
+  {
+   "category": "Waypoints",
+   "command": [
+    "c",
+    false,
+    true,
+    false
+   ],
+   "label": "Mark waypoint"
+  },
+  {
+   "category": "Waypoints",
+   "command": [
+    "c",
+    false,
+    false,
+    true
+   ],
+   "label": "Speak marked coordinates"
+  },
+  {
+   "category": "Waypoints",
+   "command": [
+    "w",
+    false,
+    false,
+    false
+   ],
+   "label": "Distance and bearing"
+  },
+  {
+   "category": "Waypoints",
+   "command": [
+    "w",
+    true,
+    false,
+    false
+   ],
+   "label": "Toggle route beacon"
+  },
+  {
+   "category": "Waypoints",
+   "command": [
+    "w",
+    false,
+    true,
+    false
+   ],
+   "label": "Nearest point of interest"
+  },
+  {
+   "category": "Waypoints",
+   "handler": true,
+   "label": "Fuel stations"
+  },
+  {
+   "category": "Waypoints",
+   "handler": true,
+   "label": "Park at a pump"
+  },
+  {
+   "category": "Waypoints",
+   "handler": true,
+   "label": "Cancel parking"
+  },
+  {
+   "category": "Vehicle information",
+   "command": [
+    "r",
+    false,
+    true,
+    false
+   ],
+   "label": "Redline RPM"
+  },
+  {
+   "category": "Vehicle information",
+   "command": [
+    "t",
+    false,
+    true,
+    false
+   ],
+   "label": "Maximum boost pressure"
+  },
+  {
+   "category": "Vehicle information",
+   "command": [
+    "t",
+    false,
+    false,
+    true
+   ],
+   "label": "Forced induction details"
+  },
+  {
+   "category": "Vehicle information",
+   "command": [
+    "p",
+    false,
+    false,
+    false
+   ],
+   "label": "Air pressure"
+  },
+  {
+   "category": "Vehicle information",
+   "command": [
+    "a",
+    false,
+    false,
+    false
+   ],
+   "label": "Attitude"
+  },
+  {
+   "category": "Vehicle information",
+   "command": [
+    "c",
+    false,
+    false,
+    false
+   ],
+   "label": "Coordinates"
+  },
+  {
+   "category": "Vehicle information",
+   "command": [
+    "m",
+    false,
+    false,
+    false
+   ],
+   "label": "Damage report"
+  },
+  {
+   "category": "Camera",
+   "command": [
+    "f",
+    false,
+    false,
+    true
+   ],
+   "label": "Toggle camera information"
+  },
+  {
+   "category": "Camera",
+   "command": [
+    "h",
+    false,
+    false,
+    true
+   ],
+   "label": "Camera heading"
+  },
+  {
+   "category": "Camera",
+   "command": [
+    "a",
+    false,
+    false,
+    true
+   ],
+   "label": "Camera altitude"
+  },
+  {
+   "category": "Camera",
+   "command": [
+    "p",
+    false,
+    false,
+    true
+   ],
+   "label": "Camera pitch"
+  },
+  {
+   "category": "Camera",
+   "command": [
+    "v",
+    false,
+    false,
+    true
+   ],
+   "label": "Vehicle bearing"
+  },
+  {
+   "category": "Camera",
+   "command": [
+    "d",
+    false,
+    false,
+    true
+   ],
+   "label": "Vehicle distance"
+  },
+  {
+   "category": "Interaction",
+   "command": [
+    "n",
+    true,
+    false,
+    false
+   ],
+   "label": "Accessible node grabber"
+  },
+  {
+   "category": "Interaction",
+   "command": [
+    "b",
+    false,
+    true,
+    false
+   ],
+   "label": "Learn bindings mode"
+  },
+  {
+   "category": "Interaction",
+   "command": [
+    "c",
+    true,
+    true,
+    false
+   ],
+   "label": "Clickspot detection"
+  },
+  {
+   "category": "Interaction",
+   "handler": true,
+   "label": "Read page text"
+  },
+  {
+   "category": "Challenge reports",
+   "handler": true,
+   "label": "Hill-climb reports"
+  },
+  {
+   "category": "Interaction",
+   "command": [
+    "u",
+    false,
+    false,
+    false
+   ],
+   "label": "Switch units"
+  },
+  {
+   "category": "Environment",
+   "handler": true,
+   "label": "Terrain scan"
+  }
+ ],
+ "functions": [
+  {
+   "available": [
+    "Toggle vehicle scanner",
+    "Next vehicle scanner target",
+    "Previous vehicle scanner target",
+    "Lock onto nearest vehicle",
+    "Toggle alignment instrument",
+    "Alignment or cannon readout",
+    "Cycle reference band",
+    "Pedal tones",
+    "Heading guidance",
+    "Drift detection",
+    "Low-speed detection",
+    "Wheel-slip detection",
+    "Obstacle detection",
+    "Road detection",
+    "Road-status readout",
+    "Mark waypoint",
+    "Attitude",
+    "Coordinates",
+    "Damage report",
+    "Toggle camera information",
+    "Accessible node grabber",
+    "Learn bindings mode",
+    "Clickspot detection",
+    "Switch units"
+   ],
+   "name": "nothing",
+   "state": {
+    "_env_ambient_c": null,
+    "_fuel_in_range": false,
+    "_fuel_parking": false,
+    "_fuel_target_id": null,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": false,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": false,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_air_pressure_max": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_articulation_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_clutch_temp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_engtemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_ev_range_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_fuel": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": null,
+    "last_heading": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_edge_height": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_implement_flags": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_lifetime_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_motor_torque_nm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_odometer_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_oiltemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_protocol_flags": 0,
+    "last_rpm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_speed_ms": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_telemetry_presence": 15,
+    "last_tire_pressure_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_id": null,
+    "last_trailer_name": "",
+    "last_trip_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_turbo": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_wheel_rows": [],
+    "marked_coord_x": null,
+    "protocol_mode": "outgauge",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": false,
+    "units": "imperial",
+    "wheel_live": false,
+    "world_active": false
+   }
+  },
+  {
+   "available": [
+    "Toggle vehicle scanner",
+    "Next vehicle scanner target",
+    "Previous vehicle scanner target",
+    "Lock onto nearest vehicle",
+    "Distance and orientation",
+    "Relative bearing",
+    "Trailer or ramp alignment",
+    "Coupler distance callouts",
+    "Toggle alignment instrument",
+    "Alignment or cannon readout",
+    "Cycle reference band",
+    "Pedal tones",
+    "Heading guidance",
+    "Coordinate guidance",
+    "Drift detection",
+    "Low-speed detection",
+    "Wheel-slip detection",
+    "Obstacle detection",
+    "Road detection",
+    "Road-status readout",
+    "Mark waypoint",
+    "Speak marked coordinates",
+    "Distance and bearing",
+    "Toggle route beacon",
+    "Nearest point of interest",
+    "Fuel stations",
+    "Park at a pump",
+    "Redline RPM",
+    "Maximum boost pressure",
+    "Forced induction details",
+    "Air pressure",
+    "Attitude",
+    "Coordinates",
+    "Damage report",
+    "Toggle camera information",
+    "Camera heading",
+    "Camera altitude",
+    "Camera pitch",
+    "Vehicle bearing",
+    "Vehicle distance",
+    "Accessible node grabber",
+    "Learn bindings mode",
+    "Clickspot detection",
+    "Read page text",
+    "Switch units",
+    "Terrain scan"
+   ],
+   "name": "everything",
+   "state": {
+    "_env_ambient_c": {
+     "bits": 4626744929681408000,
+     "repr": "21.5"
+    },
+    "_fuel_in_range": true,
+    "_fuel_parking": false,
+    "_fuel_target_id": 3,
+    "_ui_screen_context": "mod_details",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": false,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": false,
+    "free_cam_active": true,
+    "last_air_pressure": {
+     "bits": 4637467015231758664,
+     "repr": "110.37"
+    },
+    "last_air_pressure_max": {
+     "bits": 4638144666238189568,
+     "repr": "120.0"
+    },
+    "last_articulation_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 4638179850610278400,
+     "repr": "120.5"
+    },
+    "last_brake_temp_fr": {
+     "bits": 4638109481866100736,
+     "repr": "119.5"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 4635347508657127424,
+     "repr": "80.25"
+    },
+    "last_brake_temp_rr": {
+     "bits": 13838435755002691584,
+     "repr": "-3.5"
+    },
+    "last_clutch_temp": {
+     "bits": 4633007747913220096,
+     "repr": "55.5"
+    },
+    "last_engtemp": {
+     "bits": 4636061751410530714,
+     "repr": "90.4"
+    },
+    "last_ev_range_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_fuel": {
+     "bits": 4601886185638229705,
+     "repr": "0.456"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": "D",
+    "last_heading": {
+     "bits": 4638387438405602509,
+     "repr": "123.45"
+    },
+    "last_implement_edge_height": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_implement_flags": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_lifetime_m": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_motor_torque_nm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_odometer_m": {
+     "bits": 4681523519818196582,
+     "repr": "98765.4"
+    },
+    "last_oiltemp": {
+     "bits": 4636849881345320550,
+     "repr": "101.6"
+    },
+    "last_protocol_flags": 8192,
+    "last_rpm": {
+     "bits": 4657717072724230144,
+     "repr": "2500.5"
+    },
+    "last_speed_ms": {
+     "bits": 4626322717216342016,
+     "repr": "20.0"
+    },
+    "last_telemetry_presence": 719,
+    "last_tire_pressure_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 4629721527560123187,
+     "repr": "32.15"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 4629686343188034355,
+     "repr": "31.95"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 4629137466983448576,
+     "repr": "30.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 4628870065755573453,
+     "repr": "29.05"
+    },
+    "last_trailer_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_id": null,
+    "last_trailer_name": "",
+    "last_trip_m": {
+     "bits": 4653144203864309760,
+     "repr": "1234.5"
+    },
+    "last_turbo": {
+     "bits": 4608236261112822104,
+     "repr": "1.234"
+    },
+    "last_wheel_rows": [],
+    "marked_coord_x": {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    "protocol_mode": "extended",
+    "route_live": true,
+    "scan_mode_active": true,
+    "trailer_live": false,
+    "units": "imperial",
+    "wheel_live": false,
+    "world_active": true
+   }
+  },
+  {
+   "available": [
+    "Toggle vehicle scanner",
+    "Next vehicle scanner target",
+    "Previous vehicle scanner target",
+    "Lock onto nearest vehicle",
+    "Trailer or ramp alignment",
+    "Toggle alignment instrument",
+    "Alignment or cannon readout",
+    "Cycle reference band",
+    "Pedal tones",
+    "Heading guidance",
+    "Drift detection",
+    "Low-speed detection",
+    "Wheel-slip detection",
+    "Obstacle detection",
+    "Road detection",
+    "Road-status readout",
+    "Mark waypoint",
+    "Nearest point of interest",
+    "Fuel stations",
+    "Cancel parking",
+    "Attitude",
+    "Coordinates",
+    "Damage report",
+    "Toggle camera information",
+    "Accessible node grabber",
+    "Learn bindings mode",
+    "Clickspot detection",
+    "Switch units",
+    "Terrain scan"
+   ],
+   "name": "dock_only_parking",
+   "state": {
+    "_env_ambient_c": null,
+    "_fuel_in_range": true,
+    "_fuel_parking": true,
+    "_fuel_target_id": 3,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": false,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": true,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_air_pressure_max": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_articulation_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_clutch_temp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_engtemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_ev_range_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_fuel": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": null,
+    "last_heading": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_edge_height": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_implement_flags": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_lifetime_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_motor_torque_nm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_odometer_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_oiltemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_protocol_flags": 0,
+    "last_rpm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_speed_ms": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_telemetry_presence": 15,
+    "last_tire_pressure_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_id": null,
+    "last_trailer_name": "",
+    "last_trip_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_turbo": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_wheel_rows": [],
+    "marked_coord_x": null,
+    "protocol_mode": "outgauge",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": false,
+    "units": "imperial",
+    "wheel_live": false,
+    "world_active": true
+   }
+  }
+ ],
+ "navigation": [
+  {
+   "name": "ice_tour",
+   "state": {
+    "_env_ambient_c": {
+     "bits": 4626744929681408000,
+     "repr": "21.5"
+    },
+    "_fuel_in_range": false,
+    "_fuel_parking": false,
+    "_fuel_target_id": null,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": false,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": false,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 4637467015231758664,
+     "repr": "110.37"
+    },
+    "last_air_pressure_max": {
+     "bits": 4638144666238189568,
+     "repr": "120.0"
+    },
+    "last_articulation_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 4638179850610278400,
+     "repr": "120.5"
+    },
+    "last_brake_temp_fr": {
+     "bits": 4638109481866100736,
+     "repr": "119.5"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 4635347508657127424,
+     "repr": "80.25"
+    },
+    "last_brake_temp_rr": {
+     "bits": 13838435755002691584,
+     "repr": "-3.5"
+    },
+    "last_clutch_temp": {
+     "bits": 4633007747913220096,
+     "repr": "55.5"
+    },
+    "last_engtemp": {
+     "bits": 4636061751410530714,
+     "repr": "90.4"
+    },
+    "last_ev_range_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_fuel": {
+     "bits": 4601886185638229705,
+     "repr": "0.456"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": "D",
+    "last_heading": {
+     "bits": 4638387438405602509,
+     "repr": "123.45"
+    },
+    "last_implement_edge_height": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_implement_flags": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_lifetime_m": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_motor_torque_nm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_odometer_m": {
+     "bits": 4681523519818196582,
+     "repr": "98765.4"
+    },
+    "last_oiltemp": {
+     "bits": 4636849881345320550,
+     "repr": "101.6"
+    },
+    "last_protocol_flags": 8192,
+    "last_rpm": {
+     "bits": 4657717072724230144,
+     "repr": "2500.5"
+    },
+    "last_speed_ms": {
+     "bits": 4626322717216342016,
+     "repr": "20.0"
+    },
+    "last_telemetry_presence": 719,
+    "last_tire_pressure_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 4629721527560123187,
+     "repr": "32.15"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 4629686343188034355,
+     "repr": "31.95"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 4629137466983448576,
+     "repr": "30.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 4628870065755573453,
+     "repr": "29.05"
+    },
+    "last_trailer_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_id": null,
+    "last_trailer_name": "",
+    "last_trip_m": {
+     "bits": 4653144203864309760,
+     "repr": "1234.5"
+    },
+    "last_turbo": {
+     "bits": 4608236261112822104,
+     "repr": "1.234"
+    },
+    "last_wheel_rows": [],
+    "marked_coord_x": null,
+    "protocol_mode": "extended",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": false,
+    "units": "imperial",
+    "wheel_live": false,
+    "world_active": false
+   },
+   "steps": [
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Speed, 45 mph",
+       true,
+       true
+      ]
+     ],
+     "status_index": 1
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "RPM, 2500 RPM",
+       true,
+       true
+      ]
+     ],
+     "status_index": 2
+    },
+    {
+     "action": "status_up",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Speed, 45 mph",
+       true,
+       true
+      ]
+     ],
+     "status_index": 1
+    },
+    {
+     "action": "status_repeat",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "45 mph",
+       true,
+       true
+      ]
+     ],
+     "status_index": 1
+    },
+    {
+     "action": "activate",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "45 mph",
+       true,
+       true
+      ]
+     ],
+     "status_index": 1
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "RPM, 2500 RPM",
+       true,
+       true
+      ]
+     ],
+     "status_index": 2
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Gear, drive",
+       true,
+       true
+      ]
+     ],
+     "status_index": 3
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Fuel, 46 percent",
+       true,
+       true
+      ]
+     ],
+     "status_index": 4
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Engine Temperature, 195 Fahrenheit",
+       true,
+       true
+      ]
+     ],
+     "status_index": 5
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Oil Temperature, 215 Fahrenheit",
+       true,
+       true
+      ]
+     ],
+     "status_index": 6
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Clutch Temperature, 132 Fahrenheit",
+       true,
+       true
+      ]
+     ],
+     "status_index": 7
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Ambient Temperature, 71 Fahrenheit",
+       true,
+       true
+      ]
+     ],
+     "status_index": 8
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Boost Pressure, 17.9 psi",
+       true,
+       true
+      ]
+     ],
+     "status_index": 9
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Air Pressure, 110.4 of 120.0 psi",
+       true,
+       true
+      ]
+     ],
+     "status_index": 10
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Trip, 0.8 miles",
+       true,
+       true
+      ]
+     ],
+     "status_index": 11
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Odometer, 61 miles",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Model lifetime, 0.0 miles",
+       true,
+       true
+      ]
+     ],
+     "status_index": 13
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Tire pressures: front left, 32.1 psi",
+       true,
+       true
+      ]
+     ],
+     "status_index": 14
+    },
+    {
+     "action": "status_up",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Model lifetime, 0.0 miles",
+       true,
+       true
+      ]
+     ],
+     "status_index": 13
+    },
+    {
+     "action": "status_up",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Odometer, 61 miles",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "next_menu",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 1,
+     "spoken": [
+      [
+       "Functions: Vehicle scanner: Toggle vehicle scanner",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 1,
+     "screen": 1,
+     "spoken": [
+      [
+       "Next vehicle scanner target",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 2,
+     "screen": 1,
+     "spoken": [
+      [
+       "Previous vehicle scanner target",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_repeat",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 2,
+     "screen": 1,
+     "spoken": [
+      [
+       "Previous vehicle scanner target",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_up",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 1,
+     "screen": 1,
+     "spoken": [
+      [
+       "Next vehicle scanner target",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_up",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 1,
+     "spoken": [
+      [
+       "Toggle vehicle scanner",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_up",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 27,
+     "screen": 1,
+     "spoken": [
+      [
+       "Interaction: Switch units",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "activate",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [
+      [
+       "u",
+       false,
+       false,
+       false
+      ]
+     ],
+     "err": null,
+     "functions_index": 27,
+     "screen": 1,
+     "spoken": [],
+     "status_index": 12
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 1,
+     "spoken": [
+      [
+       "Vehicle scanner: Toggle vehicle scanner",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "next_menu",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Click spots: Turn on clickspot detection",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_repeat",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Turn on clickspot detection",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "activate",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [
+      [
+       "c",
+       true,
+       true,
+       false
+      ]
+     ],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [],
+     "status_index": 12
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Turn on clickspot detection",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "activate",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [
+      [
+       "c",
+       true,
+       true,
+       false
+      ]
+     ],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [],
+     "status_index": 12
+    },
+    {
+     "action": "previous_menu",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 1,
+     "spoken": [
+      [
+       "Functions: Vehicle scanner: Toggle vehicle scanner",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "previous_menu",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Status: Odometer, 61 miles",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Model lifetime, 0.0 miles",
+       true,
+       true
+      ]
+     ],
+     "status_index": 13
+    },
+    {
+     "action": "bogus",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [],
+     "status_index": 13
+    },
+    {
+     "action": "next_menu",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 1,
+     "spoken": [
+      [
+       "Functions: Vehicle scanner: Toggle vehicle scanner",
+       true,
+       true
+      ]
+     ],
+     "status_index": 13
+    }
+   ]
+  },
+  {
+   "name": "loader_tour",
+   "state": {
+    "_env_ambient_c": null,
+    "_fuel_in_range": false,
+    "_fuel_parking": false,
+    "_fuel_target_id": null,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": false,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": false,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_air_pressure_max": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_articulation_deg": {
+     "bits": 4623282787467866931,
+     "repr": "12.6"
+    },
+    "last_brake_temp_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_clutch_temp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_engtemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_ev_range_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_fuel": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": "M3",
+    "last_heading": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_edge_height": {
+     "bits": 13826050856027422720,
+     "repr": "-0.5"
+    },
+    "last_implement_flags": {
+     "bits": 4619567317775286272,
+     "repr": "7.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 13838210575021323059,
+     "repr": "-3.4"
+    },
+    "last_lifetime_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_motor_torque_nm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_odometer_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_oiltemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_protocol_flags": 0,
+    "last_rpm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_speed_ms": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_telemetry_presence": 15,
+    "last_tire_pressure_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_deg": {
+     "bits": 13824249416176474522,
+     "repr": "-0.4"
+    },
+    "last_trailer_id": 5,
+    "last_trailer_name": "Flatbed",
+    "last_trip_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_turbo": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_wheel_rows": [
+     {
+      "brake_c": {
+       "bits": 4633641066610819072,
+       "repr": "60.0"
+      },
+      "broken": false,
+      "label": "front left",
+      "psi": {
+       "bits": 4629207835727626240,
+       "repr": "30.25"
+      }
+     },
+     {
+      "brake_c": {
+       "bits": 4633852172843352064,
+       "repr": "61.5"
+      },
+      "broken": false,
+      "label": "front right",
+      "psi": null
+     },
+     {
+      "brake_c": null,
+      "broken": false,
+      "label": "trailer rear left",
+      "psi": {
+       "bits": 4635329916471083008,
+       "repr": "80.0"
+      }
+     },
+     {
+      "brake_c": {
+       "bits": 0,
+       "repr": "0.0"
+      },
+      "broken": true,
+      "label": "trailer rear right",
+      "psi": {
+       "bits": 0,
+       "repr": "0.0"
+      }
+     }
+    ],
+    "marked_coord_x": null,
+    "protocol_mode": "extended",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": true,
+    "units": "imperial",
+    "wheel_live": true,
+    "world_active": false
+   },
+   "steps": [
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Speed, 0 mph",
+       true,
+       true
+      ]
+     ],
+     "status_index": 1
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "RPM, 0 RPM",
+       true,
+       true
+      ]
+     ],
+     "status_index": 2
+    },
+    {
+     "action": "status_up",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Speed, 0 mph",
+       true,
+       true
+      ]
+     ],
+     "status_index": 1
+    },
+    {
+     "action": "status_repeat",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "0 mph",
+       true,
+       true
+      ]
+     ],
+     "status_index": 1
+    },
+    {
+     "action": "activate",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "0 mph",
+       true,
+       true
+      ]
+     ],
+     "status_index": 1
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "RPM, 0 RPM",
+       true,
+       true
+      ]
+     ],
+     "status_index": 2
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Gear, manual 3",
+       true,
+       true
+      ]
+     ],
+     "status_index": 3
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Fuel, 0 percent",
+       true,
+       true
+      ]
+     ],
+     "status_index": 4
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Tire pressures: front left, 30.2 psi",
+       true,
+       true
+      ]
+     ],
+     "status_index": 5
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "trailer rear left, 80.0 psi",
+       true,
+       true
+      ]
+     ],
+     "status_index": 6
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "trailer rear right, broken off",
+       true,
+       true
+      ]
+     ],
+     "status_index": 7
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Implement Height, 0.0 feet",
+       true,
+       true
+      ]
+     ],
+     "status_index": 8
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Implement Tilt, 3 degrees forward",
+       true,
+       true
+      ]
+     ],
+     "status_index": 9
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Frame Articulation, 13 degrees left",
+       true,
+       true
+      ]
+     ],
+     "status_index": 10
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Trailer Angle, 0 degrees in line, Flatbed",
+       true,
+       true
+      ]
+     ],
+     "status_index": 11
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Brake temperatures: front left, 140 Fahrenheit",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "front right, 143 Fahrenheit",
+       true,
+       true
+      ]
+     ],
+     "status_index": 13
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "trailer rear right, broken off",
+       true,
+       true
+      ]
+     ],
+     "status_index": 14
+    },
+    {
+     "action": "status_up",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "front right, 143 Fahrenheit",
+       true,
+       true
+      ]
+     ],
+     "status_index": 13
+    },
+    {
+     "action": "status_up",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "front left, 140 Fahrenheit",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "next_menu",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 1,
+     "spoken": [
+      [
+       "Functions: Vehicle scanner: Toggle vehicle scanner",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 1,
+     "screen": 1,
+     "spoken": [
+      [
+       "Next vehicle scanner target",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 2,
+     "screen": 1,
+     "spoken": [
+      [
+       "Previous vehicle scanner target",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_repeat",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 2,
+     "screen": 1,
+     "spoken": [
+      [
+       "Previous vehicle scanner target",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_up",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 1,
+     "screen": 1,
+     "spoken": [
+      [
+       "Next vehicle scanner target",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_up",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 1,
+     "spoken": [
+      [
+       "Toggle vehicle scanner",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_up",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 24,
+     "screen": 1,
+     "spoken": [
+      [
+       "Interaction: Switch units",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "activate",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [
+      [
+       "u",
+       false,
+       false,
+       false
+      ]
+     ],
+     "err": null,
+     "functions_index": 24,
+     "screen": 1,
+     "spoken": [],
+     "status_index": 12
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 1,
+     "spoken": [
+      [
+       "Vehicle scanner: Toggle vehicle scanner",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "next_menu",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Click spots: Turn on clickspot detection",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_repeat",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Turn on clickspot detection",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "activate",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [
+      [
+       "c",
+       true,
+       true,
+       false
+      ]
+     ],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [],
+     "status_index": 12
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Turn on clickspot detection",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "activate",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [
+      [
+       "c",
+       true,
+       true,
+       false
+      ]
+     ],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [],
+     "status_index": 12
+    },
+    {
+     "action": "previous_menu",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 1,
+     "spoken": [
+      [
+       "Functions: Vehicle scanner: Toggle vehicle scanner",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "previous_menu",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Status: Brake temperatures: front left, 140 Fahrenheit",
+       true,
+       true
+      ]
+     ],
+     "status_index": 12
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "front right, 143 Fahrenheit",
+       true,
+       true
+      ]
+     ],
+     "status_index": 13
+    },
+    {
+     "action": "bogus",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [],
+     "status_index": 13
+    },
+    {
+     "action": "next_menu",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 1,
+     "spoken": [
+      [
+       "Functions: Vehicle scanner: Toggle vehicle scanner",
+       true,
+       true
+      ]
+     ],
+     "status_index": 13
+    }
+   ]
+  },
+  {
+   "name": "clickspots_listed",
+   "state": {
+    "_env_ambient_c": {
+     "bits": 4626744929681408000,
+     "repr": "21.5"
+    },
+    "_fuel_in_range": false,
+    "_fuel_parking": false,
+    "_fuel_target_id": null,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": true,
+    "clickspot_trigger_list": [
+     [
+      0,
+      101,
+      "Door latch"
+     ],
+     [
+      1,
+      102,
+      "Window switch"
+     ],
+     [
+      2,
+      103,
+      "Horn"
+     ]
+    ],
+    "dock_mode_active": false,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 4637467015231758664,
+     "repr": "110.37"
+    },
+    "last_air_pressure_max": {
+     "bits": 4638144666238189568,
+     "repr": "120.0"
+    },
+    "last_articulation_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 4638179850610278400,
+     "repr": "120.5"
+    },
+    "last_brake_temp_fr": {
+     "bits": 4638109481866100736,
+     "repr": "119.5"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 4635347508657127424,
+     "repr": "80.25"
+    },
+    "last_brake_temp_rr": {
+     "bits": 13838435755002691584,
+     "repr": "-3.5"
+    },
+    "last_clutch_temp": {
+     "bits": 4633007747913220096,
+     "repr": "55.5"
+    },
+    "last_engtemp": {
+     "bits": 4636061751410530714,
+     "repr": "90.4"
+    },
+    "last_ev_range_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_fuel": {
+     "bits": 4601886185638229705,
+     "repr": "0.456"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": "D",
+    "last_heading": {
+     "bits": 4638387438405602509,
+     "repr": "123.45"
+    },
+    "last_implement_edge_height": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_implement_flags": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_lifetime_m": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_motor_torque_nm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_odometer_m": {
+     "bits": 4681523519818196582,
+     "repr": "98765.4"
+    },
+    "last_oiltemp": {
+     "bits": 4636849881345320550,
+     "repr": "101.6"
+    },
+    "last_protocol_flags": 8192,
+    "last_rpm": {
+     "bits": 4657717072724230144,
+     "repr": "2500.5"
+    },
+    "last_speed_ms": {
+     "bits": 4626322717216342016,
+     "repr": "20.0"
+    },
+    "last_telemetry_presence": 719,
+    "last_tire_pressure_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 4629721527560123187,
+     "repr": "32.15"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 4629686343188034355,
+     "repr": "31.95"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 4629137466983448576,
+     "repr": "30.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 4628870065755573453,
+     "repr": "29.05"
+    },
+    "last_trailer_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_id": null,
+    "last_trailer_name": "",
+    "last_trip_m": {
+     "bits": 4653144203864309760,
+     "repr": "1234.5"
+    },
+    "last_turbo": {
+     "bits": 4608236261112822104,
+     "repr": "1.234"
+    },
+    "last_wheel_rows": [],
+    "marked_coord_x": null,
+    "protocol_mode": "extended",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": false,
+    "units": "imperial",
+    "wheel_live": false,
+    "world_active": false
+   },
+   "steps": [
+    {
+     "action": "previous_menu",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Click spots: Door latch",
+       true,
+       true
+      ]
+     ],
+     "status_index": 0
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 1,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Window switch",
+       true,
+       true
+      ]
+     ],
+     "status_index": 0
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 2,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Horn",
+       true,
+       true
+      ]
+     ],
+     "status_index": 0
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Door latch",
+       true,
+       true
+      ]
+     ],
+     "status_index": 0
+    },
+    {
+     "action": "status_up",
+     "activations": [],
+     "clickspot_index": 2,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Horn",
+       true,
+       true
+      ]
+     ],
+     "status_index": 0
+    },
+    {
+     "action": "activate",
+     "activations": [
+      2
+     ],
+     "clickspot_index": 2,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [],
+     "status_index": 0
+    },
+    {
+     "action": "status_repeat",
+     "activations": [],
+     "clickspot_index": 2,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Horn",
+       true,
+       true
+      ]
+     ],
+     "status_index": 0
+    },
+    {
+     "action": "next_menu",
+     "activations": [],
+     "clickspot_index": 2,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 0,
+     "spoken": [
+      [
+       "Status: Heading, 123.5 degrees",
+       true,
+       true
+      ]
+     ],
+     "status_index": 0
+    },
+    {
+     "action": "next_menu",
+     "activations": [],
+     "clickspot_index": 2,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 1,
+     "spoken": [
+      [
+       "Functions: Vehicle scanner: Toggle vehicle scanner",
+       true,
+       true
+      ]
+     ],
+     "status_index": 0
+    }
+   ]
+  },
+  {
+   "name": "clickspots_loading",
+   "state": {
+    "_env_ambient_c": null,
+    "_fuel_in_range": false,
+    "_fuel_parking": false,
+    "_fuel_target_id": null,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": true,
+    "clickspot_mode_active": true,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": false,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_air_pressure_max": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_articulation_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_clutch_temp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_engtemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_ev_range_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_fuel": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": null,
+    "last_heading": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_edge_height": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_implement_flags": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_lifetime_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_motor_torque_nm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_odometer_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_oiltemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_protocol_flags": 0,
+    "last_rpm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_speed_ms": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_telemetry_presence": 15,
+    "last_tire_pressure_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_id": null,
+    "last_trailer_name": "",
+    "last_trip_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_turbo": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_wheel_rows": [],
+    "marked_coord_x": null,
+    "protocol_mode": "outgauge",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": false,
+    "units": "imperial",
+    "wheel_live": false,
+    "world_active": false
+   },
+   "steps": [
+    {
+     "action": "previous_menu",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Click spots: Detecting click spots",
+       true,
+       true
+      ]
+     ],
+     "status_index": 0
+    },
+    {
+     "action": "activate",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Detecting click spots",
+       true,
+       true
+      ]
+     ],
+     "status_index": 0
+    },
+    {
+     "action": "status_down",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Detecting click spots",
+       true,
+       true
+      ]
+     ],
+     "status_index": 0
+    },
+    {
+     "action": "status_repeat",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Detecting click spots",
+       true,
+       true
+      ]
+     ],
+     "status_index": 0
+    }
+   ]
+  },
+  {
+   "name": "clickspots_empty",
+   "state": {
+    "_env_ambient_c": null,
+    "_fuel_in_range": false,
+    "_fuel_parking": false,
+    "_fuel_target_id": null,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": true,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": false,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_air_pressure_max": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_articulation_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_clutch_temp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_engtemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_ev_range_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_fuel": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": null,
+    "last_heading": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_edge_height": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_implement_flags": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_lifetime_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_motor_torque_nm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_odometer_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_oiltemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_protocol_flags": 0,
+    "last_rpm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_speed_ms": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_telemetry_presence": 15,
+    "last_tire_pressure_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_id": null,
+    "last_trailer_name": "",
+    "last_trip_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_turbo": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_wheel_rows": [],
+    "marked_coord_x": null,
+    "protocol_mode": "outgauge",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": false,
+    "units": "imperial",
+    "wheel_live": false,
+    "world_active": false
+   },
+   "steps": [
+    {
+     "action": "previous_menu",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "Click spots: No click spots found",
+       true,
+       true
+      ]
+     ],
+     "status_index": 0
+    },
+    {
+     "action": "activate",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "No click spots found",
+       true,
+       true
+      ]
+     ],
+     "status_index": 0
+    },
+    {
+     "action": "status_up",
+     "activations": [],
+     "clickspot_index": 0,
+     "commands": [],
+     "err": null,
+     "functions_index": 0,
+     "screen": 2,
+     "spoken": [
+      [
+       "No click spots found",
+       true,
+       true
+      ]
+     ],
+     "status_index": 0
+    }
+   ]
+  }
+ ],
+ "status": [
+  {
+   "name": "initial_outgauge",
+   "rows": [
+    {
+     "available": true,
+     "category": null,
+     "label": "Heading",
+     "value_text": "0.0 degrees"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Speed",
+     "value_text": "0 mph"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Speed limit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "RPM",
+     "value_text": "0 RPM"
+    },
+    {
+     "available": true,
+     "category": null,
+     "err": "TypeError",
+     "label": "Gear"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Fuel",
+     "value_text": "0 percent"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Battery"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Range"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Motor Power"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Motor Torque"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Engine Temperature",
+     "value_text": "32 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Oil Temperature",
+     "value_text": "32 Fahrenheit"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Clutch Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Ambient Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Boost Pressure"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Air Pressure"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Trip"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Odometer"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Model lifetime"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "front"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "front left"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "front right"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "rear"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "rear left"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "rear right"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Implement Height"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Implement Tilt"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Frame Articulation"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Trailer Angle"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "front"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "front left"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "front right"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "rear"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "rear left"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "rear right"
+    }
+   ],
+   "state": {
+    "_env_ambient_c": null,
+    "_fuel_in_range": false,
+    "_fuel_parking": false,
+    "_fuel_target_id": null,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": false,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": false,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_air_pressure_max": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_articulation_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_clutch_temp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_engtemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_ev_range_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_fuel": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": null,
+    "last_heading": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_edge_height": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_implement_flags": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_lifetime_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_motor_torque_nm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_odometer_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_oiltemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_protocol_flags": 0,
+    "last_rpm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_speed_ms": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_telemetry_presence": 15,
+    "last_tire_pressure_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_id": null,
+    "last_trailer_name": "",
+    "last_trip_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_turbo": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_wheel_rows": [],
+    "marked_coord_x": null,
+    "protocol_mode": "outgauge",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": false,
+    "units": "imperial",
+    "wheel_live": false,
+    "world_active": false
+   }
+  },
+  {
+   "name": "outgauge_third_gear",
+   "rows": [
+    {
+     "available": true,
+     "category": null,
+     "label": "Heading",
+     "value_text": "0.0 degrees"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Speed",
+     "value_text": "30 mph"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Speed limit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "RPM",
+     "value_text": "1500 RPM"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Gear",
+     "value_text": "second"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Fuel",
+     "value_text": "0 percent"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Battery"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Range"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Motor Power"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Motor Torque"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Engine Temperature",
+     "value_text": "32 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Oil Temperature",
+     "value_text": "32 Fahrenheit"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Clutch Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Ambient Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Boost Pressure"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Air Pressure"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Trip"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Odometer"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Model lifetime"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "front"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "front left"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "front right"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "rear"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "rear left"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "rear right"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Implement Height"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Implement Tilt"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Frame Articulation"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Trailer Angle"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "front"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "front left"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "front right"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "rear"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "rear left"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "rear right"
+    }
+   ],
+   "state": {
+    "_env_ambient_c": null,
+    "_fuel_in_range": false,
+    "_fuel_parking": false,
+    "_fuel_target_id": null,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": false,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": false,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_air_pressure_max": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_articulation_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_clutch_temp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_engtemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_ev_range_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_fuel": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_gear_byte": 3,
+    "last_gear_str": null,
+    "last_heading": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_edge_height": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_implement_flags": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_lifetime_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_motor_torque_nm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_odometer_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_oiltemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_protocol_flags": 0,
+    "last_rpm": {
+     "bits": 4654314084236263424,
+     "repr": "1500.5"
+    },
+    "last_speed_ms": {
+     "bits": 4623733147430603981,
+     "repr": "13.4"
+    },
+    "last_telemetry_presence": 15,
+    "last_tire_pressure_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_id": null,
+    "last_trailer_name": "",
+    "last_trip_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_turbo": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_wheel_rows": [],
+    "marked_coord_x": null,
+    "protocol_mode": "outgauge",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": false,
+    "units": "imperial",
+    "wheel_live": false,
+    "world_active": false
+   }
+  },
+  {
+   "name": "ice_imperial",
+   "rows": [
+    {
+     "available": true,
+     "category": null,
+     "label": "Heading",
+     "value_text": "123.5 degrees"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Speed",
+     "value_text": "45 mph"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Speed limit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "RPM",
+     "value_text": "2500 RPM"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Gear",
+     "value_text": "drive"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Fuel",
+     "value_text": "46 percent"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Battery"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Range"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Motor Power"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Motor Torque"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Engine Temperature",
+     "value_text": "195 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Oil Temperature",
+     "value_text": "215 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Clutch Temperature",
+     "value_text": "132 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Ambient Temperature",
+     "value_text": "71 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Boost Pressure",
+     "value_text": "17.9 psi"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Air Pressure",
+     "value_text": "110.4 of 120.0 psi"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Trip",
+     "value_text": "0.8 miles"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Odometer",
+     "value_text": "61 miles"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Model lifetime",
+     "value_text": "0.0 miles"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "front"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "front left",
+     "value_text": "32.1 psi"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "front right",
+     "value_text": "31.9 psi"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "rear"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "rear left",
+     "value_text": "30.0 psi"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "rear right",
+     "value_text": "29.1 psi"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Implement Height"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Implement Tilt"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Frame Articulation"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Trailer Angle"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "front"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "front left",
+     "value_text": "249 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "front right",
+     "value_text": "247 Fahrenheit"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "rear"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "rear left",
+     "value_text": "176 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "rear right",
+     "value_text": "26 Fahrenheit"
+    }
+   ],
+   "state": {
+    "_env_ambient_c": {
+     "bits": 4626744929681408000,
+     "repr": "21.5"
+    },
+    "_fuel_in_range": false,
+    "_fuel_parking": false,
+    "_fuel_target_id": null,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": false,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": false,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 4637467015231758664,
+     "repr": "110.37"
+    },
+    "last_air_pressure_max": {
+     "bits": 4638144666238189568,
+     "repr": "120.0"
+    },
+    "last_articulation_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 4638179850610278400,
+     "repr": "120.5"
+    },
+    "last_brake_temp_fr": {
+     "bits": 4638109481866100736,
+     "repr": "119.5"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 4635347508657127424,
+     "repr": "80.25"
+    },
+    "last_brake_temp_rr": {
+     "bits": 13838435755002691584,
+     "repr": "-3.5"
+    },
+    "last_clutch_temp": {
+     "bits": 4633007747913220096,
+     "repr": "55.5"
+    },
+    "last_engtemp": {
+     "bits": 4636061751410530714,
+     "repr": "90.4"
+    },
+    "last_ev_range_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_fuel": {
+     "bits": 4601886185638229705,
+     "repr": "0.456"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": "D",
+    "last_heading": {
+     "bits": 4638387438405602509,
+     "repr": "123.45"
+    },
+    "last_implement_edge_height": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_implement_flags": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_lifetime_m": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_motor_torque_nm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_odometer_m": {
+     "bits": 4681523519818196582,
+     "repr": "98765.4"
+    },
+    "last_oiltemp": {
+     "bits": 4636849881345320550,
+     "repr": "101.6"
+    },
+    "last_protocol_flags": 8192,
+    "last_rpm": {
+     "bits": 4657717072724230144,
+     "repr": "2500.5"
+    },
+    "last_speed_ms": {
+     "bits": 4626322717216342016,
+     "repr": "20.0"
+    },
+    "last_telemetry_presence": 719,
+    "last_tire_pressure_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 4629721527560123187,
+     "repr": "32.15"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 4629686343188034355,
+     "repr": "31.95"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 4629137466983448576,
+     "repr": "30.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 4628870065755573453,
+     "repr": "29.05"
+    },
+    "last_trailer_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_id": null,
+    "last_trailer_name": "",
+    "last_trip_m": {
+     "bits": 4653144203864309760,
+     "repr": "1234.5"
+    },
+    "last_turbo": {
+     "bits": 4608236261112822104,
+     "repr": "1.234"
+    },
+    "last_wheel_rows": [],
+    "marked_coord_x": null,
+    "protocol_mode": "extended",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": false,
+    "units": "imperial",
+    "wheel_live": false,
+    "world_active": false
+   }
+  },
+  {
+   "name": "ice_metric",
+   "rows": [
+    {
+     "available": true,
+     "category": null,
+     "label": "Heading",
+     "value_text": "123.5 degrees"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Speed",
+     "value_text": "72 km/h"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Speed limit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "RPM",
+     "value_text": "2500 RPM"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Gear",
+     "value_text": "drive"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Fuel",
+     "value_text": "46 percent"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Battery"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Range"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Motor Power"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Motor Torque"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Engine Temperature",
+     "value_text": "90 Celsius"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Oil Temperature",
+     "value_text": "102 Celsius"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Clutch Temperature",
+     "value_text": "56 Celsius"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Ambient Temperature",
+     "value_text": "22 Celsius"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Boost Pressure",
+     "value_text": "1.23 bar"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Air Pressure",
+     "value_text": "7.61 of 8.27 bar"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Trip",
+     "value_text": "1.2 kilometers"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Odometer",
+     "value_text": "99 kilometers"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Model lifetime",
+     "value_text": "0.1 kilometers"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "front"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "front left",
+     "value_text": "2.22 bar"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "front right",
+     "value_text": "2.2 bar"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "rear"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "rear left",
+     "value_text": "2.07 bar"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "rear right",
+     "value_text": "2.0 bar"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Implement Height"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Implement Tilt"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Frame Articulation"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Trailer Angle"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "front"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "front left",
+     "value_text": "120 Celsius"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "front right",
+     "value_text": "120 Celsius"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "rear"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "rear left",
+     "value_text": "80 Celsius"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "rear right",
+     "value_text": "-4 Celsius"
+    }
+   ],
+   "state": {
+    "_env_ambient_c": {
+     "bits": 4626744929681408000,
+     "repr": "21.5"
+    },
+    "_fuel_in_range": false,
+    "_fuel_parking": false,
+    "_fuel_target_id": null,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": false,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": false,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 4637467015231758664,
+     "repr": "110.37"
+    },
+    "last_air_pressure_max": {
+     "bits": 4638144666238189568,
+     "repr": "120.0"
+    },
+    "last_articulation_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 4638179850610278400,
+     "repr": "120.5"
+    },
+    "last_brake_temp_fr": {
+     "bits": 4638109481866100736,
+     "repr": "119.5"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 4635347508657127424,
+     "repr": "80.25"
+    },
+    "last_brake_temp_rr": {
+     "bits": 13838435755002691584,
+     "repr": "-3.5"
+    },
+    "last_clutch_temp": {
+     "bits": 4633007747913220096,
+     "repr": "55.5"
+    },
+    "last_engtemp": {
+     "bits": 4636061751410530714,
+     "repr": "90.4"
+    },
+    "last_ev_range_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_fuel": {
+     "bits": 4601886185638229705,
+     "repr": "0.456"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": "D",
+    "last_heading": {
+     "bits": 4638387438405602509,
+     "repr": "123.45"
+    },
+    "last_implement_edge_height": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_implement_flags": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_lifetime_m": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_motor_torque_nm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_odometer_m": {
+     "bits": 4681523519818196582,
+     "repr": "98765.4"
+    },
+    "last_oiltemp": {
+     "bits": 4636849881345320550,
+     "repr": "101.6"
+    },
+    "last_protocol_flags": 8192,
+    "last_rpm": {
+     "bits": 4657717072724230144,
+     "repr": "2500.5"
+    },
+    "last_speed_ms": {
+     "bits": 4626322717216342016,
+     "repr": "20.0"
+    },
+    "last_telemetry_presence": 719,
+    "last_tire_pressure_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 4629721527560123187,
+     "repr": "32.15"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 4629686343188034355,
+     "repr": "31.95"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 4629137466983448576,
+     "repr": "30.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 4628870065755573453,
+     "repr": "29.05"
+    },
+    "last_trailer_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_id": null,
+    "last_trailer_name": "",
+    "last_trip_m": {
+     "bits": 4653144203864309760,
+     "repr": "1234.5"
+    },
+    "last_turbo": {
+     "bits": 4608236261112822104,
+     "repr": "1.234"
+    },
+    "last_wheel_rows": [],
+    "marked_coord_x": null,
+    "protocol_mode": "extended",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": false,
+    "units": "metric",
+    "wheel_live": false,
+    "world_active": false
+   }
+  },
+  {
+   "name": "ev_imperial",
+   "rows": [
+    {
+     "available": true,
+     "category": null,
+     "label": "Heading",
+     "value_text": "360.0 degrees"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Speed",
+     "value_text": "7 mph"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Speed limit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "RPM",
+     "value_text": "0 RPM"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Gear",
+     "value_text": "park"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Fuel"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Battery",
+     "value_text": "100 percent"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Range",
+     "value_text": "unknown"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Motor Power",
+     "value_text": "202 horsepower"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Motor Torque",
+     "value_text": "-15 pound feet"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Engine Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Oil Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Clutch Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Ambient Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Boost Pressure"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Air Pressure"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Trip",
+     "value_text": "164 feet"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Odometer"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Model lifetime"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "front",
+     "value_text": "36.6 psi"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "front left"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "front right"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "rear"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "rear left",
+     "value_text": "0.0 psi"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "rear right",
+     "value_text": "0.0 psi"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Implement Height"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Implement Tilt"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Frame Articulation"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Trailer Angle"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "front",
+     "value_text": "104 Fahrenheit"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "front left"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "front right"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "rear"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "rear left",
+     "value_text": "32 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "rear right",
+     "value_text": "32 Fahrenheit"
+    }
+   ],
+   "state": {
+    "_env_ambient_c": null,
+    "_fuel_in_range": false,
+    "_fuel_parking": false,
+    "_fuel_target_id": null,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": false,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": false,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_air_pressure_max": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_articulation_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_f": {
+     "bits": 4630826316843712512,
+     "repr": "40.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_clutch_temp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_engtemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_ev_range_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_fuel": {
+     "bits": 4607137382803743703,
+     "repr": "0.995"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": "P",
+    "last_heading": {
+     "bits": 4645040099480158863,
+     "repr": "359.96"
+    },
+    "last_implement_edge_height": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_implement_flags": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_lifetime_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 4639499264563609600,
+     "repr": "150.5"
+    },
+    "last_motor_torque_nm": {
+     "bits": 13849807344061802086,
+     "repr": "-20.4"
+    },
+    "last_odometer_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_oiltemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_protocol_flags": 0,
+    "last_rpm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_speed_ms": {
+     "bits": 4614613358185178726,
+     "repr": "3.3"
+    },
+    "last_telemetry_presence": 284,
+    "last_tire_pressure_f": {
+     "bits": 4630347809383304397,
+     "repr": "36.6"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_id": null,
+    "last_trailer_name": "",
+    "last_trip_m": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "last_turbo": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_wheel_rows": [],
+    "marked_coord_x": null,
+    "protocol_mode": "extended",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": false,
+    "units": "imperial",
+    "wheel_live": false,
+    "world_active": false
+   }
+  },
+  {
+   "name": "ev_metric_range",
+   "rows": [
+    {
+     "available": true,
+     "category": null,
+     "label": "Heading",
+     "value_text": "360.0 degrees"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Speed",
+     "value_text": "12 km/h"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Speed limit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "RPM",
+     "value_text": "0 RPM"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Gear",
+     "value_text": "park"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Fuel"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Battery",
+     "value_text": "100 percent"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Range",
+     "value_text": "123 kilometers"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Motor Power",
+     "value_text": "150 kilowatts"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Motor Torque",
+     "value_text": "-20 newton meters"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Engine Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Oil Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Clutch Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Ambient Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Boost Pressure"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Air Pressure"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Trip",
+     "value_text": "50 meters"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Odometer"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Model lifetime"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "front",
+     "value_text": "2.52 bar"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "front left"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "front right"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "rear"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "rear left",
+     "value_text": "0.0 bar"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "rear right",
+     "value_text": "0.0 bar"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Implement Height"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Implement Tilt"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Frame Articulation"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Trailer Angle"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "front",
+     "value_text": "40 Celsius"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "front left"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "front right"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "rear"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "rear left",
+     "value_text": "0 Celsius"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "rear right",
+     "value_text": "0 Celsius"
+    }
+   ],
+   "state": {
+    "_env_ambient_c": null,
+    "_fuel_in_range": false,
+    "_fuel_parking": false,
+    "_fuel_target_id": null,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": false,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": false,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_air_pressure_max": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_articulation_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_f": {
+     "bits": 4630826316843712512,
+     "repr": "40.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_clutch_temp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_engtemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_ev_range_m": {
+     "bits": 4683220244930494464,
+     "repr": "123456.0"
+    },
+    "last_fuel": {
+     "bits": 4607137382803743703,
+     "repr": "0.995"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": "P",
+    "last_heading": {
+     "bits": 4645040099480158863,
+     "repr": "359.96"
+    },
+    "last_implement_edge_height": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_implement_flags": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_lifetime_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 4639499264563609600,
+     "repr": "150.5"
+    },
+    "last_motor_torque_nm": {
+     "bits": 13849807344061802086,
+     "repr": "-20.4"
+    },
+    "last_odometer_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_oiltemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_protocol_flags": 0,
+    "last_rpm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_speed_ms": {
+     "bits": 4614613358185178726,
+     "repr": "3.3"
+    },
+    "last_telemetry_presence": 284,
+    "last_tire_pressure_f": {
+     "bits": 4630347809383304397,
+     "repr": "36.6"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_id": null,
+    "last_trailer_name": "",
+    "last_trip_m": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "last_turbo": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_wheel_rows": [],
+    "marked_coord_x": null,
+    "protocol_mode": "extended",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": false,
+    "units": "metric",
+    "wheel_live": false,
+    "world_active": false
+   }
+  },
+  {
+   "name": "loader_imperial",
+   "rows": [
+    {
+     "available": true,
+     "category": null,
+     "label": "Heading",
+     "value_text": "0.0 degrees"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Speed",
+     "value_text": "0 mph"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Speed limit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "RPM",
+     "value_text": "0 RPM"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Gear",
+     "value_text": "manual 3"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Fuel",
+     "value_text": "0 percent"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Battery"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Range"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Motor Power"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Motor Torque"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Engine Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Oil Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Clutch Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Ambient Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Boost Pressure"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Air Pressure"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Trip"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Odometer"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Model lifetime"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "front left",
+     "value_text": "30.2 psi"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "trailer rear left",
+     "value_text": "80.0 psi"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "trailer rear right",
+     "value_text": "broken off"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Implement Height",
+     "value_text": "0.0 feet"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Implement Tilt",
+     "value_text": "3 degrees forward"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Frame Articulation",
+     "value_text": "13 degrees left"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Trailer Angle",
+     "value_text": "0 degrees in line, Flatbed"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "front left",
+     "value_text": "140 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "front right",
+     "value_text": "143 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "trailer rear right",
+     "value_text": "broken off"
+    }
+   ],
+   "state": {
+    "_env_ambient_c": null,
+    "_fuel_in_range": false,
+    "_fuel_parking": false,
+    "_fuel_target_id": null,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": false,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": false,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_air_pressure_max": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_articulation_deg": {
+     "bits": 4623282787467866931,
+     "repr": "12.6"
+    },
+    "last_brake_temp_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_clutch_temp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_engtemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_ev_range_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_fuel": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": "M3",
+    "last_heading": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_edge_height": {
+     "bits": 13826050856027422720,
+     "repr": "-0.5"
+    },
+    "last_implement_flags": {
+     "bits": 4619567317775286272,
+     "repr": "7.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 13838210575021323059,
+     "repr": "-3.4"
+    },
+    "last_lifetime_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_motor_torque_nm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_odometer_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_oiltemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_protocol_flags": 0,
+    "last_rpm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_speed_ms": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_telemetry_presence": 15,
+    "last_tire_pressure_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_deg": {
+     "bits": 13824249416176474522,
+     "repr": "-0.4"
+    },
+    "last_trailer_id": 5,
+    "last_trailer_name": "Flatbed",
+    "last_trip_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_turbo": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_wheel_rows": [
+     {
+      "brake_c": {
+       "bits": 4633641066610819072,
+       "repr": "60.0"
+      },
+      "broken": false,
+      "label": "front left",
+      "psi": {
+       "bits": 4629207835727626240,
+       "repr": "30.25"
+      }
+     },
+     {
+      "brake_c": {
+       "bits": 4633852172843352064,
+       "repr": "61.5"
+      },
+      "broken": false,
+      "label": "front right",
+      "psi": null
+     },
+     {
+      "brake_c": null,
+      "broken": false,
+      "label": "trailer rear left",
+      "psi": {
+       "bits": 4635329916471083008,
+       "repr": "80.0"
+      }
+     },
+     {
+      "brake_c": {
+       "bits": 0,
+       "repr": "0.0"
+      },
+      "broken": true,
+      "label": "trailer rear right",
+      "psi": {
+       "bits": 0,
+       "repr": "0.0"
+      }
+     }
+    ],
+    "marked_coord_x": null,
+    "protocol_mode": "extended",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": true,
+    "units": "imperial",
+    "wheel_live": true,
+    "world_active": false
+   }
+  },
+  {
+   "name": "loader_metric",
+   "rows": [
+    {
+     "available": true,
+     "category": null,
+     "label": "Heading",
+     "value_text": "0.0 degrees"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Speed",
+     "value_text": "0 km/h"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Speed limit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "RPM",
+     "value_text": "0 RPM"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Gear",
+     "value_text": "manual 3"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Fuel",
+     "value_text": "0 percent"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Battery"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Range"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Motor Power"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Motor Torque"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Engine Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Oil Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Clutch Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Ambient Temperature"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Boost Pressure"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Air Pressure"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Trip"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Odometer"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Model lifetime"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "front left",
+     "value_text": "2.09 bar"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "trailer rear left",
+     "value_text": "5.52 bar"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "trailer rear right",
+     "value_text": "broken off"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Implement Height",
+     "value_text": "1.23 meters"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Implement Tilt",
+     "value_text": "8 degrees back"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Frame Articulation",
+     "value_text": "0 degrees straight"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Trailer Angle",
+     "value_text": "12 degrees left, Flatbed"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "front left",
+     "value_text": "60 Celsius"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "front right",
+     "value_text": "62 Celsius"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "trailer rear right",
+     "value_text": "broken off"
+    }
+   ],
+   "state": {
+    "_env_ambient_c": null,
+    "_fuel_in_range": false,
+    "_fuel_parking": false,
+    "_fuel_target_id": null,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": false,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": false,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_air_pressure_max": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_articulation_deg": {
+     "bits": 13819745816549104026,
+     "repr": "-0.2"
+    },
+    "last_brake_temp_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_clutch_temp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_engtemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_ev_range_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_fuel": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": "M3",
+    "last_heading": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_edge_height": {
+     "bits": 4608236261112822104,
+     "repr": "1.234"
+    },
+    "last_implement_flags": {
+     "bits": 4619567317775286272,
+     "repr": "7.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 4620242857719391846,
+     "repr": "7.6"
+    },
+    "last_lifetime_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_motor_torque_nm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_odometer_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_oiltemp": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_protocol_flags": 0,
+    "last_rpm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_speed_ms": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_telemetry_presence": 15,
+    "last_tire_pressure_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_deg": {
+     "bits": 4623226492472524800,
+     "repr": "12.5"
+    },
+    "last_trailer_id": 5,
+    "last_trailer_name": "Flatbed",
+    "last_trip_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_turbo": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_wheel_rows": [
+     {
+      "brake_c": {
+       "bits": 4633641066610819072,
+       "repr": "60.0"
+      },
+      "broken": false,
+      "label": "front left",
+      "psi": {
+       "bits": 4629207835727626240,
+       "repr": "30.25"
+      }
+     },
+     {
+      "brake_c": {
+       "bits": 4633852172843352064,
+       "repr": "61.5"
+      },
+      "broken": false,
+      "label": "front right",
+      "psi": null
+     },
+     {
+      "brake_c": null,
+      "broken": false,
+      "label": "trailer rear left",
+      "psi": {
+       "bits": 4635329916471083008,
+       "repr": "80.0"
+      }
+     },
+     {
+      "brake_c": {
+       "bits": 0,
+       "repr": "0.0"
+      },
+      "broken": true,
+      "label": "trailer rear right",
+      "psi": {
+       "bits": 0,
+       "repr": "0.0"
+      }
+     }
+    ],
+    "marked_coord_x": null,
+    "protocol_mode": "extended",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": true,
+    "units": "metric",
+    "wheel_live": true,
+    "world_active": false
+   }
+  },
+  {
+   "name": "air_without_max",
+   "rows": [
+    {
+     "available": true,
+     "category": null,
+     "label": "Heading",
+     "value_text": "123.5 degrees"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Speed",
+     "value_text": "45 mph"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Speed limit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "RPM",
+     "value_text": "2500 RPM"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Gear",
+     "value_text": "drive"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Fuel",
+     "value_text": "46 percent"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Battery"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Range"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Motor Power"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Motor Torque"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Engine Temperature",
+     "value_text": "195 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Oil Temperature",
+     "value_text": "215 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Clutch Temperature",
+     "value_text": "132 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Ambient Temperature",
+     "value_text": "71 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Boost Pressure",
+     "value_text": "17.9 psi"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Air Pressure",
+     "value_text": "110.4 psi"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Trip",
+     "value_text": "0.8 miles"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Odometer",
+     "value_text": "61 miles"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Model lifetime",
+     "value_text": "0.0 miles"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "front"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "front left",
+     "value_text": "32.1 psi"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "front right",
+     "value_text": "31.9 psi"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "rear"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "rear left",
+     "value_text": "30.0 psi"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "rear right",
+     "value_text": "29.1 psi"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Implement Height"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Implement Tilt"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Frame Articulation"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Trailer Angle"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "front"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "front left",
+     "value_text": "249 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "front right",
+     "value_text": "247 Fahrenheit"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "rear"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "rear left",
+     "value_text": "176 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "rear right",
+     "value_text": "26 Fahrenheit"
+    }
+   ],
+   "state": {
+    "_env_ambient_c": {
+     "bits": 4626744929681408000,
+     "repr": "21.5"
+    },
+    "_fuel_in_range": false,
+    "_fuel_parking": false,
+    "_fuel_target_id": null,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": false,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": false,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 4637467015231758664,
+     "repr": "110.37"
+    },
+    "last_air_pressure_max": {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    "last_articulation_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 4638179850610278400,
+     "repr": "120.5"
+    },
+    "last_brake_temp_fr": {
+     "bits": 4638109481866100736,
+     "repr": "119.5"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 4635347508657127424,
+     "repr": "80.25"
+    },
+    "last_brake_temp_rr": {
+     "bits": 13838435755002691584,
+     "repr": "-3.5"
+    },
+    "last_clutch_temp": {
+     "bits": 4633007747913220096,
+     "repr": "55.5"
+    },
+    "last_engtemp": {
+     "bits": 4636061751410530714,
+     "repr": "90.4"
+    },
+    "last_ev_range_m": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_fuel": {
+     "bits": 4601886185638229705,
+     "repr": "0.456"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": "D",
+    "last_heading": {
+     "bits": 4638387438405602509,
+     "repr": "123.45"
+    },
+    "last_implement_edge_height": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_implement_flags": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_lifetime_m": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_motor_torque_nm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_odometer_m": {
+     "bits": 4681523519818196582,
+     "repr": "98765.4"
+    },
+    "last_oiltemp": {
+     "bits": 4636849881345320550,
+     "repr": "101.6"
+    },
+    "last_protocol_flags": 8192,
+    "last_rpm": {
+     "bits": 4657717072724230144,
+     "repr": "2500.5"
+    },
+    "last_speed_ms": {
+     "bits": 4626322717216342016,
+     "repr": "20.0"
+    },
+    "last_telemetry_presence": 719,
+    "last_tire_pressure_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 4629721527560123187,
+     "repr": "32.15"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 4629686343188034355,
+     "repr": "31.95"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 4629137466983448576,
+     "repr": "30.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 4628870065755573453,
+     "repr": "29.05"
+    },
+    "last_trailer_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_id": null,
+    "last_trailer_name": "",
+    "last_trip_m": {
+     "bits": 4653144203864309760,
+     "repr": "1234.5"
+    },
+    "last_turbo": {
+     "bits": 4608236261112822104,
+     "repr": "1.234"
+    },
+    "last_wheel_rows": [],
+    "marked_coord_x": null,
+    "protocol_mode": "extended",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": false,
+    "units": "imperial",
+    "wheel_live": false,
+    "world_active": false
+   }
+  },
+  {
+   "name": "hybrid",
+   "rows": [
+    {
+     "available": true,
+     "category": null,
+     "label": "Heading",
+     "value_text": "123.5 degrees"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Speed",
+     "value_text": "45 mph"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Speed limit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "RPM",
+     "value_text": "2500 RPM"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Gear",
+     "value_text": "drive"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Fuel",
+     "value_text": "46 percent"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Battery"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Range",
+     "value_text": "2 miles"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Motor Power",
+     "value_text": "0 horsepower"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Motor Torque",
+     "value_text": "0 pound feet"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Engine Temperature",
+     "value_text": "195 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Oil Temperature",
+     "value_text": "215 Fahrenheit"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Clutch Temperature"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Ambient Temperature",
+     "value_text": "71 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Boost Pressure",
+     "value_text": "17.9 psi"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Air Pressure"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Trip",
+     "value_text": "0.8 miles"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Odometer",
+     "value_text": "61 miles"
+    },
+    {
+     "available": true,
+     "category": null,
+     "label": "Model lifetime",
+     "value_text": "0.0 miles"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "front"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "front left",
+     "value_text": "32.1 psi"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "front right",
+     "value_text": "31.9 psi"
+    },
+    {
+     "available": false,
+     "category": "Tire pressures",
+     "label": "rear"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "rear left",
+     "value_text": "30.0 psi"
+    },
+    {
+     "available": true,
+     "category": "Tire pressures",
+     "label": "rear right",
+     "value_text": "29.1 psi"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Implement Height"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Implement Tilt"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Frame Articulation"
+    },
+    {
+     "available": false,
+     "category": null,
+     "label": "Trailer Angle"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "front"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "front left",
+     "value_text": "249 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "front right",
+     "value_text": "247 Fahrenheit"
+    },
+    {
+     "available": false,
+     "category": "Brake temperatures",
+     "label": "rear"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "rear left",
+     "value_text": "176 Fahrenheit"
+    },
+    {
+     "available": true,
+     "category": "Brake temperatures",
+     "label": "rear right",
+     "value_text": "26 Fahrenheit"
+    }
+   ],
+   "state": {
+    "_env_ambient_c": {
+     "bits": 4626744929681408000,
+     "repr": "21.5"
+    },
+    "_fuel_in_range": false,
+    "_fuel_parking": false,
+    "_fuel_target_id": null,
+    "_ui_screen_context": "",
+    "clickspot_list_loading": false,
+    "clickspot_mode_active": false,
+    "clickspot_trigger_list": [],
+    "dock_mode_active": false,
+    "free_cam_active": false,
+    "last_air_pressure": {
+     "bits": 4637467015231758664,
+     "repr": "110.37"
+    },
+    "last_air_pressure_max": {
+     "bits": 4638144666238189568,
+     "repr": "120.0"
+    },
+    "last_articulation_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_fl": {
+     "bits": 4638179850610278400,
+     "repr": "120.5"
+    },
+    "last_brake_temp_fr": {
+     "bits": 4638109481866100736,
+     "repr": "119.5"
+    },
+    "last_brake_temp_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_brake_temp_rl": {
+     "bits": 4635347508657127424,
+     "repr": "80.25"
+    },
+    "last_brake_temp_rr": {
+     "bits": 13838435755002691584,
+     "repr": "-3.5"
+    },
+    "last_clutch_temp": {
+     "bits": 4633007747913220096,
+     "repr": "55.5"
+    },
+    "last_engtemp": {
+     "bits": 4636061751410530714,
+     "repr": "90.4"
+    },
+    "last_ev_range_m": {
+     "bits": 4661014508095930368,
+     "repr": "4000.0"
+    },
+    "last_fuel": {
+     "bits": 4601886185638229705,
+     "repr": "0.456"
+    },
+    "last_gear_byte": null,
+    "last_gear_str": "D",
+    "last_heading": {
+     "bits": 4638387438405602509,
+     "repr": "123.45"
+    },
+    "last_implement_edge_height": {
+     "bits": 13830554455654793216,
+     "repr": "-1.0"
+    },
+    "last_implement_flags": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_implement_tilt_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_lifetime_m": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "last_motor_power_kw": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_motor_torque_nm": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_odometer_m": {
+     "bits": 4681523519818196582,
+     "repr": "98765.4"
+    },
+    "last_oiltemp": {
+     "bits": 4636849881345320550,
+     "repr": "101.6"
+    },
+    "last_protocol_flags": 8192,
+    "last_rpm": {
+     "bits": 4657717072724230144,
+     "repr": "2500.5"
+    },
+    "last_speed_ms": {
+     "bits": 4626322717216342016,
+     "repr": "20.0"
+    },
+    "last_telemetry_presence": 399,
+    "last_tire_pressure_f": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_fl": {
+     "bits": 4629721527560123187,
+     "repr": "32.15"
+    },
+    "last_tire_pressure_fr": {
+     "bits": 4629686343188034355,
+     "repr": "31.95"
+    },
+    "last_tire_pressure_r": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_tire_pressure_rl": {
+     "bits": 4629137466983448576,
+     "repr": "30.0"
+    },
+    "last_tire_pressure_rr": {
+     "bits": 4628870065755573453,
+     "repr": "29.05"
+    },
+    "last_trailer_deg": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "last_trailer_id": null,
+    "last_trailer_name": "",
+    "last_trip_m": {
+     "bits": 4653144203864309760,
+     "repr": "1234.5"
+    },
+    "last_turbo": {
+     "bits": 4608236261112822104,
+     "repr": "1.234"
+    },
+    "last_wheel_rows": [],
+    "marked_coord_x": null,
+    "protocol_mode": "extended",
+    "route_live": false,
+    "scan_mode_active": false,
+    "trailer_live": false,
+    "units": "imperial",
+    "wheel_live": false,
+    "world_active": false
+   }
+  }
+ ],
+ "vbrowser": [
+  {
+   "active": false,
+   "callbacks": [],
+   "index": 0,
+   "lines": [],
+   "name": "read_only",
+   "spoken": [
+    [
+     "List. Alpha",
+     true,
+     true
+    ],
+    [
+     "Top: Alpha",
+     true,
+     true
+    ],
+    [
+     "Beta",
+     true,
+     true
+    ],
+    [
+     "Gamma",
+     true,
+     true
+    ],
+    [
+     "Bottom: Gamma",
+     true,
+     true
+    ],
+    [
+     "Beta",
+     true,
+     true
+    ],
+    [
+     "Beta",
+     true,
+     true
+    ],
+    [
+     "Beta",
+     true,
+     true
+    ],
+    [
+     "Gamma",
+     true,
+     true
+    ],
+    [
+     "Beta",
+     true,
+     true
+    ],
+    [
+     "Exit",
+     true,
+     true
+    ]
+   ]
+  },
+  {
+   "active": false,
+   "callbacks": [
+    [
+     "enter",
+     2,
+     "Gamma",
+     null
+    ],
+    [
+     "enter",
+     1,
+     "Beta",
+     {
+      "k": "v"
+     }
+    ],
+    [
+     "enter",
+     0,
+     "Alpha",
+     10
+    ]
+   ],
+   "index": 0,
+   "lines": [],
+   "name": "with_enter",
+   "spoken": [
+    [
+     "Gamma",
+     false,
+     true
+    ],
+    [
+     "Beta",
+     true,
+     true
+    ],
+    [
+     "Alpha",
+     true,
+     true
+    ],
+    [
+     "Exit",
+     true,
+     true
+    ]
+   ]
+  },
+  {
+   "active": false,
+   "callbacks": [
+    [
+     "adjust",
+     0,
+     "Alpha",
+     null,
+     1
+    ],
+    [
+     "adjust",
+     0,
+     "Alpha",
+     null,
+     -1
+    ],
+    [
+     "escape"
+    ]
+   ],
+   "index": 0,
+   "lines": [],
+   "name": "with_adjust_escape",
+   "spoken": [
+    [
+     "Alpha",
+     true,
+     true
+    ],
+    [
+     "Exit",
+     true,
+     true
+    ]
+   ]
+  },
+  {
+   "active": false,
+   "callbacks": [],
+   "index": 0,
+   "lines": [],
+   "name": "empty",
+   "spoken": [
+    [
+     "No information available",
+     true,
+     true
+    ]
+   ]
+  },
+  {
+   "active": false,
+   "callbacks": [],
+   "index": 0,
+   "lines": [],
+   "name": "closed_nav",
+   "spoken": []
+  }
+ ]
+}

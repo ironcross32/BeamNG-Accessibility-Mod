@@ -6,7 +6,7 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-19, with the E2 commit.
+2026-11-20, with the E5 commit.
 
 ## Done so far
 
@@ -30,10 +30,20 @@ The short version of where the port is, for a fresh session. Updated at every co
   Python bridge; optionally a beam-road-typed road telemetry snapshot (see bug 37). The
   fuel test strips the virtual browser's title announcement, which comes from E5's code.
 
+- **E5 (keyboard, menus, virtual browser) is done and committed.** Python bugs 41-43.
+  The F9/F10 layers call E6/E7 stubs, so they do nothing until those land.
+  `controller_menu_sim.rs` ends with a list of sim checks that belong to E4 (clickspot
+  staging, SNAP/EXEC, announcements, packet strings), E9 (the six bridge actions) and B1/U2
+  (config defaults, checkbox): those agents must port them.
+- Wave 2 was interrupted once by a usage limit (2026-11-19). The agents were resumed with
+  their work intact.
+
 ## In flight
 
-- Wave 2: E5 (keyboard and menus), E3 (instruments) and E4 (listeners B and browsers),
-  running as background Opus agents. Then E6, E7, E8, E9, E10, U2. If the session died, check their files for `not_ported!` and relaunch
+- E3 (instruments) and E4 (listeners B and browsers), running as background Opus agents.
+- E5 follow-up: add `add_hotkey(suppress=True)` (E8's F11 needs it) and make `menus.rs`
+  use E1's exported `OG_TURBO`/`WHEEL_POS_*` instead of private copies.
+- Then E6, E7, E8, E9, E10, U2. If the session died, check their files for `not_ported!` and relaunch
   whichever is unfinished, telling it to continue from what is on disk.
 
 ## Next step

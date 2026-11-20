@@ -52,15 +52,17 @@ Legend: R = reproduced as in Python; H = already hardened in Rust (a departure).
 | 30 | `telemetry_loop` (~`beamtel.py:11118`) | No `global` for `last_steering`, `last_actual_steering`, `last_steering_input`, so the module globals stay 0.0 all session: `_push_obstacle_state` always sends steering 0.000 to obstacleDetector, and the MCP and road-diagnostic snapshots report steering 0. The loop's own readers use the locals and are correct. **Fixing it changes what the obstacle detector receives, so it is the user's call, and it should be fixed in Python too** | R |
 | 31 | `telemetry_loop` | The first non-baseline Extended packet speaks "Lightbar off" and "Fog lights off" (`last_lightbar`/`last_fog` start at -1) | R |
 | 32 | `telemetry_loop` | Low and high beam bits both set: the `else` branch says "Headlights off" | R |
+| 33 | `telemetry_loop` | A NaN in the lightbar, fog or implement-flags float, or in speed (via the speed bucket), raises and kills the telemetry thread | R (panics at the same point) |
 | 34 | `scanner_listener` | A direction field of `inf` raises an uncaught OverflowError; the scanner listener stops for the session | R |
 | 35 | `scanner_listener` | An unparseable text packet that is exactly 8 bytes (`abc,def!`) is read as binary `<ff` and feeds made-up numbers to the scanner tone | R |
 | 36 | `scanner_listener` | A NaN direction updates scanner state but never the audio, so the two disagree | R |
 | 37 | `road_listener` | A huge int in an R2 packet (OverflowError) or a NaN reaching `ROAD_DIAGNOSTICS.record` (ValueError) stops the road listener | R for the int; H for the NaN (the Rust snapshot is serde_json, so the NaN becomes null) |
 | 38 | `road_listener` | A disk OSError from either recorder is logged as "Road listener socket error." | R |
 | 39 | `fuel_listener` | Fuel JSON nested deeply enough to raise RecursionError stops the listener | R |
+| 41 | Status menu Gear row | Before any telemetry (protocol "outgauge", no gear byte), `gear_to_phrase(None)` raises TypeError; navigating onto Gear kills that command and the worker logs it | R |
+| 42 | status mode + browser | With status mode on, a browser opened on top gets no arrows: status mode's hook eats them and `on_status_arrow_press` returns because a browser is open | R |
+| 43 | `keyboard` package hook thread | `while not GetMessage(...)` is inverted; the thread would exit if any message were posted (none is) | R |
 | 40 | `_hill_climb_finalized` | A non-dict `statistics` raises AttributeError; the recorder swallows it and the data-quality log line is lost | R |
-| 33 | `telemetry_loop` | A NaN in the lightbar, fog or implement-flags float, or in speed (via the speed bucket), raises and kills the telemetry thread | R (panics at the same point) |
-
 ## Recommendation
 
 Harden 1-9 in the Rust (catch at the listener or per key, log, carry on), keep the rest as
