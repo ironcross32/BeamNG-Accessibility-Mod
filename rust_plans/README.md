@@ -4,6 +4,9 @@ This directory is the complete plan for porting BEAM's Python application to Rus
 Tauri 2 shell and a semantic-HTML interface. It is written so a different model, or a
 fresh session, can pick the work up from the **Status** table at the bottom.
 
+**Start with `HANDOFF.md`**: where the work stopped and what to do next, updated at
+every commit.
+
 Read in this order:
 
 1. `01-scope-and-architecture.md`: what is ported, what is not, crate layout, runtime design.
@@ -62,14 +65,14 @@ Update this table as work lands. One line per workstream from `04-workstreams.md
 | S1 | beam-speech: Prism FFI and speech | done | 29 tests; matches Python backend/voice listing on this machine; app must call `speech::atexit()` on exit; ship `prism.dll` beside the exe |
 | AH | beam-audio: hrtf, terrain scan render, waveform generators | done | 34 tests; numpy default_rng reproduced exactly in `dsp`, so all 76 waveforms and scan jitter are bit-identical to Python. beam-audio now builds |
 | AA | beam-audio: controller state, API, device, callback skeleton | done | split in `audio-callback-split.md`; crate builds once AH lands `waveforms.rs`; scanner diag hookup and device run untested |
-| A1-A3 | beam-audio: callback voices | in progress | A1 done: 10 voices, bit-exact without HRTF, within 2.7e-7 with. A2, A3 running |
+| A1-A3 | beam-audio: callback voices | done | A1: 10 voices, bit-exact without HRTF, within 2.7e-7 with. A2: stereo bit-exact, HRTF within 2.1e-7 (tol 1e-6). No stubs left in beam-audio; every voice sim (hydro, implement, dock, obstacle, road, assistant, junction, route beacon, wheel slip) has a passing Rust test. Not yet reviewed by the orchestrator |
 | EA | beam-engine: skeleton, shared state, say(), units, engine start | done | 20 tests; `engine-map.md` covers all 848 top-level statements. beam-audio dependency is commented out in beam-engine/Cargo.toml with stand-ins in `compat.rs` until AH lands waveforms: undo at I1 |
 | I0 | Pre-wave-2 integration: re-enable beam-audio in beam-engine, drop audio stand-ins, adapt the four state objects | done | workspace builds; 302 tests pass; `compat.rs` deleted; conversions in `beam_engine::convert`; see engine-map.md section 8 |
-| E1 | Telemetry decode and telemetry loop | in progress | |
-| E2 | Listeners A: scanner, obstacle, road, hill climb, fuel | in progress | |
+| E1 | Telemetry decode and telemetry loop | not started | an agent was launched but none of its work landed: `telemetry.rs` is still the EA stub (checked 2026-11-19) |
+| E2 | Listeners A: scanner, obstacle, road, hill climb, fuel | not started | as E1: listener files are still EA stubs |
 | E3 | Implement, dock, ramp, cannon, terrain scan, line-up, trailer, wheel, beacon | not started | |
 | E4 | Listeners B and their browsers | not started | |
-| E5 | Keyboard hook, layers, menus, virtual browser | in progress | |
+| E5 | Keyboard hook, layers, menus, virtual browser | not started | as E1: `keyboard/`, `menus.rs`, `virtual_browser.rs` are still EA stubs |
 | E6 | F9 command handler and remaining toggles | not started | |
 | E7 | F10 AI layer, describer, capture, window utilities | not started | |
 | E8 | Vehicle spawner | not started | |

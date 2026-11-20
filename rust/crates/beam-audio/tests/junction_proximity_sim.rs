@@ -302,7 +302,7 @@ fn junction_proximity_stop_bar() {
     sim.h.clock.set(101.0);
     assert!(!any(&sim.render(1.0)), "dead UDP feed silences cue");
     let off = config_from_json(&json!({"road_junction_proximity_enabled": false}));
-    c.apply_config(off.as_ref().expect("config")).expect("apply_config");
+    sim.h.ctrl.apply_config(off.as_ref().expect("config")).expect("apply_config");
     sim.update(Some(&target()));
     assert!(!any(&sim.render(1.0)), "configuration disables cue");
     eprintln!("junction_proximity_sim: stop-bar diagnostics passed");
