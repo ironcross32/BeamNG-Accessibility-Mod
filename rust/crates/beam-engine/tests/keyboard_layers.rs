@@ -58,15 +58,29 @@ fn f9_layer_eats_keys_until_cleared() {
     assert!(!down("f9"), "the F9 that opened the layer, repeating");
     assert!(up("a"));
     assert!(up("ctrl"));
-    // The command runs on the worker with the modifier snapshot taken at key-down.
+    // The command runs on the worker with the modifier snapshot taken at key-down: check
+    // what the F9 body receives, not what it leaves behind.
+    let received: Arc<Mutex<Vec<(Layer, String, Mods)>>> = Arc::new(Mutex::new(Vec::new()));
+    let r2 = Arc::clone(&received);
+    keyboard::set_layer_body_override_for_tests(Some(Arc::new(
+        move |layer: Layer, e: &KeyEvent| {
+            r2.lock()
+                .push((layer, e.name.clone(), state().kb.capture_mods));
+        },
+    )));
     keyboard::run_pending_commands_for_tests();
+    keyboard::set_layer_body_override_for_tests(None);
     assert_eq!(
-        state().kb.capture_mods,
-        Mods {
-            ctrl: true,
-            shift: false,
-            alt: false
-        }
+        *received.lock(),
+        vec![(
+            Layer::F9,
+            "a".to_string(),
+            Mods {
+                ctrl: true,
+                shift: false,
+                alt: false
+            }
+        )]
     );
     keyboard::clear_next_key_hook(true);
     assert_eq!(keyboard::kb_layer(), None);

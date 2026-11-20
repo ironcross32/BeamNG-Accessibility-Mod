@@ -6,8 +6,9 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-20, with the E3 commit. Known red test: `keyboard_layers::f9_layer_eats_keys_until_cleared`
-asserted state left by E6's old stub; E5 is reworking it.
+2026-11-20, with the commit that fixes `keyboard_layers::f9_layer_eats_keys_until_cleared`.
+It now checks what the F9 handler receives through
+`keyboard::set_layer_body_override_for_tests`, rather than state left behind by E6's old stub.
 
 ## Done so far
 
@@ -50,7 +51,9 @@ asserted state left by E6's old stub; E5 is reworking it.
 
 - E3 (instruments) and E4 (listeners B and browsers), running as background Opus agents.
 - E6 (F9 commands) and E7 (F10 layer, describer, capture), started 2026-11-20.
-- Then E8, E9, E10, U2. If the session died, check their files for `not_ported!` and relaunch
+- E8 (vehicle spawner, one agent, may convert `vehicle_spawner.rs` to a directory
+  module), started 2026-11-20.
+- Then E9, E10, U2. If the session died, check their files for `not_ported!` and relaunch
   whichever is unfinished, telling it to continue from what is on disk.
 
 ## Next step

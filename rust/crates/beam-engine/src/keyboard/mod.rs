@@ -340,16 +340,36 @@ pub(crate) fn kb_run_layer_command(layer: Layer, name: &str, mods: Mods) {
     if Some(layer) != kb_layer() {
         return; // layer closed or switched while this sat in the queue
     }
+    let over = LAYER_BODY_OVERRIDE.read().clone();
     if layer == Layer::F9 {
         state().kb.capture_mods = mods;
+        if let Some(f) = over {
+            f(layer, &KeyEvent::down(name));
+            return;
+        }
         crate::f9_commands::on_next_key_press(
             &KeyEvent::down(name),
             crate::state::audio_controller_ref(),
         );
     } else {
         state().ai.ai_mods = mods;
+        if let Some(f) = over {
+            f(layer, &KeyEvent::down(name));
+            return;
+        }
         crate::ai_layer::on_ai_key_press(&KeyEvent::down(name));
     }
+}
+
+type LayerBody = Arc<dyn Fn(Layer, &KeyEvent) + Send + Sync>;
+static LAYER_BODY_OVERRIDE: parking_lot::RwLock<Option<LayerBody>> = parking_lot::RwLock::new(None);
+
+/// Replace the F9/F10 layer bodies (`_on_next_key_press` / `_on_ai_key_press`) with a
+/// recorder, called after the modifier snapshot has been restored into the state. For
+/// tests; `None` restores the real bodies.
+#[doc(hidden)]
+pub fn set_layer_body_override_for_tests(f: Option<LayerBody>) {
+    *LAYER_BODY_OVERRIDE.write() = f;
 }
 
 /// `_kb_layer`.
