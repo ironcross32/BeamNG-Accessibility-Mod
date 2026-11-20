@@ -6,7 +6,7 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-20, with the E6 commit.
+2026-11-20, with the E7 commit.
 
 ## Done so far
 
@@ -47,18 +47,25 @@ The short version of where the port is, for a fresh session. Updated at every co
 - **E6 (F9 commands) is done and committed**: `f9_commands.rs`, `tests/f9_commands.rs`
   (1081 golden cases), `rust_plans/f9-command-table.md`. Python bugs 54-57. E3's
   `route_beacon_sim` scenario 3 is un-ignored and passes.
+- **E7 (F10 layer, describer, capture, window utilities) is done and committed.** Python
+  bugs 58-61. For U2: call `ai_describer::try_validate_api_key` with the selected model
+  and `Opts::from_extra_args(ai_registry::extra_args_for(...))`, not the stub-shaped
+  `validate_api_key`. For the user's validation pass: F10+Space in game, the MCP
+  screenshot with `focus_game`, node-grabber SNAP warping, and API key validation behind
+  a corporate/registry proxy (ureq ignores the registry proxy and uses bundled TLS roots).
 - Wave 2 was interrupted twice by a usage limit (2026-11-19). The agents were resumed with
   their work intact.
 
 ## In flight
 
 - E3 (instruments) and E4 (listeners B and browsers), running as background Opus agents.
-- E7 (F10 layer, describer, capture), started 2026-11-20.
 - E8 (vehicle spawner, one agent, may convert `vehicle_spawner.rs` to a directory
   module), started 2026-11-20.
 - E9 (UI bridge and MCP), started 2026-11-20. Its brief carries the E2, E4 and E5
   obligations listed above.
-- Then E10, U2. If the session died, check their files for `not_ported!` and relaunch
+- E10 (updater, mod installer), started 2026-11-20.
+- Then U2 (the Tauri backend: `src-tauri/`), best started once E9 lands, since it wires
+  the bridge and console into the window. If the session died, check their files for `not_ported!` and relaunch
   whichever is unfinished, telling it to continue from what is on disk.
 
 ## Next step

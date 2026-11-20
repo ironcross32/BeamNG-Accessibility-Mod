@@ -1,0 +1,7019 @@
+{
+ "ai_status": [
+  {
+   "commands": [],
+   "slots": [],
+   "spoken": [
+    [
+     "No vehicles tracked",
+     true,
+     true
+    ]
+   ]
+  },
+  {
+   "commands": [
+    [
+     101,
+     "chase",
+     102
+    ],
+    [
+     102,
+     "follow",
+     999
+    ],
+    [
+     103,
+     "flee",
+     null
+    ],
+    [
+     999,
+     "stop",
+     null
+    ]
+   ],
+   "slots": [
+    [
+     1,
+     101,
+     "Alpha"
+    ],
+    [
+     2,
+     102,
+     "Bravo"
+    ],
+    [
+     3,
+     103,
+     "Charlie"
+    ],
+    [
+     10,
+     110,
+     "Juliet"
+    ]
+   ],
+   "spoken": [
+    [
+     "Vehicle 1, Alpha: chasing Bravo. Vehicle 2, Bravo: following. Vehicle 3, Charlie: fleeing. Vehicle 0, Juliet: no command given",
+     true,
+     true
+    ]
+   ]
+  },
+  {
+   "commands": [
+    [
+     101,
+     "disabled",
+     null
+    ],
+    [
+     102,
+     "traffic",
+     null
+    ],
+    [
+     103,
+     "random",
+     null
+    ],
+    [
+     110,
+     "mystery",
+     null
+    ]
+   ],
+   "slots": [
+    [
+     1,
+     101,
+     "Alpha"
+    ],
+    [
+     2,
+     102,
+     "Bravo"
+    ],
+    [
+     3,
+     103,
+     "Charlie"
+    ],
+    [
+     10,
+     110,
+     "Juliet"
+    ]
+   ],
+   "spoken": [
+    [
+     "Vehicle 1, Alpha: AI disabled. Vehicle 2, Bravo: traffic mode. Vehicle 3, Charlie: random mode. Vehicle 0, Juliet: mystery",
+     true,
+     true
+    ]
+   ]
+  }
+ ],
+ "arrivals": [
+  {
+   "arrival": {
+    "offRoad": true,
+    "x": 1,
+    "y": 2.5
+   },
+   "ts": {
+    "bits": 0,
+    "repr": "0.0"
+   },
+   "x": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   },
+   "y": {
+    "bits": 4612811918334230528,
+    "repr": "2.5"
+   }
+  },
+  {
+   "arrival": {
+    "offRoad": false,
+    "x": 1,
+    "y": 2
+   },
+   "ts": {
+    "bits": 4617315517961601024,
+    "repr": "5.0"
+   },
+   "x": null,
+   "y": null
+  },
+  {
+   "arrival": {
+    "offRoad": true,
+    "x": "1",
+    "y": 2
+   },
+   "ts": {
+    "bits": 4617315517961601024,
+    "repr": "5.0"
+   },
+   "x": null,
+   "y": null
+  },
+  {
+   "arrival": {
+    "offRoad": 1,
+    "x": true,
+    "y": -3
+   },
+   "ts": {
+    "bits": 0,
+    "repr": "0.0"
+   },
+   "x": {
+    "bits": 4607182418800017408,
+    "repr": "1.0"
+   },
+   "y": {
+    "bits": 13837309855095848960,
+    "repr": "-3.0"
+   }
+  },
+  {
+   "arrival": {
+    "offRoad": true,
+    "x": 4.25
+   },
+   "ts": {
+    "bits": 4617315517961601024,
+    "repr": "5.0"
+   },
+   "x": null,
+   "y": null
+  },
+  {
+   "arrival": {},
+   "ts": {
+    "bits": 4617315517961601024,
+    "repr": "5.0"
+   },
+   "x": null,
+   "y": null
+  }
+ ],
+ "cues": [
+  {
+   "called": true,
+   "choices": [],
+   "kind": "off",
+   "protected": true
+  },
+  {
+   "called": false,
+   "choices": [],
+   "kind": "protect",
+   "protected": true
+  },
+  {
+   "called": true,
+   "choices": [
+    "left",
+    "right"
+   ],
+   "kind": "junction",
+   "protected": false
+  },
+  {
+   "called": true,
+   "choices": [
+    "straight"
+   ],
+   "kind": "junction",
+   "protected": false
+  },
+  {
+   "called": true,
+   "choices": [],
+   "kind": "other",
+   "protected": false
+  }
+ ],
+ "f10_help": [
+  [
+   "h",
+   false,
+   false,
+   false,
+   "Toggle driving assistant for the current vehicle"
+  ],
+  [
+   "d",
+   false,
+   false,
+   false,
+   "Disable AI"
+  ],
+  [
+   "t",
+   false,
+   false,
+   false,
+   "Traffic mode"
+  ],
+  [
+   "r",
+   false,
+   false,
+   false,
+   "Random mode"
+  ],
+  [
+   "s",
+   false,
+   false,
+   false,
+   "Stop AI"
+  ],
+  [
+   "c",
+   false,
+   false,
+   false,
+   "Chase mode"
+  ],
+  [
+   "f",
+   false,
+   false,
+   false,
+   "Follow mode"
+  ],
+  [
+   "e",
+   false,
+   false,
+   false,
+   "Flee mode"
+  ],
+  [
+   "a",
+   false,
+   false,
+   false,
+   "Cycle avoid cars"
+  ],
+  [
+   "a",
+   true,
+   false,
+   false,
+   "Select all vehicles"
+  ],
+  [
+   "n",
+   true,
+   false,
+   false,
+   "Clear selection"
+  ],
+  [
+   "l",
+   false,
+   false,
+   false,
+   "Toggle lane driving"
+  ],
+  [
+   "+",
+   false,
+   false,
+   false,
+   "Increase speed limit"
+  ],
+  [
+   "=",
+   false,
+   false,
+   false,
+   "Increase speed limit"
+  ],
+  [
+   "-",
+   false,
+   false,
+   false,
+   "Decrease speed limit"
+  ],
+  [
+   "0",
+   false,
+   false,
+   false,
+   "Clear speed limit"
+  ],
+  [
+   "space",
+   false,
+   false,
+   false,
+   "Describe scene (AI)"
+  ],
+  [
+   "1",
+   false,
+   false,
+   false,
+   "Aggression 0.2"
+  ],
+  [
+   "2",
+   false,
+   false,
+   false,
+   "Aggression 0.4"
+  ],
+  [
+   "3",
+   false,
+   false,
+   false,
+   "Aggression 0.7"
+  ],
+  [
+   "4",
+   false,
+   false,
+   false,
+   "Aggression 0.9"
+  ],
+  [
+   "5",
+   false,
+   false,
+   false,
+   "Aggression 1.0"
+  ],
+  [
+   "6",
+   false,
+   false,
+   false,
+   "Aggression 1.2"
+  ],
+  [
+   "7",
+   false,
+   false,
+   false,
+   "Aggression 1.5"
+  ],
+  [
+   "8",
+   false,
+   false,
+   false,
+   "Aggression 1.8"
+  ],
+  [
+   "9",
+   false,
+   false,
+   false,
+   "Aggression 2.0"
+  ],
+  [
+   "1",
+   false,
+   true,
+   false,
+   "Toggle slot 1 selection"
+  ],
+  [
+   "1",
+   true,
+   false,
+   false,
+   "Set slot 1 as AI target"
+  ],
+  [
+   "2",
+   false,
+   true,
+   false,
+   "Toggle slot 2 selection"
+  ],
+  [
+   "2",
+   true,
+   false,
+   false,
+   "Set slot 2 as AI target"
+  ],
+  [
+   "3",
+   false,
+   true,
+   false,
+   "Toggle slot 3 selection"
+  ],
+  [
+   "3",
+   true,
+   false,
+   false,
+   "Set slot 3 as AI target"
+  ],
+  [
+   "4",
+   false,
+   true,
+   false,
+   "Toggle slot 4 selection"
+  ],
+  [
+   "4",
+   true,
+   false,
+   false,
+   "Set slot 4 as AI target"
+  ],
+  [
+   "5",
+   false,
+   true,
+   false,
+   "Toggle slot 5 selection"
+  ],
+  [
+   "5",
+   true,
+   false,
+   false,
+   "Set slot 5 as AI target"
+  ],
+  [
+   "6",
+   false,
+   true,
+   false,
+   "Toggle slot 6 selection"
+  ],
+  [
+   "6",
+   true,
+   false,
+   false,
+   "Set slot 6 as AI target"
+  ],
+  [
+   "7",
+   false,
+   true,
+   false,
+   "Toggle slot 7 selection"
+  ],
+  [
+   "7",
+   true,
+   false,
+   false,
+   "Set slot 7 as AI target"
+  ],
+  [
+   "8",
+   false,
+   true,
+   false,
+   "Toggle slot 8 selection"
+  ],
+  [
+   "8",
+   true,
+   false,
+   false,
+   "Set slot 8 as AI target"
+  ],
+  [
+   "9",
+   false,
+   true,
+   false,
+   "Toggle slot 9 selection"
+  ],
+  [
+   "9",
+   true,
+   false,
+   false,
+   "Set slot 9 as AI target"
+  ],
+  [
+   "0",
+   false,
+   true,
+   false,
+   "Toggle slot 10 selection"
+  ],
+  [
+   "0",
+   true,
+   false,
+   false,
+   "Set slot 10 as AI target"
+  ],
+  [
+   "1",
+   false,
+   false,
+   true,
+   "Preset: Motorcade (each follows the one ahead)"
+  ],
+  [
+   "2",
+   false,
+   false,
+   true,
+   "Preset: Gang-up (all chase vehicle 1)"
+  ],
+  [
+   "3",
+   false,
+   false,
+   true,
+   "Preset: Tour of Destruction (chase chain)"
+  ],
+  [
+   "4",
+   false,
+   false,
+   true,
+   "Preset: Tour of Destruction Spectator (you watch)"
+  ],
+  [
+   "5",
+   false,
+   false,
+   true,
+   "Preset: Police mode (all follow CTRL target)"
+  ]
+ ],
+ "keys": [
+  {
+   "name": "assistant_toggle",
+   "slots": [],
+   "steps": [
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "h",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "ASSISTANT_TOGGLE:<token>"
+      ]
+     ],
+     "shift": false,
+     "spoken": [],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "h",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "ASSISTANT_OFF:<token>"
+      ]
+     ],
+     "shift": false,
+     "spoken": [],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    }
+   ],
+   "units": "imperial"
+  },
+  {
+   "name": "basic_imperial",
+   "slots": [],
+   "steps": [
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "d",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "ASSISTANT_OFF"
+      ],
+      [
+       4449,
+       "MODE:disabled"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "AI disabled",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "t",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "MODE:traffic"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Traffic mode",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "r",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "MODE:random"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Random mode",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "s",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "MODE:stop"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "AI stop",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "c",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "MODE:chase"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Chase mode",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "f",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "MODE:follow"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Follow mode",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "e",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "MODE:flee"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Flee mode",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "1",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "AGGR:0.2"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Aggression 0.2",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "2",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "AGGR:0.4"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Aggression 0.4",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "3",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "AGGR:0.7"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Aggression 0.7",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "4",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "AGGR:0.9"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Aggression 0.9",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "5",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "AGGR:1.0"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Aggression 1.0",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "6",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "AGGR:1.2"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Aggression 1.2",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "7",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "AGGR:1.5"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Aggression 1.5",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "8",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "AGGR:1.8"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Aggression 1.8",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "9",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "AGGR:2.0"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Aggression 2.0",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "-",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "SPEED:2.78"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Speed limit 6 mph",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": {
+       "bits": 4613437418282476430,
+       "repr": "2.7777777777777777"
+      },
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "+",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "SPEED:5.56"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Speed limit 12 mph",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": {
+       "bits": 4617941017909846926,
+       "repr": "5.555555555555555"
+      },
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "+",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "SPEED:8.33"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Speed limit 19 mph",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": {
+       "bits": 4620880867666602666,
+       "repr": "8.333333333333332"
+      },
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "=",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "SPEED:11.11"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Speed limit 25 mph",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": {
+       "bits": 4622444617537217422,
+       "repr": "11.11111111111111"
+      },
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "add",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "SPEED:13.89"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Speed limit 31 mph",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": {
+       "bits": 4624008367407832178,
+       "repr": "13.88888888888889"
+      },
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "-",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "SPEED:11.11"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Speed limit 25 mph",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": {
+       "bits": 4622444617537217422,
+       "repr": "11.11111111111111"
+      },
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "subtract",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "SPEED:8.33"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Speed limit 19 mph",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": {
+       "bits": 4620880867666602666,
+       "repr": "8.333333333333332"
+      },
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "-",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "SPEED:5.56"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Speed limit 12 mph",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": {
+       "bits": 4617941017909846925,
+       "repr": "5.5555555555555545"
+      },
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "-",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "SPEED:2.78"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Speed limit 6 mph",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": {
+       "bits": 4613437418282476428,
+       "repr": "2.777777777777777"
+      },
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "0",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "CLEARSPEED"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Speed limit off",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "a",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "AVOID:on"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Avoid cars on",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "on",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "a",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "AVOID:off"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Avoid cars off",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "off",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "a",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "AVOID:auto"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Avoid cars auto",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "a",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "AVOID:on"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Avoid cars on",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "on",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "l",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "LANE:on"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Lane driving on",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "on",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": true,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "l",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "LANE:off"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Lane driving off",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "on",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": true,
+     "err": null,
+     "key": "space",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [],
+     "staggered": [],
+     "state": {
+      "avoid": "on",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "x",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [],
+     "staggered": [],
+     "state": {
+      "avoid": "on",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "f10",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [],
+     "staggered": [],
+     "state": {
+      "avoid": "on",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "ctrl",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [],
+     "staggered": [],
+     "state": {
+      "avoid": "on",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "left shift",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [],
+     "staggered": [],
+     "state": {
+      "avoid": "on",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "right alt",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [],
+     "staggered": [],
+     "state": {
+      "avoid": "on",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "A",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "AVOID:off"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Avoid cars off",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "off",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    }
+   ],
+   "units": "imperial"
+  },
+  {
+   "name": "metric_speed",
+   "slots": [],
+   "steps": [
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "+",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "SPEED:2.78"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Speed limit 10 km/h",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": {
+       "bits": 4613437418282476430,
+       "repr": "2.7777777777777777"
+      },
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "+",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "SPEED:5.56"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Speed limit 20 km/h",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": {
+       "bits": 4617941017909846926,
+       "repr": "5.555555555555555"
+      },
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "+",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "SPEED:8.33"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Speed limit 30 km/h",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": {
+       "bits": 4620880867666602666,
+       "repr": "8.333333333333332"
+      },
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "-",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "SPEED:5.56"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Speed limit 20 km/h",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": {
+       "bits": 4617941017909846925,
+       "repr": "5.5555555555555545"
+      },
+      "target": null
+     }
+    }
+   ],
+   "units": "metric"
+  },
+  {
+   "name": "help_mode",
+   "slots": [],
+   "steps": [
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "/",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Input help on",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": true,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "h",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Toggle driving assistant for the current vehicle",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": true,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": true,
+     "describe": false,
+     "err": null,
+     "key": "a",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Select all vehicles",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": true,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "add",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Increase speed limit",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": true,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "subtract",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Decrease speed limit",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": true,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "1",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "No vehicles tracked yet",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "1",
+     "layer_open": true,
+     "sent": [],
+     "shift": true,
+     "spoken": [
+      [
+       "Slot 1 is empty",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": true,
+     "describe": false,
+     "err": null,
+     "key": "0",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Slot 0 is empty",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "z",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": true,
+     "err": null,
+     "key": "space",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "?",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Input help on",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": true,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "t",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Traffic mode",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": true,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    }
+   ],
+   "units": "imperial"
+  },
+  {
+   "name": "slots_selection",
+   "slots": [
+    [
+     1,
+     101,
+     "Alpha"
+    ],
+    [
+     2,
+     102,
+     "Bravo"
+    ],
+    [
+     3,
+     103,
+     "Charlie"
+    ],
+    [
+     10,
+     110,
+     "Juliet"
+    ]
+   ],
+   "steps": [
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "1",
+     "layer_open": true,
+     "sent": [],
+     "shift": true,
+     "spoken": [
+      [
+       "Alpha, selected",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1
+      ],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "2",
+     "layer_open": true,
+     "sent": [],
+     "shift": true,
+     "spoken": [
+      [
+       "Bravo, selected",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1,
+       2
+      ],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "@",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Bravo, unselected",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1
+      ],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "5",
+     "layer_open": true,
+     "sent": [],
+     "shift": true,
+     "spoken": [
+      [
+       "Slot 5 is empty",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1
+      ],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": true,
+     "describe": false,
+     "err": null,
+     "key": "3",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Target: Charlie",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1
+      ],
+      "speed": null,
+      "target": 3
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "3",
+     "layer_open": true,
+     "sent": [],
+     "shift": true,
+     "spoken": [
+      [
+       "Cannot select Charlie, it is the target vehicle",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1
+      ],
+      "speed": null,
+      "target": 3
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": true,
+     "describe": false,
+     "err": null,
+     "key": "a",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Selected: Alpha, Bravo, Juliet",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1,
+       2,
+       10
+      ],
+      "speed": null,
+      "target": 3
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": true,
+     "describe": false,
+     "err": null,
+     "key": "2",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Bravo is selected. Press CTRL+2 again to confirm target change, any other key to cancel",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": 2,
+      "police": [],
+      "selected": [
+       1,
+       2,
+       10
+      ],
+      "speed": null,
+      "target": 3
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "x",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Target change cancelled",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1,
+       2,
+       10
+      ],
+      "speed": null,
+      "target": 3
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": true,
+     "describe": false,
+     "err": null,
+     "key": "2",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Bravo is selected. Press CTRL+2 again to confirm target change, any other key to cancel",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": 2,
+      "police": [],
+      "selected": [
+       1,
+       2,
+       10
+      ],
+      "speed": null,
+      "target": 3
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": true,
+     "describe": false,
+     "err": null,
+     "key": "1",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Target change cancelled",
+       true,
+       true
+      ],
+      [
+       "Alpha is selected. Press CTRL+1 again to confirm target change, any other key to cancel",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": 1,
+      "police": [],
+      "selected": [
+       1,
+       2,
+       10
+      ],
+      "speed": null,
+      "target": 3
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": true,
+     "describe": false,
+     "err": null,
+     "key": "2",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Target change cancelled",
+       true,
+       true
+      ],
+      [
+       "Bravo is selected. Press CTRL+2 again to confirm target change, any other key to cancel",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": 2,
+      "police": [],
+      "selected": [
+       1,
+       2,
+       10
+      ],
+      "speed": null,
+      "target": 3
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": true,
+     "describe": false,
+     "err": null,
+     "key": "2",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Target set to Bravo, removed from selection",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1,
+       10
+      ],
+      "speed": null,
+      "target": 2
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "c",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "MULTI_MODE:chase:102:101,110"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Chase mode",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        101,
+        "chase",
+        102
+       ],
+       [
+        110,
+        "chase",
+        102
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1,
+       10
+      ],
+      "speed": null,
+      "target": 2
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "f",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "MULTI_MODE:follow:102:101,110"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Follow mode",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        101,
+        "follow",
+        102
+       ],
+       [
+        110,
+        "follow",
+        102
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1,
+       10
+      ],
+      "speed": null,
+      "target": 2
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "e",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "MULTI_MODE:flee:102:101,110"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Flee mode",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        101,
+        "flee",
+        102
+       ],
+       [
+        110,
+        "flee",
+        102
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1,
+       10
+      ],
+      "speed": null,
+      "target": 2
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "t",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "MULTI_MODE:traffic:none:101,110"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Traffic mode",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        101,
+        "traffic",
+        null
+       ],
+       [
+        110,
+        "traffic",
+        null
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1,
+       10
+      ],
+      "speed": null,
+      "target": 2
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "d",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "ASSISTANT_OFF"
+      ],
+      [
+       4449,
+       "MULTI_MODE:disabled:none:101,110"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "AI disabled",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        101,
+        "disabled",
+        null
+       ],
+       [
+        110,
+        "disabled",
+        null
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1,
+       10
+      ],
+      "speed": null,
+      "target": 2
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": true,
+     "describe": false,
+     "err": null,
+     "key": "n",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Selection cleared",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        101,
+        "disabled",
+        null
+       ],
+       [
+        110,
+        "disabled",
+        null
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": 2
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "c",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "MODE:chase"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Chase mode",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        101,
+        "chase",
+        null
+       ],
+       [
+        110,
+        "disabled",
+        null
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": 2
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "0",
+     "layer_open": true,
+     "sent": [],
+     "shift": true,
+     "spoken": [
+      [
+       "Juliet, selected",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        101,
+        "chase",
+        null
+       ],
+       [
+        110,
+        "disabled",
+        null
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       10
+      ],
+      "speed": null,
+      "target": 2
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": true,
+     "describe": false,
+     "err": null,
+     "key": "0",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Juliet is selected. Press CTRL+0 again to confirm target change, any other key to cancel",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        101,
+        "chase",
+        null
+       ],
+       [
+        110,
+        "disabled",
+        null
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": 10,
+      "police": [],
+      "selected": [
+       10
+      ],
+      "speed": null,
+      "target": 2
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": ")",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Target change cancelled",
+       true,
+       true
+      ],
+      [
+       "Juliet, unselected",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        101,
+        "chase",
+        null
+       ],
+       [
+        110,
+        "disabled",
+        null
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": 2
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": true,
+     "describe": false,
+     "err": null,
+     "key": "1",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "AGGR:0.2"
+      ]
+     ],
+     "shift": true,
+     "spoken": [
+      [
+       "Aggression 0.2",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        101,
+        "chase",
+        null
+       ],
+       [
+        110,
+        "disabled",
+        null
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": 2
+     }
+    }
+   ],
+   "units": "imperial"
+  },
+  {
+   "name": "chase_without_target",
+   "slots": [
+    [
+     1,
+     101,
+     "Alpha"
+    ],
+    [
+     2,
+     102,
+     "Bravo"
+    ],
+    [
+     3,
+     103,
+     "Charlie"
+    ],
+    [
+     10,
+     110,
+     "Juliet"
+    ]
+   ],
+   "steps": [
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "1",
+     "layer_open": true,
+     "sent": [],
+     "shift": true,
+     "spoken": [
+      [
+       "Alpha, selected",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1
+      ],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "c",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Chase mode",
+       true,
+       true
+      ],
+      [
+       "No target set. Use CTRL+1-0 to set a target vehicle.",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1
+      ],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "2",
+     "layer_open": true,
+     "sent": [],
+     "shift": true,
+     "spoken": [
+      [
+       "Bravo, selected",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1,
+       2
+      ],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "f",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Follow mode",
+       true,
+       true
+      ],
+      [
+       "No target set. Use CTRL+1-0 to set a target vehicle.",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1,
+       2
+      ],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "e",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Flee mode",
+       true,
+       true
+      ],
+      [
+       "No target set. Use CTRL+1-0 to set a target vehicle.",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1,
+       2
+      ],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "r",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "MULTI_MODE:random:none:101,102"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Random mode",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        101,
+        "random",
+        null
+       ],
+       [
+        102,
+        "random",
+        null
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [
+       1,
+       2
+      ],
+      "speed": null,
+      "target": null
+     }
+    }
+   ],
+   "units": "imperial"
+  },
+  {
+   "name": "presets",
+   "slots": [
+    [
+     1,
+     3,
+     "Alpha"
+    ],
+    [
+     2,
+     4,
+     "Bravo"
+    ],
+    [
+     3,
+     5,
+     "Charlie"
+    ],
+    [
+     4,
+     6,
+     "Delta"
+    ]
+   ],
+   "steps": [
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "1",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Motorcade, 4 vehicles",
+       true,
+       true
+      ]
+     ],
+     "staggered": [
+      [
+       "MULTI_MODE:follow:3:4",
+       "MULTI_MODE:follow:4:5",
+       "MULTI_MODE:follow:5:6"
+      ]
+     ],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        4,
+        "follow",
+        3
+       ],
+       [
+        5,
+        "follow",
+        4
+       ],
+       [
+        6,
+        "follow",
+        5
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "2",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Gang-up, 3 vehicles on Alpha",
+       true,
+       true
+      ]
+     ],
+     "staggered": [
+      [
+       "MULTI_MODE:chase:3:4",
+       "MULTI_MODE:chase:3:5",
+       "MULTI_MODE:chase:3:6"
+      ]
+     ],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        4,
+        "chase",
+        3
+       ],
+       [
+        5,
+        "chase",
+        3
+       ],
+       [
+        6,
+        "chase",
+        3
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "3",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Tour of Destruction, 4 vehicles",
+       true,
+       true
+      ]
+     ],
+     "staggered": [
+      [
+       "MULTI_MODE:chase:3:4",
+       "MULTI_MODE:chase:4:5",
+       "MULTI_MODE:chase:5:6"
+      ]
+     ],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        4,
+        "chase",
+        3
+       ],
+       [
+        5,
+        "chase",
+        4
+       ],
+       [
+        6,
+        "chase",
+        5
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "4",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Tour of Destruction Spectator, 3 AI vehicles, you watch",
+       true,
+       true
+      ]
+     ],
+     "staggered": [
+      [
+       "MULTI_MODE:random:none:4",
+       "MULTI_MODE:chase:4:5",
+       "MULTI_MODE:chase:5:6"
+      ]
+     ],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        4,
+        "random",
+        null
+       ],
+       [
+        5,
+        "chase",
+        4
+       ],
+       [
+        6,
+        "chase",
+        5
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "5",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Set the bad guy target first with CTRL+1-0",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        4,
+        "random",
+        null
+       ],
+       [
+        5,
+        "chase",
+        4
+       ],
+       [
+        6,
+        "chase",
+        5
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": true,
+     "describe": false,
+     "err": null,
+     "key": "4",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Target: Delta",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        4,
+        "random",
+        null
+       ],
+       [
+        5,
+        "chase",
+        4
+       ],
+       [
+        6,
+        "chase",
+        5
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": 4
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "5",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "LIGHTBAR:2:3,4,5"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Police mode, 3 vehicles following Delta",
+       true,
+       true
+      ]
+     ],
+     "staggered": [
+      [
+       "MULTI_MODE:follow:6:3",
+       "MULTI_MODE:follow:6:4",
+       "MULTI_MODE:follow:6:5"
+      ]
+     ],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        4,
+        "follow",
+        6
+       ],
+       [
+        5,
+        "follow",
+        6
+       ],
+       [
+        6,
+        "chase",
+        5
+       ],
+       [
+        3,
+        "follow",
+        6
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [
+       3,
+       4,
+       5
+      ],
+      "selected": [],
+      "speed": null,
+      "target": 4
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "1",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "LIGHTBAR:0:3,4,5"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Motorcade, 4 vehicles",
+       true,
+       true
+      ]
+     ],
+     "staggered": [
+      [
+       "MULTI_MODE:follow:3:4",
+       "MULTI_MODE:follow:4:5",
+       "MULTI_MODE:follow:5:6"
+      ]
+     ],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        4,
+        "follow",
+        3
+       ],
+       [
+        5,
+        "follow",
+        4
+       ],
+       [
+        6,
+        "follow",
+        5
+       ],
+       [
+        3,
+        "follow",
+        6
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": 4
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "5",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "LIGHTBAR:2:3,4,5"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Police mode, 3 vehicles following Delta",
+       true,
+       true
+      ]
+     ],
+     "staggered": [
+      [
+       "MULTI_MODE:follow:6:3",
+       "MULTI_MODE:follow:6:4",
+       "MULTI_MODE:follow:6:5"
+      ]
+     ],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        4,
+        "follow",
+        6
+       ],
+       [
+        5,
+        "follow",
+        6
+       ],
+       [
+        6,
+        "follow",
+        5
+       ],
+       [
+        3,
+        "follow",
+        6
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [
+       3,
+       4,
+       5
+      ],
+      "selected": [],
+      "speed": null,
+      "target": 4
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "t",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "LIGHTBAR:0:3,4,5"
+      ],
+      [
+       4449,
+       "MODE:traffic"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Traffic mode",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        4,
+        "follow",
+        6
+       ],
+       [
+        5,
+        "follow",
+        6
+       ],
+       [
+        6,
+        "follow",
+        5
+       ],
+       [
+        3,
+        "traffic",
+        null
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": 4
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "5",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "LIGHTBAR:2:3,4,5"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Police mode, 3 vehicles following Delta",
+       true,
+       true
+      ]
+     ],
+     "staggered": [
+      [
+       "MULTI_MODE:follow:6:3",
+       "MULTI_MODE:follow:6:4",
+       "MULTI_MODE:follow:6:5"
+      ]
+     ],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        4,
+        "follow",
+        6
+       ],
+       [
+        5,
+        "follow",
+        6
+       ],
+       [
+        6,
+        "follow",
+        5
+       ],
+       [
+        3,
+        "follow",
+        6
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [
+       3,
+       4,
+       5
+      ],
+      "selected": [],
+      "speed": null,
+      "target": 4
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "6",
+     "layer_open": false,
+     "sent": [
+      [
+       4449,
+       "AGGR:1.2"
+      ]
+     ],
+     "shift": false,
+     "spoken": [
+      [
+       "Aggression 1.2",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        4,
+        "follow",
+        6
+       ],
+       [
+        5,
+        "follow",
+        6
+       ],
+       [
+        6,
+        "follow",
+        5
+       ],
+       [
+        3,
+        "follow",
+        6
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [
+       3,
+       4,
+       5
+      ],
+      "selected": [],
+      "speed": null,
+      "target": 4
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": true,
+     "describe": false,
+     "err": null,
+     "key": "5",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Slot 5 is empty",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [
+       [
+        4,
+        "follow",
+        6
+       ],
+       [
+        5,
+        "follow",
+        6
+       ],
+       [
+        6,
+        "follow",
+        5
+       ],
+       [
+        3,
+        "follow",
+        6
+       ]
+      ],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [
+       3,
+       4,
+       5
+      ],
+      "selected": [],
+      "speed": null,
+      "target": 4
+     }
+    }
+   ],
+   "units": "imperial"
+  },
+  {
+   "name": "presets_short",
+   "slots": [
+    [
+     2,
+     7,
+     "Solo"
+    ]
+   ],
+   "steps": [
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "1",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Motorcade needs at least 2 vehicles",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "2",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Gang-up requires a vehicle in slot 1",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "3",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Tour of Destruction needs at least 2 vehicles",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "4",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Tour of Destruction Spectator needs at least 3 vehicles total",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "5",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Set the bad guy target first with CTRL+1-0",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": true,
+     "describe": false,
+     "err": null,
+     "key": "2",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Target: Solo",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": 2
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "5",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Police mode needs at least 2 vehicles",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": 2
+     }
+    }
+   ],
+   "units": "imperial"
+  },
+  {
+   "name": "presets_slot1_only",
+   "slots": [
+    [
+     1,
+     9,
+     "Only"
+    ]
+   ],
+   "steps": [
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "2",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Gang-up needs at least 2 vehicles",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "4",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Tour of Destruction Spectator needs at least 3 vehicles total",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    }
+   ],
+   "units": "imperial"
+  },
+  {
+   "name": "presets_empty",
+   "slots": [],
+   "steps": [
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "1",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "No vehicles tracked yet",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "5",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "No vehicles tracked yet",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    }
+   ],
+   "units": "imperial"
+  },
+  {
+   "name": "odd_names",
+   "slots": [
+    [
+     1,
+     101,
+     "Alpha"
+    ],
+    [
+     2,
+     102,
+     "Bravo"
+    ],
+    [
+     3,
+     103,
+     "Charlie"
+    ],
+    [
+     10,
+     110,
+     "Juliet"
+    ]
+   ],
+   "steps": [
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": "invalid literal for int() with base 10: ''",
+     "key": "",
+     "layer_open": true,
+     "sent": [],
+     "shift": true,
+     "spoken": [],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": true,
+     "describe": false,
+     "err": "invalid literal for int() with base 10: ''",
+     "key": "",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": "invalid literal for int() with base 10: ''",
+     "key": "",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": true,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "12",
+     "layer_open": true,
+     "sent": [],
+     "shift": true,
+     "spoken": [
+      [
+       "Slot 12 is empty",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": false,
+     "ctrl": true,
+     "describe": false,
+     "err": null,
+     "key": "23",
+     "layer_open": true,
+     "sent": [],
+     "shift": false,
+     "spoken": [
+      [
+       "Slot 23 is empty",
+       true,
+       true
+      ]
+     ],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    },
+    {
+     "alt": true,
+     "ctrl": false,
+     "describe": false,
+     "err": null,
+     "key": "45",
+     "layer_open": false,
+     "sent": [],
+     "shift": false,
+     "spoken": [],
+     "staggered": [],
+     "state": {
+      "avoid": "auto",
+      "command_context": false,
+      "commands": [],
+      "help": false,
+      "lane": false,
+      "pending": null,
+      "police": [],
+      "selected": [],
+      "speed": null,
+      "target": null
+     }
+    }
+   ],
+   "units": "imperial"
+  }
+ ],
+ "log_lines": [
+  "DESCRIPTION: line1 line2",
+  "ERROR: err",
+  " x",
+  "DESCRIPTION: ",
+  "ERROR: ",
+  ""
+ ],
+ "misc": {
+  "log": [],
+  "openai_base": [
+   [
+    null,
+    "https://api.openai.com/v1"
+   ],
+   [
+    "",
+    "https://api.openai.com/v1"
+   ],
+   [
+    "  ",
+    "https://api.openai.com/v1"
+   ],
+   [
+    "https://x/v1/",
+    "https://x/v1"
+   ],
+   [
+    " https://x/v1// ",
+    "https://x/v1"
+   ],
+   [
+    "http://y",
+    "http://y"
+   ]
+  ],
+  "quote": [
+   [
+    "abc",
+    "abc"
+   ],
+   [
+    "a b/c?d=e&f",
+    "a%20b/c%3Fd%3De%26f"
+   ],
+   [
+    "-_.~",
+    "-_.~"
+   ],
+   [
+    "é€😀",
+    "%C3%A9%E2%82%AC%F0%9F%98%80"
+   ],
+   [
+    "+%",
+    "%2B%25"
+   ],
+   [
+    "",
+    ""
+   ]
+  ]
+ },
+ "png_hex": "89504e470d0a1a0a66616b652d696d61676500ff",
+ "status_all": [
+  {
+   "payload": "",
+   "spoken": [
+    [
+     "No vehicles tracked in game",
+     true,
+     true
+    ]
+   ]
+  },
+  {
+   "payload": "no vehicles",
+   "spoken": [
+    [
+     "No vehicles tracked in game",
+     true,
+     true
+    ]
+   ]
+  },
+  {
+   "payload": "1,Alpha,chase,Bravo|2,Bravo,flee,|10,Juliet,traffic",
+   "spoken": [
+    [
+     "Vehicle 1, Alpha: chasing Bravo. Vehicle 2, Bravo: fleeing. Vehicle 0, Juliet: traffic mode",
+     true,
+     true
+    ]
+   ]
+  },
+  {
+   "payload": "3,X,follow,Y,Z",
+   "spoken": [
+    [
+     "Vehicle 3, X: following Y,Z",
+     true,
+     true
+    ]
+   ]
+  },
+  {
+   "payload": "bad|1,A",
+   "spoken": [
+    [
+     "No status data received",
+     true,
+     true
+    ]
+   ]
+  },
+  {
+   "payload": "1,A,unknown|2,B,no response|3,C,weird|4,D,disabled|5,E,stop|6,F,random|7,G,chase|8,H,follow|9,I,flee,J",
+   "spoken": [
+    [
+     "Vehicle 1, A: unknown. Vehicle 2, B: no response. Vehicle 3, C: weird. Vehicle 4, D: AI disabled. Vehicle 5, E: stopped. Vehicle 6, F: random mode. Vehicle 7, G: chasing. Vehicle 8, H: following. Vehicle 9, I: fleeing from J",
+     true,
+     true
+    ]
+   ]
+  },
+  {
+   "payload": "||",
+   "spoken": [
+    [
+     "No status data received",
+     true,
+     true
+    ]
+   ]
+  }
+ ],
+ "validations": [
+  {
+   "key": "   ",
+   "opts": {},
+   "provider": "gemini",
+   "requests": [],
+   "resp": {
+    "kind": "ok"
+   },
+   "result": {
+    "err": "No API key provided.",
+    "ok": false
+   }
+  },
+  {
+   "key": " gk+/ &é ",
+   "opts": {
+    "model": "x"
+   },
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": null,
+     "headers": {},
+     "method": "GET",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models?key=gk%2B/%20%26%C3%A9"
+    }
+   ],
+   "resp": {
+    "kind": "ok"
+   },
+   "result": {
+    "err": null,
+    "ok": true
+   }
+  },
+  {
+   "key": "gk",
+   "opts": {},
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": null,
+     "headers": {},
+     "method": "GET",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models?key=gk"
+    }
+   ],
+   "resp": {
+    "body": "{\"error\": {\"message\": \"API key not valid.\"}}",
+    "code": 400,
+    "kind": "http"
+   },
+   "result": {
+    "err": "API key not valid.",
+    "ok": false
+   }
+  },
+  {
+   "key": "gk",
+   "opts": {},
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": null,
+     "headers": {},
+     "method": "GET",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models?key=gk"
+    }
+   ],
+   "resp": {
+    "body": "",
+    "code": 403,
+    "kind": "http"
+   },
+   "result": {
+    "err": "HTTP 403.",
+    "ok": false
+   }
+  },
+  {
+   "key": "gk",
+   "opts": {},
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": null,
+     "headers": {},
+     "method": "GET",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models?key=gk"
+    }
+   ],
+   "resp": {
+    "body": "  plain failure \n",
+    "code": 500,
+    "kind": "http"
+   },
+   "result": {
+    "err": "plain failure",
+    "ok": false
+   }
+  },
+  {
+   "key": "gk",
+   "opts": {},
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": null,
+     "headers": {},
+     "method": "GET",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models?key=gk"
+    }
+   ],
+   "resp": {
+    "body": "{\"error\": \"flat\"}",
+    "code": 500,
+    "kind": "http"
+   },
+   "result": {
+    "err": "{\"error\": \"flat\"}",
+    "ok": false
+   }
+  },
+  {
+   "key": "gk",
+   "opts": {},
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": null,
+     "headers": {},
+     "method": "GET",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models?key=gk"
+    }
+   ],
+   "resp": {
+    "body": "{\"error\": {\"message\": 42}}",
+    "code": 500,
+    "kind": "http"
+   },
+   "result": {
+    "err": "42",
+    "ok": false
+   }
+  },
+  {
+   "key": "gk",
+   "opts": {},
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": null,
+     "headers": {},
+     "method": "GET",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models?key=gk"
+    }
+   ],
+   "resp": {
+    "kind": "url",
+    "reason": "timed out"
+   },
+   "result": {
+    "err": "Network error: timed out",
+    "ok": false
+   }
+  },
+  {
+   "key": "gk",
+   "opts": {},
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": null,
+     "headers": {},
+     "method": "GET",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models?key=gk"
+    }
+   ],
+   "resp": {
+    "kind": "exc",
+    "msg": "timed out"
+   },
+   "result": {
+    "err": "Validation failed: timed out",
+    "ok": false
+   }
+  },
+  {
+   "key": "sk",
+   "opts": {
+    "base_url": "https://proxy.example/v1/",
+    "detail": "low",
+    "model": "gpt-4o",
+    "reasoning_effort": "high"
+   },
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-4o\", \"input\": \"Say OK.\", \"max_output_tokens\": 16}",
+     "headers": {
+      "authorization": "Bearer sk",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://proxy.example/v1/responses"
+    }
+   ],
+   "resp": {
+    "kind": "ok"
+   },
+   "result": {
+    "err": "Could not parse API response: Expecting value: line 1 column 1 (char 0)",
+    "ok": false
+   }
+  },
+  {
+   "key": "sk",
+   "opts": {},
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-5.6-terra\", \"input\": \"Say OK.\", \"max_output_tokens\": 16}",
+     "headers": {
+      "authorization": "Bearer sk",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://api.openai.com/v1/responses"
+    }
+   ],
+   "resp": {
+    "body": "{}",
+    "kind": "ok"
+   },
+   "result": {
+    "err": null,
+    "ok": true
+   }
+  },
+  {
+   "key": "",
+   "opts": {},
+   "provider": "openai",
+   "requests": [],
+   "resp": {
+    "kind": "ok"
+   },
+   "result": {
+    "err": "No API key provided.",
+    "ok": false
+   }
+  },
+  {
+   "key": "sk",
+   "opts": {
+    "model": ""
+   },
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-5.6-terra\", \"input\": \"Say OK.\", \"max_output_tokens\": 16}",
+     "headers": {
+      "authorization": "Bearer sk",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://api.openai.com/v1/responses"
+    }
+   ],
+   "resp": {
+    "body": "{\"error\": {\"message\": \"Incorrect API key\"}}",
+    "code": 401,
+    "kind": "http"
+   },
+   "result": {
+    "err": "Incorrect API key",
+    "ok": false
+   }
+  },
+  {
+   "key": "sk",
+   "opts": {},
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-5.6-terra\", \"input\": \"Say OK.\", \"max_output_tokens\": 16}",
+     "headers": {
+      "authorization": "Bearer sk",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://api.openai.com/v1/responses"
+    }
+   ],
+   "resp": {
+    "kind": "url",
+    "reason": "Timed Out"
+   },
+   "result": {
+    "err": "Request timed out.",
+    "ok": false
+   }
+  },
+  {
+   "key": "sk",
+   "opts": {},
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-5.6-terra\", \"input\": \"Say OK.\", \"max_output_tokens\": 16}",
+     "headers": {
+      "authorization": "Bearer sk",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://api.openai.com/v1/responses"
+    }
+   ],
+   "resp": {
+    "kind": "url",
+    "reason": "refused"
+   },
+   "result": {
+    "err": "Network error: refused",
+    "ok": false
+   }
+  },
+  {
+   "key": "sk",
+   "opts": {},
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-5.6-terra\", \"input\": \"Say OK.\", \"max_output_tokens\": 16}",
+     "headers": {
+      "authorization": "Bearer sk",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://api.openai.com/v1/responses"
+    }
+   ],
+   "resp": {
+    "kind": "exc",
+    "msg": "reset"
+   },
+   "result": {
+    "err": "Request failed: reset",
+    "ok": false
+   }
+  },
+  {
+   "key": "sk",
+   "opts": {},
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-5.6-terra\", \"input\": \"Say OK.\", \"max_output_tokens\": 16}",
+     "headers": {
+      "authorization": "Bearer sk",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://api.openai.com/v1/responses"
+    }
+   ],
+   "resp": {
+    "body": "not json",
+    "kind": "ok"
+   },
+   "result": {
+    "err": "Could not parse API response: Expecting value: line 1 column 1 (char 0)",
+    "ok": false
+   }
+  },
+  {
+   "key": "sk",
+   "opts": {
+    "base_url": "api.example.com/v1"
+   },
+   "provider": "openai",
+   "requests": [],
+   "resp": {
+    "kind": "ok"
+   },
+   "result": {
+    "raised": "unknown url type: 'api.example.com/v1/responses'"
+   }
+  },
+  {
+   "key": "sk",
+   "opts": {
+    "base_url": "  "
+   },
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-5.6-terra\", \"input\": \"Say OK.\", \"max_output_tokens\": 16}",
+     "headers": {
+      "authorization": "Bearer sk",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://api.openai.com/v1/responses"
+    }
+   ],
+   "resp": {
+    "body": "{}",
+    "kind": "ok"
+   },
+   "result": {
+    "err": null,
+    "ok": true
+   }
+  },
+  {
+   "key": "gk",
+   "opts": {},
+   "provider": "nobody",
+   "requests": [
+    {
+     "body": null,
+     "headers": {},
+     "method": "GET",
+     "timeout": {
+      "bits": 4629137466983448576,
+      "repr": "30.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models?key=gk"
+    }
+   ],
+   "resp": {
+    "kind": "ok"
+   },
+   "result": {
+    "err": null,
+    "ok": true
+   }
+  }
+ ],
+ "workers": [
+  {
+   "log": [
+    "ERROR: No Google Gemini API key set. Configure it in the AI Describer tab.",
+    ""
+   ],
+   "name": "gemini_no_key",
+   "provider": "gemini",
+   "requests": [],
+   "sent": [],
+   "settings": {
+    "ai_describer_api_key": "  "
+   },
+   "spoken": [
+    [
+     "No Google Gemini API key set. Configure it in the AI Describer tab.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: No OpenAI API key set. Configure it in the AI Describer tab.",
+    ""
+   ],
+   "name": "openai_no_key",
+   "provider": "openai",
+   "requests": [],
+   "sent": [],
+   "settings": {},
+   "spoken": [
+    [
+     "No OpenAI API key set. Configure it in the AI Describer tab.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: No Google Gemini API key set. Configure it in the AI Describer tab.",
+    ""
+   ],
+   "name": "provider_empty_falls_back",
+   "provider": "",
+   "requests": [],
+   "sent": [],
+   "settings": {},
+   "spoken": [
+    [
+     "No Google Gemini API key set. Configure it in the AI Describer tab.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: The stored API key could not be decrypted on this Windows account. Set it again in the AI Describer tab.",
+    ""
+   ],
+   "name": "undecryptable",
+   "provider": "gemini",
+   "requests": [],
+   "sent": [],
+   "settings": {
+    "ai_describer_api_key": "dpapi:v1:AAAA"
+   },
+   "spoken": [
+    [
+     "The stored API key could not be decrypted on this Windows account. Set it again in the AI Describer tab.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "capture": "boom",
+   "log": [
+    "ERROR: Screenshot failed: boom",
+    ""
+   ],
+   "name": "capture_fails",
+   "provider": "gemini",
+   "requests": [],
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_api_key": "gk"
+   },
+   "spoken": [
+    [
+     "Screenshot failed: boom",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "DESCRIPTION: A road. Trees.",
+    ""
+   ],
+   "name": "gemini_ok",
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": "{\"systemInstruction\": {\"parts\": [{\"text\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\"}]}, \"contents\": [{\"parts\": [{\"inline_data\": {\"mime_type\": \"image/png\", \"data\": \"iVBORw0KGgpmYWtlLWltYWdlAP8=\"}}]}], \"generationConfig\": {\"maxOutputTokens\": 3048, \"thinkingConfig\": {\"thinkingLevel\": \"low\"}}}",
+     "headers": {
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=gk"
+    }
+   ],
+   "resp": {
+    "body": "{\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"thinking\", \"thought\": true}, {\"text\": \" A road. \"}, {\"text\": \"Trees.\"}]}, \"finishReason\": \"STOP\"}]}",
+    "kind": "ok"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_api_key": " gk ",
+    "ai_describer_model": "models/gemini-3-flash-preview"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "A road. Trees.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: Quota exceeded.",
+    ""
+   ],
+   "name": "gemini_25_flash_http",
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": "{\"systemInstruction\": {\"parts\": [{\"text\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\"}]}, \"contents\": [{\"parts\": [{\"inline_data\": {\"mime_type\": \"image/png\", \"data\": \"iVBORw0KGgpmYWtlLWltYWdlAP8=\"}}]}], \"generationConfig\": {\"maxOutputTokens\": 3048, \"thinkingConfig\": {\"thinkingBudget\": 0}}}",
+     "headers": {
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=gk"
+    }
+   ],
+   "resp": {
+    "body": "{\"error\": {\"message\": \"Quota exceeded.\"}}",
+    "code": 429,
+    "kind": "http"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_api_key": "gk",
+    "ai_describer_model": "models/gemini-2.5-flash"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed. Quota exceeded.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: Request blocked by safety filters (SAFETY).",
+    ""
+   ],
+   "name": "gemini_20_blocked",
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": "{\"systemInstruction\": {\"parts\": [{\"text\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\"}]}, \"contents\": [{\"parts\": [{\"inline_data\": {\"mime_type\": \"image/png\", \"data\": \"iVBORw0KGgpmYWtlLWltYWdlAP8=\"}}]}], \"generationConfig\": {\"maxOutputTokens\": 1000}}",
+     "headers": {
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=gk"
+    }
+   ],
+   "resp": {
+    "body": "{\"promptFeedback\": {\"blockReason\": \"SAFETY\"}}",
+    "kind": "ok"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_api_key": "gk",
+    "ai_describer_model": "models/gemini-2.0-flash"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed. Request blocked by safety filters (SAFETY).",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: API returned no candidates.",
+    ""
+   ],
+   "name": "gemini_no_candidates",
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": "{\"systemInstruction\": {\"parts\": [{\"text\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\"}]}, \"contents\": [{\"parts\": [{\"inline_data\": {\"mime_type\": \"image/png\", \"data\": \"iVBORw0KGgpmYWtlLWltYWdlAP8=\"}}]}], \"generationConfig\": {\"maxOutputTokens\": 1000}}",
+     "headers": {
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-latest:generateContent?key=gk"
+    }
+   ],
+   "resp": {
+    "body": "{\"candidates\": []}",
+    "kind": "ok"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_api_key": "gk",
+    "ai_describer_model": "models/gemini-pro-latest"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed. API returned no candidates.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: The model used its entire token budget before producing a description (finishReason: MAX_TOKENS).",
+    ""
+   ],
+   "name": "gemini_max_tokens",
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": "{\"systemInstruction\": {\"parts\": [{\"text\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\"}]}, \"contents\": [{\"parts\": [{\"inline_data\": {\"mime_type\": \"image/png\", \"data\": \"iVBORw0KGgpmYWtlLWltYWdlAP8=\"}}]}], \"generationConfig\": {\"maxOutputTokens\": 3048, \"thinkingConfig\": {\"thinkingLevel\": \"low\"}}}",
+     "headers": {
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=gk"
+    }
+   ],
+   "resp": {
+    "body": "{\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"x\", \"thought\": true}]}, \"finishReason\": \"MAX_TOKENS\"}]}",
+    "kind": "ok"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_api_key": "gk"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed. The model used its entire token budget before producing a description (finishReason: MAX_TOKENS).",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: API returned an empty description (finishReason: unknown).",
+    ""
+   ],
+   "name": "gemini_empty_other",
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": "{\"systemInstruction\": {\"parts\": [{\"text\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\"}]}, \"contents\": [{\"parts\": [{\"inline_data\": {\"mime_type\": \"image/png\", \"data\": \"iVBORw0KGgpmYWtlLWltYWdlAP8=\"}}]}], \"generationConfig\": {\"maxOutputTokens\": 3048, \"thinkingConfig\": {\"thinkingLevel\": \"low\"}}}",
+     "headers": {
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=gk"
+    }
+   ],
+   "resp": {
+    "body": "{\"candidates\": [{\"content\": {}}]}",
+    "kind": "ok"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_api_key": "gk"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed. API returned an empty description (finishReason: unknown).",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: Request timed out.",
+    ""
+   ],
+   "name": "gemini_timeout",
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": "{\"systemInstruction\": {\"parts\": [{\"text\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\"}]}, \"contents\": [{\"parts\": [{\"inline_data\": {\"mime_type\": \"image/png\", \"data\": \"iVBORw0KGgpmYWtlLWltYWdlAP8=\"}}]}], \"generationConfig\": {\"maxOutputTokens\": 3048, \"thinkingConfig\": {\"thinkingLevel\": \"low\"}}}",
+     "headers": {
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=gk"
+    }
+   ],
+   "resp": {
+    "kind": "exc",
+    "msg": "The read operation timed out"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_api_key": "gk"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed. Request timed out.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: Unexpected error: 'list' object has no attribute 'get'",
+    ""
+   ],
+   "name": "gemini_list_result",
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": "{\"systemInstruction\": {\"parts\": [{\"text\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\"}]}, \"contents\": [{\"parts\": [{\"inline_data\": {\"mime_type\": \"image/png\", \"data\": \"iVBORw0KGgpmYWtlLWltYWdlAP8=\"}}]}], \"generationConfig\": {\"maxOutputTokens\": 3048, \"thinkingConfig\": {\"thinkingLevel\": \"low\"}}}",
+     "headers": {
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=gk"
+    }
+   ],
+   "resp": {
+    "body": "[1, 2]",
+    "kind": "ok"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_api_key": "gk"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: Unexpected error: sequence item 1: expected str instance, int found",
+    ""
+   ],
+   "name": "gemini_non_str_text",
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": "{\"systemInstruction\": {\"parts\": [{\"text\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\"}]}, \"contents\": [{\"parts\": [{\"inline_data\": {\"mime_type\": \"image/png\", \"data\": \"iVBORw0KGgpmYWtlLWltYWdlAP8=\"}}]}], \"generationConfig\": {\"maxOutputTokens\": 3048, \"thinkingConfig\": {\"thinkingLevel\": \"low\"}}}",
+     "headers": {
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=gk"
+    }
+   ],
+   "resp": {
+    "body": "{\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"a\"}, {\"text\": 5}]}, \"finishReason\": \"STOP\"}]}",
+    "kind": "ok"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_api_key": "gk"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: Unexpected error: 'int' object has no attribute 'lower'",
+    ""
+   ],
+   "name": "gemini_int_model",
+   "provider": "gemini",
+   "requests": [],
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_api_key": "gk",
+    "ai_describer_model": 5
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: Unexpected error: 'int' object has no attribute 'strip'",
+    ""
+   ],
+   "name": "int_key",
+   "provider": "gemini",
+   "requests": [],
+   "sent": [],
+   "settings": {
+    "ai_describer_api_key": 7
+   },
+   "spoken": [
+    [
+     "Description failed.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "disable": true,
+   "log": [
+    "DESCRIPTION: Night.",
+    ""
+   ],
+   "name": "no_ui_toggle",
+   "provider": "gemini",
+   "requests": [
+    {
+     "body": "{\"systemInstruction\": {\"parts\": [{\"text\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\"}]}, \"contents\": [{\"parts\": [{\"inline_data\": {\"mime_type\": \"image/png\", \"data\": \"iVBORw0KGgpmYWtlLWltYWdlAP8=\"}}]}], \"generationConfig\": {\"maxOutputTokens\": 3048, \"thinkingConfig\": {\"thinkingLevel\": \"low\"}}}",
+     "headers": {
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=gk"
+    }
+   ],
+   "resp": {
+    "body": "{\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"Night.\"}]}, \"finishReason\": \"STOP\"}]}",
+    "kind": "ok"
+   },
+   "sent": [],
+   "settings": {
+    "ai_describer_api_key": "gk"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Night.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "DESCRIPTION: A car. Rain.",
+    ""
+   ],
+   "name": "openai_ok_reasoning",
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-5.6-sol\", \"instructions\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\", \"input\": [{\"role\": \"user\", \"content\": [{\"type\": \"input_text\", \"text\": \"Describe what is on screen.\"}, {\"type\": \"input_image\", \"image_url\": \"data:image/png;base64,iVBORw0KGgpmYWtlLWltYWdlAP8=\", \"detail\": \"low\"}]}], \"max_output_tokens\": 3048, \"reasoning\": {\"effort\": \"high\"}}",
+     "headers": {
+      "authorization": "Bearer sk-1",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://proxy.example/v1/responses"
+    }
+   ],
+   "resp": {
+    "body": "{\"output\": [{\"type\": \"reasoning\", \"content\": [{\"type\": \"output_text\", \"text\": \"no\"}]}, {\"type\": \"message\", \"content\": [{\"type\": \"output_text\", \"text\": \"A car. \"}, {\"type\": \"output_text\", \"text\": \"Rain.\"}]}]}",
+    "kind": "ok"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_openai_api_key": "sk-1",
+    "ai_describer_openai_base_url": " https://proxy.example/v1/ ",
+    "ai_describer_openai_detail": "low",
+    "ai_describer_openai_model": "gpt-5.6-sol",
+    "ai_describer_openai_reasoning_effort": "high"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "A car. Rain.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: The model used its entire token budget before producing a description (incomplete: max_output_tokens).",
+    ""
+   ],
+   "name": "openai_gpt4o_bad_choices",
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-4o\", \"instructions\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\", \"input\": [{\"role\": \"user\", \"content\": [{\"type\": \"input_text\", \"text\": \"Describe what is on screen.\"}, {\"type\": \"input_image\", \"image_url\": \"data:image/png;base64,iVBORw0KGgpmYWtlLWltYWdlAP8=\", \"detail\": \"auto\"}]}], \"max_output_tokens\": 1000}",
+     "headers": {
+      "authorization": "Bearer sk-1",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://api.openai.com/v1/responses"
+    }
+   ],
+   "resp": {
+    "body": "{\"status\": \"incomplete\", \"incomplete_details\": {\"reason\": \"max_output_tokens\"}}",
+    "kind": "ok"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_openai_api_key": "sk-1",
+    "ai_describer_openai_base_url": "https://api.openai.com/v1",
+    "ai_describer_openai_detail": "weird",
+    "ai_describer_openai_model": "gpt-4o",
+    "ai_describer_openai_reasoning_effort": "extreme"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed. The model used its entire token budget before producing a description (incomplete: max_output_tokens).",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: API returned an incomplete response (content_filter).",
+    ""
+   ],
+   "name": "openai_none_effort_incomplete",
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"o3\", \"instructions\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\", \"input\": [{\"role\": \"user\", \"content\": [{\"type\": \"input_text\", \"text\": \"Describe what is on screen.\"}, {\"type\": \"input_image\", \"image_url\": \"data:image/png;base64,iVBORw0KGgpmYWtlLWltYWdlAP8=\", \"detail\": \"auto\"}]}], \"max_output_tokens\": 1000}",
+     "headers": {
+      "authorization": "Bearer sk-1",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://api.openai.com/v1/responses"
+    }
+   ],
+   "resp": {
+    "body": "{\"status\": \"incomplete\", \"incomplete_details\": {\"reason\": \"content_filter\"}}",
+    "kind": "ok"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_openai_api_key": "sk-1",
+    "ai_describer_openai_base_url": "https://api.openai.com/v1",
+    "ai_describer_openai_detail": "auto",
+    "ai_describer_openai_model": "o3",
+    "ai_describer_openai_reasoning_effort": "none"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed. API returned an incomplete response (content_filter).",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: The model declined to describe the image: No.",
+    ""
+   ],
+   "name": "openai_refusal",
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-5.6-terra\", \"instructions\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\", \"input\": [{\"role\": \"user\", \"content\": [{\"type\": \"input_text\", \"text\": \"Describe what is on screen.\"}, {\"type\": \"input_image\", \"image_url\": \"data:image/png;base64,iVBORw0KGgpmYWtlLWltYWdlAP8=\", \"detail\": \"auto\"}]}], \"max_output_tokens\": 3048, \"reasoning\": {\"effort\": \"low\"}}",
+     "headers": {
+      "authorization": "Bearer sk-1",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://api.openai.com/v1/responses"
+    }
+   ],
+   "resp": {
+    "body": "{\"output\": [{\"type\": \"message\", \"content\": [{\"type\": \"refusal\", \"refusal\": \"No.\"}]}]}",
+    "kind": "ok"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_openai_api_key": "sk-1",
+    "ai_describer_openai_base_url": "https://api.openai.com/v1",
+    "ai_describer_openai_detail": "auto",
+    "ai_describer_openai_reasoning_effort": "low"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed. The model declined to describe the image: No.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: The model declined to describe the image: no reason given",
+    ""
+   ],
+   "name": "openai_refusal_empty",
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-5.6-terra\", \"instructions\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\", \"input\": [{\"role\": \"user\", \"content\": [{\"type\": \"input_text\", \"text\": \"Describe what is on screen.\"}, {\"type\": \"input_image\", \"image_url\": \"data:image/png;base64,iVBORw0KGgpmYWtlLWltYWdlAP8=\", \"detail\": \"auto\"}]}], \"max_output_tokens\": 3048, \"reasoning\": {\"effort\": \"low\"}}",
+     "headers": {
+      "authorization": "Bearer sk-1",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://api.openai.com/v1/responses"
+    }
+   ],
+   "resp": {
+    "body": "{\"output\": [{\"type\": \"message\", \"content\": [{\"type\": \"refusal\"}]}]}",
+    "kind": "ok"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_openai_api_key": "sk-1",
+    "ai_describer_openai_base_url": "https://api.openai.com/v1",
+    "ai_describer_openai_detail": "auto",
+    "ai_describer_openai_reasoning_effort": "low"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed. The model declined to describe the image: no reason given",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: API returned an empty description.",
+    ""
+   ],
+   "name": "openai_empty",
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-5.6-terra\", \"instructions\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\", \"input\": [{\"role\": \"user\", \"content\": [{\"type\": \"input_text\", \"text\": \"Describe what is on screen.\"}, {\"type\": \"input_image\", \"image_url\": \"data:image/png;base64,iVBORw0KGgpmYWtlLWltYWdlAP8=\", \"detail\": \"auto\"}]}], \"max_output_tokens\": 3048, \"reasoning\": {\"effort\": \"low\"}}",
+     "headers": {
+      "authorization": "Bearer sk-1",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://api.openai.com/v1/responses"
+    }
+   ],
+   "resp": {
+    "body": "{\"status\": \"completed\"}",
+    "kind": "ok"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_openai_api_key": "sk-1",
+    "ai_describer_openai_base_url": "https://api.openai.com/v1",
+    "ai_describer_openai_detail": "auto",
+    "ai_describer_openai_reasoning_effort": "low"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed. API returned an empty description.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: Request timed out.",
+    ""
+   ],
+   "name": "openai_url_timeout",
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-5.6-terra\", \"instructions\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\", \"input\": [{\"role\": \"user\", \"content\": [{\"type\": \"input_text\", \"text\": \"Describe what is on screen.\"}, {\"type\": \"input_image\", \"image_url\": \"data:image/png;base64,iVBORw0KGgpmYWtlLWltYWdlAP8=\", \"detail\": \"auto\"}]}], \"max_output_tokens\": 3048, \"reasoning\": {\"effort\": \"low\"}}",
+     "headers": {
+      "authorization": "Bearer sk-1",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://api.openai.com/v1/responses"
+    }
+   ],
+   "resp": {
+    "kind": "url",
+    "reason": "timed out"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_openai_api_key": "sk-1",
+    "ai_describer_openai_base_url": "https://api.openai.com/v1",
+    "ai_describer_openai_detail": "auto",
+    "ai_describer_openai_reasoning_effort": "low"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed. Request timed out.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: Request failed: connection reset",
+    ""
+   ],
+   "name": "openai_other",
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-5.6-terra\", \"instructions\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\", \"input\": [{\"role\": \"user\", \"content\": [{\"type\": \"input_text\", \"text\": \"Describe what is on screen.\"}, {\"type\": \"input_image\", \"image_url\": \"data:image/png;base64,iVBORw0KGgpmYWtlLWltYWdlAP8=\", \"detail\": \"auto\"}]}], \"max_output_tokens\": 3048, \"reasoning\": {\"effort\": \"low\"}}",
+     "headers": {
+      "authorization": "Bearer sk-1",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://api.openai.com/v1/responses"
+    }
+   ],
+   "resp": {
+    "kind": "exc",
+    "msg": "connection reset"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_openai_api_key": "sk-1",
+    "ai_describer_openai_base_url": "https://api.openai.com/v1",
+    "ai_describer_openai_detail": "auto",
+    "ai_describer_openai_reasoning_effort": "low"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed. Request failed: connection reset",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: Unexpected error: unknown url type: 'api.example.com/v1/responses'",
+    ""
+   ],
+   "name": "openai_no_scheme",
+   "provider": "openai",
+   "requests": [],
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_openai_api_key": "sk-1",
+    "ai_describer_openai_base_url": "api.example.com/v1",
+    "ai_describer_openai_detail": "auto",
+    "ai_describer_openai_reasoning_effort": "low"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: Unexpected error: 'int' object has no attribute 'strip'",
+    ""
+   ],
+   "name": "openai_int_base_url",
+   "provider": "openai",
+   "requests": [],
+   "sent": [],
+   "settings": {
+    "ai_describer_openai_api_key": "sk-1",
+    "ai_describer_openai_base_url": 5,
+    "ai_describer_openai_detail": "auto",
+    "ai_describer_openai_reasoning_effort": "low"
+   },
+   "spoken": [
+    [
+     "Description failed.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "DESCRIPTION: Line one. Line two.",
+    ""
+   ],
+   "name": "openai_multiline",
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-5.6-terra\", \"instructions\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\", \"input\": [{\"role\": \"user\", \"content\": [{\"type\": \"input_text\", \"text\": \"Describe what is on screen.\"}, {\"type\": \"input_image\", \"image_url\": \"data:image/png;base64,iVBORw0KGgpmYWtlLWltYWdlAP8=\", \"detail\": \"auto\"}]}], \"max_output_tokens\": 3048, \"reasoning\": {\"effort\": \"low\"}}",
+     "headers": {
+      "authorization": "Bearer sk-1",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://api.openai.com/v1/responses"
+    }
+   ],
+   "resp": {
+    "body": "{\"output\": [{\"type\": \"message\", \"content\": [{\"type\": \"output_text\", \"text\": \"Line one.\\nLine two.\\r\\n\"}]}]}",
+    "kind": "ok"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_openai_api_key": "sk-1",
+    "ai_describer_openai_base_url": "https://api.openai.com/v1",
+    "ai_describer_openai_detail": "auto",
+    "ai_describer_openai_reasoning_effort": "low"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Line one.\nLine two.",
+     true,
+     false
+    ]
+   ]
+  },
+  {
+   "log": [
+    "ERROR: bad",
+    "gateway",
+    ""
+   ],
+   "name": "openai_error_multiline",
+   "provider": "openai",
+   "requests": [
+    {
+     "body": "{\"model\": \"gpt-5.6-terra\", \"instructions\": \"Describe this image succinctly, but in as much detail as possible as if to a blind person. Be sure to include details about the environment, such as time of day and lighting, as well as details about the scene overall. Include details regarding the positioning of objects relative to one another, starting from what's closest to the center, and working outward. The response you provide will be processed through a screen reader as synthetic speech. As such, please use plain text which is devoid of special formatting syntax such as Markdown. Line breaks are fine where appropriate.\", \"input\": [{\"role\": \"user\", \"content\": [{\"type\": \"input_text\", \"text\": \"Describe what is on screen.\"}, {\"type\": \"input_image\", \"image_url\": \"data:image/png;base64,iVBORw0KGgpmYWtlLWltYWdlAP8=\", \"detail\": \"auto\"}]}], \"max_output_tokens\": 3048, \"reasoning\": {\"effort\": \"low\"}}",
+     "headers": {
+      "authorization": "Bearer sk-1",
+      "content-type": "application/json"
+     },
+     "method": "POST",
+     "timeout": {
+      "bits": 4633641066610819072,
+      "repr": "60.0"
+     },
+     "url": "https://api.openai.com/v1/responses"
+    }
+   ],
+   "resp": {
+    "body": "  bad\ngateway  ",
+    "code": 500,
+    "kind": "http"
+   },
+   "sent": [
+    [
+     4464,
+     "HIDE"
+    ],
+    [
+     4464,
+     "SHOW"
+    ]
+   ],
+   "settings": {
+    "ai_describer_openai_api_key": "sk-1",
+    "ai_describer_openai_base_url": "https://api.openai.com/v1",
+    "ai_describer_openai_detail": "auto",
+    "ai_describer_openai_reasoning_effort": "low"
+   },
+   "spoken": [
+    [
+     "Description in progress.",
+     true,
+     true
+    ],
+    [
+     "Description failed. bad\ngateway",
+     true,
+     false
+    ]
+   ]
+  }
+ ]
+}
