@@ -380,6 +380,8 @@ pub(crate) struct NameTables {
     to_name: HashMap<Entry, Vec<String>>,
     /// name -> scan codes (`scan_code or -vk`), in `map_name`'s order, without repeats.
     from_name: HashMap<String, Vec<i32>>,
+    /// `scan_code_to_vk`: the first virtual key each scan code was paired with.
+    scan_code_to_vk: HashMap<u32, u32>,
 }
 
 fn code_of(scan: u32, vk: u32) -> i32 {
@@ -425,7 +427,9 @@ fn scan_vk_pairs() -> Vec<(u32, u32)> {
 fn build_tables() -> NameTables {
     let mut to_name: HashMap<Entry, Vec<String>> = HashMap::new();
     let mut from_entries: HashMap<String, Vec<(usize, Entry)>> = HashMap::new();
+    let mut scan_code_to_vk: HashMap<u32, u32> = HashMap::new();
     for (scan, vk) in scan_vk_pairs() {
+        scan_code_to_vk.entry(scan).or_insert(vk);
         for ext in [0u32, 1] {
             for mods in DISTINCT_MODIFIERS {
                 let entry = (scan, vk, ext, mods);
@@ -472,7 +476,11 @@ fn build_tables() -> NameTables {
         }
         from_name.insert(name, codes);
     }
-    NameTables { to_name, from_name }
+    NameTables {
+        to_name,
+        from_name,
+        scan_code_to_vk,
+    }
 }
 
 static TABLES: LazyLock<NameTables> = LazyLock::new(build_tables);
@@ -548,6 +556,71 @@ fn key_to_scan_codes_inner(key: &str, error_if_missing: bool) -> Result<Vec<i32>
             ))
         }
         None => Ok(Vec::new()),
+    }
+}
+
+/// `all_modifiers`.
+const ALL_MODIFIERS: [&str; 13] = [
+    "alt",
+    "alt gr",
+    "ctrl",
+    "shift",
+    "windows",
+    "left ctrl",
+    "left alt",
+    "left shift",
+    "left windows",
+    "right ctrl",
+    "right alt",
+    "right shift",
+    "right windows",
+];
+
+static MODIFIER_SCAN_CODES: LazyLock<Vec<i32>> = LazyLock::new(|| {
+    let mut out = Vec::new();
+    for name in ALL_MODIFIERS {
+        for c in key_to_scan_codes_inner(name, false).unwrap_or_default() {
+            if !out.contains(&c) {
+                out.push(c);
+            }
+        }
+    }
+    out
+});
+
+/// `keyboard.is_modifier(scan_code)`.
+pub(crate) fn is_modifier_code(code: i32) -> bool {
+    MODIFIER_SCAN_CODES.contains(&code)
+}
+
+/// `_winkeyboard.press(code)` (`_send_event(code, 0)`): a synthetic key-down.
+pub(crate) fn press_code(code: i32) {
+    #[cfg(windows)]
+    {
+        use windows::Win32::UI::Input::KeyboardAndMouse::{KEYBD_EVENT_FLAGS, keybd_event};
+        // ctypes passes bVk and bScan as BYTEs: truncated.
+        let send = |vk: u32, scan: u32| {
+            // SAFETY: keybd_event takes plain integers and cannot fault.
+            unsafe { keybd_event(vk as u8, scan as u8, KEYBD_EVENT_FLAGS(0), 0) };
+        };
+        if code == 541 {
+            // Alt Gr is made of Ctrl+Alt.
+            send(0x11, 541);
+            send(0x12, 541);
+        } else if code > 0 {
+            let vk = TABLES
+                .scan_code_to_vk
+                .get(&(code as u32))
+                .copied()
+                .unwrap_or(0);
+            send(vk, code as u32);
+        } else {
+            send((-code) as u32, 0);
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = code;
     }
 }
 

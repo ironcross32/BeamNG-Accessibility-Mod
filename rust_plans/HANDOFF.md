@@ -6,7 +6,7 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-20, with the E5 commit.
+2026-11-20, with the E5 follow-up commit.
 
 ## Done so far
 
@@ -35,15 +35,17 @@ The short version of where the port is, for a fresh session. Updated at every co
   `controller_menu_sim.rs` ends with a list of sim checks that belong to E4 (clickspot
   staging, SNAP/EXEC, announcements, packet strings), E9 (the six bridge actions) and B1/U2
   (config defaults, checkbox): those agents must port them.
+- E5 follow-up, committed: `keyboard::add_hotkey_suppressed` / `remove_hotkey` for E8's
+  F11 (the callback returns `false` to eat the key, as Python's `None`; single-step
+  hotkeys only), and `menus.rs` uses E1's exported constants.
 - Wave 2 was interrupted once by a usage limit (2026-11-19). The agents were resumed with
   their work intact.
 
 ## In flight
 
 - E3 (instruments) and E4 (listeners B and browsers), running as background Opus agents.
-- E5 follow-up: add `add_hotkey(suppress=True)` (E8's F11 needs it) and make `menus.rs`
-  use E1's exported `OG_TURBO`/`WHEEL_POS_*` instead of private copies.
-- Then E6, E7, E8, E9, E10, U2. If the session died, check their files for `not_ported!` and relaunch
+- E6 (F9 commands), started 2026-11-20.
+- Then E7, E8, E9, E10, U2. If the session died, check their files for `not_ported!` and relaunch
   whichever is unfinished, telling it to continue from what is on disk.
 
 ## Next step

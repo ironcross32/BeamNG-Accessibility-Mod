@@ -40,15 +40,9 @@ pub const ACCESSIBILITY_ACTIONS: [&str; 6] = [
     "activate",
 ];
 
-/// `OG_TURBO`: the OutGauge flag saying this vehicle exposes turbo boost. (The telemetry
-/// decoder's copy is the canonical one; this is the same value.)
-const OG_TURBO: i64 = 1 << 13;
-const WHEEL_POS_FL: i64 = 1 << 0;
-const WHEEL_POS_FR: i64 = 1 << 1;
-const WHEEL_POS_RL: i64 = 1 << 2;
-const WHEEL_POS_RR: i64 = 1 << 3;
-const WHEEL_POS_F: i64 = 1 << 4;
-const WHEEL_POS_R: i64 = 1 << 5;
+use crate::telemetry::{
+    OG_TURBO, WHEEL_POS_F, WHEEL_POS_FL, WHEEL_POS_FR, WHEEL_POS_R, WHEEL_POS_RL, WHEEL_POS_RR,
+};
 
 pub type ValueGetter = Arc<dyn Fn(&State) -> (PyVal, String) + Send + Sync>;
 pub type Availability = Arc<dyn Fn(&State) -> bool + Send + Sync>;

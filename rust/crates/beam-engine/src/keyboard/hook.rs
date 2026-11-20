@@ -45,19 +45,95 @@ pub(crate) struct RawEvent {
     pub has_name: bool,
 }
 
+/// A suppressing hotkey's callback, run INSIDE the hook on key-down: its result is the
+/// truthiness of the Python callback's return value (None, i.e. false, eats the key).
+pub(crate) type BlockingHotkeyFn = Arc<dyn Fn() -> bool + Send + Sync>;
+
 #[derive(Default)]
 struct Registry {
     blocking_hooks: Vec<(u64, BlockingFn)>,
     blocking_keys: HashMap<i32, Vec<(u64, BlockingFn)>>,
     handlers: Vec<(u64, HandlerFn)>,
     nonblocking_hotkeys: HashMap<Vec<i32>, Vec<(u64, HotkeyFn)>>,
+    /// `blocking_hotkeys`. Like the package's defaultdict, a combination stays as a key
+    /// once added, so "any suppressing hotkey was ever added" is `!is_empty()`.
+    blocking_hotkeys: HashMap<Vec<i32>, Vec<(u64, BlockingHotkeyFn)>>,
+    /// The combinations each suppressing hotkey added, to undo `filtered_modifiers`.
+    blocking_hotkey_combos: HashMap<u64, Vec<Vec<i32>>>,
+    /// `filtered_modifiers` (a Counter).
+    filtered_modifiers: HashMap<i32, i64>,
 }
+
+/// `modifier_states` values.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ModState {
+    Free,
+    Pending,
+    Suppressed,
+    Allowed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Origin {
+    Modifier,
+    Hotkey,
+    Other,
+}
+
+/// `_KeyboardListener.transition_table`: (send a fake press, accept override, next state).
+pub(crate) fn transition(
+    state: ModState,
+    down: bool,
+    origin: Origin,
+) -> (bool, Option<bool>, ModState) {
+    use ModState::*;
+    match (state, down, origin) {
+        (Free, false, Origin::Modifier) => (false, Some(true), Free),
+        (Free, true, Origin::Modifier) => (false, Some(false), Pending),
+        (Pending, false, Origin::Modifier) => (true, Some(true), Free),
+        (Pending, true, Origin::Modifier) => (false, Some(true), Allowed),
+        (Suppressed, false, Origin::Modifier) => (false, Some(false), Free),
+        (Suppressed, true, Origin::Modifier) => (false, Some(false), Suppressed),
+        (Allowed, false, Origin::Modifier) => (false, Some(true), Free),
+        (Allowed, true, Origin::Modifier) => (false, Some(true), Allowed),
+
+        (Free, _, Origin::Hotkey) => (false, None, Free),
+        (Pending, _, Origin::Hotkey) => (false, None, Suppressed),
+        (Suppressed, _, Origin::Hotkey) => (false, None, Suppressed),
+        (Allowed, _, Origin::Hotkey) => (false, None, Allowed),
+
+        (Free, _, Origin::Other) => (false, Some(true), Free),
+        (Pending, _, Origin::Other) => (true, Some(true), Allowed),
+        (Suppressed, false, Origin::Other) => (false, Some(false), Allowed),
+        (Suppressed, true, Origin::Other) => (true, Some(true), Allowed),
+        (Allowed, _, Origin::Other) => (false, Some(true), Allowed),
+    }
+}
+
+/// The hook-side bookkeeping only suppressing hotkeys use.
+#[derive(Default)]
+struct HotkeyBook {
+    /// `active_modifiers`.
+    active_modifiers: BTreeSet<i32>,
+    /// `modifier_states` ("free" when absent).
+    modifier_states: HashMap<i32, ModState>,
+    /// `_logically_pressed_keys`.
+    logically_pressed: BTreeSet<i32>,
+}
+
+type IsModifierFn = Arc<dyn Fn(i32) -> bool + Send + Sync>;
+type PressFn = Arc<dyn Fn(i32) + Send + Sync>;
 
 /// `keyboard._listener`.
 pub(crate) struct Listener {
     reg: RwLock<Registry>,
     /// `_pressed_events`, by scan code.
     pressed: Mutex<BTreeSet<i32>>,
+    book: Mutex<HotkeyBook>,
+    /// `is_modifier(scan_code)`.
+    is_modifier: IsModifierFn,
+    /// `_os_keyboard.press(scan_code)`: the fake press the transition table asks for.
+    press: PressFn,
 }
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
@@ -68,10 +144,38 @@ pub(crate) fn next_id() -> u64 {
 
 impl Listener {
     pub(crate) fn new() -> Listener {
+        Listener::with_keys(
+            Arc::new(super::names::is_modifier_code),
+            Arc::new(super::names::press_code),
+        )
+    }
+
+    /// A listener with its modifier test and fake-press output supplied (tests).
+    pub(crate) fn with_keys(is_modifier: IsModifierFn, press: PressFn) -> Listener {
         Listener {
             reg: RwLock::new(Registry::default()),
             pressed: Mutex::new(BTreeSet::new()),
+            book: Mutex::new(HotkeyBook::default()),
+            is_modifier,
+            press,
         }
+    }
+
+    /// `_add_hotkey_step(handler, combinations, suppress=True)`.
+    pub(crate) fn add_blocking_hotkey(&self, id: u64, combos: &[Vec<i32>], cb: BlockingHotkeyFn) {
+        let mut reg = self.reg.write();
+        for combo in combos {
+            for c in combo {
+                if (self.is_modifier)(*c) {
+                    *reg.filtered_modifiers.entry(*c).or_insert(0) += 1;
+                }
+            }
+            reg.blocking_hotkeys
+                .entry(combo.clone())
+                .or_default()
+                .push((id, Arc::clone(&cb)));
+        }
+        reg.blocking_hotkey_combos.insert(id, combos.to_vec());
     }
 
     pub(crate) fn add_blocking_hook(&self, id: u64, cb: BlockingFn) {
@@ -113,6 +217,18 @@ impl Listener {
         for list in reg.nonblocking_hotkeys.values_mut() {
             list.retain(|(i, _)| *i != id);
         }
+        if let Some(combos) = reg.blocking_hotkey_combos.remove(&id) {
+            for combo in &combos {
+                for c in combo {
+                    if (self.is_modifier)(*c) {
+                        *reg.filtered_modifiers.entry(*c).or_insert(0) -= 1;
+                    }
+                }
+            }
+        }
+        for list in reg.blocking_hotkeys.values_mut() {
+            list.retain(|(i, _)| *i != id);
+        }
     }
 
     /// `direct_callback(event)`: (pass the key on, queue it for the processing thread).
@@ -129,17 +245,26 @@ impl Listener {
                 return (false, false);
             }
         }
-        {
+        let code = ev.scan_code;
+        let down = ev.event.event_type == KeyEventType::Down;
+        // Update tables of currently pressed keys and modifiers; the hotkey is the pressed
+        // set with this key-down added, or before this key-up is removed.
+        let hotkey: Vec<i32> = {
             let mut pressed = self.pressed.lock();
-            match ev.event.event_type {
-                KeyEventType::Down => {
-                    pressed.insert(ev.scan_code);
+            let mut book = self.book.lock();
+            if down {
+                if (self.is_modifier)(code) {
+                    book.active_modifiers.insert(code);
                 }
-                KeyEventType::Up => {
-                    pressed.remove(&ev.scan_code);
-                }
+                pressed.insert(code);
             }
-        }
+            let hotkey = pressed.iter().copied().collect();
+            if !down {
+                book.active_modifiers.remove(&code);
+                pressed.remove(&code);
+            }
+            hotkey
+        };
         let key_hooks: Vec<BlockingFn> = self
             .reg
             .read()
@@ -152,7 +277,82 @@ impl Listener {
                 return (false, false);
             }
         }
-        (true, true)
+
+        // Default accept.
+        let mut accept = true;
+        let (any_blocking, filtered, callbacks) = {
+            let reg = self.reg.read();
+            (
+                !reg.blocking_hotkeys.is_empty(),
+                reg.filtered_modifiers.get(&code).copied().unwrap_or(0) != 0,
+                reg.blocking_hotkeys
+                    .get(&hotkey)
+                    .map(|l| l.iter().map(|(_, f)| Arc::clone(f)).collect::<Vec<_>>())
+                    .unwrap_or_default(),
+            )
+        };
+        if any_blocking {
+            let (modifiers_to_update, origin) = if filtered {
+                (BTreeSet::from([code]), Origin::Modifier)
+            } else {
+                let mut m = self.book.lock().active_modifiers.clone();
+                if (self.is_modifier)(code) {
+                    m.insert(code);
+                }
+                if callbacks.is_empty() {
+                    (m, Origin::Other)
+                } else {
+                    // The single-step handler: `(e.event_type == KEY_UP and e.scan_code in
+                    // _logically_pressed_keys) or (e.event_type == KEY_DOWN and callback())`,
+                    // every handler called (a list comprehension, then all()).
+                    let logically = self.book.lock().logically_pressed.contains(&code);
+                    let results: Vec<bool> = callbacks
+                        .iter()
+                        .map(|cb| if down { cb() } else { logically })
+                        .collect();
+                    accept = results.iter().all(|r| *r);
+                    (m, Origin::Hotkey)
+                }
+            };
+            for key in modifiers_to_update {
+                let state = self
+                    .book
+                    .lock()
+                    .modifier_states
+                    .get(&key)
+                    .copied()
+                    .unwrap_or(ModState::Free);
+                let (should_press, new_accept, new_state) = transition(state, down, origin);
+                if should_press {
+                    (self.press)(key);
+                }
+                if let Some(a) = new_accept {
+                    accept = a;
+                }
+                self.book.lock().modifier_states.insert(key, new_state);
+            }
+        }
+
+        if accept {
+            let mut book = self.book.lock();
+            if down {
+                book.logically_pressed.insert(code);
+            } else {
+                book.logically_pressed.remove(&code);
+            }
+        }
+        // Queued for the non-blocking handlers even when a hotkey ate it.
+        (accept, true)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn modifier_state(&self, code: i32) -> ModState {
+        self.book
+            .lock()
+            .modifier_states
+            .get(&code)
+            .copied()
+            .unwrap_or(ModState::Free)
     }
 
     /// One queued event on the processing thread: `pre_process_event` then

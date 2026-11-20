@@ -509,19 +509,13 @@ pub fn is_pressed(name: &str) -> bool {
         .all(|codes| hook::LISTENER.any_pressed(codes))
 }
 
-/// `keyboard.add_hotkey(hotkey, callback, suppress=False)` for a single-step hotkey: the
-/// callback runs on the processing thread on each key-down while exactly the hotkey's keys
-/// are pressed (auto-repeat included).
-pub fn add_hotkey(
-    hotkey: &str,
-    callback: Arc<dyn Fn() + Send + Sync>,
-) -> Result<HookRecord, String> {
-    hook::start_if_necessary();
+/// `parse_hotkey_combinations(hotkey)` for a single-step hotkey: every combination of the
+/// keys' scan codes (`itertools.product`), each sorted.
+fn hotkey_combinations(hotkey: &str) -> Result<Vec<Vec<i32>>, String> {
     let steps = parse_hotkey(hotkey)?;
     if steps.len() != 1 {
         return Err(format!("multi-step hotkeys are not supported: {hotkey:?}"));
     }
-    // itertools.product(*step), each combination sorted.
     let mut combos: Vec<Vec<i32>> = vec![Vec::new()];
     for codes in &steps[0] {
         let mut next = Vec::new();
@@ -537,6 +531,45 @@ pub fn add_hotkey(
     for c in &mut combos {
         c.sort();
     }
+    Ok(combos)
+}
+
+/// `keyboard.add_hotkey(hotkey, callback, suppress=True)` for a single-step hotkey, as
+/// `vehicle_spawner.start` installs F11.
+///
+/// The callback runs INSIDE the low-level hook on each key-down while exactly the
+/// hotkey's keys are pressed, so it must only classify and enqueue. It returns the
+/// truthiness of the Python callback's return value: false (Python's None) eats the key,
+/// and as that key-down was never logically pressed, its key-up is eaten too. Modifiers
+/// in the hotkey go through the package's modifier transition table, which can replay a
+/// held-back modifier press. Suppressed events still reach the non-blocking handlers.
+/// Remove it with [`remove_hotkey`].
+pub fn add_hotkey_suppressed(
+    hotkey: &str,
+    callback: Arc<dyn Fn() -> bool + Send + Sync>,
+) -> Result<HookRecord, String> {
+    hook::start_if_necessary();
+    let combos = hotkey_combinations(hotkey)?;
+    let id = hook::next_id();
+    hook::LISTENER.add_blocking_hotkey(id, &combos, callback);
+    Ok(HookRecord(id))
+}
+
+/// `keyboard.remove_hotkey(...)` for a record from [`add_hotkey`] or
+/// [`add_hotkey_suppressed`].
+pub fn remove_hotkey(record: HookRecord) {
+    hook::LISTENER.remove(record.0);
+}
+
+/// `keyboard.add_hotkey(hotkey, callback, suppress=False)` for a single-step hotkey: the
+/// callback runs on the processing thread on each key-down while exactly the hotkey's keys
+/// are pressed (auto-repeat included).
+pub fn add_hotkey(
+    hotkey: &str,
+    callback: Arc<dyn Fn() + Send + Sync>,
+) -> Result<HookRecord, String> {
+    hook::start_if_necessary();
+    let combos = hotkey_combinations(hotkey)?;
     let id = hook::next_id();
     hook::LISTENER.add_nonblocking_hotkey(
         id,

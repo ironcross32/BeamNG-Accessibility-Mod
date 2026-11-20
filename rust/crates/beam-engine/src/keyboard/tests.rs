@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use parking_lot::Mutex;
 
-use super::hook::{Listener, RawEvent, next_id, process_key};
+use super::hook::{Listener, ModState, RawEvent, next_id, process_key};
 use super::*;
 
 fn raw(name: &str, code: i32, down: bool) -> RawEvent {
@@ -362,6 +362,162 @@ fn names_match_the_keyboard_package() {
             p[1].as_str(),
             "normalize_name({})",
             p[0]
+        );
+    }
+}
+
+fn hotkey_listener(presses: &Arc<Mutex<Vec<i32>>>) -> Listener {
+    let p = Arc::clone(presses);
+    Listener::with_keys(
+        Arc::new(|c| c == 29 || c == 42),
+        Arc::new(move |c| p.lock().push(c)),
+    )
+}
+
+#[test]
+fn suppressed_single_key_hotkey_eats_down_and_up_when_callback_returns_none() {
+    let presses = Arc::new(Mutex::new(Vec::new()));
+    let l = hotkey_listener(&presses);
+    let calls = Arc::new(AtomicUsize::new(0));
+    let c2 = Arc::clone(&calls);
+    // vehicle_spawner's F11: the callback queues and returns None.
+    let id = next_id();
+    l.add_blocking_hotkey(
+        id,
+        &[vec![87]],
+        Arc::new(move || {
+            c2.fetch_add(1, Ordering::SeqCst);
+            false
+        }),
+    );
+    // Eaten, but still queued for the non-blocking handlers.
+    assert_eq!(l.direct_callback(&raw("f11", 87, true)), (false, true));
+    assert_eq!(l.direct_callback(&raw("f11", 87, true)), (false, true));
+    assert_eq!(calls.load(Ordering::SeqCst), 2, "auto-repeat fires again");
+    // Never logically pressed, so its key-up is eaten too.
+    assert_eq!(l.direct_callback(&raw("f11", 87, false)), (false, true));
+    assert_eq!(calls.load(Ordering::SeqCst), 2, "key-up does not call back");
+    // Other keys pass, and Ctrl+F11 is not F11.
+    assert_eq!(l.direct_callback(&raw("a", 30, true)), (true, true));
+    assert_eq!(l.direct_callback(&raw("a", 30, false)), (true, true));
+    assert_eq!(l.direct_callback(&raw("ctrl", 29, true)), (true, true));
+    assert_eq!(l.direct_callback(&raw("f11", 87, true)), (true, true));
+    assert_eq!(l.direct_callback(&raw("f11", 87, false)), (true, true));
+    assert_eq!(l.direct_callback(&raw("ctrl", 29, false)), (true, true));
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
+    assert_eq!(l.modifier_state(29), ModState::Free);
+    // Removed: F11 passes again.
+    l.remove(id);
+    assert_eq!(l.direct_callback(&raw("f11", 87, true)), (true, true));
+    assert_eq!(l.direct_callback(&raw("f11", 87, false)), (true, true));
+    assert!(presses.lock().is_empty());
+}
+
+#[test]
+fn suppressed_hotkey_whose_callback_accepts_lets_the_key_through() {
+    let presses = Arc::new(Mutex::new(Vec::new()));
+    let l = hotkey_listener(&presses);
+    l.add_blocking_hotkey(next_id(), &[vec![87]], Arc::new(|| true));
+    assert_eq!(l.direct_callback(&raw("f11", 87, true)), (true, true));
+    // Logically pressed, so its key-up is allowed.
+    assert_eq!(l.direct_callback(&raw("f11", 87, false)), (true, true));
+}
+
+#[test]
+fn modifier_hotkey_follows_the_transition_table() {
+    let presses = Arc::new(Mutex::new(Vec::new()));
+    let l = hotkey_listener(&presses);
+    let calls = Arc::new(AtomicUsize::new(0));
+    let c2 = Arc::clone(&calls);
+    l.add_blocking_hotkey(
+        next_id(),
+        &[vec![29, 87]],
+        Arc::new(move || {
+            c2.fetch_add(1, Ordering::SeqCst);
+            false
+        }),
+    );
+    // Ctrl is held back (pending) until it is known whether the hotkey follows.
+    assert_eq!(l.direct_callback(&raw("ctrl", 29, true)), (false, true));
+    assert_eq!(l.modifier_state(29), ModState::Pending);
+    // Ctrl released alone: the held-back press is replayed, and the release passes.
+    assert_eq!(l.direct_callback(&raw("ctrl", 29, false)), (true, true));
+    assert_eq!(*presses.lock(), vec![29]);
+    assert_eq!(l.modifier_state(29), ModState::Free);
+    // Ctrl, then F11: the hotkey fires and eats F11; Ctrl becomes suppressed.
+    assert_eq!(l.direct_callback(&raw("ctrl", 29, true)), (false, true));
+    assert_eq!(l.direct_callback(&raw("f11", 87, true)), (false, true));
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
+    assert_eq!(l.modifier_state(29), ModState::Suppressed);
+    assert_eq!(l.direct_callback(&raw("f11", 87, false)), (false, true));
+    // Ctrl's release is eaten too (its press never reached the game).
+    assert_eq!(l.direct_callback(&raw("ctrl", 29, false)), (false, true));
+    assert_eq!(l.modifier_state(29), ModState::Free);
+    assert_eq!(*presses.lock(), vec![29]);
+}
+
+#[test]
+fn transition_table_matches_the_package() {
+    use super::hook::{Origin, transition};
+    use ModState::*;
+    let n = None;
+    // Every row of `_KeyboardListener.transition_table`, in its order.
+    let rows = [
+        (Free, false, Origin::Modifier, (false, Some(true), Free)),
+        (Free, true, Origin::Modifier, (false, Some(false), Pending)),
+        (Pending, false, Origin::Modifier, (true, Some(true), Free)),
+        (
+            Pending,
+            true,
+            Origin::Modifier,
+            (false, Some(true), Allowed),
+        ),
+        (
+            Suppressed,
+            false,
+            Origin::Modifier,
+            (false, Some(false), Free),
+        ),
+        (
+            Suppressed,
+            true,
+            Origin::Modifier,
+            (false, Some(false), Suppressed),
+        ),
+        (Allowed, false, Origin::Modifier, (false, Some(true), Free)),
+        (
+            Allowed,
+            true,
+            Origin::Modifier,
+            (false, Some(true), Allowed),
+        ),
+        (Free, false, Origin::Hotkey, (false, n, Free)),
+        (Free, true, Origin::Hotkey, (false, n, Free)),
+        (Pending, false, Origin::Hotkey, (false, n, Suppressed)),
+        (Pending, true, Origin::Hotkey, (false, n, Suppressed)),
+        (Suppressed, false, Origin::Hotkey, (false, n, Suppressed)),
+        (Suppressed, true, Origin::Hotkey, (false, n, Suppressed)),
+        (Allowed, false, Origin::Hotkey, (false, n, Allowed)),
+        (Allowed, true, Origin::Hotkey, (false, n, Allowed)),
+        (Free, false, Origin::Other, (false, Some(true), Free)),
+        (Free, true, Origin::Other, (false, Some(true), Free)),
+        (Pending, false, Origin::Other, (true, Some(true), Allowed)),
+        (Pending, true, Origin::Other, (true, Some(true), Allowed)),
+        (
+            Suppressed,
+            false,
+            Origin::Other,
+            (false, Some(false), Allowed),
+        ),
+        (Suppressed, true, Origin::Other, (true, Some(true), Allowed)),
+        (Allowed, false, Origin::Other, (false, Some(true), Allowed)),
+        (Allowed, true, Origin::Other, (false, Some(true), Allowed)),
+    ];
+    for (state, down, origin, want) in rows {
+        assert_eq!(
+            transition(state, down, origin),
+            want,
+            "{state:?} {down} {origin:?}"
         );
     }
 }
