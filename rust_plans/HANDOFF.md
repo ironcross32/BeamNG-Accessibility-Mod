@@ -6,7 +6,7 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-19, with the E1 commit.
+2026-11-19, with the E2 commit.
 
 ## Done so far
 
@@ -23,10 +23,17 @@ The short version of where the port is, for a fresh session. Updated at every co
   (`python-bugs.md`). **Bug 30 is waiting on the user**: the steering globals are never
   written, so the obstacle detector always receives steering 0.
 
+- **E2 (listeners A) is done and committed**: six listener files, `tests/e2_listeners_fixtures.rs`,
+  `tests/obstacle_audio_sim.rs`, `fixtures/gen/e2_listeners.py`. Python bugs 34-40.
+  Carry-overs for later workstreams: **E9** must `catch_unwind` around
+  `hill_climb::on_hill_climb_event` and log `challenge_event callback error: {e}` like the
+  Python bridge; optionally a beam-road-typed road telemetry snapshot (see bug 37). The
+  fuel test strips the virtual browser's title announcement, which comes from E5's code.
+
 ## In flight
 
-- Wave 2, batch 1: E2 (listeners A) and E5 (keyboard and menus), running as background
-  Opus agents. If the session died, check their files for `not_ported!` and relaunch
+- Wave 2: E5 (keyboard and menus), E3 (instruments) and E4 (listeners B and browsers),
+  running as background Opus agents. Then E6, E7, E8, E9, E10, U2. If the session died, check their files for `not_ported!` and relaunch
   whichever is unfinished, telling it to continue from what is on disk.
 
 ## Next step
