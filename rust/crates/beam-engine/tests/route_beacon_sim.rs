@@ -50,7 +50,6 @@ fn scenario_3_toggle_uses_shared_helper() {
 /// Scenario 3 as the sim states it: at least three callers (the waypoint readout, the beacon
 /// toggle and the telemetry loop). The F9 W waypoint readout is E6's.
 #[test]
-#[ignore = "needs E6's F9 W waypoint readout (f9_commands.rs)"]
 fn scenario_3_engine_calls_relative_bearing_three_times() {
     let calls: usize = engine_sources()
         .iter()

@@ -72,6 +72,10 @@ Legend: R = reproduced as in Python; H = already hardened in Rust (a departure).
 | 51 | binding learn listener | A non-string `control`/`title`/`desc` raises AttributeError and ends the listener | R |
 | 52 | clickspot listener | `TRIGGER_LIST:-2` clears the list but says "-2 clickspots found" | R |
 | 53 | induction report | A non-numeric `boost` raises in the report thread; nothing is spoken, not even "No response" | R |
+| 54 | F9 layer | Loose modifier checks swallow combinations: Shift+Alt+F speaks fuel (not fuel stations), Ctrl+Alt+S toggles status mode, Ctrl+Shift+Alt+E runs the electrics dump, Ctrl+Alt+T speaks boost, Tab with any modifiers cycles targets. Full matrix in `f9-command-table.md` | R |
+| 55 | `_invoke_f9_command` | Ends with `_clear_next_key_hook`, so an MCP or controller command run while a real F9 layer is open closes that layer | R |
+| 56 | F9 readouts | NaN RPM speaks "Inclination 100 percent"; a NaN fuel level speaks "Fuel 100 percent" (NaN through `min`/`max`) | R |
+| 57 | F9 snapshot | A NaN speed, RPM, engine or oil temperature raises ValueError for every F9 key; the layer stays open until its timeout | R |
 | 40 | `_hill_climb_finalized` | A non-dict `statistics` raises AttributeError; the recorder swallows it and the data-quality log line is lost | R |
 ## Recommendation
 

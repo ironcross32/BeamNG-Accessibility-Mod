@@ -6,7 +6,7 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-20, with the E4 commit.
+2026-11-20, with the E6 commit.
 
 ## Done so far
 
@@ -44,16 +44,21 @@ The short version of where the port is, for a fresh session. Updated at every co
   scenario 3 test once E6 lands (it needs the F9 W waypoint readout).
 - **E4 (listeners B, browsers, console) is done and committed.** Python bugs 48-53.
   `request_page_text` sends nothing until E9 ports `ui_bridge::broadcast`.
-- Wave 2 was interrupted once by a usage limit (2026-11-19). The agents were resumed with
+- **E6 (F9 commands) is done and committed**: `f9_commands.rs`, `tests/f9_commands.rs`
+  (1081 golden cases), `rust_plans/f9-command-table.md`. Python bugs 54-57. E3's
+  `route_beacon_sim` scenario 3 is un-ignored and passes.
+- Wave 2 was interrupted twice by a usage limit (2026-11-19). The agents were resumed with
   their work intact.
 
 ## In flight
 
 - E3 (instruments) and E4 (listeners B and browsers), running as background Opus agents.
-- E6 (F9 commands) and E7 (F10 layer, describer, capture), started 2026-11-20.
+- E7 (F10 layer, describer, capture), started 2026-11-20.
 - E8 (vehicle spawner, one agent, may convert `vehicle_spawner.rs` to a directory
   module), started 2026-11-20.
-- Then E9, E10, U2. If the session died, check their files for `not_ported!` and relaunch
+- E9 (UI bridge and MCP), started 2026-11-20. Its brief carries the E2, E4 and E5
+  obligations listed above.
+- Then E10, U2. If the session died, check their files for `not_ported!` and relaunch
   whichever is unfinished, telling it to continue from what is on disk.
 
 ## Next step

@@ -73,7 +73,7 @@ Update this table as work lands. One line per workstream from `04-workstreams.md
 | E3 | Implement, dock, ramp, cannon, terrain scan, line-up, trailer, wheel, beacon | done | Sims `dock_readout` (20), `implement_proximity` (13), `cannon_shot` (7), `route_beacon` (3 + 1 ignored until E6's F9 W readout adds the third `relative_bearing` caller), plus 9 golden tests. `open_camera_lineup` untested (would install real hooks). Bugs 44-47 |
 | E4 | Listeners B and their browsers | done | 22 tests: `e4_listeners_fixtures` (24 cases, 258 steps), `environment_row_sim` (8), `vehicle_info_sim` (4). Senders go through E2's `scanner::e2_send`. Page text needs E9's `ui_bridge::broadcast`; cursor warp needs E7's `warp_cursor_to_viewport`. Bugs 48-53 |
 | E5 | Keyboard hook, layers, menus, virtual browser | done | `keyboard` package semantics ported (check order, exact-match hotkeys, scan-code matching, its own key-name tables). Tests: `controller_menu_sim`, `menus_golden`, `keyboard_layers`, 12 unit. OS hook installs only once the worker or hotkeys start (accepted). Sim checks owned by E4/E9/B1 listed at the end of `controller_menu_sim.rs`. Bugs 41-43 |
-| E6 | F9 command handler and remaining toggles | not started | |
+| E6 | F9 command handler and remaining toggles | done | 1081 golden cases (every key x 8 modifier combinations, plus branch internals and dumps) and `F9_HELP` byte-identical. Audit table: `f9-command-table.md` (62 branches). Test seam `set_external_override`. Bugs 54-57 |
 | E7 | F10 AI layer, describer, capture, window utilities | not started | |
 | E8 | Vehicle spawner | not started | |
 | E9 | UI bridge (WS 8765, TCP 8766) and MCP server | not started | |
