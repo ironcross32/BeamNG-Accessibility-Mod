@@ -6,9 +6,7 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-20, with the commit that fixes `keyboard_layers::f9_layer_eats_keys_until_cleared`.
-It now checks what the F9 handler receives through
-`keyboard::set_layer_body_override_for_tests`, rather than state left behind by E6's old stub.
+2026-11-20, with the E4 commit.
 
 ## Done so far
 
@@ -44,6 +42,8 @@ It now checks what the F9 handler receives through
   `dock_readout`, `implement_proximity`, `cannon_shot`, `route_beacon` (engine half), and
   `e3_instruments_fixtures`. Python bugs 44-47. **Un-ignore** the `route_beacon_sim`
   scenario 3 test once E6 lands (it needs the F9 W waypoint readout).
+- **E4 (listeners B, browsers, console) is done and committed.** Python bugs 48-53.
+  `request_page_text` sends nothing until E9 ports `ui_bridge::broadcast`.
 - Wave 2 was interrupted once by a usage limit (2026-11-19). The agents were resumed with
   their work intact.
 

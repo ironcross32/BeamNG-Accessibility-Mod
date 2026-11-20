@@ -66,6 +66,12 @@ Legend: R = reproduced as in Python; H = already hardened in Rust (a departure).
 | 45 | `terrain_scan_listener` | A malformed `SCAN` packet stamps `_last_scan_reply_ts` before parsing, so the watchdog counts garbage as a reply | R |
 | 46 | `_cannon_shot_long_distance` | Tests `UNITS_MODE == "imperial"` while `fmt_distance` tests `== "metric"`; any other config value mixes units in one utterance | R |
 | 47 | `_dock_phrase_ramp` | A NaN yaw on approach reaches `int(math.floor(nan))` and raises into the F9 caller | R |
+| 48 | node grabber, clickspot listeners | Catch only timeout/OSError: one bad int/float in `SNAP:`/`NODE:`/`HOVER:`/`SNAP_OK:` ends the listener for the session | R |
+| 49 | camera listener | `compass_click_interval_deg == 0` raises ZeroDivisionError and the thread dies; an infinite yaw bumps the click counter before the packet is dropped | R |
+| 50 | environment listener | `ENV_END` refreshes the browser inside the listener; a NaN/inf temperature makes `fmt_temp_c_or_f` raise and the listener dies | R |
+| 51 | binding learn listener | A non-string `control`/`title`/`desc` raises AttributeError and ends the listener | R |
+| 52 | clickspot listener | `TRIGGER_LIST:-2` clears the list but says "-2 clickspots found" | R |
+| 53 | induction report | A non-numeric `boost` raises in the report thread; nothing is spoken, not even "No response" | R |
 | 40 | `_hill_climb_finalized` | A non-dict `statistics` raises AttributeError; the recorder swallows it and the data-quality log line is lost | R |
 ## Recommendation
 
