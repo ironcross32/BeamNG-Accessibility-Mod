@@ -62,6 +62,10 @@ Legend: R = reproduced as in Python; H = already hardened in Rust (a departure).
 | 41 | Status menu Gear row | Before any telemetry (protocol "outgauge", no gear byte), `gear_to_phrase(None)` raises TypeError; navigating onto Gear kills that command and the worker logs it | R |
 | 42 | status mode + browser | With status mode on, a browser opened on top gets no arrows: status mode's hook eats them and `on_status_arrow_press` returns because a browser is open | R |
 | 43 | `keyboard` package hook thread | `while not GetMessage(...)` is inverted; the thread would exit if any message were posted (none is) | R |
+| 44 | `terrain_scan_listener` | `int(inf)` in `render_scan` (an object with inf range) raises OverflowError; only ValueError/IndexError are caught, so the listener dies. A POI OverflowError or RecursionError does the same | R |
+| 45 | `terrain_scan_listener` | A malformed `SCAN` packet stamps `_last_scan_reply_ts` before parsing, so the watchdog counts garbage as a reply | R |
+| 46 | `_cannon_shot_long_distance` | Tests `UNITS_MODE == "imperial"` while `fmt_distance` tests `== "metric"`; any other config value mixes units in one utterance | R |
+| 47 | `_dock_phrase_ramp` | A NaN yaw on approach reaches `int(math.floor(nan))` and raises into the F9 caller | R |
 | 40 | `_hill_climb_finalized` | A non-dict `statistics` raises AttributeError; the recorder swallows it and the data-quality log line is lost | R |
 ## Recommendation
 

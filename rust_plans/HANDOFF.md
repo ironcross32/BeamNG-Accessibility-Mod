@@ -6,7 +6,8 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-20, with the E5 follow-up commit.
+2026-11-20, with the E3 commit. Known red test: `keyboard_layers::f9_layer_eats_keys_until_cleared`
+asserted state left by E6's old stub; E5 is reworking it.
 
 ## Done so far
 
@@ -38,14 +39,18 @@ The short version of where the port is, for a fresh session. Updated at every co
 - E5 follow-up, committed: `keyboard::add_hotkey_suppressed` / `remove_hotkey` for E8's
   F11 (the callback returns `false` to eat the key, as Python's `None`; single-step
   hotkeys only), and `menus.rs` uses E1's exported constants.
+- **E3 (instruments) is done and committed**: eight listener files, sims
+  `dock_readout`, `implement_proximity`, `cannon_shot`, `route_beacon` (engine half), and
+  `e3_instruments_fixtures`. Python bugs 44-47. **Un-ignore** the `route_beacon_sim`
+  scenario 3 test once E6 lands (it needs the F9 W waypoint readout).
 - Wave 2 was interrupted once by a usage limit (2026-11-19). The agents were resumed with
   their work intact.
 
 ## In flight
 
 - E3 (instruments) and E4 (listeners B and browsers), running as background Opus agents.
-- E6 (F9 commands), started 2026-11-20.
-- Then E7, E8, E9, E10, U2. If the session died, check their files for `not_ported!` and relaunch
+- E6 (F9 commands) and E7 (F10 layer, describer, capture), started 2026-11-20.
+- Then E8, E9, E10, U2. If the session died, check their files for `not_ported!` and relaunch
   whichever is unfinished, telling it to continue from what is on disk.
 
 ## Next step
