@@ -6,7 +6,7 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-19, with the commit that adds this file.
+2026-11-19, with the E1 commit.
 
 ## Done so far
 
@@ -18,11 +18,16 @@ The short version of where the port is, for a fresh session. Updated at every co
   orchestrator; the V1 audits cover that.
 - E1, E2 and E5 were launched in an earlier session, but none of their work landed. Their
   files were still the EA stubs on 2026-11-19, and they were relaunched from scratch then.
+- **E1 (telemetry) is done and committed**: `telemetry.rs`, `tests/telemetry_sim.rs`,
+  `fixtures/gen/telemetry.py`, `fixtures/data/telemetry.json`. It found Python bugs 30-33
+  (`python-bugs.md`). **Bug 30 is waiting on the user**: the steering globals are never
+  written, so the obstacle detector always receives steering 0.
 
 ## In flight
 
-- Wave 2, batch 1: E1 (telemetry), E2 (listeners A), E5 (keyboard and menus), running
-  as background Opus agents.
+- Wave 2, batch 1: E2 (listeners A) and E5 (keyboard and menus), running as background
+  Opus agents. If the session died, check their files for `not_ported!` and relaunch
+  whichever is unfinished, telling it to continue from what is on disk.
 
 ## Next step
 

@@ -1,4 +1,4 @@
-﻿# BEAM Rust port: plan index and status
+# BEAM Rust port: plan index and status
 
 This directory is the complete plan for porting BEAM's Python application to Rust with a
 Tauri 2 shell and a semantic-HTML interface. It is written so a different model, or a
@@ -68,11 +68,11 @@ Update this table as work lands. One line per workstream from `04-workstreams.md
 | A1-A3 | beam-audio: callback voices | done | A1: 10 voices, bit-exact without HRTF, within 2.7e-7 with. A2: stereo bit-exact, HRTF within 2.1e-7 (tol 1e-6). No stubs left in beam-audio; every voice sim (hydro, implement, dock, obstacle, road, assistant, junction, route beacon, wheel slip) has a passing Rust test. Not yet reviewed by the orchestrator |
 | EA | beam-engine: skeleton, shared state, say(), units, engine start | done | 20 tests; `engine-map.md` covers all 848 top-level statements. beam-audio dependency is commented out in beam-engine/Cargo.toml with stand-ins in `compat.rs` until AH lands waveforms: undo at I1 |
 | I0 | Pre-wave-2 integration: re-enable beam-audio in beam-engine, drop audio stand-ins, adapt the four state objects | done | workspace builds; 302 tests pass; `compat.rs` deleted; conversions in `beam_engine::convert`; see engine-map.md section 8 |
-| E1 | Telemetry decode and telemetry loop | not started | an agent was launched but none of its work landed: `telemetry.rs` is still the EA stub (checked 2026-11-19) |
-| E2 | Listeners A: scanner, obstacle, road, hill climb, fuel | not started | as E1: listener files are still EA stubs |
+| E1 | Telemetry decode and telemetry loop | done | 4 tests (`telemetry_sim`), 18 loop scenarios driven through the real Python loop, every Extended layout V1-V6. Loop body is `TelemetryLoop::handle_datagram` behind a `TelemetryHooks` trait. Python bugs 30-33 in `python-bugs.md` (30 needs the user). Waits on E2's `push_gear_direction`/`push_obstacle_state`. Fixture `telemetry.json` is 3 MB |
+| E2 | Listeners A: scanner, obstacle, road, hill climb, fuel | in progress | relaunched 2026-11-19; as E1: listener files are still EA stubs |
 | E3 | Implement, dock, ramp, cannon, terrain scan, line-up, trailer, wheel, beacon | not started | |
 | E4 | Listeners B and their browsers | not started | |
-| E5 | Keyboard hook, layers, menus, virtual browser | not started | as E1: `keyboard/`, `menus.rs`, `virtual_browser.rs` are still EA stubs |
+| E5 | Keyboard hook, layers, menus, virtual browser | in progress | relaunched 2026-11-19; as E1: `keyboard/`, `menus.rs`, `virtual_browser.rs` are still EA stubs |
 | E6 | F9 command handler and remaining toggles | not started | |
 | E7 | F10 AI layer, describer, capture, window utilities | not started | |
 | E8 | Vehicle spawner | not started | |
