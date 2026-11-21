@@ -6,7 +6,7 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-21, with the V1 keyboard audit commit.
+2026-11-21, with the V1 spawner audit commit.
 
 ## Done so far
 
@@ -99,8 +99,8 @@ U2 has been run by the user (2026-11-21), un-elevated, debug build:
 
 **I1 is done** (`integration-report.md`): builds clean, 557 tests pass, no stubs,
 wiring checked. **V1 is under way, one slice at a time in this session** (the user chose
-that over eight agents). Done: config and UI, audio, telemetry, listeners, keyboard (`audit-*.md`).
-Remaining, in order: spawner, bridge and MCP,
+that over eight agents). Done: config and UI, audio, telemetry, listeners, keyboard, spawner
+(`audit-*.md`). Remaining, in order: bridge and MCP,
 updater. Each writes `audit-<slice>.md`. Then R1 packaging, D1 docs, and the user's
 keep-or-fix pass over `python-bugs.md`. Speech is moving to Prismer (user,
 2026-11-21): do not plan around `prism.dll`.

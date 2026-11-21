@@ -27,6 +27,7 @@ Legend: R = reproduced as in Python; H = already hardened in Rust (a departure).
 | 10 | audio callback | An exception aborts the stream for good; the watcher restarts only on a device change | H: caught, logged, silence until restart |
 | 11 | telemetry / callout threads | A non-numeric `speed_announce_interval` or `scanner_distance_callout_interval` crashes the thread later | H: previous value kept, warning logged |
 | 12 | `speech.speak` | An exception reading the backend name inside a log call escapes a function that promises never to raise | H: logs "unknown" |
+| 63 | `vehicle_spawner._handle_packet` | A `CATALOG_ITEM:` whose JSON parses but is not an object (`[1,2]`, `5`, `"x"`) passes the `json.loads` guard and raises AttributeError on `obj.get("hasPolice")`, outside any `try`. The exception ends the spawner listener thread, so F11 has no catalog updates until restart (E8 fixture `catalog_errors`; recorded by V1, as E8's report was lost) | R |
 
 ## Wrong behaviour, not fatal
 
