@@ -6,7 +6,7 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-21, with the V1 bridge/MCP audit commit.
+2026-11-21, with the V1 updater audit commit (V1 complete).
 
 ## Done so far
 
@@ -97,13 +97,24 @@ U2 has been run by the user (2026-11-21), un-elevated, debug build:
 - Optional, discussed: warn when the game itself runs elevated, the one case an
   un-elevated hook cannot see.
 
-**I1 is done** (`integration-report.md`): builds clean, 557 tests pass, no stubs,
-wiring checked. **V1 is under way, one slice at a time in this session** (the user chose
-that over eight agents). Done: config and UI, audio, telemetry, listeners, keyboard, spawner,
-bridge and MCP (`audit-*.md`). Remaining:
-updater. Each writes `audit-<slice>.md`. Then R1 packaging, D1 docs, and the user's
-keep-or-fix pass over `python-bugs.md`. Speech is moving to Prismer (user,
-2026-11-21): do not plan around `prism.dll`.
+**I1 and V1 are done.** I1: `integration-report.md`. V1: eight `audit-*.md`, one
+slice at a time in this session (the user chose that over eight agents). Every fixture
+regenerates unchanged from today's Python, so the crates finished before the Python
+moved still match it. Fixture coverage of the real Python was measured per function
+(`coverage`, method in `audit-listeners.md`) and the gaps walked by hand. Four fixtures
+were added (`config_panel`, `road_scripts`, `bridge`, `mcp_dispatch`) and two
+differences fixed (spin tie rounding in `util.js`, non-string MCP `speak`).
+
+**Next, with the user:**
+
+1. **Keep-or-fix decisions over `python-bugs.md`** (67 entries). Two are recommended
+   for fixing: **66**, the MCP origin guard's prefix match (security: DNS rebinding can
+   reach `lua_exec` when the server is enabled), and **67**, updates that can never
+   apply for a non-ASCII Windows user name. Bug 30 (steering never reaches the
+   obstacle detector) was already waiting. 62-65 are new and minor or dormant.
+2. Then R1 (packaging: the HRTF `.npz` sets and their licence notice beside the exe,
+   the mod zip; not `prism.dll`, since speech is moving to Prismer) and D1 (docs still
+   describe the Python build, including the admin requirement).
 Traps found in U2:
 - A Tauri test binary dies at load with `STATUS_ENTRYPOINT_NOT_FOUND` unless it embeds
   the Common Controls v6 manifest. `build.rs` adds it to `tests/` targets only
@@ -111,6 +122,7 @@ Traps found in U2:
   lib and bin have `test = false`. Put new tests in `src-tauri/tests/`.
 - `TrackPopupMenuEx` must run on the window's thread: `logs_menu_popup` posts it with
   `run_on_main_thread` and waits on a channel.
+
 ## Things to know
 
 - **The Python reference has moved under the port.** The working tree has uncommitted
@@ -119,7 +131,7 @@ Traps found in U2:
   `road_guidance.py`, `config_ui.py`, `configurator.py`, and `roadGates.lua` with its
   docs. Line ranges in `04-workstreams.md` can be off by a few lines. Agents port the
   working-tree Python. The crates that were already finished (AH's hrtf, B3's road
-  guidance, A1-A3) may predate these changes: **the V1 audits must diff them against the
-  current Python**. These Python files are never staged by port commits.
+  guidance, A1-A3) predate these changes; V1 confirmed they still match it (every
+  fixture regenerates unchanged). These Python files are never staged by port commits.
 - Port commits stage only `rust/` and `rust_plans/`, by explicit path. Never push, branch
   or merge.
