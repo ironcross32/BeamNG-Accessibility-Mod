@@ -327,7 +327,13 @@ pub(super) fn t_speak(args: &PyJson) -> TResult<PyJson> {
         return Err(ToolFail::tool("`text` is required"));
     }
     let interrupt = aget_or(args, "interrupt", PyJson::Bool(true))?.truthy();
-    (d.say_fn)(&text.py_str(), interrupt);
+    // The Python hands the raw value to say(), which normalises it first: a number is
+    // spoken as its text, a one-item list or dict as its item, anything else not at all.
+    // say_fn takes text, so normalise here rather than stringify (["a"] is "a", not "['a']").
+    let value = crate::convert::pyjson_to_json(&text);
+    if let Some(t) = crate::speech_out::normalize_speech_value(&value, "mcp") {
+        (d.say_fn)(&t, interrupt);
+    }
     Ok(dict(vec![("spoken", text)]))
 }
 

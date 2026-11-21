@@ -28,6 +28,7 @@ Legend: R = reproduced as in Python; H = already hardened in Rust (a departure).
 | 11 | telemetry / callout threads | A non-numeric `speed_announce_interval` or `scanner_distance_callout_interval` crashes the thread later | H: previous value kept, warning logged |
 | 12 | `speech.speak` | An exception reading the backend name inside a log call escapes a function that promises never to raise | H: logs "unknown" |
 | 63 | `vehicle_spawner._handle_packet` | A `CATALOG_ITEM:` whose JSON parses but is not an object (`[1,2]`, `5`, `"x"`) passes the `json.loads` guard and raises AttributeError on `obj.get("hasPolice")`, outside any `try`. The exception ends the spawner listener thread, so F11 has no catalog updates until restart (E8 fixture `catalog_errors`; recorded by V1, as E8's report was lost) | R |
+| 64 | `nvda_ws_speaker.tcp_handler` | The relay catches only decode and JSON errors. A line that parses but is not an object (`[1, 2]`), an `accessibility_action` whose action is unhashable (`["x"]`), or a `log` message whose level names a non-callable logger attribute (`handlers`, `level`) raises out of `handle_ws_message` and ends the Lua TCP relay connection, dropping every later UI message until the mod reconnects. The WebSocket path catches everything. The mod never sends these today (dormant). Found by E9; confirmed by V1 (`bridge` fixture) | R |
 
 ## Wrong behaviour, not fatal
 
@@ -82,6 +83,8 @@ Legend: R = reproduced as in Python; H = already hardened in Rust (a departure).
 | 60 | describer | A non-string API key, model or extra in the config raises AttributeError ("Unexpected error: ..." then "Description failed.") | R |
 | 61 | `capture_scene_png` (mss) | mss sets process DPI awareness on first use, after the window rect was read, so the first `focus_game` capture on a scaled display mixes logical and physical coordinates | H: the Rust process is DPI-aware from the start |
 | 62 | `road_listener` gate and private-entry words | The last gate id and private-entry id are recorded on every packet, announced or not. So a gate or private road first seen while the assistant is off, or during loading, is never announced once the assistant takes over approaching the same one (found by V1, `e2_listeners` `road_scripts`) | R |
+| 65 | `nvda_ws_speaker.hover_on` | `hover_on` sets `_HOVER_TOKEN`, then calls `hover_cancel()`, which clears it to None; the delayed task compares its own token against None, so a hover is never spoken. Dormant: `bnvdaRuntime.js` only ever sends `hover_cancel`. Found by E9 (noted in `ui_bridge.rs`), recorded by V1 | R |
+| 66 | `mcp_server._origin_ok` (**security**) | The DNS-rebinding guard is a prefix match: an `Origin` of `http://localhost.example.com` or `http://127.0.0.1.example.com` starts with an allowed prefix and passes. A page served from such a name, rebound to 127.0.0.1, can then call any tool, `lua_exec` included, whenever the MCP server is enabled. Fix: compare the parsed host exactly (`127.0.0.1`, `localhost`, optional port). Off by default and loopback-bound, which limits it to users who enabled it. Found by V1 | R; **recommend fixing** |
 | 40 | `_hill_climb_finalized` | A non-dict `statistics` raises AttributeError; the recorder swallows it and the data-quality log line is lost | R |
 ## Recommendation
 

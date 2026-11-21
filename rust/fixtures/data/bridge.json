@@ -1,0 +1,886 @@
+{
+ "messages": [
+  {
+   "name": "speak",
+   "steps": [
+    {
+     "calls": [
+      [
+       "speak",
+       "Hello",
+       true
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "text": "Hello",
+      "type": "speak"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "text": "Hello",
+      "type": "speak"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "speak",
+       "Hello",
+       false
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "interrupt": false,
+      "text": "Hello",
+      "type": "speak"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "speak",
+       "padded",
+       true
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "text": "  padded  ",
+      "type": "speak"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "text": "",
+      "type": "speak"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "text": "   ",
+      "type": "speak"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "type": "speak"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "speak",
+       "5",
+       true
+      ]
+     ],
+     "debug": false,
+     "logs": [
+      [
+       "WARNING",
+       "[UNSPEAKABLE] speak text is int, not str: 5"
+      ]
+     ],
+     "message": {
+      "text": 5,
+      "type": "speak"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [
+      [
+       "WARNING",
+       "[UNSPEAKABLE] speak text is NoneType, not str: None"
+      ]
+     ],
+     "message": {
+      "text": null,
+      "type": "speak"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "speak",
+       "['a']",
+       true
+      ]
+     ],
+     "debug": false,
+     "logs": [
+      [
+       "WARNING",
+       "[UNSPEAKABLE] speak text is list, not str: ['a']"
+      ]
+     ],
+     "message": {
+      "text": [
+       "a"
+      ],
+      "type": "speak"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "speak",
+       "x",
+       true
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "interrupt": "yes",
+      "text": "x",
+      "type": "speak"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "speak",
+       "y",
+       false
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "interrupt": 0,
+      "text": "y",
+      "type": "speak"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [
+      [
+       "INFO",
+       "[bnvda] Suppressed CSS-like text from UI hook."
+      ]
+     ],
+     "message": {
+      "text": ".foo { color: red; }",
+      "type": "speak"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [
+      [
+       "INFO",
+       "[bnvda] Suppressed CSS-like text from UI hook."
+      ]
+     ],
+     "message": {
+      "text": "a } b { c: d;",
+      "type": "speak"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "speak",
+       "Plain text with a { brace",
+       true
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "text": "Plain text with a { brace",
+      "type": "speak"
+     },
+     "raised": null
+    }
+   ]
+  },
+  {
+   "name": "log",
+   "steps": [
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [
+      [
+       "INFO",
+       "one"
+      ]
+     ],
+     "message": {
+      "level": "info",
+      "msg": "one",
+      "type": "log"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [
+      [
+       "WARNING",
+       "two"
+      ]
+     ],
+     "message": {
+      "level": "WARNING",
+      "msg": "two",
+      "type": "log"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [
+      [
+       "ERROR",
+       "three"
+      ]
+     ],
+     "message": {
+      "level": "error",
+      "msg": "three",
+      "type": "log"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "level": "debug",
+      "msg": "five",
+      "type": "log"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [
+      [
+       "INFO",
+       "six"
+      ]
+     ],
+     "message": {
+      "level": "nope",
+      "msg": "six",
+      "type": "log"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [
+      [
+       "INFO",
+       "7"
+      ]
+     ],
+     "message": {
+      "msg": 7,
+      "type": "log"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [
+      [
+       "INFO",
+       "eight"
+      ]
+     ],
+     "message": {
+      "level": 3,
+      "msg": "eight",
+      "type": "log"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [
+      [
+       "WARNING",
+       "nine"
+      ]
+     ],
+     "message": {
+      "level": "warn",
+      "msg": "nine",
+      "type": "log"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "level": "handlers",
+      "msg": "ten",
+      "type": "log"
+     },
+     "raised": [
+      "TypeError",
+      "'list' object is not callable"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "debug_state",
+   "steps": [
+    {
+     "calls": [],
+     "debug": true,
+     "logs": [
+      [
+       "INFO",
+       "[bnvda] BNVDA_DEBUG enabled"
+      ]
+     ],
+     "message": {
+      "enabled": true,
+      "type": "debug_state"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": true,
+     "logs": [],
+     "message": {
+      "enabled": true,
+      "type": "debug_state"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [
+      [
+       "INFO",
+       "[bnvda] BNVDA_DEBUG disabled"
+      ]
+     ],
+     "message": {
+      "enabled": false,
+      "type": "debug_state"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": true,
+     "logs": [
+      [
+       "INFO",
+       "[bnvda] BNVDA_DEBUG enabled"
+      ]
+     ],
+     "message": {
+      "enabled": "x",
+      "type": "debug_state"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [
+      [
+       "INFO",
+       "[bnvda] BNVDA_DEBUG disabled"
+      ]
+     ],
+     "message": {
+      "type": "debug_state"
+     },
+     "raised": null
+    }
+   ]
+  },
+  {
+   "name": "callbacks",
+   "steps": [
+    {
+     "calls": [
+      [
+       "dom_dump",
+       [
+        "a",
+        "b"
+       ]
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "lines": [
+       "a",
+       "b"
+      ],
+      "type": "dom_dump_result"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "dom_dump",
+       []
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "type": "dom_dump_result"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "settings_request"
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "type": "settings_request"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "loading_state",
+       true,
+       "Gridmap"
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "active": true,
+      "focusText": "Gridmap",
+      "type": "loading_state"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "loading_state",
+       true,
+       ""
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "active": "yes",
+      "focusText": null,
+      "type": "loading_state"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "loading_state",
+       false,
+       ""
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "type": "loading_state"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "screen_context",
+       "mod_details",
+       "A mod"
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "context": "mod_details",
+      "title": "A mod",
+      "type": "screen_context"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "screen_context",
+       "",
+       "5"
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "context": null,
+      "title": 5,
+      "type": "screen_context"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "page_text",
+       [
+        "one",
+        "2",
+        "None"
+       ],
+       "T",
+       "",
+       "s"
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "code": "",
+      "lines": [
+       "one",
+       2,
+       null
+      ],
+      "sentence": "s",
+      "title": "T",
+      "type": "page_text"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "page_text",
+       [],
+       "",
+       "nopage",
+       ""
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "code": "nopage",
+      "lines": "not a list",
+      "title": null,
+      "type": "page_text"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "challenge_event",
+       {
+        "event": "start",
+        "id": 3,
+        "type": "challenge_event"
+       }
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "event": "start",
+      "id": 3,
+      "type": "challenge_event"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "drift_event",
+       {
+        "score": 1.5,
+        "type": "drift_event"
+       }
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "score": 1.5,
+      "type": "drift_event"
+     },
+     "raised": null
+    }
+   ]
+  },
+  {
+   "name": "actions",
+   "steps": [
+    {
+     "calls": [
+      [
+       "accessibility_action",
+       "status_up"
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "action": "status_up",
+      "type": "accessibility_action"
+     },
+     "raised": null
+    },
+    {
+     "calls": [
+      [
+       "accessibility_action",
+       "activate"
+      ]
+     ],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "action": "activate",
+      "type": "accessibility_action"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [
+      [
+       "WARNING",
+       "[bnvda] Ignoring unknown accessibility action: 'bogus'"
+      ]
+     ],
+     "message": {
+      "action": "bogus",
+      "type": "accessibility_action"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [
+      [
+       "WARNING",
+       "[bnvda] Ignoring unknown accessibility action: None"
+      ]
+     ],
+     "message": {
+      "type": "accessibility_action"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "action": [
+       "status_up"
+      ],
+      "type": "accessibility_action"
+     },
+     "raised": [
+      "TypeError",
+      "unhashable type: 'list'"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ignored",
+   "steps": [
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "type": "nope"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "text": "no type"
+     },
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [],
+     "message": [
+      "not",
+      "a",
+      "dict"
+     ],
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [],
+     "message": "text",
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [],
+     "message": null,
+     "raised": null
+    },
+    {
+     "calls": [],
+     "debug": false,
+     "logs": [],
+     "message": {
+      "type": null
+     },
+     "raised": null
+    }
+   ]
+  }
+ ],
+ "tcp": [
+  {
+   "calls": [
+    [
+     "speak",
+     "Hi",
+     true
+    ],
+    [
+     "accessibility_action",
+     "next_menu"
+    ]
+   ],
+   "error": null,
+   "invalid": [],
+   "lines": [
+    "{\"type\":\"transport_ping\"}\n",
+    "{\"type\":\"speak\",\"text\":\"Hi\"}\n",
+    "{\"type\":\"accessibility_action\",\"action\":\"next_menu\"}\n"
+   ],
+   "name": "ping and messages",
+   "written": [
+    "{\"type\":\"transport_pong\",\"transport\":\"lua-tcp\"}\n"
+   ]
+  },
+  {
+   "calls": [
+    [
+     "speak",
+     "after",
+     true
+    ]
+   ],
+   "error": null,
+   "invalid": [
+    "[bnvda] Invalid Lua TCP relay message: Expecting value: line 1 column 1 (char 0)",
+    "[bnvda] Invalid Lua TCP relay message: 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte"
+   ],
+   "lines": [
+    "not json\n",
+    "ÿþ\n",
+    "{\"type\":\"speak\",\"text\":\"after\"}\n"
+   ],
+   "name": "bad lines are skipped",
+   "written": []
+  },
+  {
+   "calls": [
+    [
+     "speak",
+     "first",
+     true
+    ]
+   ],
+   "error": "'list' object has no attribute 'get'",
+   "invalid": [],
+   "lines": [
+    "{\"type\":\"speak\",\"text\":\"first\"}\n",
+    "[1, 2]\n",
+    "{\"type\":\"speak\",\"text\":\"never\"}\n"
+   ],
+   "name": "a non-object ends the connection",
+   "written": []
+  },
+  {
+   "calls": [],
+   "error": "unhashable type: 'list'",
+   "invalid": [],
+   "lines": [
+    "{\"type\":\"accessibility_action\",\"action\":[\"x\"]}\n",
+    "{\"type\":\"speak\",\"text\":\"never\"}\n"
+   ],
+   "name": "an unhashable action ends the connection",
+   "written": []
+  }
+ ]
+}
