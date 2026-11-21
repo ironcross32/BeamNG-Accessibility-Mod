@@ -1,0 +1,17 @@
+# The level generators are the only Python left in the repo; BEAM itself is Rust.
+# Run them from the repo root with this project, e.g.
+#   uv run --project tools python tools/mapgen/build.py
+[project]
+name = "beam-level-tools"
+version = "0.1.0"
+description = "Python generators for BEAM's test levels (mapgen, checkerboard, dynorig)"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.3.3",
+]
+
+[dependency-groups]
+# check.py runs the checkerboard's Lua through lupa.
+dev = [
+    "lupa>=2.0",
+]

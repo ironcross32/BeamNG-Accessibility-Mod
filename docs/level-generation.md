@@ -23,8 +23,8 @@ This file holds the engine and file-format facts every generated level shares.
 The layout of each level, and the reasoning behind it, is in the two files above.
 
 ```
-python tools/mapgen/build.py              # install to the BeamNG mods folder
-python tools/mapgen/terfile.py <file.ter> # round-trip a game terrain
+uv run --project tools python tools/mapgen/build.py              # install to the BeamNG mods folder
+uv run --project tools python tools/mapgen/terfile.py <file.ter> # round-trip a game terrain
 ```
 
 ## The `.ter` format

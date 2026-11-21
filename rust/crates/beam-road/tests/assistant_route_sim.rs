@@ -556,8 +556,11 @@ fn test_feed_reports_with_assistant_gate() {
     };
     let ev = feed.accept_r2(&packet, Some(0.0), true, true, true);
     assert_eq!(ev.signal.unwrap().signal.kind, "stopSign");
-    let source = std::fs::read_to_string(beam_testutil::repo_root().join("beamtel.py")).unwrap();
+    let source = std::fs::read_to_string(
+        beam_testutil::repo_root().join("rust/crates/beam-engine/src/listeners/road.rs"),
+    )
+    .unwrap();
     assert!(source.contains(
-        "awareness_active = controls_ready and (road_mode_active or driving_assistant.active)"
+        "let awareness_active = controls_ready && (f.road_mode_active || assistant_active);"
     ));
 }

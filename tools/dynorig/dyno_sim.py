@@ -6,7 +6,7 @@ reading the jbeam, because a triangle wound the wrong way looks exactly like one
 wound the right way.  So each scenario also asserts what the NAIVE form answers,
 the way the rest of this project's sims do; a check that cannot fail is not one.
 
-    python tools/dynorig/dyno_sim.py
+    uv run --project tools python tools/dynorig/dyno_sim.py
 """
 
 import math

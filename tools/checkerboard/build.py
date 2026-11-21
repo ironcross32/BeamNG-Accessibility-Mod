@@ -1,7 +1,7 @@
 """Build the standalone Endless Surfaces prototype; no Proving Grounds imports.
 
-uv run python tools/checkerboard/build.py
-uv run python tools/checkerboard/build.py --install
+uv run --project tools python tools/checkerboard/build.py
+uv run --project tools python tools/checkerboard/build.py --install
 """
 
 import argparse

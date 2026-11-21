@@ -1,7 +1,7 @@
 """Generate the Proving Grounds level and install it as an unpacked mod.
 
-    python tools/mapgen/build.py            # install to the BeamNG mods folder
-    python tools/mapgen/build.py --out DIR  # write somewhere else instead
+    uv run --project tools python tools/mapgen/build.py            # install to the BeamNG mods folder
+    uv run --project tools python tools/mapgen/build.py --out DIR  # write somewhere else instead
 
 Nothing here needs the game running. The .ter binary is written directly (see
 terfile.py, which round-trips three shipped game terrains byte-for-byte), the

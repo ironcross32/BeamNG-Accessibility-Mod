@@ -17,8 +17,8 @@ on the same surface; the pattern is a grid, not concentric distance bands.
 From the repository root:
 
 ```powershell
-uv run python tools/checkerboard/build.py
-uv run python tools/checkerboard/build.py --install
+uv run --project tools python tools/checkerboard/build.py
+uv run --project tools python tools/checkerboard/build.py --install
 ```
 
 The first command writes `build/checkerboard/beam_endless_surfaces.zip` and an
@@ -81,12 +81,12 @@ same location. Multiplayer and AI routes across wraps are not implemented.
 ## Verification
 
 ```powershell
-uv run python -m compileall -q tools/checkerboard/build.py tools/checkerboard/check.py
-uv run --with lupa python tools/checkerboard/check.py
+uv run --project tools python -m compileall -q tools/checkerboard/build.py tools/checkerboard/check.py
+uv run --project tools python tools/checkerboard/check.py
 ```
 
-`lupa` is only a temporary test dependency; the generator needs the project's
-existing NumPy dependency. The checks decode generated terrain and PNG files,
+`lupa` is a dev-only dependency in `tools/pyproject.toml`; the generator needs only
+NumPy. The checks decode generated terrain and PNG files,
 validate all scene JSON, exact boundaries, material assignments, sand/grass depth,
 spawn placement, both-axis periodicity, and reproducible ZIP bytes. A mock Lua
 engine exercises the real runtime's threshold logic, diagonal/negative wraps,

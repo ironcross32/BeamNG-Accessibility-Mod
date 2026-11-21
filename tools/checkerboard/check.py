@@ -1,6 +1,6 @@
 """Check the generated files and execute runtime.lua against a mock engine.
 
-uv run --with lupa python tools/checkerboard/check.py
+uv run --project tools python tools/checkerboard/check.py
 Mocks validate wrap decisions and group translation, not BeamNG physics.
 """
 

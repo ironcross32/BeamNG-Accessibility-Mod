@@ -1,17 +1,13 @@
-# Python-generated files
+# Python (the level generators in tools/)
 __pycache__/
 *.py[oc]
 build/
 dist/
-wheels/
 *.egg-info
 
 # Virtual environments
 .venv
 .env
-
-# UV
-.uv/
 
 # executables
 *.exe
@@ -31,12 +27,6 @@ wheels/
 *.PNG
 *.png
 backup/
-beamtel_config.json
-
-# Build artifacts
-configurator.dist/
-configurator.build/
-configurator.onefile-build/
 
 # Third-party BeamNG mods (not part of this project)
 boxutility/

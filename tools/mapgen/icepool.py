@@ -1,7 +1,7 @@
 """Generate the Ice Pool level and install it as an unpacked mod.
 
-    python tools/mapgen/icepool.py            # install to the BeamNG mods folder
-    python tools/mapgen/icepool.py --out DIR  # write somewhere else instead
+    uv run --project tools python tools/mapgen/icepool.py            # install to the BeamNG mods folder
+    uv run --project tools python tools/mapgen/icepool.py --out DIR  # write somewhere else instead
 
 An elliptical pool, 327 m north-south by 250 m east-west across its flat floor.
 The floor is ice. A 20 cm deep strip of water runs down the long axis and stops

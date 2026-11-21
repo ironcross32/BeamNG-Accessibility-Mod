@@ -3,7 +3,7 @@
 Engine and file-format facts shared by every generated level are in [level-generation.md](level-generation.md).
 
 
-`python tools/mapgen/icepool.py` builds a second level, `ice_pool` (mod folder
+`uv run --project tools python tools/mapgen/icepool.py` builds a second level, `ice_pool` (mod folder
 `beam_ice_pool`), reusing `terfile.py`, `textures.py` and `build.py`'s `face()` /
 `write_items()` but none of the Proving Grounds layout. An elliptical floor of
 ICE, 327 m north-south by 250 m east-west; a 16 m by 287 m strip of water 20 cm

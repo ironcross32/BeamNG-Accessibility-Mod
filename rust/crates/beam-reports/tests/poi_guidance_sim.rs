@@ -66,14 +66,19 @@ fn main() {
         );
     }
 
-    let source = std::fs::read_to_string(repo_root().join("beamtel.py")).expect("read beamtel.py");
+    let engine = repo_root().join("rust/crates/beam-engine/src");
+    let read = |rel: &str| {
+        std::fs::read_to_string(engine.join(rel)).unwrap_or_else(|e| panic!("read {rel}: {e}"))
+    };
+    let help = read("f9_commands.rs");
+    let scan = read("listeners/terrain_scan.rs");
     assert!(
-        source.contains(r#"("w", False, True, False): "Nearest point of interest""#)
-            && source.contains(r#"_send_scan_cmd("NEAREST_POI")"#),
+        help.contains(r#"(("w", F, T, F), "Nearest point of interest")"#)
+            && scan.contains(r#"send_scan_cmd("NEAREST_POI")"#),
         "F9 Shift+W is documented in input help and sends the POI request"
     );
     assert!(
-        source.contains("_last_scan_reply_ts") && source.contains("_last_poi_reply_ts"),
+        scan.contains("last_scan_reply_ts") && scan.contains("last_poi_reply_ts"),
         "scan and POI requests keep independent reply latches"
     );
 }
