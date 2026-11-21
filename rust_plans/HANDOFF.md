@@ -6,7 +6,15 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-21, later: **speech is on Prismer.** `beam-speech` `prism.rs` no longer loads
+2026-11-21, latest: **the docs no longer say the app needs elevation.** `CLAUDE.md`,
+`AGENTS.md`, `rust/README.md`, the user `README.md` and `docs/app-mcp.md` still described
+the Python-era rule, under which the shipped exe had to be built with `uac-admin`. They now
+match the decision in `01-scope-and-architecture.md`: the release build is plain
+`cargo build --release -p beam-app` (`npx tauri build` is equivalent, since bundling is off
+and `custom-protocol` is always on), and `uac-admin` is opt-in for anyone who runs the game
+as administrator. R1 builds without it.
+
+Earlier, 2026-11-21: **speech is on Prismer.** `beam-speech` `prism.rs` no longer loads
 `prism.dll` with `libloading`; it wraps the `prismer` crate (0.1.7, `static` feature), whose
 build script compiles Prism with CMake and links it into the exe. `find_prism_dll` is gone
 from `beam-base` `paths.rs`, and nothing ships or looks for a DLL. The wrapper keeps the

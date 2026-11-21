@@ -72,10 +72,13 @@ window (`windows_subsystem = "windows"` under `not(debug_assertions)`).
 
 ### Administrator manifest (`uac-admin`)
 
-The shipped app must run elevated, because the low-level keyboard hooks have to work
-while the (elevated) game has focus. The manifest that requests it is behind the
-`uac-admin` cargo feature of `beam-app`, **off by default**, so `cargo run` and the
-tests work from an ordinary shell:
+The shipped app does **not** run elevated. A low-level keyboard hook sees and
+suppresses keys going to a window at the same integrity level, and BeamNG runs
+un-elevated when launched through Steam (verified in game, 2026-11-21: F9 then F read
+fuel without the F reaching the game). Elevation only matters for someone who runs
+Steam or BeamNG as administrator, because Windows hides an elevated window's keystrokes
+from a normal process's hook. For them, the `uac-admin` cargo feature of `beam-app`
+(**off by default**, releases included) embeds a manifest that requests elevation:
 
 ```powershell
 cargo build --release -p beam-app --features uac-admin
@@ -84,8 +87,8 @@ npx tauri build --features uac-admin
 
 `src-tauri/build.rs` picks `manifests/admin.xml` (Common Controls v6 plus
 `requireAdministrator`) when the feature is on, `manifests/default.xml` (Common
-Controls v6 only) otherwise. The release pipeline (`xtask`, workstream R1) must pass
-`--features uac-admin`. Running an admin build raises a UAC prompt.
+Controls v6 only) otherwise. The release pipeline (`xtask`, workstream R1) builds
+without it. Running an admin build raises a UAC prompt.
 
 ## Golden fixtures
 

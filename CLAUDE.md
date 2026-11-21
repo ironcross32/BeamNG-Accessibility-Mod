@@ -4,16 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BEAM is a screen reader mod for BeamNG.drive — an accessibility tool that converts real-time vehicle telemetry into audio cues, spatial compass clicks, and speech output for blind and visually impaired players. It runs on Windows 10+ and requires administrator privileges (for keyboard hooks).
+BEAM is a screen reader mod for BeamNG.drive — an accessibility tool that converts real-time vehicle telemetry into audio cues, spatial compass clicks, and speech output for blind and visually impaired players. It runs on Windows 10+. It does not need administrator rights: the keyboard hooks see and suppress keys going to the game as long as the game is not elevated either (a Steam launch is not).
 
 ## Build & Run Commands
 
-The application is the Rust workspace in `rust/`; run these from there (PowerShell). `rust/README.md` has the details: prerequisites, the `uac-admin` feature, fixtures, paths.
+The application is the Rust workspace in `rust/`; run these from there (PowerShell). `rust/README.md` has the details: prerequisites, the opt-in `uac-admin` feature, fixtures, paths.
 
 ```powershell
 cargo build --workspace                                  # debug, everything
 cargo run -p beam-app                                    # open the app; debug keeps a console
-cargo build --release -p beam-app --features uac-admin   # the shipped, elevated beamtel.exe
+cargo build --release -p beam-app                        # the shipped beamtel.exe (npx tauri build is equivalent)
 cargo test --workspace                                   # unit, golden-fixture and sim tests
 cargo clippy --workspace --all-targets
 cargo fmt --all
@@ -200,7 +200,7 @@ Most settings are consumed in the app. `ui_nav_hold_suppression` is the exceptio
 - **UI page text**: `bnvdaRuntime.js` answers a `page_text` request with the current readable screen as lines (today the AngularJS mod repository / automation details pages, whose spec table and description body carry nothing focusable), and pushes a `screen_context` latch so the controller Functions menu can hide the entry elsewhere. See `docs/lua-ui-runtime-mod-details.md` -- nothing is read automatically, and `cleanText` must never touch body text.
 - **Keyboard command lifecycle**: F9 → install hooks + 4-second timeout → process key → unhook. Modifier tracking (Ctrl/Shift/Alt) handled in `_on_next_key_press`.
 - **Fallback strategy**: configured speech backend → Prism's highest-priority available one, re-acquired on failure; preferred audio device → system default; air pressure controller → electrics scan for vehicles without dedicated tanks.
-- **Elevation and no console**: the shipped build needs `--features uac-admin` (the manifest that requests elevation, so the keyboard hooks work while the elevated game has focus) and has no console window in release. With no usable standard handles, `updater::apply_and_restart` gives its detached helper explicit null handles rather than letting cmd allocate a console of its own.
+- **Elevation and no console**: the shipped build is not elevated. A `WH_KEYBOARD_LL` hook sees and suppresses keys bound for a window at the same integrity level, and the game runs un-elevated (verified in game 2026-11-21). The opt-in `--features uac-admin` builds a `requireAdministrator` exe only for someone who runs Steam or BeamNG as administrator, whose keystrokes Windows hides from a normal process. Release builds have no console window. With no usable standard handles, `updater::apply_and_restart` gives its detached helper explicit null handles rather than letting cmd allocate a console of its own.
 - **Cross-VM Lua communication**: Vehicle VM ↔ Game Engine VM via `vehicle:queueLuaCommand()` and `obj:queueGameEngineLua()`. All UDP socket I/O uses LuaSocket.
 
 ## Lua Constraints

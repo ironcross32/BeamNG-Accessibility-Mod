@@ -12,7 +12,7 @@ Use of AI coding agents and tooling have been heavily used in this project.
 ### Installation Instructions
 
 1. Unzip the contents to a directory of your choice (If you're seeing this, hopefully you have already done this)
-2. Launch beamtel.exe - granting admin access (explanation in later section)
+2. Launch beamtel.exe (no administrator rights needed; see "Administrator rights" below)
 3. Navigate to the "Install Mod" button and activate it which will copy the zipped BeamNG mod to the appropriate place
 4. Launch the game and play
 
@@ -132,7 +132,7 @@ In reverse, the scanner measures from the back of your vehicle and reports the b
 
 BeamNG's **Accessibility** controls category contains six Normal actions: **Accessibility menu up**, **Accessibility menu down**, **Accessibility menu repeat**, **Accessibility next menu**, **Accessibility previous menu**, and **Accessibility activate**. They are intentionally unbound so the mod does not take over controller or keyboard input. In Options > Controls > Bindings, assign them to a controller modifier plus D-pad up/down, D-pad left/right, and two face or shoulder buttons. Using a modifier avoids firing vehicle or UI actions already assigned to the same controls.
 
-The menu starts on **Status** whenever beamtel starts. Up and down wrap through the current screen, Repeat reads the selected value, function, or clickspot without moving, Next/Previous menu wrap through **Status**, **Functions**, and **Click spots**, and Activate repeats a Status value or runs the highlighted Function or clickspot. All three screens preserve separate cursors. These actions use the existing command worker, so Ctrl+S status mode, elevated keyboard hooks, and BeamNG window focus are not required.
+The menu starts on **Status** whenever beamtel starts. Up and down wrap through the current screen, Repeat reads the selected value, function, or clickspot without moving, Next/Previous menu wrap through **Status**, **Functions**, and **Click spots**, and Activate repeats a Status value or runs the highlighted Function or clickspot. All three screens preserve separate cursors. These actions use the existing command worker, so Ctrl+S status mode, keyboard hooks, and BeamNG window focus are not required.
 
 The **Status** screen is the same live, conditionally filtered telemetry catalog used by Ctrl+S keyboard navigation. The flat **Functions** screen announces category names when you enter each run and includes:
 
@@ -369,9 +369,9 @@ calculated angle and correction. No calibration shot or reset is required.
 
 **Accessible node grabber** announces node names as the mouse pointer enters them and jumps the pointer to the closest node relative to the camera's center. Holding Ctrl allows free mouse movement. Scrolling the mouse wheel announces the grabber's strength — higher strength can lift a vehicle by a node, or tear a part free if it cannot bear the weight. Middle-click pins or unpins a node; a pinned node is fixed in place, which may prevent driving or tear off the associated part. To exert force on a node: hold Ctrl, move to the desired node, then click and hold the left mouse button — Ctrl can then be released. Middle-click while holding the left button to pin or unpin. Ctrl+Space releases every pinned node at once, on every vehicle, so you never have to find one again with the mouse.
 
-### Why Admin?
+### Administrator rights
 
-The mod asks for elevated privileges because the layered commands need to suppress their keystrokes from reaching the game. Without this, some commands would have adverse effects — for example, pressing F9 then F to check fuel would also exit the vehicle if it were stationary.
+beamtel does not need administrator rights. The layered commands stop their keystrokes from reaching the game, so pressing F9 then F to check fuel does not also exit the vehicle, and that works as long as the game is not running as administrator either. Launching BeamNG through Steam normally is fine. If you run Steam or BeamNG as administrator, Windows hides the game's keystrokes from beamtel, and you need to run beamtel as administrator too.
 
 ### Known Issues
 

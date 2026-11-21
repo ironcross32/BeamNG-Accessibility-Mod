@@ -11,7 +11,7 @@ The only Python left is the level generators in `tools/`, which have their own `
 Run from `rust/`:
 
 - `cargo build --workspace` builds everything; `cargo run -p beam-app` opens the app (debug builds keep a console).
-- `cargo build --release -p beam-app --features uac-admin` builds the shipped, elevated `beamtel.exe`. Keyboard suppression needs elevation.
+- `cargo build --release -p beam-app` builds the shipped `beamtel.exe`. It needs no elevation: keyboard suppression works while the game is un-elevated. `--features uac-admin` is opt-in, only for someone who runs the game as administrator.
 - `cargo test --workspace` runs the unit, fixture and sim tests; `cargo clippy --workspace --all-targets` and `cargo fmt --all` before committing.
 
 There is no release pipeline yet: `rust/xtask` is meant to package the exe and the mod, and has no commands.
