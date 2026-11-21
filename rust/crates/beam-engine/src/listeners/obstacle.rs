@@ -289,9 +289,26 @@ pub fn push_obstacle_state(st: &mut State, force: bool, gear: Option<&str>) -> b
     } else {
         "F"
     };
+    // **Deliberate difference (python-bugs.md 30, user decision 2026-11-21).** The Python
+    // always sent 0 (its global was never written), so this sign was never exercised.
+    // obstacleDetector.lua rotates its ray fan about the vehicle's up axis by
+    // `steering * maxShift`, and a positive angle turns toward the LEFT of the direction of
+    // travel (`rotateVectorAroundAxis(travel, up, centre)`, travel = -fwd in reverse).
+    // BeamNG's steering_input is positive to the RIGHT. Going forward the path bends the
+    // way the wheel points, so the fan wants -steering; in reverse a right-steered car's
+    // rear swings right, which is the left of the (rearward) direction of travel, so
+    // +steering. `0.0 - s` keeps a centred wheel at "0.000" rather than "-0.000".
+    // A NaN reading is no bend: the Python's clamp turned it into full right lock.
+    let raw = st.tel.last_steering_input;
+    let steering = if raw.is_nan() {
+        0.0
+    } else {
+        py_max(-1.0, py_min(1.0, raw))
+    };
+    let path_bend = if direction == "R" { steering } else { 0.0 - steering };
     let new_state = (
         direction.to_string(),
-        py_max(-1.0, py_min(1.0, st.tel.last_steering_input)),
+        path_bend,
         py_max(0.0, py_min(1.0, st.tel.last_throttle)),
         py_max(0.0, py_min(1.0, st.tel.last_brake)),
     );

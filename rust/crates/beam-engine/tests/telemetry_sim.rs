@@ -618,6 +618,16 @@ fn loop_scenarios_match_python() {
             }
             let st = hooks.st.lock();
             for (k, want) in step["snap"].as_object().unwrap() {
+                // python-bugs.md 30 (deliberate): the Python's module-level steering stays
+                // 0.0 all session because the loop assigns locals; the Rust writes the
+                // shared state, which is the point of the fix. The loop's own use of the
+                // values is still compared through the calls above.
+                if matches!(
+                    k.as_str(),
+                    "last_steering" | "last_actual_steering" | "last_steering_input"
+                ) {
+                    continue;
+                }
                 let got = get(&st, k);
                 if !same(&got, want) {
                     failures.push(format!("{case}: {k} rust {got} python {want}"));

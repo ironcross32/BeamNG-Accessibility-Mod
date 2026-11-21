@@ -6,7 +6,8 @@ reproducing it or be hardened. **Rust now** says what the Rust does today.
 
 Legend: R = reproduced as in Python; H = already hardened in Rust (a departure).
 
-Decided by the user: 66 and 67 fixed in the Rust (2026-11-21). The rest are R or H as
+Decided by the user: 30, 66 and 67 fixed in the Rust (2026-11-21). The Python is sunsetted:
+no fixes go there. The rest are R or H as
 listed, pending the user's keep-or-fix pass.
 
 ## Would lose user data
@@ -54,7 +55,7 @@ listed, pending the user's keep-or-fix pass.
 | 27 | hill climb | A second `race_complete` replaces the timer without cancelling; the stale one fires. `list_reports(0)` returns one. A summary that is valid JSON but not an object aborts the finish | R |
 | 28 | recorders | `RoadDiagnosticRecorder.stop` can leave a truncated summary; `AssistantDiagnosticRecorder.review` raises on a non-object line | R (Rust summary writes are all-or-nothing) |
 | 29 | F9 Tab error log | Prints `b'NEXT'` | R |
-| 30 | `telemetry_loop` (~`beamtel.py:11118`) | No `global` for `last_steering`, `last_actual_steering`, `last_steering_input`, so the module globals stay 0.0 all session: `_push_obstacle_state` always sends steering 0.000 to obstacleDetector, and the MCP and road-diagnostic snapshots report steering 0. The loop's own readers use the locals and are correct. **Fixing it changes what the obstacle detector receives, so it is the user's call, and it should be fixed in Python too** | R |
+| 30 | `telemetry_loop` (~`beamtel.py:11118`) | No `global` for `last_steering`, `last_actual_steering`, `last_steering_input`, so the module globals stay 0.0 all session: `_push_obstacle_state` always sends steering 0.000 to obstacleDetector, and the MCP and road-diagnostic snapshots report steering 0. The loop's own readers use the locals and are correct. **Fixing it changes what the obstacle detector receives, so it is the user's call, and it should be fixed in Python too** | **H** (user decision 2026-11-21): the loop writes the shared state too, and the push sends the path's bend in the detector's convention: BeamNG steering is positive RIGHT and the fan turns LEFT for a positive value, so -steering forward and +steering in reverse (the Python, sending 0, never exercised this sign). NaN steering is no bend (the Python clamp made it full right lock). `e2_listeners` `steering_is_sent_as_the_bend_of_the_path`, `nan_steering_is_no_bend`. **Needs an in-game check** |
 | 31 | `telemetry_loop` | The first non-baseline Extended packet speaks "Lightbar off" and "Fog lights off" (`last_lightbar`/`last_fog` start at -1) | R |
 | 32 | `telemetry_loop` | Low and high beam bits both set: the `else` branch says "Headlights off" | R |
 | 33 | `telemetry_loop` | A NaN in the lightbar, fog or implement-flags float, or in speed (via the speed bucket), raises and kills the telemetry thread | R (panics at the same point) |

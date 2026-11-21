@@ -373,7 +373,26 @@ fn push_obstacle_state_matches_python() {
             st.tel.protocol_mode = c["proto"].as_str().unwrap().to_string();
             st.tel.last_gear_str = c["gear_str"].as_str().map(str::to_string);
             st.tel.last_gear_byte = c["gear_byte"].as_i64();
-            st.tel.last_steering_input = f(&c["steer"]);
+            // python-bugs.md 30 (deliberate): the push sends the path's bend relative to
+            // the direction of travel, -steering_input forward and +steering_input in
+            // reverse. Feeding the steering that maps back to the Python's pushed value
+            // keeps every other output byte-identical to the fixture.
+            let gear = match c["gear"].as_str() {
+                Some(g) => g.to_string(),
+                None if c["proto"] == "extended" => {
+                    c["gear_str"].as_str().unwrap_or_default().to_string()
+                }
+                None if c["gear_byte"].as_i64() == Some(0) => "R".to_string(),
+                None => "F".to_string(),
+            };
+            let reverse = gear.trim().to_uppercase().starts_with('R');
+            let steer = f(&c["steer"]);
+            if steer.is_nan() {
+                // The Rust sends a NaN reading as no bend; the Python's clamp made it
+                // full right lock. Checked by `nan_steering_is_no_bend` instead.
+                continue;
+            }
+            st.tel.last_steering_input = if reverse { steer } else { -steer };
             st.tel.last_throttle = f(&c["thr"]);
             st.tel.last_brake = f(&c["brk"]);
             st.obstacle.obstacle_state_last = c["last"].as_array().map(|l| {
@@ -492,6 +511,44 @@ fn road_listener_matches_python() {
         );
     }
     road_guidance_feed().reset();
+}
+
+/// One forced push with the given gear and steering input; the command sent.
+fn push_with(gear: &str, steering_input: f64) -> Value {
+    reset();
+    {
+        let mut st = state();
+        st.obstacle.obstacle_mode_active = true;
+        st.obstacle.obstacle_state_last = None;
+        st.tel.protocol_mode = "extended".to_string();
+        st.tel.last_gear_str = Some(gear.to_string());
+        st.tel.last_steering_input = steering_input;
+        st.tel.last_throttle = 0.5;
+        st.tel.last_brake = 0.0;
+        obstacle::push_obstacle_state(&mut st, true, None);
+    }
+    sent()
+}
+
+/// python-bugs.md 30: the detector rotates its fan toward the LEFT of the direction of
+/// travel for a positive value, and BeamNG steering is positive RIGHT. Forward, a right
+/// turn bends the path right (negative); in reverse a right-steered car's rear swings
+/// right, the left of the rearward travel (positive).
+#[test]
+fn steering_is_sent_as_the_bend_of_the_path() {
+    let _g = setup();
+    assert_eq!(push_with("D", 1.0), json!([[4453, "STATE,F,-1.000,0.500,0.000"]]));
+    assert_eq!(push_with("D", -0.25), json!([[4453, "STATE,F,0.250,0.500,0.000"]]));
+    assert_eq!(push_with("D", 0.0), json!([[4453, "STATE,F,0.000,0.500,0.000"]]));
+    assert_eq!(push_with("R", 1.0), json!([[4453, "STATE,R,1.000,0.500,0.000"]]));
+    assert_eq!(push_with("R", -0.25), json!([[4453, "STATE,R,-0.250,0.500,0.000"]]));
+}
+
+#[test]
+fn nan_steering_is_no_bend() {
+    let _g = setup();
+    assert_eq!(push_with("D", f64::NAN), json!([[4453, "STATE,F,0.000,0.500,0.000"]]));
+    assert_eq!(push_with("R", f64::NAN), json!([[4453, "STATE,R,0.000,0.500,0.000"]]));
 }
 
 /// The real road listener with mode toggles, assistant handoffs, setting changes and

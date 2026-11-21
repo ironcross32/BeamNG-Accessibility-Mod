@@ -6,7 +6,7 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-21, with the commit fixing Python bugs 66 and 67 in the Rust.
+2026-11-21, with the commit fixing Python bug 30 in the Rust.
 
 ## Done so far
 
@@ -110,8 +110,12 @@ differences fixed (spin tie rounding in `util.js`, non-string MCP `speak`).
 1. **Keep-or-fix decisions over `python-bugs.md`** (67 entries). **66** (the MCP origin
    guard's prefix match) and **67** (updates that could never apply for a non-ASCII
    Windows user name) are **fixed in the Rust** (user, 2026-11-21); whether to fix them
-   in the shipping Python too was asked. Bug 30 (steering never reaches the obstacle
-   detector) was already waiting. 62-65 are new and minor or dormant.
+   in the shipping Python too was asked: **no, the Python is sunsetted** (user,
+   2026-11-21); fixes go in the Rust only. **30 is fixed in the Rust** too: steering
+   reaches the obstacle detector, sent as the path's bend (-steering forward, +steering
+   in reverse, NaN as none). **It needs an in-game check**: with obstacle mode on, a
+   turn should move the detection toward the inside of the turn. 62-65 and the rest
+   are still to go through with the user.
 2. Then R1 (packaging: the HRTF `.npz` sets and their licence notice beside the exe,
    the mod zip; not `prism.dll`, since speech is moving to Prismer) and D1 (docs still
    describe the Python build, including the admin requirement).

@@ -1042,12 +1042,18 @@ impl TelemetryLoop {
             st.tel.last_clutch = clamp01(clutch);
             // `last_steering, last_actual_steering, last_steering_input = ...`: the Python
             // loop has no `global` for these three, so the assignment binds LOCALS of
-            // telemetry_loop and the module globals stay 0.0 for the session (the MCP and
-            // road-diagnostic snapshots and the obstacle push read the globals). Kept: the
-            // loop's own readers below use the locals.
+            // telemetry_loop and the module globals stay 0.0 for the session. The loop's own
+            // readers below use the locals.
+            //
+            // **Deliberate difference (python-bugs.md 30, user decision 2026-11-21):** the
+            // shared state is written too, as the Python meant, so the obstacle push and the
+            // MCP and road-diagnostic snapshots see the real steering instead of 0.
             last_steering = steering;
             last_actual_steering = actual_steering;
             last_steering_input = steering_input;
+            st.tel.last_steering = steering;
+            st.tel.last_actual_steering = actual_steering;
+            st.tel.last_steering_input = steering_input;
             st.tel.last_implement_flags = implement[0];
             st.tel.last_implement_edge_height = implement[1];
             st.tel.last_implement_min_clearance = implement[2];

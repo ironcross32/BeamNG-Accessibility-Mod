@@ -38,11 +38,12 @@ not write E1.
 
 ## Python bugs
 
-E1 recorded bugs 30-33 in `python-bugs.md`. **Bug 30 still waits on the user**: the
-steering globals are never written, so the obstacle detector always gets steering 0. It
-also means the drift alert's "steering under 5 degrees" condition is always met. The
-port reproduces it as the plan requires.
+E1 recorded bugs 30-33 in `python-bugs.md`. Bug 30: the steering globals are never
+written, so the obstacle detector always got steering 0. (An earlier version of this
+audit said the drift alert's steering condition was always met too. It is not: the loop
+assigns locals, and drift reads the locals.) **Fixed in the Rust** at the user's decision
+(2026-11-21); see `python-bugs.md` 30.
 
 ## Open
 
-None besides bug 30's decision.
+None.
