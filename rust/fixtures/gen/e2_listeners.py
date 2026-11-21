@@ -45,6 +45,10 @@ class FakeSock:
         pass
 
     def recvfrom(self, n):
+        # A callable in the queue runs between datagrams (a mode toggle, a setting
+        # change), as the command thread would while the listener waits.
+        while FakeSock.queue and callable(FakeSock.queue[0]):
+            FakeSock.queue.pop(0)()
         if FakeSock.queue:
             return FakeSock.queue.pop(0), ("127.0.0.1", 50000)
         FakeSock.stop.set()
@@ -545,6 +549,90 @@ for include in (False, True):
 b.road_include_private = False
 
 
+# Scripted runs: the real road_listener with mode toggles, assistant handoffs, setting
+# changes and loading between packets. Steps are {"packet": text}, {"assistant": bool},
+# {"toggle": true}, {"set": [flag, bool]} or {"loading": bool}.
+
+def road_script(name, steps, **flags):
+    reset()
+    b.UNITS_MODE = "imperial"
+    values = {k: True for k in ROAD_FLAGS}
+    values["road_mode_active"] = False
+    values.update(flags)
+    for k, v in values.items():
+        setattr(b, k, v)
+    b.ROAD_GUIDANCE_FEED.reset()
+    b.driving_assistant.active = False
+    ac = new_audio()
+    ac.set_road_mode(values["road_mode_active"])
+
+    def action(step):
+        if "assistant" in step:
+            return lambda: setattr(b.driving_assistant, "active", step["assistant"])
+        if "toggle" in step:
+            return lambda: b.toggle_road_mode(ac)
+        if "set" in step:
+            return lambda: setattr(b, step["set"][0], step["set"][1])
+        if "loading" in step:
+            return lambda: setattr(b, "_loading_active", step["loading"])
+        raise ValueError(step)
+
+    queue = [s["packet"].encode("utf-8") if "packet" in s else action(s) for s in steps]
+    died = run_listener(b.road_listener, queue, ac)
+    b.driving_assistant.active = False
+    b._loading_active = False
+    return {"name": name, "flags": values, "steps": steps, "died": died,
+            "tap": tap(), "sent": sent()}
+
+
+def traffic(state="stop", identity="sign", distance=35):
+    # diagnostic/traffic_mode_sim.py's packet.
+    return {"packet": r2(state="onRoad", signalContext="test:1", signalStatus="available",
+                         signal={"id": identity,
+                                 "kind": "stopSign" if state == "stop" else "trafficLight",
+                                 "state": state, "distance": distance,
+                                 "phase": "near" if distance <= 12 else "approach"})}
+
+
+def near(target_id, kind="", private=""):
+    return {"packet": r2(state="onRoad", proximity={
+        "id": target_id, "action": "stop", "source": "stopPoint", "distance": 40,
+        "speed": 10, "kind": kind, "privateEntry": private})}
+
+
+ON, OFF, TOGGLE = {"assistant": True}, {"assistant": False}, {"toggle": True}
+road_scripts = [
+    # diagnostic/traffic_mode_sim.py, step for step: signal speech follows whichever of
+    # road mode and the assistant is on, survives handoffs without repeating a sign,
+    # honours both preferences, and is held during loading.
+    road_script("traffic mode handoffs", [
+        traffic(), ON, traffic(), TOGGLE, traffic(), TOGGLE, traffic(),
+        traffic(distance=8), traffic("red", "light"), TOGGLE, traffic("red", "light"),
+        OFF, traffic("green", "light"), TOGGLE, traffic("yellow", "light"),
+        ON, traffic("yellow", "light"),
+        {"set": ["road_stop_sign_speech_enabled", False]}, traffic(identity="other"),
+        traffic("green", "light"),
+        {"set": ["road_traffic_light_speech_enabled", False]}, traffic("red", "light"),
+        {"set": ["road_stop_sign_speech_enabled", True]}, traffic(identity="other"),
+        {"loading": True}, traffic(identity="loading"),
+    ], road_speed_limit_speech_enabled=False, road_follow_guidance_enabled=False,
+        road_junction_speech_enabled=False, road_junction_earcon_enabled=False),
+    # The assistant's gate and private-road words: once per id, only while the
+    # assistant drives, and an id seen while it was off is not announced later.
+    road_script("gate and private entry", [
+        ON, near("g1", "gate"), near("g1", "gate"),
+        near("j1", private="private:p1"), near("j1", private="private:p1"),
+        near("j2", private="private:p1"),
+        OFF, near("g2", "gate"), near("j3", private="private:p2"),
+        ON, near("g2", "gate"), near("g3", "gate"), near("j4", private="private:p2"),
+        near("j5", private="private:p3"),
+        OFF, TOGGLE, near("g4", "gate"),
+        ON, {"loading": True}, near("g5", "gate"), {"loading": False}, near("g5", "gate"),
+    ], road_follow_guidance_enabled=False, road_junction_speech_enabled=False,
+        road_junction_earcon_enabled=False),
+]
+
+
 # ---------------------------------------------------------------------------------------
 # Fuel
 
@@ -773,6 +861,7 @@ write_fixture("e2_listeners", {
     "road": road,
     "road_status": road_status,
     "road_toggles": road_toggles,
+    "road_scripts": road_scripts,
     "fuel": fuel,
     "ui": ui_cases,
     "hill_quality": quality,

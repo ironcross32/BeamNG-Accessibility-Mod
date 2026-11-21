@@ -80,6 +80,7 @@ Legend: R = reproduced as in Python; H = already hardened in Rust (a departure).
 | 59 | describer, `config_ui` validation | An OpenAI base URL with no scheme makes `urllib.request.Request` raise ValueError outside every try: the describer says "Description failed."; the config dialog's validation thread dies and the dialog stays on "Validating API key..." with the button disabled for good | R |
 | 60 | describer | A non-string API key, model or extra in the config raises AttributeError ("Unexpected error: ..." then "Description failed.") | R |
 | 61 | `capture_scene_png` (mss) | mss sets process DPI awareness on first use, after the window rect was read, so the first `focus_game` capture on a scaled display mixes logical and physical coordinates | H: the Rust process is DPI-aware from the start |
+| 62 | `road_listener` gate and private-entry words | The last gate id and private-entry id are recorded on every packet, announced or not. So a gate or private road first seen while the assistant is off, or during loading, is never announced once the assistant takes over approaching the same one (found by V1, `e2_listeners` `road_scripts`) | R |
 | 40 | `_hill_climb_finalized` | A non-dict `statistics` raises AttributeError; the recorder swallows it and the data-quality log line is lost | R |
 ## Recommendation
 

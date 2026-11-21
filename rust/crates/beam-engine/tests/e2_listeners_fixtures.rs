@@ -494,6 +494,75 @@ fn road_listener_matches_python() {
     road_guidance_feed().reset();
 }
 
+/// The real road listener with mode toggles, assistant handoffs, setting changes and
+/// loading between packets (includes `diagnostic/traffic_mode_sim.py`, step for step).
+#[test]
+fn road_scripts_match_python() {
+    let _g = setup();
+    let fx = load("e2_listeners");
+    for c in fx["road_scripts"].as_array().unwrap() {
+        reset();
+        let label = name(c);
+        units::set_units_mode("imperial");
+        let flags = &c["flags"];
+        let set_flag = |k: &str, v: bool| {
+            let mut st = state();
+            match k {
+                "road_mode_active" => st.road_mode_active = v,
+                "road_follow_guidance_enabled" => st.cfg.road_follow_guidance_enabled = v,
+                "road_junction_speech_enabled" => st.cfg.road_junction_speech_enabled = v,
+                "road_stop_sign_speech_enabled" => st.cfg.road_stop_sign_speech_enabled = v,
+                "road_traffic_light_speech_enabled" => {
+                    st.cfg.road_traffic_light_speech_enabled = v
+                }
+                "road_speed_limit_speech_enabled" => st.cfg.road_speed_limit_speech_enabled = v,
+                "road_surface_speech_enabled" => st.cfg.road_surface_speech_enabled = v,
+                "road_junction_earcon_enabled" => st.cfg.road_junction_earcon_enabled = v,
+                other => panic!("{label}: unknown flag {other}"),
+            }
+        };
+        for (k, v) in flags.as_object().unwrap() {
+            set_flag(k, v.as_bool().unwrap());
+        }
+        road_guidance_feed().reset();
+        beam_engine::state::driving_assistant().set_active_for_tests(false);
+        speech_out::set_loading_for_tests(false, false);
+        let ac = AudioController::new();
+        ac.set_road_mode(flags["road_mode_active"].as_bool().unwrap());
+        let mut ls = road::RoadListenerState::default();
+        let mut died = Value::Null;
+        for step in c["steps"].as_array().unwrap() {
+            if let Some(p) = step.get("packet") {
+                let text = beam_base::pyfmt::py_strip(p.as_str().unwrap());
+                if let Err(road::RoadRaised::Other(m)) = road::handle_road_text(&ac, &mut ls, text)
+                {
+                    died = Value::from(m);
+                    break;
+                }
+            } else if let Some(a) = step.get("assistant") {
+                beam_engine::state::driving_assistant().set_active_for_tests(a.as_bool().unwrap());
+            } else if step.get("toggle").is_some() {
+                road::toggle_road_mode(Arc::clone(&ac));
+            } else if let Some(s) = step.get("set") {
+                set_flag(s[0].as_str().unwrap(), s[1].as_bool().unwrap());
+            } else if let Some(l) = step.get("loading") {
+                speech_out::set_loading_for_tests(l.as_bool().unwrap(), false);
+            } else {
+                panic!("{label}: unknown step {step}");
+            }
+        }
+        if died.is_null() {
+            road::road_timeout(&ac);
+        }
+        beam_engine::state::driving_assistant().set_active_for_tests(false);
+        speech_out::set_loading_for_tests(false, false);
+        assert_eq!(died, c["died"], "{label}: died");
+        assert_eq!(tap(), c["tap"], "{label}: speech");
+        assert_eq!(sent(), c["sent"], "{label}: sent");
+    }
+    road_guidance_feed().reset();
+}
+
 #[test]
 fn road_status_and_toggle_match_python() {
     let _g = setup();

@@ -26948,6 +26948,353 @@
    "units": "imperial"
   }
  ],
+ "road_scripts": [
+  {
+   "died": null,
+   "flags": {
+    "road_follow_guidance_enabled": false,
+    "road_junction_earcon_enabled": false,
+    "road_junction_speech_enabled": false,
+    "road_mode_active": false,
+    "road_speed_limit_speech_enabled": false,
+    "road_stop_sign_speech_enabled": true,
+    "road_surface_speech_enabled": true,
+    "road_traffic_light_speech_enabled": true
+   },
+   "name": "traffic mode handoffs",
+   "sent": [
+    [
+     4463,
+     "ON"
+    ],
+    [
+     4463,
+     "PRIVATE,0"
+    ],
+    [
+     4463,
+     "OFF"
+    ],
+    [
+     4463,
+     "PRIVATE,0"
+    ],
+    [
+     4463,
+     "ON"
+    ],
+    [
+     4463,
+     "PRIVATE,0"
+    ],
+    [
+     4463,
+     "OFF"
+    ],
+    [
+     4463,
+     "PRIVATE,0"
+    ]
+   ],
+   "steps": [
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"signalContext\": \"test:1\", \"signalStatus\": \"available\", \"signal\": {\"id\": \"sign\", \"kind\": \"stopSign\", \"state\": \"stop\", \"distance\": 35, \"phase\": \"approach\"}}"
+    },
+    {
+     "assistant": true
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"signalContext\": \"test:1\", \"signalStatus\": \"available\", \"signal\": {\"id\": \"sign\", \"kind\": \"stopSign\", \"state\": \"stop\", \"distance\": 35, \"phase\": \"approach\"}}"
+    },
+    {
+     "toggle": true
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"signalContext\": \"test:1\", \"signalStatus\": \"available\", \"signal\": {\"id\": \"sign\", \"kind\": \"stopSign\", \"state\": \"stop\", \"distance\": 35, \"phase\": \"approach\"}}"
+    },
+    {
+     "toggle": true
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"signalContext\": \"test:1\", \"signalStatus\": \"available\", \"signal\": {\"id\": \"sign\", \"kind\": \"stopSign\", \"state\": \"stop\", \"distance\": 35, \"phase\": \"approach\"}}"
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"signalContext\": \"test:1\", \"signalStatus\": \"available\", \"signal\": {\"id\": \"sign\", \"kind\": \"stopSign\", \"state\": \"stop\", \"distance\": 8, \"phase\": \"near\"}}"
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"signalContext\": \"test:1\", \"signalStatus\": \"available\", \"signal\": {\"id\": \"light\", \"kind\": \"trafficLight\", \"state\": \"red\", \"distance\": 35, \"phase\": \"approach\"}}"
+    },
+    {
+     "toggle": true
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"signalContext\": \"test:1\", \"signalStatus\": \"available\", \"signal\": {\"id\": \"light\", \"kind\": \"trafficLight\", \"state\": \"red\", \"distance\": 35, \"phase\": \"approach\"}}"
+    },
+    {
+     "assistant": false
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"signalContext\": \"test:1\", \"signalStatus\": \"available\", \"signal\": {\"id\": \"light\", \"kind\": \"trafficLight\", \"state\": \"green\", \"distance\": 35, \"phase\": \"approach\"}}"
+    },
+    {
+     "toggle": true
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"signalContext\": \"test:1\", \"signalStatus\": \"available\", \"signal\": {\"id\": \"light\", \"kind\": \"trafficLight\", \"state\": \"yellow\", \"distance\": 35, \"phase\": \"approach\"}}"
+    },
+    {
+     "assistant": true
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"signalContext\": \"test:1\", \"signalStatus\": \"available\", \"signal\": {\"id\": \"light\", \"kind\": \"trafficLight\", \"state\": \"yellow\", \"distance\": 35, \"phase\": \"approach\"}}"
+    },
+    {
+     "set": [
+      "road_stop_sign_speech_enabled",
+      false
+     ]
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"signalContext\": \"test:1\", \"signalStatus\": \"available\", \"signal\": {\"id\": \"other\", \"kind\": \"stopSign\", \"state\": \"stop\", \"distance\": 35, \"phase\": \"approach\"}}"
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"signalContext\": \"test:1\", \"signalStatus\": \"available\", \"signal\": {\"id\": \"light\", \"kind\": \"trafficLight\", \"state\": \"green\", \"distance\": 35, \"phase\": \"approach\"}}"
+    },
+    {
+     "set": [
+      "road_traffic_light_speech_enabled",
+      false
+     ]
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"signalContext\": \"test:1\", \"signalStatus\": \"available\", \"signal\": {\"id\": \"light\", \"kind\": \"trafficLight\", \"state\": \"red\", \"distance\": 35, \"phase\": \"approach\"}}"
+    },
+    {
+     "set": [
+      "road_stop_sign_speech_enabled",
+      true
+     ]
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"signalContext\": \"test:1\", \"signalStatus\": \"available\", \"signal\": {\"id\": \"other\", \"kind\": \"stopSign\", \"state\": \"stop\", \"distance\": 35, \"phase\": \"approach\"}}"
+    },
+    {
+     "loading": true
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"signalContext\": \"test:1\", \"signalStatus\": \"available\", \"signal\": {\"id\": \"loading\", \"kind\": \"stopSign\", \"state\": \"stop\", \"distance\": 35, \"phase\": \"approach\"}}"
+    }
+   ],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": true,
+     "source": "traffic_control",
+     "spoken": true,
+     "text": "Stop sign in 115 feet."
+    },
+    {
+     "excluded": true,
+     "interrupt": true,
+     "source": "python",
+     "spoken": true,
+     "text": "Road detection on"
+    },
+    {
+     "excluded": true,
+     "interrupt": true,
+     "source": "python",
+     "spoken": true,
+     "text": "Road detection off"
+    },
+    {
+     "excluded": false,
+     "interrupt": true,
+     "source": "traffic_control",
+     "spoken": true,
+     "text": "Stop sign in 26 feet."
+    },
+    {
+     "excluded": false,
+     "interrupt": true,
+     "source": "traffic_control",
+     "spoken": true,
+     "text": "Traffic light red, in 115 feet."
+    },
+    {
+     "excluded": true,
+     "interrupt": true,
+     "source": "python",
+     "spoken": true,
+     "text": "Road detection on"
+    },
+    {
+     "excluded": false,
+     "interrupt": true,
+     "source": "traffic_control",
+     "spoken": true,
+     "text": "Traffic light green."
+    },
+    {
+     "excluded": true,
+     "interrupt": true,
+     "source": "python",
+     "spoken": true,
+     "text": "Road detection off"
+    },
+    {
+     "excluded": false,
+     "interrupt": true,
+     "source": "traffic_control",
+     "spoken": true,
+     "text": "Traffic light yellow, in 115 feet."
+    },
+    {
+     "excluded": false,
+     "interrupt": true,
+     "source": "traffic_control",
+     "spoken": true,
+     "text": "Traffic light green, in 115 feet."
+    },
+    {
+     "excluded": false,
+     "interrupt": true,
+     "source": "traffic_control",
+     "spoken": true,
+     "text": "Stop sign in 115 feet."
+    }
+   ]
+  },
+  {
+   "died": null,
+   "flags": {
+    "road_follow_guidance_enabled": false,
+    "road_junction_earcon_enabled": false,
+    "road_junction_speech_enabled": false,
+    "road_mode_active": false,
+    "road_speed_limit_speech_enabled": true,
+    "road_stop_sign_speech_enabled": true,
+    "road_surface_speech_enabled": true,
+    "road_traffic_light_speech_enabled": true
+   },
+   "name": "gate and private entry",
+   "sent": [
+    [
+     4463,
+     "ON"
+    ],
+    [
+     4463,
+     "PRIVATE,0"
+    ]
+   ],
+   "steps": [
+    {
+     "assistant": true
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"proximity\": {\"id\": \"g1\", \"action\": \"stop\", \"source\": \"stopPoint\", \"distance\": 40, \"speed\": 10, \"kind\": \"gate\", \"privateEntry\": \"\"}}"
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"proximity\": {\"id\": \"g1\", \"action\": \"stop\", \"source\": \"stopPoint\", \"distance\": 40, \"speed\": 10, \"kind\": \"gate\", \"privateEntry\": \"\"}}"
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"proximity\": {\"id\": \"j1\", \"action\": \"stop\", \"source\": \"stopPoint\", \"distance\": 40, \"speed\": 10, \"kind\": \"\", \"privateEntry\": \"private:p1\"}}"
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"proximity\": {\"id\": \"j1\", \"action\": \"stop\", \"source\": \"stopPoint\", \"distance\": 40, \"speed\": 10, \"kind\": \"\", \"privateEntry\": \"private:p1\"}}"
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"proximity\": {\"id\": \"j2\", \"action\": \"stop\", \"source\": \"stopPoint\", \"distance\": 40, \"speed\": 10, \"kind\": \"\", \"privateEntry\": \"private:p1\"}}"
+    },
+    {
+     "assistant": false
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"proximity\": {\"id\": \"g2\", \"action\": \"stop\", \"source\": \"stopPoint\", \"distance\": 40, \"speed\": 10, \"kind\": \"gate\", \"privateEntry\": \"\"}}"
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"proximity\": {\"id\": \"j3\", \"action\": \"stop\", \"source\": \"stopPoint\", \"distance\": 40, \"speed\": 10, \"kind\": \"\", \"privateEntry\": \"private:p2\"}}"
+    },
+    {
+     "assistant": true
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"proximity\": {\"id\": \"g2\", \"action\": \"stop\", \"source\": \"stopPoint\", \"distance\": 40, \"speed\": 10, \"kind\": \"gate\", \"privateEntry\": \"\"}}"
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"proximity\": {\"id\": \"g3\", \"action\": \"stop\", \"source\": \"stopPoint\", \"distance\": 40, \"speed\": 10, \"kind\": \"gate\", \"privateEntry\": \"\"}}"
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"proximity\": {\"id\": \"j4\", \"action\": \"stop\", \"source\": \"stopPoint\", \"distance\": 40, \"speed\": 10, \"kind\": \"\", \"privateEntry\": \"private:p2\"}}"
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"proximity\": {\"id\": \"j5\", \"action\": \"stop\", \"source\": \"stopPoint\", \"distance\": 40, \"speed\": 10, \"kind\": \"\", \"privateEntry\": \"private:p3\"}}"
+    },
+    {
+     "assistant": false
+    },
+    {
+     "toggle": true
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"proximity\": {\"id\": \"g4\", \"action\": \"stop\", \"source\": \"stopPoint\", \"distance\": 40, \"speed\": 10, \"kind\": \"gate\", \"privateEntry\": \"\"}}"
+    },
+    {
+     "assistant": true
+    },
+    {
+     "loading": true
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"proximity\": {\"id\": \"g5\", \"action\": \"stop\", \"source\": \"stopPoint\", \"distance\": 40, \"speed\": 10, \"kind\": \"gate\", \"privateEntry\": \"\"}}"
+    },
+    {
+     "loading": false
+    },
+    {
+     "packet": "R2|{\"state\": \"onRoad\", \"proximity\": {\"id\": \"g5\", \"action\": \"stop\", \"source\": \"stopPoint\", \"distance\": 40, \"speed\": 10, \"kind\": \"gate\", \"privateEntry\": \"\"}}"
+    }
+   ],
+   "tap": [
+    {
+     "excluded": false,
+     "interrupt": false,
+     "source": "road_guidance",
+     "spoken": true,
+     "text": "Gate ahead. Stop at the bar"
+    },
+    {
+     "excluded": false,
+     "interrupt": false,
+     "source": "road_guidance",
+     "spoken": true,
+     "text": "Private road ahead"
+    },
+    {
+     "excluded": false,
+     "interrupt": false,
+     "source": "road_guidance",
+     "spoken": true,
+     "text": "Gate ahead. Stop at the bar"
+    },
+    {
+     "excluded": false,
+     "interrupt": false,
+     "source": "road_guidance",
+     "spoken": true,
+     "text": "Private road ahead"
+    },
+    {
+     "excluded": true,
+     "interrupt": true,
+     "source": "python",
+     "spoken": true,
+     "text": "Road detection on"
+    }
+   ]
+  }
+ ],
  "road_status": [
   {
    "road_mode_active": false,

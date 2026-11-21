@@ -165,6 +165,12 @@ impl DrivingAssistant {
         self.lock.lock().borrow().active
     }
 
+    /// `driving_assistant.active = value`, as the Python fixtures set it directly.
+    #[doc(hidden)]
+    pub fn set_active_for_tests(&self, active: bool) {
+        self.lock.lock().borrow_mut().active = active;
+    }
+
     pub fn token(&self) -> Option<String> {
         self.lock.lock().borrow().token.clone()
     }
