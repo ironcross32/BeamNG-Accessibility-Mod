@@ -87,10 +87,10 @@ U2 has been run by the user (2026-11-21), un-elevated, debug build:
   trip through the MCP server), F10 commands reached the game, and **F9 suppression
   works without admin** (F9 then F read fuel and did not exit the car). Decision: no
   elevation; see `01-scope-and-architecture.md`. Clean close, exit 0, no warnings.
-- **Audio crackled** with the scanner on and an AI car chasing; the Python build never
-  did. Probably the unoptimised debug build. Next: the same test with
-  `target\release\beamtel.exe`. If it still crackles, measure the callback's time
-  per block in release before touching anything.
+- Audio crackled in the debug build with the scanner on and an AI car chasing. **The
+  release build does not** (same test, same session). The unoptimised callback was the
+  cause. **Run beamtel from a release build** (`cargo build --release -p beam-app`,
+  `target\release\beamtel.exe`); use debug only when debugging.
 - Unconfirmed: with the beamtel window focused, NVDA queued speech instead of
   interrupting. Only chase it if the user can reproduce it.
 - Optional, discussed: warn when the game itself runs elevated, the one case an
