@@ -512,10 +512,8 @@ pub fn scanner_listener(audio_controller: Arc<AudioController>, stop_event: &Eve
                 }
                 log::error!("Scanner listener socket error.");
             }
-            Err(Raised::Other(m)) => {
-                log::info!("Vehicle scanner listener stopped.");
-                panic!("{m}");
-            }
+            // Departure (python-bugs.md 9, 34): the Python let this end the thread.
+            Err(Raised::Other(m)) => log::error!("Scanner listener error: {m}"),
         }
     }
     log::info!("Vehicle scanner listener stopped.");

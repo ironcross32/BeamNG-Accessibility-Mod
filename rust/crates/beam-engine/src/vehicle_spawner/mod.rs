@@ -98,8 +98,10 @@ pub fn init(args: InitArgs) {
 /// `start(stop_event)`: listener + worker threads, the F11 hotkey, the catalog request.
 /// The stop event is the engine's `timer::STOP`.
 pub fn start() {
-    crate::timer::spawn_daemon("vehicle-spawner-listener", || listener_loop(&STOP));
-    crate::timer::spawn_daemon("vehicle-spawner-worker", worker_loop);
+    // Supervised (python-bugs.md 63): a CATALOG_ITEM that parses but is not an object
+    // ended the Python listener, and F11 had no catalog updates until restart.
+    crate::timer::spawn_supervised("vehicle-spawner-listener", &STOP, || listener_loop(&STOP));
+    crate::timer::spawn_supervised("vehicle-spawner-worker", &STOP, worker_loop);
     install_f11_hotkey();
     // Kick off an initial catalog request (Lua may have already pre-built it).
     send_cmd("REQUEST_CATALOG");

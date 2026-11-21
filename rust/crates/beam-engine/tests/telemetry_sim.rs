@@ -523,6 +523,38 @@ fn get(st: &State, name: &str) -> Value {
     }
 }
 
+/// The Python's calls with the user-approved departures applied:
+/// - python-bugs.md 31: the first lightbar and fog readings are a baseline, not spoken.
+/// - python-bugs.md 32: low and high beam bits both set is "High beams on", not
+///   "Headlights off" (the one fixture step that sets both is named here).
+fn python_calls_after_departures(
+    calls: &[Value],
+    first_lightbar: bool,
+    first_fog: bool,
+    case: &str,
+) -> Vec<Value> {
+    let said = |c: &Value| c[0] == "say" && c[1].is_string();
+    calls
+        .iter()
+        .filter(|c| {
+            if !said(c) {
+                return true;
+            }
+            let text = c[1].as_str().unwrap();
+            let lightbar = text.starts_with("Lightbar ");
+            let fog = text.starts_with("Fog lights ");
+            !(lightbar && first_lightbar || fog && first_fog)
+        })
+        .map(|c| {
+            if case == "extended_v6_drive step 16" && said(c) && c[1] == "Headlights off" {
+                json!(["say", "High beams on", c[2], c[3]])
+            } else {
+                c.clone()
+            }
+        })
+        .collect()
+}
+
 #[test]
 fn loop_scenarios_match_python() {
     let fx = load("telemetry");
@@ -551,8 +583,16 @@ fn loop_scenarios_match_python() {
             }
             TelemetryLoop::start(&mut st)
         };
+        // python-bugs.md 33 (departure): where the Python raised on a NaN or infinite
+        // lightbar, fog, speed or implement-flags value, the Rust carries on. From that
+        // step the two diverge, so the rest of the scenario only checks for no panic.
+        let mut diverged = false;
         for (i, step) in sc["steps"].as_array().unwrap().iter().enumerate() {
             let case = format!("{name} step {i}");
+            let (first_lightbar, first_fog) = {
+                let st = hooks.st.lock();
+                (st.tel.last_lightbar == -1, st.tel.last_fog == -1)
+            };
             let now = f(&step["now"]);
             *hooks.now.lock() = now;
             *hooks.mono.lock() = f(&step["mono"]);
@@ -575,6 +615,15 @@ fn loop_scenarios_match_python() {
             let result = catch_unwind(AssertUnwindSafe(|| {
                 body.handle_datagram(&hooks, &data, now);
             }));
+            let nan_departure = name.starts_with("raises_nan_") || name.starts_with("raises_inf_");
+            if nan_departure && (diverged || step["raised"].is_string()) {
+                diverged = true;
+                if result.is_err() {
+                    failures.push(format!("{case}: Rust panicked on a non-finite value"));
+                }
+                hooks.calls.lock().clear();
+                continue;
+            }
             match (&result, step["raised"].as_str()) {
                 (Ok(()), None) => {}
                 (Err(p), Some(exc)) => {
@@ -595,7 +644,12 @@ fn loop_scenarios_match_python() {
                 (Err(_), None) => failures.push(format!("{case}: Rust panicked, Python did not")),
             }
             let calls = std::mem::take(&mut *hooks.calls.lock());
-            let want_calls = step["calls"].as_array().unwrap();
+            let want_calls = &python_calls_after_departures(
+                step["calls"].as_array().unwrap(),
+                first_lightbar,
+                first_fog,
+                &case,
+            );
             if !same(
                 &Value::Array(calls.clone()),
                 &Value::Array(want_calls.clone()),

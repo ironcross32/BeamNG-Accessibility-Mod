@@ -591,10 +591,22 @@ pub fn tcp_process_line(line: &[u8]) -> Result<Option<Vec<u8>>, PyErr> {
             return Ok(None);
         }
     };
-    if data.py_get("type")?.is_some_and(|t| t.eq_str("transport_ping")) {
-        return Ok(Some(TCP_PONG.to_vec()));
+    // Departure (python-bugs.md 64): the Python relay caught only decode and JSON errors,
+    // so a message that parsed but was not an object, or that handle_ws_message raised
+    // on, ended the connection. It is logged and skipped, as the WebSocket path does.
+    match data.py_get("type") {
+        Ok(t) if t.is_some_and(|t| t.eq_str("transport_ping")) => {
+            return Ok(Some(TCP_PONG.to_vec()));
+        }
+        Ok(_) => {}
+        Err(e) => {
+            log::warn!("[bnvda] Invalid Lua TCP relay message: {e}");
+            return Ok(None);
+        }
     }
-    handle_ws_message(&data)?;
+    if let Err(e) = handle_ws_message(&data) {
+        log::warn!("[bnvda] Invalid Lua TCP relay message: {e}");
+    }
     Ok(None)
 }
 

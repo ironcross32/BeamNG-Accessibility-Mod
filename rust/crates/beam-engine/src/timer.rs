@@ -130,6 +130,57 @@ where
     }
 }
 
+/// The longest wait between restarts of a supervised thread.
+const SUPERVISE_MAX_BACKOFF_S: f64 = 30.0;
+/// A run this long counts as healthy and resets the backoff.
+const SUPERVISE_HEALTHY_S: f64 = 60.0;
+
+/// Run `f` on a detached thread and keep it running until `stop` is set.
+///
+/// Departure (python-bugs.md 3-9, 33, 34, 37, 39, 44, 48-51, 53, 63): in the Python one
+/// malformed packet, an unexpected exception or a socket error ended a listener thread,
+/// and the feature stayed silent until restart. Here a panic, or a return while `stop`
+/// is still clear (a socket error, a failed bind), is logged and `f` runs again after a
+/// backoff of 1 s doubling to 30 s, reset by a run of a minute or more. The thread's own
+/// locals start afresh; shared state lives in `state()` and is untouched.
+pub fn spawn_supervised<F>(name: &str, stop: &'static Event, f: F)
+where
+    F: Fn() + Send + 'static,
+{
+    let owned = name.to_string();
+    spawn_daemon(name, move || supervise(&owned, stop, &f));
+}
+
+/// The loop [`spawn_supervised`] runs; public for tests.
+pub fn supervise(name: &str, stop: &Event, f: &dyn Fn()) {
+    let mut backoff = 1.0f64;
+    loop {
+        let started = monotonic();
+        let run = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
+        if stop.is_set() {
+            return;
+        }
+        if monotonic() - started >= SUPERVISE_HEALTHY_S {
+            backoff = 1.0;
+        }
+        match run {
+            Ok(()) => log::error!("{name} stopped unexpectedly; restarting in {backoff:.0} s."),
+            Err(p) => {
+                let msg = p
+                    .downcast_ref::<String>()
+                    .cloned()
+                    .or_else(|| p.downcast_ref::<&str>().map(|s| s.to_string()))
+                    .unwrap_or_else(|| "unknown panic".to_string());
+                log::error!("{name} failed: {msg}; restarting in {backoff:.0} s.");
+            }
+        }
+        if stop.wait_secs(backoff) {
+            return;
+        }
+        backoff = (backoff * 2.0).min(SUPERVISE_MAX_BACKOFF_S);
+    }
+}
+
 /// `time.sleep(seconds)`.
 pub fn sleep(seconds: f64) {
     std::thread::sleep(secs(seconds));

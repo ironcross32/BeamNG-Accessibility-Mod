@@ -603,7 +603,13 @@ pub fn induction_collect<I: IntoIterator<Item = String>>(
             // `parse_reply(text) or report`: an empty dict is falsy.
             Ok(Some(d)) if !d.is_empty() => report = Some(d),
             Ok(_) => {}
-            Err(e) => return Err(format!("{}: {}", e.kind.name(), e.msg)),
+            // Departure (python-bugs.md 7): the Python's exception ended the thread and
+            // nothing was spoken. A reply that cannot be parsed is skipped.
+            Err(e) => log::error!(
+                "Forced induction reply skipped: {}: {}",
+                e.kind.name(),
+                e.msg
+            ),
         }
     }
     Ok((report, answered))
@@ -618,9 +624,15 @@ pub fn induction_speak(report: Option<&PyDict>, answered: bool) -> Result<(), St
             let (v, u) = fmt_pressure(psi);
             (v.to_string(), u.to_string())
         };
-        let phrase = beam_reports::induction_report::report_phrase(r, &fp)
-            .map_err(|e| format!("{}: {}", e.kind.name(), e.msg))?;
-        say_plain(&phrase);
+        match beam_reports::induction_report::report_phrase(r, &fp) {
+            Ok(phrase) => say_plain(&phrase),
+            // Departure (python-bugs.md 7, 53): a malformed field (a non-number boost,
+            // a non-dict turbo) raised in the Python and nothing at all was spoken.
+            Err(e) => {
+                log::error!("Forced induction report unreadable: {}: {}", e.kind.name(), e.msg);
+                say_excluded("Forced induction report could not be read");
+            }
+        }
     } else if answered {
         say_plain("No forced induction");
     } else {

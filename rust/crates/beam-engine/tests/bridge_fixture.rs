@@ -144,6 +144,23 @@ fn tcp_lines_match_python() {
             .filter(|m| m.starts_with("[bnvda] Invalid Lua TCP"))
             .map(Value::from)
             .collect();
+        if let Some(py_error) = case["error"].as_str() {
+            // python-bugs.md 64 (departure): the Python relay dropped the connection here.
+            // The Rust logs the message as invalid and goes on reading lines, so the
+            // calls the Python made come first and the later lines are handled too.
+            let calls = CALLS.lock().clone();
+            let py_calls = case["calls"].as_array().unwrap();
+            let ok = error.is_null()
+                && calls.len() > py_calls.len()
+                && calls[..py_calls.len()] == py_calls[..]
+                && invalid.iter().any(|m| m.as_str().unwrap().ends_with(py_error));
+            if !ok {
+                failures.push(format!(
+                    "{name} (departure): error {error}, calls {calls:?}, invalid {invalid:?}"
+                ));
+            }
+            continue;
+        }
         let got = json!({"written": written, "calls": *CALLS.lock(), "error": error,
                          "invalid": invalid});
         let want = json!({"written": case["written"], "calls": case["calls"],

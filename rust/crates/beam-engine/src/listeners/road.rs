@@ -368,10 +368,8 @@ pub fn road_listener(audio_controller: Arc<AudioController>, stop_event: &Event)
                 }
                 log::error!("Road listener socket error.");
             }
-            Err(RoadRaised::Other(m)) => {
-                log::info!("Road detector listener stopped.");
-                panic!("{m}");
-            }
+            // Departure (python-bugs.md 6, 37): the Python let this end the thread.
+            Err(RoadRaised::Other(m)) => log::error!("Road listener error: {m}"),
         }
     }
     log::info!("Road detector listener stopped.");

@@ -211,6 +211,15 @@ impl PyField {
     }
 }
 
+/// `int(element)`, or `None` where Python's int() raises (NaN, infinity, bytes).
+fn finite_int(f: &PyField) -> Option<i64> {
+    match f {
+        PyField::Int(n) => Some(*n),
+        PyField::Float(x) if x.is_finite() => Some(py_int(*x)),
+        _ => None,
+    }
+}
+
 fn take<const N: usize>(data: &[u8], off: usize) -> Option<[u8; N]> {
     data.get(off..off + N)?.try_into().ok()
 }
@@ -975,11 +984,18 @@ impl TelemetryLoop {
                     }
                 }
 
-                // Lightbar announcements
-                let cur_lightbar = lightbar_raw.int();
-                if cur_lightbar != st.tel.last_lightbar {
+                // Lightbar announcements.
+                // Departure (python-bugs.md 31): the -1 start value is "never seen", and
+                // the first reading is a baseline; the Python spoke "Lightbar off" and
+                // "Fog lights off" on it whenever no loading screen had armed one.
+                // Departure (python-bugs.md 33): a NaN or infinite reading is skipped;
+                // int() raised on it and ended the telemetry thread.
+                if let Some(cur_lightbar) = finite_int(lightbar_raw)
+                    && cur_lightbar != st.tel.last_lightbar
+                {
+                    let first = st.tel.last_lightbar == -1;
                     st.tel.last_lightbar = cur_lightbar;
-                    if !baseline_frame {
+                    if !baseline_frame && !first {
                         match cur_lightbar {
                             0 => h.say("Lightbar off", true, false),
                             1 => h.say("Lightbar on", true, false),
@@ -990,10 +1006,12 @@ impl TelemetryLoop {
                 }
 
                 // Fog light announcements
-                let cur_fog = fog_raw.int();
-                if cur_fog != st.tel.last_fog {
+                if let Some(cur_fog) = finite_int(fog_raw)
+                    && cur_fog != st.tel.last_fog
+                {
+                    let first = st.tel.last_fog == -1;
                     st.tel.last_fog = cur_fog;
-                    if !baseline_frame {
+                    if !baseline_frame && !first {
                         h.say(
                             if cur_fog != 0 {
                                 "Fog lights on"
@@ -1054,7 +1072,9 @@ impl TelemetryLoop {
             st.tel.last_steering = steering;
             st.tel.last_actual_steering = actual_steering;
             st.tel.last_steering_input = steering_input;
-            st.tel.last_implement_flags = implement[0];
+            // Departure (python-bugs.md 33): a NaN or infinite flags word is no flags;
+            // every later int() of it raised and ended the thread.
+            st.tel.last_implement_flags = if implement[0].is_finite() { implement[0] } else { 0.0 };
             st.tel.last_implement_edge_height = implement[1];
             st.tel.last_implement_min_clearance = implement[2];
             st.tel.last_implement_tilt_deg = implement[3];
@@ -1135,8 +1155,12 @@ impl TelemetryLoop {
                 }
             }
 
-            let current_bucket = get_speed_bucket(st, speed_ms);
-            if st.tel.last_bucket != Some(current_bucket) {
+            // Departure (python-bugs.md 33): a NaN or infinite speed has no bucket; the
+            // Python's int() raised on it and ended the telemetry thread.
+            let current_bucket = speed_ms.is_finite().then(|| get_speed_bucket(st, speed_ms));
+            if let Some(current_bucket) = current_bucket
+                && st.tel.last_bucket != Some(current_bucket)
+            {
                 if !baseline_frame
                     && st.cfg.announce_speed
                     && now - st.tel.last_speed_announce_ts >= st.tel.cooldown_sec
@@ -1426,9 +1450,11 @@ impl TelemetryLoop {
         let oil_warn_on = (show_lights & DL_OILWARN) != 0;
 
         if lowbeam_on != self.last_lowbeam_on || highbeam_on != self.last_highbeam_on {
+            // Departure (python-bugs.md 32): with both bits set the Python fell through to
+            // "Headlights off". The high beam is what is lit then.
             if lowbeam_on && !highbeam_on {
                 h.say("Low beams on", true, false);
-            } else if highbeam_on && !lowbeam_on {
+            } else if highbeam_on {
                 h.say("High beams on", true, false);
             } else {
                 h.say("Headlights off", true, false);

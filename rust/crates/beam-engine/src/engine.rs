@@ -20,7 +20,7 @@
 //! ```
 
 use std::io::Write as _;
-use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -35,7 +35,7 @@ use crate::listeners;
 use crate::state::{
     self, State, drift_announcer, driving_assistant, hill_climb_challenge, road_diagnostics, state,
 };
-use crate::timer::{Event, STOP, Timer, spawn_daemon};
+use crate::timer::{Event, STOP, Timer};
 use crate::ui_sink::UiSink;
 use crate::{browsers, console, keyboard, menus, speech_out, ui_bridge, units, updater};
 use beam_audio::controller::AudioController;
@@ -315,10 +315,18 @@ fn apply_live_settings(st: &mut State, cfg: &ConfigMap) {
         get(cfg, "compass_highlight_nth_click", &json!(6)),
         "compass_highlight_nth_click",
     );
-    st.cfg.compass_click_interval_deg = py_float_value(
+    // Departure (python-bugs.md 49): the engine took the value raw, and 0 divided by zero
+    // on every compass click (ending the camera listener; the vehicle compass rounds an
+    // infinite quotient, which raises too). Held to the configurator's range, 1-90.
+    let interval = py_float_value(
         get(cfg, "compass_click_interval", &json!(15.0)),
         "compass_click_interval",
     );
+    st.cfg.compass_click_interval_deg = if interval.is_finite() {
+        interval.clamp(1.0, 90.0)
+    } else {
+        15.0
+    };
     let s = &mut st.cfg;
     s.announce_turn_signals = get_bool(cfg, "announce_turn_signals", true);
     s.announce_speed = get_bool(cfg, "announce_speed", true);
@@ -561,8 +569,11 @@ fn launch_beamng(cfg: &ConfigMap) -> Result<(), String> {
 
 // ---- _run_engine --------------------------------------------------------------------------
 
-fn start_listener(name: &str, f: impl FnOnce() + Send + 'static) {
-    spawn_daemon(name, f);
+/// Every listener and worker loop runs supervised: restarted after a panic or an
+/// unexpected exit (python-bugs.md 3-9 and the other listener killers; see
+/// [`crate::timer::spawn_supervised`]).
+fn start_listener(name: &str, f: impl Fn() + Send + 'static) {
+    crate::timer::spawn_supervised(name, &STOP, f);
 }
 
 /// `_run_engine()`: the telemetry engine, run on the "beamtel-engine" thread.
@@ -647,7 +658,7 @@ pub fn run_engine() {
     start_listener("ui-listener", || ui_toast::ui_listener(&STOP));
     let a = ac();
     start_listener("scanner-listener", move || {
-        scanner::scanner_listener(a, &STOP)
+        scanner::scanner_listener(Arc::clone(&a), &STOP)
     });
     start_listener("driving-assistant", || {
         driving_assistant().run(|timeout| STOP.wait(Some(timeout)))
@@ -657,17 +668,17 @@ pub fn run_engine() {
     });
     let a = ac();
     start_listener("obstacle-listener", move || {
-        obstacle::obstacle_listener(a, &STOP)
+        obstacle::obstacle_listener(Arc::clone(&a), &STOP)
     });
     let a = ac();
-    start_listener("road-listener", move || road::road_listener(a, &STOP));
+    start_listener("road-listener", move || road::road_listener(Arc::clone(&a), &STOP));
     let a = ac();
     start_listener("implement-listener", move || {
-        implement::implement_listener(a, &STOP)
+        implement::implement_listener(Arc::clone(&a), &STOP)
     });
     let a = ac();
     start_listener("terrain-scan-listener", move || {
-        terrain_scan::terrain_scan_listener(a, &STOP)
+        terrain_scan::terrain_scan_listener(Arc::clone(&a), &STOP)
     });
     start_listener("cannon-shot-listener", || {
         cannon::cannon_shot_listener(&STOP)
@@ -677,7 +688,7 @@ pub fn run_engine() {
     });
     let a = ac();
     start_listener("camera-lineup-listener", move || {
-        lineup::camera_lineup_listener(a, &STOP)
+        lineup::camera_lineup_listener(Arc::clone(&a), &STOP)
     });
     start_listener("wheel-report-listener", || {
         wheel_report::wheel_report_listener(&STOP)
@@ -689,14 +700,14 @@ pub fn run_engine() {
         fuel::fuel_station_listener(&STOP)
     });
     let a = ac();
-    start_listener("camera-listener", move || camera::camera_listener(a, &STOP));
+    start_listener("camera-listener", move || camera::camera_listener(Arc::clone(&a), &STOP));
     let a = ac();
     start_listener("nodegrab-listener", move || {
-        nodegrab::nodegrab_listener(a, &STOP)
+        nodegrab::nodegrab_listener(Arc::clone(&a), &STOP)
     });
     let a = ac();
     start_listener("clickspot-listener", move || {
-        clickspot::clickspot_listener(a, &STOP)
+        clickspot::clickspot_listener(Arc::clone(&a), &STOP)
     });
     start_listener("bindings-listener", || {
         vehicle_bindings::vehicle_bindings_listener(&STOP)
@@ -764,9 +775,17 @@ pub fn run_engine() {
         log::error!("Failed to start vehicle spawner: {}", panic_text(&p));
     }
 
-    let run = catch_unwind(AssertUnwindSafe(|| {
-        crate::telemetry::telemetry_loop(Arc::clone(&audio_controller), "0.0.0.0", 4444, &STOP)
-    }));
+    // Departure (python-bugs.md 3, 33): one socket error or a panic on a bad value ended
+    // the whole engine in the Python while the window stayed open. The loop is restarted
+    // like the listeners until STOP is set.
+    let telemetry_ac = Arc::clone(&audio_controller);
+    crate::timer::supervise("Telemetry loop", &STOP, &|| {
+        if let Err(e) =
+            crate::telemetry::telemetry_loop(Arc::clone(&telemetry_ac), "0.0.0.0", 4444, &STOP)
+        {
+            log::error!("Telemetry loop socket error: {e}");
+        }
+    });
 
     // finally:
     if hill_climb_challenge().is_capturing() {
@@ -790,12 +809,6 @@ pub fn run_engine() {
     console::register_console_tap(None);
     if let Some(stop) = mcp_stop {
         stop();
-    }
-
-    match run {
-        Ok(Ok(())) => {}
-        Ok(Err(e)) => log::error!("Telemetry loop ended with an error: {e}"),
-        Err(p) => resume_unwind(p),
     }
 }
 

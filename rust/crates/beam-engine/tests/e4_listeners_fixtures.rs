@@ -673,8 +673,16 @@ fn induction_report_matches_python() {
             .and_then(|(r, a)| browsers::induction_speak(r.as_ref(), a))
             .err()
             .map(|e| exc_name(&e));
-        assert_eq!(json!(died), c["died"], "{c}");
-        assert_eq!(tap(), c["tap"], "{c}");
+        if c["died"].is_null() {
+            assert_eq!(json!(died), c["died"], "{c}");
+            assert_eq!(tap(), c["tap"], "{c}");
+        } else {
+            // python-bugs.md 7, 53 (departure): where the Python thread died silently,
+            // the Rust carries on and always speaks something.
+            assert_eq!(died, None, "{c}");
+            let spoken = tap();
+            assert_ne!(spoken, json!([]), "nothing spoken for {c}");
+        }
         assert_eq!(c["sent"], json!([[4448, "INDUCTION"]]), "{c}");
     }
     reset();
