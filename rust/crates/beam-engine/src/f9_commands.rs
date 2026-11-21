@@ -23,7 +23,7 @@ use indexmap::IndexMap;
 use parking_lot::RwLock;
 use serde_json::{Value, json};
 
-use crate::keyboard::{KeyEvent, KeyEventType, clear_next_key_hook};
+use crate::keyboard::{KeyEvent, KeyEventType};
 use crate::listeners::dock_phrases::{
     CANNON_READOUT_STALE_S, IMPL_DOCK_LEVEL_M, band_name, dock_phrase, ramp_self_phrase,
 };
@@ -602,6 +602,32 @@ fn is_digit_name(name: &str) -> bool {
     !name.is_empty() && name.chars().all(|c| c.is_ascii_digit())
 }
 
+thread_local! {
+    /// True while [`invoke_f9_command`] runs a command on this thread.
+    static INVOKED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// `_clear_next_key_hook(...)` as the F9 handlers call it. Departure (python-bugs.md
+/// 55): the Python closed the layer at the end of every command, so a controller or MCP
+/// command run while the user had a real F9 layer open closed the user's layer. An
+/// invoked command does everything else the close does, but leaves the layer and its
+/// timeout alone; `RestoreCapture` then puts back the modifiers and command context.
+fn clear_next_key_hook(speak_exit: bool) {
+    if !INVOKED.with(|f| f.get()) {
+        crate::keyboard::clear_next_key_hook(speak_exit);
+        return;
+    }
+    set_command_context(false);
+    {
+        let mut st = state();
+        st.kb.input_help_mode = false;
+        st.kb.capture_mods = Mods::default();
+    }
+    if speak_exit {
+        crate::speech_out::say("Exit", true, true, "python");
+    }
+}
+
 /// Restores `_capture_mods` and `_command_context` on the way out, panic or not
 /// (`_invoke_f9_command`'s `finally`).
 struct RestoreCapture {
@@ -611,6 +637,7 @@ struct RestoreCapture {
 
 impl Drop for RestoreCapture {
     fn drop(&mut self) {
+        INVOKED.with(|f| f.set(false));
         set_command_context(self.prev_ctx);
         state().kb.capture_mods = self.saved;
     }
@@ -635,6 +662,7 @@ pub fn invoke_f9_command(name: &str, ctrl: bool, shift: bool, alt: bool) -> Resu
     };
     state().kb.capture_mods = Mods { ctrl, shift, alt };
     set_command_context(true);
+    INVOKED.with(|f| f.set(true));
     let evt = KeyEvent::down(&name.to_lowercase());
     on_next_key_press(&evt, Some(ac));
     Ok(true)

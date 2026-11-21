@@ -996,11 +996,22 @@ pub fn on_accessibility_action(action: &str) {
 
 /// `on_status_arrow_press(event)`.
 pub fn on_status_arrow_press(event: &KeyEvent) {
-    // Don't steal the arrows while a virtual browser (vehicle selector, clickspot list,
-    // bindings list) owns them.
+    // A virtual browser (vehicle selector, clickspot list, bindings list) opened on top of
+    // status mode owns the arrows. Departure (python-bugs.md 42): status mode's hook was
+    // installed first and eats the key, so the browser's own hook never ran and the
+    // Python's early return left the browser with no arrows at all. Hand the key on.
     {
         let st = state();
         if st.vbrowser.vbrowser_active {
+            let adjustable = st.vbrowser.vbrowser_on_adjust.is_some();
+            drop(st);
+            match event.name.as_str() {
+                "up" | "down" => crate::virtual_browser::on_vbrowser_nav(event),
+                "left" | "right" if adjustable => {
+                    crate::virtual_browser::on_vbrowser_adjust(event)
+                }
+                _ => {}
+            }
             return;
         }
         if !st.menu.status_keyboard_mode_active {

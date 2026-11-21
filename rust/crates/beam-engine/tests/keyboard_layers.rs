@@ -136,8 +136,9 @@ fn status_mode_owns_the_arrows_until_released() {
     assert!(spoken.len() > 1, "{spoken:?}");
     // A browser opened on top: status mode's hook was registered first on the arrows, so it
     // eats the key before the browser's hook runs (the package stops at the first key hook
-    // that returns False), and on_status_arrow_press then returns because a browser is up.
-    // The arrows are dead until one owner is released. This is the Python's behaviour.
+    // that returns False). In the Python on_status_arrow_press then returned because a
+    // browser was up, and the arrows were dead. Departure (python-bugs.md 42): status mode
+    // hands the key to the browser, which moves once.
     virtual_browser::open_virtual_browser(
         vec!["One".into(), "Two".into()],
         virtual_browser::BrowserOpts::default(),
@@ -145,8 +146,8 @@ fn status_mode_owns_the_arrows_until_released() {
     speech_out::reset_for_tests();
     assert!(!down("down"));
     keyboard::run_pending_commands_for_tests();
-    assert!(said().is_empty());
-    assert_eq!(state().vbrowser.vbrowser_index, 0);
+    assert_eq!(said(), vec!["Two"]);
+    assert_eq!(state().vbrowser.vbrowser_index, 1);
     // release_arrow_owners closes the browser and status mode both.
     speech_out::reset_for_tests();
     keyboard::release_arrow_owners("test");
@@ -230,4 +231,33 @@ fn accessibility_actions_are_queued_not_run_inline() {
     keyboard::run_pending_commands_for_tests();
     assert_eq!(said().len(), 1);
     speech_out::set_speak_override(None);
+}
+
+/// python-bugs.md 55 (departure): a controller or MCP command run while the user has a
+/// real F9 layer open leaves that layer open, its timeout running and its modifiers as
+/// they were. The Python closed it.
+#[test]
+fn an_invoked_command_leaves_a_real_f9_layer_open() {
+    let _s = SERIAL.lock();
+    let _g = setup();
+    let ac = AudioController::new();
+    beam_engine::state::set_audio_controller_ref(Some(Arc::clone(&ac)));
+    keyboard::start_next_key_capture(Arc::clone(&ac));
+    state().kb.capture_mods = Mods {
+        ctrl: true,
+        shift: false,
+        alt: false,
+    };
+    assert_eq!(
+        beam_engine::f9_commands::invoke_f9_command("f", false, false, false),
+        Ok(true)
+    );
+    assert_eq!(keyboard::kb_layer(), Some(Layer::F9));
+    assert!(state().kb.next_key_timer.is_some());
+    assert!(state().kb.capture_mods.ctrl);
+    assert!(said().iter().any(|t| t.starts_with("Fuel")), "{:?}", said());
+    // The real layer still closes normally.
+    keyboard::clear_next_key_hook(false);
+    assert_eq!(keyboard::kb_layer(), None);
+    beam_engine::state::set_audio_controller_ref(None);
 }
