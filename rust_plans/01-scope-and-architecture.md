@@ -50,7 +50,7 @@ rust/
                              audio_debug, drift_speech, fuel_stations, poi_guidance
     beam-road/               road_guidance, assistant_route, driving_assistant,
                              road_diagnostics, challenge_results, assistant_diagnostics
-    beam-speech/             Prism FFI (prism.dll) and the speech.py layer
+    beam-speech/             Prism via prismer (statically linked) and the speech.py layer
     beam-audio/              hrtf, terrain scan render, waveform generators,
                              AudioController, the callback, device handling,
                              scanner_hrtf_diag
@@ -106,7 +106,7 @@ the ported control flow reads line for line against the original.
 | Audio output and device enumeration | sounddevice (PortAudio, WASAPI) | `cpal` (WASAPI) |
 | Arrays and FFT | numpy | plain `Vec<f32>`/`Vec<f64>` loops, `rustfft`/`realfft` |
 | HRTF `.npz` | numpy | `zip` + a small `.npy` reader in `beam-audio` |
-| Speech | prismatoid (cffi over `prism.dll`) | direct FFI to the same `prism.dll`, loaded with `libloading` from beside the exe |
+| Speech | prismatoid (cffi over `prism.dll`) | the `prismer` crate with its `static` feature: Prism compiled from source and linked into the exe, no DLL |
 | Keyboard and mouse hooks, window lookup, DPAPI, registry | keyboard, mouse, ctypes, winreg | `windows` crate |
 | Screen capture | mss | `windows` crate GDI capture (BitBlt), `png` to encode |
 | HTTP client (AI providers, GitHub) | urllib | `ureq` (blocking, matches the call sites) |
@@ -151,8 +151,7 @@ agent (U2).
 
 - The HRTF sets stay as the committed `hrtf_*.npz` files and ship beside the executable,
   with `HRTF_DATA_LICENSES.md`, as now.
-- `prism.dll` ships beside the executable. The build takes it from the `prismatoid` wheel
-  at the pinned version (0.18.2) so both builds speak through the identical library.
+- No speech DLL ships: Prism is linked into `beamtel.exe` by the `prismer` crate.
 - The release bundle keeps its name and its two required members (`beamtel.exe`,
   `bng_screenreader_mod.zip`), so `updater.py`'s validation accepts a Rust release and the
   Python build can update into it.

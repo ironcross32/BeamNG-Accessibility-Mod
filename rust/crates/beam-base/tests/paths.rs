@@ -45,29 +45,3 @@ fn hrtf_sets_are_all_found_from_a_dev_build() {
     }
     assert!(hrtf_base_dir().join("hrtf_mit_kemar.npz").is_file());
 }
-
-#[test]
-fn prism_dll_from_the_venv_when_present() {
-    let install = tempfile::tempdir().unwrap();
-    let repo = repo_root();
-    let venv = repo.join(".venv/Lib/site-packages/prism/_native/prism.dll");
-    let found = find_prism_dll_in(install.path(), Some(&repo));
-    if venv.is_file() {
-        assert_eq!(
-            found,
-            Some(
-                repo.join(".venv")
-                    .join("Lib")
-                    .join("site-packages")
-                    .join("prism")
-                    .join("_native")
-                    .join("prism.dll")
-            )
-        );
-    }
-    std::fs::write(install.path().join("prism.dll"), b"x").unwrap();
-    assert_eq!(
-        find_prism_dll_in(install.path(), Some(&repo)),
-        Some(install.path().join("prism.dll"))
-    );
-}

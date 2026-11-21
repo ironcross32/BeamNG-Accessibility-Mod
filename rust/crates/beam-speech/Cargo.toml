@@ -1,6 +1,6 @@
 [package]
 name = "beam-speech"
-description = "Speech output through prism.dll"
+description = "Speech output through Prismer (Prism, statically linked)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,7 +9,7 @@ publish.workspace = true
 
 [dependencies]
 beam-base.workspace = true
-libloading.workspace = true
+prismer.workspace = true
 parking_lot.workspace = true
 log.workspace = true
 serde_json.workspace = true

@@ -140,30 +140,6 @@ pub fn hrtf_base_dir() -> PathBuf {
         .unwrap_or_else(program_dir)
 }
 
-/// `prism.dll`: beside the exe in a release; in a source checkout, the copy inside the
-/// pinned `prismatoid` wheel in the project's virtualenv
-/// (`.venv\Lib\site-packages\prism\_native\prism.dll`), so both builds load the
-/// identical library.
-pub fn find_prism_dll() -> Option<PathBuf> {
-    find_prism_dll_in(&program_dir(), repo_root().as_deref())
-}
-
-/// [`find_prism_dll`] with the two places passed in, for tests.
-pub fn find_prism_dll_in(program: &Path, repo: Option<&Path>) -> Option<PathBuf> {
-    const NAME: &str = "prism.dll";
-    if let Some(p) = find_data_file_in(NAME, program, repo) {
-        return Some(p);
-    }
-    let venv = repo?
-        .join(".venv")
-        .join("Lib")
-        .join("site-packages")
-        .join("prism")
-        .join("_native")
-        .join(NAME);
-    venv.is_file().then_some(venv)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

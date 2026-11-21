@@ -1,4 +1,4 @@
-//! speech.py's pure logic over a fake Prism.
+//! The speech layer's logic over a fake Prism.
 
 use super::*;
 use parking_lot::Mutex as PMutex;
@@ -66,10 +66,7 @@ impl SpeechLib for FakeLib {
 }
 
 fn not_available() -> PrismErr {
-    PrismErr::Prism {
-        code: prism::error_code::PRISM_ERROR_BACKEND_NOT_AVAILABLE,
-        message: Some("Backend not available".into()),
-    }
+    PrismErr::Prism(prismer::Error::BackendNotAvailable)
 }
 
 impl FakeCtx {
@@ -127,7 +124,7 @@ impl SpeechContext for FakeCtx {
         let idx = self.0.lock().specs.iter().position(|s| s.id == id);
         match idx {
             Some(i) => self.make(i),
-            None => Err(PrismErr::Value("Invalid or unsupported backend".into())),
+            None => Err(not_available()),
         }
     }
     fn acquire_best(&self) -> Result<Arc<dyn SpeechBackend>, PrismErr> {
@@ -135,7 +132,7 @@ impl SpeechContext for FakeCtx {
         let idx = self.0.lock().specs.iter().position(|s| s.available);
         match idx {
             Some(i) => self.make(i),
-            None => Err(PrismErr::Value("Invalid or unsupported backend".into())),
+            None => Err(not_available()),
         }
     }
 }
@@ -156,10 +153,7 @@ impl SpeechBackend for FakeBackend {
             .find(|(n, c)| *n == self.name && *c > 0)
         {
             f.1 -= 1;
-            return Err(PrismErr::Prism {
-                code: 6,
-                message: Some("Speak failure".into()),
-            });
+            return Err(PrismErr::Prism(prismer::Error::SpeakFailure));
         }
         w.log
             .spoken

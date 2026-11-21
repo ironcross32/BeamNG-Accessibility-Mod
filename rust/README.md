@@ -12,7 +12,11 @@ All commands below are PowerShell, run from this `rust/` directory unless stated
 - Rust stable, MSVC toolchain (`stable-x86_64-pc-windows-msvc`), 1.85 or newer
   (edition 2024). Developed on 1.98.
 - Visual Studio Build Tools with the C++ workload (the MSVC linker and the Windows SDK's
-  resource compiler, which embeds the icon and manifest).
+  resource compiler, which embeds the icon and manifest). The compiler must handle C++23:
+  speech comes from the `prismer` crate, whose build script compiles Prism from source and
+  links it into the exe.
+- CMake 3.24 or newer on `PATH`, for that Prism build. The first build takes about a
+  minute longer while Prism compiles; nothing is downloaded or shipped beside the exe.
 - The WebView2 runtime (part of Windows 11).
 - Node.js 18+ and npm, only for the Tauri CLI (`npm install` here once).
 
@@ -23,7 +27,7 @@ All commands below are PowerShell, run from this `rust/` directory unless stated
 | `crates/beam-base` | paths, config, logger, secret store, `pyfmt`, `hrtf_sets`, `route_beacon`, gear report, AI registry |
 | `crates/beam-reports` | pure report and phrasing modules |
 | `crates/beam-road` | road guidance, driving assistant, recorders |
-| `crates/beam-speech` | Prism (`prism.dll`) FFI and the speech layer |
+| `crates/beam-speech` | Prism through the `prismer` crate (statically linked) and the speech layer |
 | `crates/beam-audio` | synthesis, HRTF, audio controller, the output callback |
 | `crates/beam-engine` | telemetry, listeners, keyboard layers, menus, MCP, updater: everything that is not the window; no Tauri dependency |
 | `crates/beam-testutil` | dev-only: locate and load golden fixtures |
@@ -107,7 +111,5 @@ stands in for a raised `ValueError` and keeps its message.
 
 `beam_base::paths`: `config_dir()` (`%LOCALAPPDATA%\beamtel`, home fallback),
 `config_path()`, `program_dir()` (the exe's directory), `find_data_file(name)` (beside
-the exe, else the repository root of a source checkout), `hrtf_base_dir()`, and
-`find_prism_dll()` (beside the exe, else `.venv\Lib\site-packages\prism\_native`, a
-leftover of the Python virtualenv: a fresh checkout has neither, so speech needs
-`prism.dll` placed beside the exe until Prismer replaces Prism).
+the exe, else the repository root of a source checkout), and `hrtf_base_dir()`.
+Speech needs no file at all: Prism is compiled into the exe.

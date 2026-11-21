@@ -6,7 +6,18 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-21: **the Python application is gone from the branch.** The last Python work
+2026-11-21, later: **speech is on Prismer.** `beam-speech` `prism.rs` no longer loads
+`prism.dll` with `libloading`; it wraps the `prismer` crate (0.1.7, `static` feature), whose
+build script compiles Prism with CMake and links it into the exe. `find_prism_dll` is gone
+from `beam-base` `paths.rs`, and nothing ships or looks for a DLL. The wrapper keeps the
+shape `speech.rs` expects (an `Arc<Context>` each `Backend` holds, calls serialised by a
+mutex, capability checks by name), so the speech layer and its 30 tests barely changed.
+Building now needs CMake 3.24+ and a C++23 MSVC (`rust/README.md`). Checked live:
+`cargo run -p beam-speech --example speak -- --list` finds NVDA, OneCore and SAPI.
+Prism 0.1.7 also lists `Clipboard` and `No Speech` backends, which the configurator's
+backend list will now show.
+
+Earlier on 2026-11-21: **the Python application is gone from the branch.** The last Python work
 (private roads and gates, the trailerAngle stale-coupler fix, HRTF datasets) was committed
 first, then every Python module, sim, fixture generator and the Python release pipeline
 (`build.py`, `release.yml`, `scripts/release.ps1`, `pyproject.toml`, `uv.lock`) was
@@ -14,7 +25,7 @@ deleted. The fixtures in `rust/fixtures/data/` are now frozen. `tools/` keeps th
 generators with its own `tools/pyproject.toml`. Docs were rewritten for the Rust
 (`docs/app-*.md` replace `python-components.md`; the validation logs keep their Python
 history under a note). Consequences for the plan: **R1 (xtask release) is now the only
-way to ship**, and `find_prism_dll`'s `.venv` fallback finds nothing on a fresh checkout.
+way to ship**.
 
 Before that, the keep-or-fix pass over `python-bugs.md` closed: every entry is fixed in
 the Rust (H) or kept by the user's decision (listed at the top of that file).
@@ -132,7 +143,7 @@ differences fixed (spin tie rounding in `util.js`, non-string MCP `speak`).
    turn should move the detection toward the inside of the turn. 62-65 and the rest
    are still to go through with the user.
 2. Then R1 (packaging: the HRTF `.npz` sets and their licence notice beside the exe,
-   the mod zip; not `prism.dll`, since speech is moving to Prismer) and D1 (docs still
+   the mod zip; no speech DLL, since Prism is linked in) and D1 (docs still
    describe the Python build, including the admin requirement).
 Traps found in U2:
 - A Tauri test binary dies at load with `STATUS_ENTRYPOINT_NOT_FOUND` unless it embeds

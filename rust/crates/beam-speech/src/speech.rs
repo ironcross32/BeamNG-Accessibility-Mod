@@ -15,7 +15,7 @@ use beam_base::pyfmt::{py_float_parse, py_float_str, py_strip};
 use parking_lot::Mutex;
 use serde_json::Value;
 
-use crate::prism::{self, AvailabilityFn, BackendFeatures, BackendId, LogLevel, Prism, PrismErr};
+use crate::prism::{self, AvailabilityFn, BackendFeatures, BackendId, LogLevel, PrismErr};
 
 /// "auto" means let Prism pick by backend priority (NVDA outranks JAWS outranks SAPI, and
 /// so on). Anything else is matched against a Prism backend name.
@@ -23,8 +23,8 @@ pub const AUTO_BACKEND: &str = "auto";
 
 /// A failed init used to latch permanently, which meant that starting beamtel before the
 /// screen reader left the session mute until it was restarted. Retry, but not on every
-/// utterance: loading the native library is slow enough that doing it per callout would
-/// be audible.
+/// utterance: probing every backend is slow enough that doing it per callout would be
+/// audible.
 pub const RETRY_COOLDOWN_S: f64 = 10.0;
 
 /// The Python logger Prism's own log is bridged under (`prism.install_logging`).
@@ -73,23 +73,23 @@ pub trait SpeechBackend: Send + Sync {
     fn set_volume(&self, value: f32) -> Result<(), PrismErr>;
 }
 
-struct RealLib(Prism);
+struct RealLib;
 struct RealContext(Arc<prism::Context>);
 
 impl SpeechLib for RealLib {
     fn install_logging(&self, logger_name: &str) -> Result<(), PrismErr> {
-        self.0.install_logging(logger_name);
+        prism::install_logging(logger_name);
         Ok(())
     }
     fn set_log_level(&self, level: LogLevel) -> Result<(), PrismErr> {
-        self.0.set_log_level(level);
+        prism::set_log_level(level);
         Ok(())
     }
     fn make_context(
         &self,
         on_availability: AvailabilityFn,
     ) -> Result<Arc<dyn SpeechContext>, PrismErr> {
-        let ctx = self.0.context(Some(on_availability))?;
+        let ctx = prism::Context::new(Some(on_availability))?;
         Ok(Arc::new(RealContext(ctx)))
     }
 }
@@ -315,7 +315,8 @@ impl Action<'_> {
 /// speech.py's module state. The app uses the one process-wide instance behind the free
 /// functions below; tests build their own over a fake [`SpeechLib`].
 pub struct Speech {
-    /// `None` is `PRISM_OK = False`.
+    /// `None`: no speech library. The app always has one (Prism is linked in); tests use
+    /// `None` to check that every call degrades quietly.
     lib: Option<Arc<dyn SpeechLib>>,
     /// `_lock`. Construction is serialised: two threads racing would each build a Context.
     inner: Mutex<Inner>,
@@ -345,7 +346,7 @@ impl Speech {
         }
     }
 
-    /// `PRISM_OK`.
+    /// Whether there is a speech library at all.
     pub fn is_available(&self) -> bool {
         self.lib.is_some()
     }
@@ -451,9 +452,9 @@ impl Speech {
     /// Returns whether there is a backend (speech.py returns the backend or `None`, and
     /// every caller only tests it against `None`).
     ///
-    /// Called from every thread that speaks, so construction is serialised. Loading the
-    /// native library is slow enough to matter; callers on latency-sensitive paths warm it
-    /// first (see `install_hotkeys`).
+    /// Called from every thread that speaks, so construction is serialised. Creating the
+    /// context and probing backends is slow enough to matter; callers on latency-sensitive
+    /// paths warm it first (see `install_hotkeys`).
     pub fn init(&self, cfg: Option<&Value>) -> bool {
         if self.lib.is_none() {
             return false;
@@ -797,9 +798,9 @@ fn backend_name_locked(inner: &Inner) -> String {
 static START: LazyLock<Instant> = LazyLock::new(Instant::now);
 
 static SPEECH: LazyLock<Speech> = LazyLock::new(|| {
-    let lib = Prism::global().map(|p| Arc::new(RealLib(p.clone())) as Arc<dyn SpeechLib>);
+    let lib: Arc<dyn SpeechLib> = Arc::new(RealLib);
     LazyLock::force(&START);
-    Speech::new(lib, Box::new(|| START.elapsed().as_secs_f64()))
+    Speech::new(Some(lib), Box::new(|| START.elapsed().as_secs_f64()))
 });
 
 /// The process-wide speech layer.
@@ -807,7 +808,8 @@ pub fn global() -> &'static Speech {
     &SPEECH
 }
 
-/// `PRISM_OK`: prism.dll loaded and every symbol resolved.
+/// Whether the speech library is present. Always true: Prism is linked into the exe.
+/// Whether a backend can actually speak is [`init`]'s answer.
 pub fn is_available() -> bool {
     SPEECH.is_available()
 }
@@ -888,15 +890,11 @@ pub fn shutdown() {
     SPEECH.shutdown()
 }
 
-/// The wheel's atexit hook (`prism_log_flush`, `prism_log_shutdown`), registered by
-/// `prism.install_logging`. Rust has no atexit, so the application calls this once on
-/// exit. A no-op without prism.dll or when the log bridge was never installed.
+/// Flush and stop Prism's logger. Rust has no atexit, so the application calls this once
+/// on exit. A no-op when the log bridge was never installed.
 pub fn atexit() {
-    if !Prism::logging_installed() {
-        return;
-    }
-    if let Some(p) = Prism::global() {
-        p.log_flush_and_shutdown();
+    if prism::logging_installed() {
+        prism::log_flush_and_shutdown();
     }
 }
 

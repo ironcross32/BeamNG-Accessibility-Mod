@@ -63,7 +63,8 @@ png = "0.18.1"
 # Platform
 cpal = "0.18.2"
 windows = "0.62.2"
-libloading = "0.9.1"
+# Speech: Prism built from source and linked into the exe, so no prism.dll ships.
+prismer = { version = "0.1.7", features = ["static"] }
 
 # Network
 ureq = { version = "3.5.2", features = ["json"] }

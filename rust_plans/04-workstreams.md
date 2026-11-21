@@ -78,10 +78,9 @@ exercise this crate and list the rest for the owner of the other half.
 
 ### S1: beam-speech
 
-`speech.py` over `prism.dll`. Derive the FFI surface from the installed wheel
-(`.venv/Lib/site-packages/prism/core.py`, `common.py`, `_dispatch.py`) and the upstream
-Prism C header; load the DLL with `libloading` from the program directory (and from the
-venv's `prism/_native` in a source checkout). Port backend selection by priority, the
+`speech.py` over Prism. (Originally a hand-written `libloading` FFI to `prism.dll`; since
+replaced by the `prismer` crate, statically linked, so no DLL is loaded or shipped.) Port
+backend selection by priority, the
 re-acquire on failure and on a screen reader starting or exiting, capability bits,
 `list_backends`, `list_voices`, `test_speak`, braille, `describe_capabilities`,
 `configure`. Verified by a small example binary that lists backends and speaks a line,
@@ -271,7 +270,7 @@ Output: `rust_plans/audit-<slice>.md`. The port is not at parity until every aud
 ### R1: Build and release
 
 `xtask` replaces `build.py`: build the release exe, package the mod zip with the stamped
-`bnvda_mod_version.json`, gather `prism.dll`, the `hrtf_*.npz` files, `README.md` and
+`bnvda_mod_version.json`, gather the `hrtf_*.npz` files, `README.md` and
 `HRTF_DATA_LICENSES.md`, write `BeamNG_accessibility_mod.zip`. Update
 `scripts/release.ps1` and `.github/workflows/release.yml` (the tag-equals-version check
 stays). **The workflow file is edited but nothing is pushed.**
