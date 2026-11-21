@@ -508,7 +508,7 @@ fn e4_cases_match_python() {
             let at = format!("{label} step {i} {}", step["step"]);
             assert_eq!(died, step["died"], "{at}: died");
             assert_eq!(result, norm(&step["result"]), "{at}: result");
-            assert_eq!(tap(), step["tap"], "{at}: speech");
+            assert_eq!(tap(), python_speech_after_departures(&step["tap"]), "{at}: speech");
             assert_eq!(sent(), step["sent"], "{at}: sent");
             assert_eq!(vbrowser(), norm(&step["browser"]), "{at}: browser");
             let want = norm(&step["state"]);
@@ -654,6 +654,23 @@ fn console_tap_consumes_and_window_gets_the_rest() {
             Console("CTXEND".into()),
         ]
     );
+}
+
+/// python-bugs.md 52 (departure): a negative clickspot count says there are none
+/// instead of "-2 clickspots found".
+fn python_speech_after_departures(tap: &Value) -> Value {
+    let mut out = tap.clone();
+    if let Some(items) = out.as_array_mut() {
+        for it in items {
+            let text = it["text"].as_str().unwrap_or("");
+            if let Some(n) = text.strip_suffix(" clickspots found")
+                && n.starts_with('-')
+            {
+                it["text"] = json!("No clickspots found on this vehicle");
+            }
+        }
+    }
+    out
 }
 
 #[test]

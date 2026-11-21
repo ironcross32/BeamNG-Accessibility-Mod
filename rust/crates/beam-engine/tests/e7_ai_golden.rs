@@ -225,6 +225,16 @@ fn f10_key_dispatch_matches_python() {
             }))
             .err()
             .map(|p| panic_text(&*p));
+            // python-bugs.md 58 (departure): only a single digit is a slot key. The Python's
+            // substring test let "" (int('') raised) and "12" ("Slot 12 is empty") through.
+            if key.is_empty() || (key.len() > 1 && key.chars().all(|c| c.is_ascii_digit())) {
+                assert_eq!(err, None, "{ctx}: err");
+                let spoken = spoken_since(before).to_string();
+                assert!(!spoken.contains("Slot"), "{ctx}: spoken {spoken}");
+                take_sent();
+                STAGGERED.lock().clear();
+                continue;
+            }
             assert_eq!(json!(err), step["err"], "{ctx}: err");
             assert_eq!(spoken_since(before), step["spoken"], "{ctx}: spoken");
             assert_eq!(take_sent(), step["sent"], "{ctx}: sent");

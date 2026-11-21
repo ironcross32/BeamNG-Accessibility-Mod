@@ -391,6 +391,22 @@ fn every_key_and_modifier_matches_python() {
                 failures.push(format!("{name}: {what}\n  rust:   {got}\n  python: {want}"));
             }
         };
+        // python-bugs.md 56, 57 (departure): a non-finite reading is spoken as unknown
+        // where the Python raised (or read "100 percent"). These cases are pinned to
+        // the Rust's own answer rather than the Python's.
+        let departed: Option<(&str, Value)> = match &*name {
+            "r/nan" | "invoke/restores_after_raise" => Some(("RPM unknown", json!(false))),
+            "f/nan" => Some(("Fuel level unknown", json!(false))),
+            "speed/nan" => Some(("Speed unknown. Speed limit unknown", json!(false))),
+            "i/cannon/nan" => Some(("Inclination unknown, strength 100%", json!(true))),
+            "e/nan" => Some(("Engine temperature unknown", json!(false))),
+            _ => None,
+        };
+        if let Some((text, excluded)) = departed {
+            check("err", err, Value::Null);
+            check("spoken", Value::Array(spoken), json!([[text, true, excluded]]));
+            continue;
+        }
         check("err", err, case["err"].clone());
         check("spoken", Value::Array(spoken), case["spoken"].clone());
         check(

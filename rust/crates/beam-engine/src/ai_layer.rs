@@ -757,8 +757,10 @@ pub fn on_ai_key_press(event: &KeyEvent) {
     let shifted = shifted_digit(&name);
     let is_shifted_char = shifted.is_some();
     let base_name: &str = shifted.unwrap_or(&name);
-    // Python's `in "1234567890"` is a substring test.
-    let base_is_digit = "1234567890".contains(base_name);
+    // Departure (python-bugs.md 58): Python's `in "1234567890"` is a substring test, so
+    // "" and "12" passed; an empty name raised in int() and "12" spoke "Slot 12 is
+    // empty". Only a single digit is a slot key.
+    let base_is_digit = base_name.len() == 1 && "1234567890".contains(base_name);
 
     // A pending target-change confirmation is cancelled by any key other than the
     // confirming CTRL+digit, before normal processing continues.
@@ -796,7 +798,7 @@ pub fn on_ai_key_press(event: &KeyEvent) {
     }
 
     // ALT+1-5: fire a preset AI configuration (layer closes after triggering).
-    if "12345".contains(name.as_str()) && mods.alt && !mods.ctrl && !mods.shift {
+    if name.len() == 1 && "12345".contains(name.as_str()) && mods.alt && !mods.ctrl && !mods.shift {
         trigger_preset(py_int_key(&name));
         clear_ai_hook(false);
         return;

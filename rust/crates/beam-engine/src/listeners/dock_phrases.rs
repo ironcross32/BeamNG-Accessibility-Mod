@@ -202,7 +202,10 @@ pub fn ramp_align_phrase(payload: &str) -> String {
 
 /// `_cannon_shot_long_distance(metres)`: whole numbers, not implement precision.
 pub fn cannon_shot_long_distance(metres: f64) -> String {
-    if units_mode() == "imperial" {
+    // Departure (python-bugs.md 46): the Python tested == "imperial" here while
+    // fmt_distance tests == "metric", so any other value mixed units in one utterance.
+    // Both now treat everything but "metric" as imperial.
+    if units_mode() != "metric" {
         return format!("{} feet", py_f(metres * FEET_PER_M, 0));
     }
     format!("{} meters", py_f(metres, 0))

@@ -157,7 +157,9 @@ pub fn handle_clickspot_text(
             return Ok(());
         };
         clickspot_begin_list(sat(&count));
-        if count == PyInt::Small(0) {
+        // Departure (python-bugs.md 52): a negative count cleared the list and then
+        // said "-2 clickspots found".
+        if sat(&count) <= 0 {
             say_excluded("No clickspots found on this vehicle");
         } else {
             let plural = if count != PyInt::Small(1) { "s" } else { "" };

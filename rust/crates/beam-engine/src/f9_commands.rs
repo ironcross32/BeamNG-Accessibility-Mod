@@ -649,8 +649,8 @@ pub fn mcp_press_command(name: &str, ctrl: bool, shift: bool, alt: bool) -> Resu
 struct Snap {
     spd_val: PyVal,
     spd_unit: &'static str,
-    rpm: i64,
-    fuel_pct: i64,
+    rpm: PyVal,
+    fuel_pct: PyVal,
     turbo_val: PyVal,
     turbo_unit: &'static str,
     etemp_val: PyVal,
@@ -678,15 +678,48 @@ struct Snap {
     cam_dist: f64,
 }
 
+/// A snapshot value that was not a finite number (python-bugs.md 56, 57).
+fn is_unknown(v: &PyVal) -> bool {
+    matches!(v, PyVal::Str(s) if s == "unknown")
+}
+
+/// `"<value> <unit>"`, or `"unknown"` without the unit.
+fn reading(v: &PyVal, unit: &str) -> String {
+    if is_unknown(v) {
+        "unknown".to_string()
+    } else {
+        format!("{v} {unit}")
+    }
+}
+
 fn snapshot() -> Snap {
     let st = state();
     let t = &st.tel;
-    let (spd_val, spd_unit) = fmt_speed(t.last_speed_ms);
-    let rpm = py_int_round(t.last_rpm);
-    let fuel_pct = py_int_round(py_max(0.0, py_min(1.0, t.last_fuel)) * 100.0);
+    // Departure (python-bugs.md 56, 57): a NaN speed, RPM or temperature raised here for
+    // every F9 key, and a NaN fuel level read "100 percent" through min/max. A reading
+    // that is not a finite number is spoken as "unknown".
+    let unknown = || PyVal::Str("unknown".to_string());
+    let finite_or = |x: f64, f: &dyn Fn(f64) -> (PyVal, &'static str)| {
+        if x.is_finite() {
+            f(x)
+        } else {
+            (unknown(), f(0.0).1)
+        }
+    };
+    let (spd_val, spd_unit) = finite_or(t.last_speed_ms, &fmt_speed);
+    let rpm = if t.last_rpm.is_finite() {
+        PyVal::Int(py_int_round(t.last_rpm))
+    } else {
+        unknown()
+    };
+    let fuel_pct = if t.last_fuel.is_finite() {
+        PyVal::Int(py_int_round(py_max(0.0, py_min(1.0, t.last_fuel)) * 100.0))
+    } else {
+        unknown()
+    };
     let (turbo_val, turbo_unit) = fmt_turbo(t.last_turbo);
-    let (etemp_val, etemp_unit) = fmt_temp_c_or_f(t.last_engtemp);
-    let (otemp_val, otemp_unit) = fmt_temp_c_or_f(t.last_oiltemp);
+    let (etemp_val, etemp_unit) = finite_or(t.last_engtemp, &fmt_temp_c_or_f);
+    let (otemp_val, otemp_unit) = finite_or(t.last_oiltemp, &fmt_temp_c_or_f);
     let engine_temp = has_engine_temp(&st);
     let gear_phrase = if t.protocol_mode == "outgauge" {
         gear_to_phrase(t.last_gear_byte.unwrap_or(1), DEFAULT_NUMBER_STYLE)
@@ -939,7 +972,11 @@ pub fn on_next_key_press(event: &KeyEvent, audio_controller: Option<Arc<AudioCon
                 )
             },
         );
-        say_p(&format!("{} {}. {limit}", s.spd_val, s.spd_unit));
+        if is_unknown(&s.spd_val) {
+            say_p(&format!("Speed unknown. {limit}"));
+        } else {
+            say_p(&format!("{} {}. {limit}", s.spd_val, s.spd_unit));
+        }
     } else if name == "r" && shift && !ctrl {
         let extended = state().tel.protocol_mode == "extended";
         say_p(&if extended {
@@ -956,7 +993,11 @@ pub fn on_next_key_press(event: &KeyEvent, audio_controller: Option<Arc<AudioCon
             crate::listeners::road::toggle_road_mode(a)
         });
     } else if name == "r" && !(ctrl || shift || alt) {
-        say_p(&format!("{} rpm", s.rpm));
+        if is_unknown(&s.rpm) {
+            say_p("RPM unknown");
+        } else {
+            say_p(&format!("{} rpm", s.rpm));
+        }
     } else if name == "h" && ctrl {
         let on = {
             let mut st = state();
@@ -1178,7 +1219,11 @@ pub fn on_next_key_press(event: &KeyEvent, audio_controller: Option<Arc<AudioCon
             crate::listeners::fuel::open_fuel_stations(ctrl)
         });
     } else if name == "f" {
-        say_p(&format!("Fuel {} percent", s.fuel_pct));
+        if is_unknown(&s.fuel_pct) {
+            say_p("Fuel level unknown");
+        } else {
+            say_p(&format!("Fuel {} percent", s.fuel_pct));
+        }
     } else if name == "g" {
         say_p(&s.gear_phrase);
     } else if name == "t" && ctrl && !shift && !alt {
@@ -1232,8 +1277,8 @@ pub fn on_next_key_press(event: &KeyEvent, audio_controller: Option<Arc<AudioCon
     } else if (name == "e" || name == "engtemp") && !shift {
         if s.engine_temp {
             say_p(&format!(
-                "Engine temperature {} {}",
-                s.etemp_val, s.etemp_unit
+                "Engine temperature {}",
+                reading(&s.etemp_val, s.etemp_unit)
             ));
         } else {
             say_p("No engine temperature");
@@ -1242,7 +1287,7 @@ pub fn on_next_key_press(event: &KeyEvent, audio_controller: Option<Arc<AudioCon
         say_x("Checking damage");
         start_dump_thread(DumpKind::Damage);
     } else if name == "o" && !ctrl {
-        say_p(&format!("Oil temperature {} {}", s.otemp_val, s.otemp_unit));
+        say_p(&format!("Oil temperature {}", reading(&s.otemp_val, s.otemp_unit)));
     } else if name == "c" && ctrl && shift && alt {
         ext_unit("open_clickspot_browser", json!([]), || {
             crate::browsers::open_clickspot_browser()
@@ -1382,8 +1427,9 @@ pub fn on_next_key_press(event: &KeyEvent, audio_controller: Option<Arc<AudioCon
                 "NEXT"
             };
             if let Err(e) = scanner_sendto(direction.as_bytes()) {
-                // The Python formats the bytes object: b'NEXT'.
-                log::error!("Failed to send b'{direction}' command: {e}");
+                // Departure (python-bugs.md 29): the Python formatted the bytes object
+                // and logged b'NEXT'.
+                log::error!("Failed to send {direction} command: {e}");
             }
         }
     } else if name == "a" {
@@ -1430,10 +1476,13 @@ fn cane_tap() {
         if !strength.ends_with('%') {
             strength = "unknown".to_string();
         }
-        say_x(&format!(
-            "Inclination {} percent, strength {strength}",
-            py_f(incl * 100.0, 0)
-        ));
+        // Departure (python-bugs.md 56): a NaN rpm came through min/max as 100 percent.
+        let incl = if rpm.is_finite() {
+            format!("{} percent", py_f(incl * 100.0, 0))
+        } else {
+            "unknown".to_string()
+        };
+        say_x(&format!("Inclination {incl}, strength {strength}"));
     } else if state().dock.dock_mode_active && dock_snap.is_some() {
         if let Some(snap) = &dock_snap {
             say_x(&x_dock_phrase(snap));

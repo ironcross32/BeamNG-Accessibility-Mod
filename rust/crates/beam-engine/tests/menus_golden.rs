@@ -207,6 +207,12 @@ fn status_rows_match_python() {
             match catch_unwind(AssertUnwindSafe(|| (r.get_value)(&st))) {
                 Ok((value, unit)) => {
                     let text = format!("{value} {unit}").trim().to_string();
+                    // python-bugs.md 41 (departure): before any OutGauge gear byte the
+                    // Python raised here; the row reads "unknown".
+                    if label == "Gear" && w["value_text"].is_null() && w["err"].is_string() {
+                        assert_eq!(text, "unknown", "{name}/{label}");
+                        continue;
+                    }
                     assert_eq!(
                         Some(text.as_str()),
                         w["value_text"].as_str(),

@@ -360,10 +360,9 @@ fn gear_value(st: &State) -> (PyVal, String) {
     let phrase = if st.tel.protocol_mode == "outgauge" {
         match st.tel.last_gear_byte {
             Some(b) => gear_to_phrase(b, DEFAULT_NUMBER_STYLE),
-            // gear_to_phrase(None) compares None >= 2.
-            None => {
-                panic!("TypeError: '>=' not supported between instances of 'NoneType' and 'int'")
-            }
+            // Departure (python-bugs.md 41): before any telemetry gear_to_phrase(None)
+            // raised, and moving onto the Gear row killed the command.
+            None => "unknown".to_string(),
         }
     } else {
         extended_gear_to_phrase(
