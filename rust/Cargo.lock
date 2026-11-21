@@ -181,14 +181,17 @@ checksum = "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5"
 name = "beam-app"
 version = "0.0.0"
 dependencies = [
+ "beam-audio",
  "beam-base",
  "beam-engine",
+ "beam-speech",
  "log",
  "parking_lot 0.13.0",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
+ "tempfile",
  "windows",
 ]
 

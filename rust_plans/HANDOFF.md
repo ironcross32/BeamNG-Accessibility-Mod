@@ -6,7 +6,7 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-21, with the E9 completion commit (wave 2 batch 3 done except U2).
+2026-11-21, with the U2 commit (Tauri backend built, not yet launched).
 
 ## Done so far
 
@@ -78,12 +78,29 @@ committed it on 2026-11-21:
 
 ## Next step
 
-1. U2 (the Tauri backend: `src-tauri/`), which wires the bridge and console into the
-   window. Its brief is in `04-workstreams.md`; E7's note above says which describer
-   validation call to use.
+U2 (the Tauri backend, `src-tauri/`) is written, builds clean under clippy, and its 24
+tests pass, but **the app has never been launched**. Launching main mode starts the
+engine (keyboard hooks, UDP listeners, possibly the game), and it puts a window in front
+of a screen-reader user, so do not launch it without asking.
+
+1. With the user: launch `beamtel.exe --configurator` first (no engine), then main mode.
+   Check: the page loads (no mock banner), title, every panel fills, saves land in the
+   config file, Reset, Test Voice / Test Shift Tone / gear preview, the View Logs menu
+   position and its submenu, message boxes owned by the window, close with a pending
+   save, Exit, the console (contexts, Run, log stream), Install Mod, Check for Updates
+   with its progress dialog.
 2. Then wave 3: I1 integration (including the wiring the MCP sim's `beamtel.py` greps
    checked: speech tap after the interrupt demotion, console tap before the GUI
-   forward), the V1 parity audits, fix-ups.
+   forward), the V1 parity audits (the config/UI audit should add a Python fixture for
+   `config_load`'s values and `config_save_panel`'s output), fix-ups.
+
+Traps found in U2:
+- A Tauri test binary dies at load with `STATUS_ENTRYPOINT_NOT_FOUND` unless it embeds
+  the Common Controls v6 manifest. `build.rs` adds it to `tests/` targets only
+  (`rustc-link-arg-tests`, which Cargo rejects when the crate has no `tests/`), and the
+  lib and bin have `test = false`. Put new tests in `src-tauri/tests/`.
+- `TrackPopupMenuEx` must run on the window's thread: `logs_menu_popup` posts it with
+  `run_on_main_thread` and waits on a channel.
 ## Things to know
 
 - **The Python reference has moved under the port.** The working tree has uncommitted

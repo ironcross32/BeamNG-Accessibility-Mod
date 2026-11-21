@@ -13,6 +13,15 @@ fn main() {
     } else {
         include_str!("manifests/default.xml")
     };
+    // Test binaries get no manifest from tauri-build, so they load Common Controls v5,
+    // which lacks TaskDialogIndirect, and die at load with STATUS_ENTRYPOINT_NOT_FOUND.
+    // Embed the default manifest into them directly.
+    if std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc") {
+        let dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+        println!("cargo:rustc-link-arg-tests=/MANIFEST:EMBED");
+        println!("cargo:rustc-link-arg-tests=/MANIFESTINPUT:{dir}\\manifests\\default.xml");
+    }
+
     let windows = tauri_build::WindowsAttributes::new().app_manifest(manifest);
     let attrs = tauri_build::Attributes::new().windows_attributes(windows);
     tauri_build::try_build(attrs).expect("failed to run the Tauri build script");

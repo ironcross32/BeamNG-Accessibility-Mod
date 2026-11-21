@@ -11,11 +11,15 @@ build = "build.rs"
 [lib]
 name = "beam_app"
 path = "src/lib.rs"
+# No unit-test harness: see build.rs. The tests are in tests/.
+test = false
+doctest = false
 
 [[bin]]
 # The release asset and the updater both expect beamtel.exe.
 name = "beamtel"
 path = "src/main.rs"
+test = false
 
 [features]
 default = []
@@ -37,7 +41,14 @@ log.workspace = true
 parking_lot.workspace = true
 beam-base.workspace = true
 beam-engine.workspace = true
+beam-speech.workspace = true
+beam-audio.workspace = true
 windows = { workspace = true, features = [
     "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
 ] }
+
+[dev-dependencies]
+tempfile.workspace = true
