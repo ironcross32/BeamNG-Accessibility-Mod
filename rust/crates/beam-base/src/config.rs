@@ -431,6 +431,42 @@ fn get_str(merged: &PyDict, key: &str) -> String {
     merged.get(key).map(PyValue::py_str).unwrap_or_default()
 }
 
+/// Write a migrated config back. Departure (python-bugs.md 2): the Python lets a failed
+/// write (the file still locked after every retry) reach the corruption path, which
+/// renamed a perfectly good config to the backup and replaced it with defaults. The
+/// file on disk is intact and the migration is still applied in memory, so log it and
+/// carry on; the next load migrates again and retries the write.
+fn write_back_migration(path: &Path, user: &PyDict) {
+    if let Err(e) = write_config(path, user) {
+        log::warn!("Could not write the migrated config back ({e}); will retry on the next load.");
+    }
+}
+
+/// Departure (python-bugs.md 1): `gear_report.settings_from_config` raises
+/// OverflowError on an infinite octave or a level too large for a float, and the Python
+/// loaders sent that to the corruption path. Here the one key falls back to its default,
+/// as any other unusable value does.
+fn sanitise_gear_overflow(merged: &mut PyDict) {
+    if matches!(
+        merged.get("gear_tone_level_dbfs").map(PyValue::py_float),
+        Some(Err(PyExc::OverflowError))
+    ) {
+        merged.insert(
+            "gear_tone_level_dbfs".into(),
+            PyValue::Float(gear_report::DEFAULT_LEVEL_DB),
+        );
+    }
+    if matches!(
+        merged.get("gear_tone_octave").map(PyValue::py_int),
+        Some(Err(PyExc::OverflowError))
+    ) {
+        merged.insert(
+            "gear_tone_octave".into(),
+            PyValue::Int(PyInt::Small(gear_report::DEFAULT_OCTAVE)),
+        );
+    }
+}
+
 /// The corruption path shared by both loaders.
 fn recover(path: &Path, suffix: &str, defaults: PyDict) -> io::Result<PyDict> {
     let _ = fs::rename(path, with_suffix(path, suffix));
@@ -515,9 +551,12 @@ fn engine_body(path: &Path) -> Result<PyDict, Corrupt> {
         migrated = true;
     }
     if migrated {
-        write_config(path, &user)?;
+        write_back_migration(path, &user);
     }
     let mut merged = merge(default_config_engine(), &user);
+    // Departure (python-bugs.md 1): the engine hands the gear keys through raw, and an
+    // overflowing one would make every later `settings_from_config` raise.
+    sanitise_gear_overflow(&mut merged);
     let units = get_str(&merged, "units").to_lowercase();
     merged.insert(
         "units".into(),
@@ -538,7 +577,7 @@ fn engine_body(path: &Path) -> Result<PyDict, Corrupt> {
         let value = match merged.get(key).map(PyValue::py_float) {
             None => py_clamp(fallback, -120.0, 0.0),
             Some(Ok(x)) => py_clamp(x, -120.0, 0.0),
-            Some(Err(PyExc::OverflowError)) => return Err(PyExc::OverflowError.into()),
+            // Python lets OverflowError through to the corruption path (bug 1).
             Some(Err(_)) => fallback,
         };
         merged.insert(key.into(), PyValue::Float(value));
@@ -585,14 +624,11 @@ enum Cast {
     Bool,
 }
 
-/// `_coerce(key, caster, fallback)`: ValueError and TypeError fall back; anything else
-/// (OverflowError) propagates to the corruption path.
-fn coerce(
-    merged: &mut PyDict,
-    key: &str,
-    cast: Cast,
-    fallback: ConfigDefault,
-) -> Result<(), Corrupt> {
+/// `_coerce(key, caster, fallback)`: a value the cast rejects falls back. Departure
+/// (python-bugs.md 1): the Python caught only ValueError and TypeError, so an
+/// OverflowError (`1e400`, a huge int in a float key) sent the whole file down the
+/// corruption path; here it falls back like the rest.
+fn coerce(merged: &mut PyDict, key: &str, cast: Cast, fallback: ConfigDefault) {
     let current = merged
         .get(key)
         .cloned()
@@ -603,13 +639,8 @@ fn coerce(
         Cast::Int => current.py_int().map(PyValue::Int),
         Cast::Float => current.py_float().map(PyValue::Float),
     };
-    let value = match result {
-        Ok(v) => v,
-        Err(PyExc::ValueError | PyExc::TypeError) => fallback.to_value(),
-        Err(e) => return Err(e.into()),
-    };
+    let value = result.unwrap_or_else(|_| fallback.to_value());
     merged.insert(key.to_string(), value);
-    Ok(())
 }
 
 /// The `_coerce` calls in configurator.py's order (gear keys are handled separately).
@@ -817,14 +848,15 @@ fn configurator_body(path: &Path) -> Result<PyDict, Corrupt> {
     // than waiting for the next edit -- a config that is only ever opened and closed
     // would otherwise stay in the clear forever.
     if secretstore::migrate_config(&mut user) {
-        write_config(path, &user)?;
+        write_back_migration(path, &user);
     }
 
     let mut merged = merge(default_config(), &user);
     for &(key, cast, fallback) in COERCIONS_BEFORE_GEAR {
-        coerce(&mut merged, key, cast, fallback)?;
+        coerce(&mut merged, key, cast, fallback);
     }
     // Every gear key, validated against the lists the dropdowns are built from.
+    sanitise_gear_overflow(&mut merged);
     let gear = gear_report::settings_from_config(&merged)?;
     merged.insert("gear_report_mode".into(), PyValue::Str(gear.mode));
     merged.insert(
@@ -840,7 +872,7 @@ fn configurator_body(path: &Path) -> Result<PyDict, Corrupt> {
     merged.insert("gear_tone_scale".into(), PyValue::Str(gear.scale));
     set_float(&mut merged, "gear_tone_level_dbfs", gear.level_db);
     for &(key, cast, fallback) in COERCIONS_AFTER_GEAR {
-        coerce(&mut merged, key, cast, fallback)?;
+        coerce(&mut merged, key, cast, fallback);
     }
 
     validate_ai(&mut merged);
@@ -875,13 +907,11 @@ fn configurator_body(path: &Path) -> Result<PyDict, Corrupt> {
     let v = py_clamp(float_at(&merged, "scanner_base_freq_hz"), 100.0, 8000.0);
     set_float(&mut merged, "scanner_base_freq_hz", v);
     // Offset is in octaves, quantised to whole semitones (1/12 oct), clamped to
-    // [0.5, 2.0]. round() raises on NaN and infinity.
-    let scaled = float_at(&merged, "scanner_pitch_offset_oct") * 12.0;
-    if scaled.is_nan() {
-        return Err(PyExc::ValueError.into());
-    }
-    if scaled.is_infinite() {
-        return Err(PyExc::OverflowError.into());
+    // [0.5, 2.0]. Python's round() raises on NaN and infinity, which took the
+    // corruption path; departure (python-bugs.md 1): the key falls back to its default.
+    let mut scaled = float_at(&merged, "scanner_pitch_offset_oct") * 12.0;
+    if !scaled.is_finite() {
+        scaled = 12.0;
     }
     let semis = scaled.round_ties_even();
     let semis = if semis < 24.0 { semis } else { 24.0 };

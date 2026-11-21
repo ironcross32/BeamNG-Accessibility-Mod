@@ -225,7 +225,7 @@ Type is the JSON type the backend writes to disk:
 | `cannon_shot_readout` | bool | |
 | `binding_learn_speak_description` | bool | |
 | `follow_default_audio_device` | bool | |
-| `preferred_device_name` | string | Fixed Output Device (the selected entry's text) |
+| `preferred_device_name` | string | Fixed Output Device: the selected device's name; a saved device that is not connected stays listed and selected; `""` for the "(no WASAPI devices found)" placeholder (python-bugs.md 23) |
 | `audio_poll_interval_sec` | float | |
 | `mcp_server_enabled` | bool | |
 | `mcp_server_port` | int | |
@@ -237,8 +237,8 @@ panel.
 **The panel snapshot (`ConfigPanel.cur_cfg`).** The backend keeps one config dict for the
 Configuration panel. `config_load` sets it to `load_config()`. `config_reset` replaces it
 with a copy of `DEFAULT_CONFIG`. A successful `config_save_panel` replaces it with what was
-written. Keys the panel does not own are written from this snapshot, which is why a reset
-returns them to their defaults as well (see `config_reset`).
+written. Keys the panel does not own are written from a fresh read of the file, not from
+this snapshot, so a reset leaves them alone (see `config_reset`; python-bugs.md 25).
 
 #### `config_load`
 
@@ -292,9 +292,11 @@ The backend does, in this order (`_auto_save` plus the rest of `controls_to_conf
 1. `cfg = panel_snapshot.copy()`, then `cfg[k] = args[k]` for every key.
 2. `cfg["scanner_base_freq_hz"] = float(...)`.
 3. `cfg["scanner_pitch_offset_oct"] = round(v * 12.0) / 12.0`, with **round half to even**.
-4. Inside one try that ignores every error (steps 4 and 5 only): `disk = load_config()`.
-   For each `k` in `ai_describer.all_config_keys()` that is in `disk`, set `cfg[k] = disk[k]`.
-5. If `"pending_update_version"` is in `disk`, set `cfg["pending_update_version"] = disk[...]`.
+4. `disk = load_config()`, ignoring any error (then this step is skipped). For each `k` in
+   `disk` that is **not** one of the 79 panel keys, set `cfg[k] = disk[k]`.
+   **Departure** (python-bugs.md 25): the Python re-read only the AI Describer keys and
+   `pending_update_version` here and wrote every other foreign key from the snapshot.
+5. (Folded into step 4.)
 6. `_write_config(CONFIG_PATH, cfg)` (atomic). On success the snapshot becomes `cfg`.
 
 #### `config_reset`
@@ -305,10 +307,11 @@ Sets the panel snapshot to a copy of `DEFAULT_CONFIG` and returns `{ "values": {
 built from it exactly as `config_load` builds them. **Writes nothing.** The frontend fills
 the controls, refreshes the voices (selecting by the default `speech_voice_name`, `""`)
 and the devices, re-applies every show/hide rule, and starts the two-second save. When that
-save runs, every key the panel does not own is written from `DEFAULT_CONFIG`, except the AI
-Describer keys and `pending_update_version`, which steps 4 and 5 re-read from disk. So
-**Reset to Defaults preserves only the AI Describer settings and the pending update flag;
-everything else returns to `DEFAULT_CONFIG`**, `route_beacon_volume_db` included.
+save runs, the 79 panel keys are written from the reset controls and every other key is
+re-read from disk by step 4. So **Reset to Defaults resets exactly the settings on this
+tab**; `route_beacon_volume_db`, the AI Describer settings, the pending update flag and
+unknown keys keep their values. (The Python reset every foreign key but the AI Describer
+keys and `pending_update_version`: python-bugs.md 25.)
 
 #### `speech_list_backends`
 

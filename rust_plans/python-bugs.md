@@ -6,7 +6,17 @@ reproducing it or be hardened. **Rust now** says what the Rust does today.
 
 Legend: R = reproduced as in Python; H = already hardened in Rust (a departure).
 
-Decided by the user: 30, 66 and 67 fixed in the Rust (2026-11-21). The Python is sunsetted:
+Decided by the user: 30, 66 and 67 fixed in the Rust (2026-11-21). Every bug that loses
+configuration data is fixed in the Rust (user, 2026-11-21): 1, 2, 23, 24, 25.
+
+Keep-or-fix pass (user, 2026-11-21), to fix in the Rust:
+- Every listener/thread killer: 3-9, 33, 34, 37, 39, 44, 48-51, 53, 63, 64 (catch, log,
+  carry on).
+- Every wrong readout: 29, 31, 32, 41, 46, 52, 56, 57, 58.
+- Input: 42 and 55. **54 stays** (loose F9 modifier checks: people may rely on them).
+- Minor: 14, 15, 19, 20, 62.
+- Everything else not already H stays as Python: 16, 17, 18, 21, 27, 28, 35, 36, 38, 40,
+  43, 45, 47, 54, 59, 60, 65. The Python is sunsetted:
 no fixes go there. The rest are R or H as
 listed, pending the user's keep-or-fix pass.
 
@@ -14,8 +24,8 @@ listed, pending the user's keep-or-fix pass.
 
 | # | Where | What happens | Rust now |
 |---|---|---|---|
-| 1 | both `load_config` | A value that overflows a number conversion (`1e400`, `Infinity`, a huge int in an int or volume key, `scanner_pitch_offset_oct` NaN/inf) is not caught by the per-key fallback; the whole file is treated as corrupt, renamed to the backup and replaced with defaults | R |
-| 2 | both `load_config` | A failed migration write-back (locked file after retries) takes the same corruption path and renames a good config | R |
+| 1 | both `load_config` | A value that overflows a number conversion (`1e400`, `Infinity`, a huge int in an int or volume key, `scanner_pitch_offset_oct` NaN/inf) is not caught by the per-key fallback; the whole file is treated as corrupt, renamed to the backup and replaced with defaults | **H** (user, 2026-11-21): that key falls back to its default; only unparseable JSON or a non-object root is corruption. The engine loader also defaults an overflowing gear octave/level, which every later `settings_from_config` raised on. `config_fixtures` lists the departing cases (`is_overflow_departure`) |
+| 2 | both `load_config` | A failed migration write-back (locked file after retries) takes the same corruption path and renames a good config | **H** (user, 2026-11-21): logged; the migrated config is used in memory and the next load retries the write. `config_fixtures` `failed_migration_write_keeps_the_config` |
 
 ## One bad packet or socket error silences a feature until restart
 
@@ -48,9 +58,9 @@ listed, pending the user's keep-or-fix pass.
 | 20 | config loaders | `mcp_server_port` never range-checked | R |
 | 21 | `extra_args_for` | A truthy non-string OpenAI base URL crashes the describer | R |
 | 22 | Configuration panel | A gear root such as "Bb" or "c" passes validation and then crashes the wx panel on load | H: HTML selects the first entry |
-| 23 | Configuration panel | With no WASAPI devices, "(no WASAPI devices found)" is saved as the preferred device name | R |
-| 24 | AI Describer panel | Switching provider while a key validates saves the key under the new provider | R |
-| 25 | Reset to Defaults | The next save rewrites keys the panel does not own from defaults | R |
+| 23 | Configuration panel | With no WASAPI devices, "(no WASAPI devices found)" is saved as the preferred device name. Also (same cause): a saved device that is unplugged when the panel opens is replaced by the first device on the next save | **H** (user, 2026-11-21): the device's value is saved, not the label; a saved device that is absent stays listed as "<name> (not connected)" and selected; the placeholder saves `""`. `config-panel.js` `fillDevices` |
+| 24 | AI Describer panel | Switching provider while a key validates saves the key under the new provider | **H** (user, 2026-11-21): the provider choice is disabled while a key validates |
+| 25 | Reset to Defaults | The next save rewrites keys the panel does not own from defaults | **H** (user, 2026-11-21): every key the panel does not own is re-read from disk on each save; CONTRACT.md `config_save_panel` step 4. `tests/panel.rs` `save_after_reset_keeps_keys_the_panel_does_not_own` |
 | 26 | `speech` test backend | Context can be shut down while the test backend is alive | H: context kept alive until last backend drops |
 | 27 | hill climb | A second `race_complete` replaces the timer without cancelling; the stale one fires. `list_reports(0)` returns one. A summary that is valid JSON but not an object aborts the finish | R |
 | 28 | recorders | `RoadDiagnosticRecorder.stop` can leave a truncated summary; `AssistantDiagnosticRecorder.review` raises on a non-object line | R (Rust summary writes are all-or-nothing) |

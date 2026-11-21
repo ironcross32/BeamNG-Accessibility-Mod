@@ -250,14 +250,6 @@ export function createMockBackend() {
     };
   }
 
-  function aiKeys() {
-    const keys = ["ai_describer_provider", "ai_describer_disable_ui_toggle"];
-    for (const p of UI_CHOICES.ai_providers) {
-      keys.push(p.key_cfg, p.model_cfg, ...p.extras.map((ex) => ex.key));
-    }
-    return keys;
-  }
-
   async function messageBox({ title, text, buttons }) {
     await sleep(0);
     if (buttons === "yes_no") return window.confirm(`${title}\n\n${text}`) ? "yes" : "no";
@@ -312,8 +304,8 @@ export function createMockBackend() {
       const cfg = { ...structuredClone(panelSnapshot), ...v };
       cfg.scanner_base_freq_hz = Number(cfg.scanner_base_freq_hz);
       cfg.scanner_pitch_offset_oct = Math.round(cfg.scanner_pitch_offset_oct * 12) / 12;
-      for (const k of aiKeys()) if (k in config) cfg[k] = config[k];
-      cfg.pending_update_version = config.pending_update_version;
+      // Every key the panel does not own comes from the file (python-bugs.md 25).
+      for (const k of Object.keys(config)) if (!(k in v)) cfg[k] = config[k];
       config = cfg;
       panelSnapshot = structuredClone(cfg);
       console.info("[mock] config_save_panel wrote", cfg);

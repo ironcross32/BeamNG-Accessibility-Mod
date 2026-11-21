@@ -10,7 +10,7 @@ use std::path::Path;
 
 use beam_base::config;
 use beam_base::pyval::{PyDict, PyValue, from_json, to_json};
-use beam_base::{ai_registry, gear_report, hrtf_sets};
+use beam_base::{gear_report, hrtf_sets};
 use serde_json::{Map, Value, json};
 
 /// The JSON type each owned key is written as.
@@ -249,13 +249,16 @@ pub fn build_saved_config(snapshot: &PyDict, args: &Map<String, Value>, disk: Op
         );
     }
     if let Some(disk) = disk {
-        for k in ai_registry::all_config_keys() {
-            if let Some(v) = disk.get(k) {
-                cfg.insert(k.to_string(), v.clone());
+        // Departure (python-bugs.md 25): wx re-read only the AI keys and
+        // pending_update_version, and took everything else from the snapshot. After
+        // Reset to Defaults the snapshot is DEFAULT_CONFIG, so the next save rewrote every
+        // key this panel has no control for (route_beacon_volume_db, keys another version
+        // added) from defaults or dropped it. Every key this panel does not own now comes
+        // from the file, which also keeps whatever another writer changed meanwhile.
+        for (k, v) in disk {
+            if !PANEL_KEYS.iter().any(|(pk, _)| pk == k) {
+                cfg.insert(k.clone(), v.clone());
             }
-        }
-        if let Some(v) = disk.get("pending_update_version") {
-            cfg.insert("pending_update_version".into(), v.clone());
         }
     }
     cfg

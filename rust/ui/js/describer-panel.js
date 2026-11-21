@@ -250,6 +250,10 @@ async function setApiKey() {
   if (!key) return;
 
   el.btn_api_key.disabled = true;
+  // Departure (python-bugs.md 24): wx left the provider choice live, and a switch during
+  // validation saved the key under the new provider, overwriting that provider's key.
+  // The key belongs to the provider it was entered for, so the choice waits.
+  el.choice_provider.disabled = true;
   el.lbl_key_status.textContent = "Validating API key...";
 
   const p = provider;
@@ -271,9 +275,10 @@ async function setApiKey() {
 /** _on_validated. Focus goes back to the button so its new label is announced. */
 async function onValidated(key, ok, err) {
   el.btn_api_key.disabled = false;
+  el.choice_provider.disabled = false;
   el.btn_api_key.focus();
   if (ok) {
-    // Saved under the provider active NOW, as wx did (self._provider at callback time).
+    // The provider cannot change while validating, so this is the one it was entered for.
     await save("set", key);
     refreshKeyButton();
     await messageBox("API Key", "API key validated and saved.", "info");

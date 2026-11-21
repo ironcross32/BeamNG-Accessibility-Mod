@@ -152,6 +152,12 @@ fn load_config_matches_python() {
         let locked = case["locked"].as_bool().unwrap();
         for loader in ["engine", "configurator"] {
             let got = run(loader, input.as_deref(), locked);
+            if is_overflow_departure(name, loader) {
+                if let Err(why) = check_overflow_departure(name, &got) {
+                    failures.push(format!("{name} [{loader}] (departure): {why}\n  got:  {got}"));
+                }
+                continue;
+            }
             if got != case[loader] {
                 failures.push(format!(
                     "{name} [{loader}]\n  got:  {got}\n  want: {}",
@@ -172,6 +178,101 @@ fn load_config_matches_python() {
             .collect::<Vec<_>>()
             .join("\n")
     );
+}
+
+/// Cases where the Rust departs from the fixture on purpose (python-bugs.md 1): the
+/// Python sent an overflowing or non-finite value down the corruption path, renaming the
+/// user's config to the backup and writing defaults. The Rust falls back for that one
+/// key. The engine half of `gear_tone_octave = inf` is here too: the Python engine
+/// handed the inf through raw, and every later `settings_from_config` raised on it.
+fn is_overflow_departure(name: &str, loader: &str) -> bool {
+    const BOTH: &[&str] = &["gear_tone_octave = variant 27 (inf)"];
+    const CONFIGURATOR: &[&str] = &[
+        "overflowing float literal",
+        "all keys = variant 36 ('inf')",
+        "all keys = variant 37 ('nan')",
+        "all keys = variant 38 ('-inf')",
+        "all keys = variant 39 ('1e400')",
+        "speech_rate = variant 27 (inf)",
+        "speech_volume = variant 27 (inf)",
+        "compass_click_interval = variant 27 (inf)",
+        "compass_highlight_nth_click = variant 27 (inf)",
+        "speed_announce_interval = variant 27 (inf)",
+        "scanner_distance_callout_interval = variant 27 (inf)",
+        "scanner_pitch_offset_oct = variant 26 (nan)",
+        "scanner_pitch_offset_oct = variant 27 (inf)",
+        "mcp_server_port = variant 27 (inf)",
+    ];
+    BOTH.contains(&name) || (loader == "configurator" && CONFIGURATOR.contains(&name))
+}
+
+/// No backup file, the config loaded, and a single-key case got that key's default.
+fn check_overflow_departure(name: &str, got: &Value) -> Result<(), String> {
+    if got["result"].get("err").is_some() {
+        return Err("load failed".into());
+    }
+    let files = got["files"].as_object().unwrap();
+    if files.len() != 1 || !files.contains_key("beamtel_config.json") {
+        return Err(format!("expected only the config file, found {:?}", files.keys()));
+    }
+    if let Some((key, _)) = name.split_once(" = variant ")
+        && !name.starts_with("all keys")
+        && got["result"]["diff"].get(key).is_some()
+    {
+        return Err(format!("{key} did not fall back to its default"));
+    }
+    Ok(())
+}
+
+/// Hold the config open with read sharing only: reads succeed, the rename onto it fails
+/// with a sharing violation, as when another process has it open mid-read.
+fn hold_for_reading(path: &Path) -> fs::File {
+    fs::OpenOptions::new()
+        .read(true)
+        .share_mode(1) // FILE_SHARE_READ
+        .open(path)
+        .expect("hold")
+}
+
+/// python-bugs.md 2: a migration whose write-back fails must not take the corruption
+/// path. The Python renamed the good config to the backup and wrote defaults.
+#[test]
+fn failed_migration_write_keeps_the_config() {
+    let cases: [(&str, &[u8]); 2] = [
+        ("engine", br#"{"announce_gear": true, "units": "metric", "speech_rate": 70}"#),
+        (
+            "configurator",
+            br#"{"ai_describer_api_key": "sk-plain", "units": "metric", "speech_rate": 70}"#,
+        ),
+    ];
+    for (loader, input) in cases {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("beamtel_config.json");
+        fs::write(&path, input).expect("write input");
+        let hold = hold_for_reading(&path);
+        let result = match loader {
+            "engine" => load_config_engine_at(&path),
+            _ => load_config_configurator_at(&path),
+        };
+        drop(hold);
+        let cfg = result.unwrap_or_else(|e| panic!("{loader}: load failed: {e}"));
+        assert_eq!(cfg["units"].py_str(), "metric", "{loader}: settings lost");
+        assert_eq!(cfg["speech_rate"].py_str(), "70", "{loader}: settings lost");
+        let names: Vec<String> = fs::read_dir(dir.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, ["beamtel_config.json"], "{loader}: backup or temp file left");
+        assert_eq!(fs::read(&path).unwrap(), input, "{loader}: config rewritten");
+        // With the file free again, the next load completes the migration.
+        let cfg = match loader {
+            "engine" => load_config_engine_at(&path),
+            _ => load_config_configurator_at(&path),
+        }
+        .unwrap();
+        assert_eq!(cfg["units"].py_str(), "metric");
+        assert_ne!(fs::read(&path).unwrap(), input, "{loader}: migration not retried");
+    }
 }
 
 /// The blob secretstore.py sealed when the fixture was generated.

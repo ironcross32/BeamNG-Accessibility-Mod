@@ -7,7 +7,7 @@
 // config_save_panel).
 
 import {
-  $, fillSelect, itemsOf, selectedValue, selectedLabel, selectValue, findString,
+  $, fillSelect, itemsOf, selectedValue, selectedLabel, selectValue, indexOfValue,
   enable, setRow, initSpin, setSpin, getSpin, serialQueue,
 } from "./util.js";
 import { invoke, messageBox } from "./backend.js";
@@ -105,6 +105,7 @@ let loading = false; // _loading
 let saveTimer = null; // _save_timer
 let curVoiceName = ""; // cur_cfg["speech_voice_name"]
 let voices = []; // self.voices
+let deviceNames = []; // the WASAPI output devices last listed
 let backends = []; // self._backends
 let voiceRequest = 0; // drops a stale voice listing if the backend changed meanwhile
 const enqueue = serialQueue();
@@ -247,18 +248,29 @@ async function onChangeBackend() {
 // Audio device
 // ---------------------------------------------------------------------------
 
+/**
+ * Fill the device list and select `want`. Departure (python-bugs.md 23): wx saved the
+ * selected label, so with no devices the placeholder "(no WASAPI devices found)" became
+ * the preferred device, and a saved device that was merely unplugged was replaced by the
+ * first one listed on the next save. A saved name that is not present now stays in the
+ * list, marked, and selected; the placeholder's value is "".
+ */
+function fillDevices(want) {
+  const items = deviceNames.map((nm) => ({ value: nm, label: nm }));
+  if (want && !deviceNames.includes(want)) {
+    items.push({ value: want, label: `${want} (not connected)` });
+  }
+  if (!items.length) items.push({ value: "", label: "(no WASAPI devices found)" });
+  fillSelect(el.choice_device, items);
+  const idx = indexOfValue(el.choice_device, want);
+  el.choice_device.selectedIndex = idx >= 0 ? idx : 0;
+}
+
 /** on_refresh_devices */
 async function refreshDevices() {
-  const names = await invoke("audio_list_devices");
-  const prev = selectedLabel(el.choice_device);
-  if (names.length) {
-    fillSelect(el.choice_device, names.map((nm) => ({ value: nm, label: nm })));
-    const idx = findString(el.choice_device, prev);
-    el.choice_device.selectedIndex = idx >= 0 ? idx : 0;
-  } else {
-    fillSelect(el.choice_device, [{ value: "", label: "(no WASAPI devices found)" }]);
-    el.choice_device.selectedIndex = 0;
-  }
+  const prev = selectedValue(el.choice_device);
+  deviceNames = await invoke("audio_list_devices");
+  fillDevices(prev === undefined ? "" : prev);
 }
 
 // ---------------------------------------------------------------------------
@@ -386,10 +398,8 @@ function loadIntoControls(loaded) {
     for (const [key, id] of SELECTS) selectValue(el[id], v[key]);
     updateSpeedIntervalLabels();
     selectValue(el.choice_speed_interval, v.speed_announce_interval);
-    // Select the saved fixed device, if present.
-    const want = String(v.preferred_device_name || "").trim();
-    const idx = findString(el.choice_device, want);
-    el.choice_device.selectedIndex = idx >= 0 ? idx : 0;
+    // Select the saved fixed device, kept in the list even when it is not connected.
+    fillDevices(String(v.preferred_device_name || "").trim());
   } finally {
     loading = false;
   }
@@ -416,7 +426,7 @@ function controlsToValues() {
     const sel = el.choice_speed_interval.selectedIndex;
     out.speed_announce_interval = sel >= 0 && sel < items.length ? items[sel].value : 25;
   }
-  out.preferred_device_name = selectedLabel(el.choice_device);
+  out.preferred_device_name = selectedValue(el.choice_device) ?? "";
   out.speech_voice_name =
     el.choice_voice.selectedIndex >= 0 && voices.length ? selectedLabel(el.choice_voice) : "";
   return out;

@@ -52,8 +52,7 @@ fn load_normalises_like_load_into_controls() {
 
 #[test]
 fn save_coerces_and_keeps_foreign_keys() {
-    let mut snap = defaults();
-    snap.insert("route_beacon_volume_db".into(), PyValue::Float(-3.0));
+    let snap = defaults();
     let mut args = Map::new();
     args.insert("shift_tone_frequency_hz".into(), json!(880));
     args.insert("speech_rate".into(), json!(60));
@@ -63,6 +62,7 @@ fn save_coerces_and_keeps_foreign_keys() {
     let mut disk = defaults();
     disk.insert("ai_describer_provider".into(), "openai".into());
     disk.insert("pending_update_version".into(), "9.9.9".into());
+    disk.insert("route_beacon_volume_db".into(), PyValue::Float(-3.0));
     let cfg = build_saved_config(&snap, &args, Some(&disk));
     assert_eq!(cfg["shift_tone_frequency_hz"], PyValue::Float(880.0));
     assert_eq!(cfg["speech_rate"], PyValue::from(60i64));
@@ -72,6 +72,29 @@ fn save_coerces_and_keeps_foreign_keys() {
     assert_eq!(cfg["route_beacon_volume_db"], PyValue::Float(-3.0));
     assert_eq!(cfg["ai_describer_provider"], PyValue::from("openai"));
     assert_eq!(cfg["pending_update_version"], PyValue::from("9.9.9"));
+}
+
+/// python-bugs.md 25: after Reset to Defaults the snapshot is DEFAULT_CONFIG. The save
+/// that follows resets the panel's own keys and nothing else: a key the panel has no
+/// control for keeps its value on disk, and an unknown key survives.
+#[test]
+fn save_after_reset_keeps_keys_the_panel_does_not_own() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("beamtel_config.json");
+    std::fs::write(
+        &path,
+        r#"{"route_beacon_volume_db": -3.0, "units": "metric", "from_a_newer_build": [1, 2]}"#,
+    )
+    .unwrap();
+    let mut snap = defaults(); // config_reset
+    let values = control_values(&snap).unwrap();
+    let args = values["values"].as_object().unwrap().clone();
+    let r = save_panel_at(&path, &mut snap, &args);
+    assert_eq!(r, json!({"ok": true}));
+    let back = config::load_config_configurator_at(&path).unwrap();
+    assert_eq!(back["units"], PyValue::from("imperial"), "the panel's own key resets");
+    assert_eq!(back["route_beacon_volume_db"], PyValue::Float(-3.0));
+    assert!(back.contains_key("from_a_newer_build"));
 }
 
 #[test]

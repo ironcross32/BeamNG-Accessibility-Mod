@@ -6,7 +6,10 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-21, with the commit fixing Python bug 30 in the Rust.
+2026-11-21, with the commit fixing the configuration data-loss bugs (1, 2, 23, 24, 25)
+in the Rust. The user's keep-or-fix pass over `python-bugs.md` is done and recorded at
+the top of that file; the fixes it lists are being worked through, one commit per group
+(listener crashers, wrong readouts, input 42/55, minor 14/15/19/20/62).
 
 ## Done so far
 
