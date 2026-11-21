@@ -79,4 +79,4 @@ answers to the same inputs. Two fixtures were added, both driving the real modul
 
 ## Open
 
-The decisions on bugs 64-66, 66 above all.
+The decisions on bugs 64 and 65. **66 is fixed in the Rust** (user, 2026-11-21): `origin_allowed` requires the host exactly; `tests/mcp_origin.rs` and `mcp_server_sim` 10b/c.

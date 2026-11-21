@@ -6,7 +6,7 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-21, with the V1 updater audit commit (V1 complete).
+2026-11-21, with the commit fixing Python bugs 66 and 67 in the Rust.
 
 ## Done so far
 
@@ -107,11 +107,11 @@ differences fixed (spin tie rounding in `util.js`, non-string MCP `speak`).
 
 **Next, with the user:**
 
-1. **Keep-or-fix decisions over `python-bugs.md`** (67 entries). Two are recommended
-   for fixing: **66**, the MCP origin guard's prefix match (security: DNS rebinding can
-   reach `lua_exec` when the server is enabled), and **67**, updates that can never
-   apply for a non-ASCII Windows user name. Bug 30 (steering never reaches the
-   obstacle detector) was already waiting. 62-65 are new and minor or dormant.
+1. **Keep-or-fix decisions over `python-bugs.md`** (67 entries). **66** (the MCP origin
+   guard's prefix match) and **67** (updates that could never apply for a non-ASCII
+   Windows user name) are **fixed in the Rust** (user, 2026-11-21); whether to fix them
+   in the shipping Python too was asked. Bug 30 (steering never reaches the obstacle
+   detector) was already waiting. 62-65 are new and minor or dormant.
 2. Then R1 (packaging: the HRTF `.npz` sets and their licence notice beside the exe,
    the mod zip; not `prism.dll`, since speech is moving to Prismer) and D1 (docs still
    describe the Python build, including the admin requirement).

@@ -987,12 +987,27 @@ fn quiet_remove(path: &Path) {
 /// confuse it and a slow or failing `tasklist` cannot lie to it. A timeout abandons the
 /// update without touching the live exe or its `.appdata` onefile cache. Every step after
 /// the copy is logged and verified, because `start` reports almost nothing.
+///
+/// **Deliberate difference from the Python (python-bugs.md 67):** the three paths come
+/// from the environment ([`helper_env`], set on the `cmd` process by
+/// [`spawn_helper_process`]) instead of being written into the file. The Python wrote
+/// them in and encoded the file as ASCII, so a non-ASCII user name (the update folder is
+/// under the profile) raised UnicodeEncodeError after the launch had been denied, and the
+/// update could never apply. Environment variables are Unicode and `cmd` expands them as
+/// such, whatever code page it reads the file in; a `%` in a path is no longer re-read
+/// either. The file stays pure ASCII. Everything else is the Python's template.
 pub const HELPER_TEMPLATE: &str = r##"@echo off
 setlocal
 set "PID=@PID@"
-set "PROG=@PROG@"
-set "STAGED=@STAGED@"
-set "LOGFILE=@LOG@"
+rem The three paths arrive in the environment, not in this file: a path can hold any
+rem character (a non-ASCII user name, a percent sign), and a batch file is read in the
+rem console code page. Cleared at once so the restarted program does not inherit them.
+set "PROG=%BEAM_UPDATE_PROG%"
+set "STAGED=%BEAM_UPDATE_STAGED%"
+set "LOGFILE=%BEAM_UPDATE_LOG%"
+set "BEAM_UPDATE_PROG="
+set "BEAM_UPDATE_STAGED="
+set "BEAM_UPDATE_LOG="
 set "SYS=%SystemRoot%\System32"
 set "EXE=%PROG%\beamtel.exe"
 
@@ -1074,13 +1089,23 @@ echo [%DATE% %TIME%] helper finished>> "%LOGFILE%"
 (goto) 2>nul & del "%~f0"
 "##;
 
-/// The helper's text with the placeholders filled, in the Python's replacement order.
-pub fn helper_body(pid: u32, prog: &str, staged: &str, log: &str) -> String {
-    HELPER_TEMPLATE
-        .replace("@PID@", &pid.to_string())
-        .replace("@PROG@", prog)
-        .replace("@STAGED@", staged)
-        .replace("@LOG@", log)
+/// The helper's text: the template with the process id filled in. The paths are not in
+/// the text (see [`HELPER_TEMPLATE`]), so the body is always ASCII.
+pub fn helper_body(pid: u32) -> String {
+    HELPER_TEMPLATE.replace("@PID@", &pid.to_string())
+}
+
+/// The environment the helper reads its paths from: the values the Python wrote into the
+/// file (`abspath(prog)`, `abspath(staged_dir)`, `join(update_dir, HELPER_LOG)`).
+pub fn helper_env(prog: &Path, staged_dir: &Path, update_dir: &Path) -> Vec<(String, String)> {
+    vec![
+        ("BEAM_UPDATE_PROG".to_string(), abspath(prog)),
+        ("BEAM_UPDATE_STAGED".to_string(), abspath(staged_dir)),
+        (
+            "BEAM_UPDATE_LOG".to_string(),
+            update_dir.join(HELPER_LOG).to_string_lossy().into_owned(),
+        ),
+    ]
 }
 
 /// The bytes `open(path, "w", encoding="ascii", newline="\r\n").write(body)` leaves on
@@ -1130,22 +1155,13 @@ pub enum WriteHelperError {
     Other(String),
 }
 
-/// `write_helper(staged_dir, prog, update_dir)`: write `apply_update.cmd` and return its path.
-pub fn write_helper(
-    staged_dir: &Path,
-    prog: &Path,
-    update_dir: &Path,
-    pid: u32,
-) -> Result<PathBuf, WriteHelperError> {
+/// `write_helper(staged_dir, prog, update_dir)`: write `apply_update.cmd` and return its
+/// path. The paths go to the helper through [`helper_env`], not the file.
+pub fn write_helper(update_dir: &Path, pid: u32) -> Result<PathBuf, WriteHelperError> {
     fs::create_dir_all(update_dir)
         .map_err(|e| WriteHelperError::Os(pyos::win(&e, Some(update_dir), None)))?;
     let path = update_dir.join(HELPER_NAME);
-    let body = helper_body(
-        pid,
-        &abspath(prog),
-        &abspath(staged_dir),
-        &update_dir.join(HELPER_LOG).to_string_lossy(),
-    );
+    let body = helper_body(pid);
     // open() truncates before the encoder runs, so a non-ASCII body leaves an empty file.
     let mut f =
         fs::File::create(&path).map_err(|e| WriteHelperError::Os(pyos::errno(&e, Some(&path))))?;
@@ -1207,6 +1223,8 @@ pub struct HelperLaunch {
     pub command_line: String,
     pub cwd: PathBuf,
     pub creation_flags: u32,
+    /// Added to the inherited environment: the helper's paths ([`helper_env`]).
+    pub env: Vec<(String, String)>,
 }
 
 /// The real launch: no window, a new process group, every standard handle on NUL (the app
@@ -1225,6 +1243,7 @@ pub fn spawn_helper_process(launch: &HelperLaunch) -> io::Result<()> {
         cmd.args(&launch.args);
     }
     cmd.current_dir(&launch.cwd)
+        .envs(launch.env.iter().map(|(k, v)| (k.as_str(), v.as_str())))
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
@@ -1247,6 +1266,7 @@ pub fn helper_launch(env: &UpdaterEnv, helper: &Path) -> HelperLaunch {
         args: vec!["/d".into(), "/c".into(), helper_s],
         cwd: env.update_dir.clone(),
         creation_flags: CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP,
+        env: Vec::new(),
     }
 }
 
@@ -1259,15 +1279,20 @@ pub fn helper_launch(env: &UpdaterEnv, helper: &Path) -> HelperLaunch {
 /// (the v0.1.5 helper's children opened visible windows that way). A new process group
 /// keeps it outside console-control events aimed at beamtel; an ordinary child process
 /// already outlives its parent on Windows.
+///
+/// **Deliberate difference (python-bugs.md 67):** any failure to write the helper is
+/// reported like the others, so the caller clears the pending flag, shows the message and
+/// allows the launch. The Python let a non-OSError escape the whole flow after the launch
+/// had been denied.
 pub fn apply_and_restart(env: &UpdaterEnv, staged_dir: &Path) -> Result<Option<String>, String> {
-    let helper = match write_helper(staged_dir, &env.program_dir, &env.update_dir, env.pid) {
+    let helper = match write_helper(&env.update_dir, env.pid) {
         Ok(p) => p,
-        Err(WriteHelperError::Os(e)) => {
+        Err(WriteHelperError::Os(e) | WriteHelperError::Other(e)) => {
             return Ok(Some(format!("Could not write the update helper: {e}")));
         }
-        Err(WriteHelperError::Other(e)) => return Err(e),
     };
-    let launch = helper_launch(env, &helper);
+    let mut launch = helper_launch(env, &helper);
+    launch.env = helper_env(&env.program_dir, staged_dir, &env.update_dir);
     if let Err(e) = (env.spawn_helper)(&launch) {
         return Ok(Some(format!(
             "Could not start the update helper: {}",

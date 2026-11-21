@@ -511,31 +511,89 @@ fn download_matches_python() {
 // The helper
 // ---------------------------------------------------------------------------
 
-#[test]
-fn helper_template_is_byte_identical() {
-    let h = &fixture()["helper"];
-    let body = updater::helper_body(
-        4242,
-        r"C:\Program Files\BEAM",
-        r"C:\Users\x\AppData\Local\beamtel\update\staged",
-        r"C:\Users\x\AppData\Local\beamtel\update\apply_update.log",
-    );
-    assert_eq!(body, h["template_body"].as_str().unwrap());
+/// The one deliberate change to the Python's helper (python-bugs.md 67): its three
+/// `set` lines with the paths written in become these, reading the environment.
+const ENV_PATHS_BLOCK: [&str; 9] = [
+    "rem The three paths arrive in the environment, not in this file: a path can hold any",
+    "rem character (a non-ASCII user name, a percent sign), and a batch file is read in the",
+    "rem console code page. Cleared at once so the restarted program does not inherit them.",
+    r#"set "PROG=%BEAM_UPDATE_PROG%""#,
+    r#"set "STAGED=%BEAM_UPDATE_STAGED%""#,
+    r#"set "LOGFILE=%BEAM_UPDATE_LOG%""#,
+    r#"set "BEAM_UPDATE_PROG=""#,
+    r#"set "BEAM_UPDATE_STAGED=""#,
+    r#"set "BEAM_UPDATE_LOG=""#,
+];
+
+/// The Python's helper text with its path lines replaced by [`ENV_PATHS_BLOCK`]; the
+/// rest must match byte for byte.
+fn with_env_paths(python: &str) -> String {
+    let nl = if python.contains("\r\n") { "\r\n" } else { "\n" };
+    let re = regex::Regex::new(
+        r#"set "PROG=[^"\r\n]*"\r?\nset "STAGED=[^"\r\n]*"\r?\nset "LOGFILE=[^"\r\n]*""#,
+    )
+    .unwrap();
+    assert!(re.is_match(python), "the Python helper's path lines moved");
+    re.replace(python, regex::NoExpand(&ENV_PATHS_BLOCK.join(nl)))
+        .into_owned()
 }
 
 #[test]
-fn write_helper_writes_python_bytes() {
+fn helper_template_is_the_python_one_but_for_the_paths() {
+    let h = &fixture()["helper"];
+    let body = updater::helper_body(4242);
+    assert_eq!(body, with_env_paths(h["template_body"].as_str().unwrap()));
+    assert!(body.is_ascii());
+}
+
+#[test]
+fn write_helper_writes_python_bytes_but_for_the_paths() {
     let h = &fixture()["helper"]["written"];
     let t = tempdir();
     let root = root_str(&t);
-    let prog = t.path().join("Program Files").join("BEAM");
     let update_dir = t.path().join("update");
-    let staged = update_dir.join("staged");
-    let path = updater::write_helper(&staged, &prog, &update_dir, 4242).unwrap();
+    let path = updater::write_helper(&update_dir, 4242).unwrap();
     assert_eq!(scrub(&path.to_string_lossy(), &root), h["path"].as_str().unwrap());
     let bytes = std::fs::read(&path).unwrap();
     let text = String::from_utf8(bytes).unwrap();
-    assert_eq!(scrub(&text, &root), h["bytes"].as_str().unwrap());
+    assert_eq!(
+        scrub(&text, &root),
+        with_env_paths(h["bytes"].as_str().unwrap())
+    );
+}
+
+/// python-bugs.md 67: a non-ASCII (or percent-sign) path used to make the helper
+/// unwritable after the launch had been denied. Now the file is ASCII and the paths reach
+/// the helper intact through its environment.
+#[test]
+fn non_ascii_paths_reach_the_helper() {
+    let t = tempdir();
+    let base = t.path().join("Zoë 漢字 50%");
+    std::fs::create_dir_all(&base).unwrap();
+    let mut te = test_env(&base, HashMap::new(), false, false);
+    te.env.program_dir = base.join("prøg");
+    let staged = te.env.update_dir.join("staged");
+    let out = updater::apply_and_restart(&te.env, &staged).unwrap();
+    assert_eq!(out, None);
+    let text = std::fs::read(te.env.update_dir.join(updater::HELPER_NAME)).unwrap();
+    assert!(text.is_ascii(), "the helper file is ASCII");
+    let launches = te.launches.lock();
+    assert_eq!(launches.len(), 1);
+    let env: HashMap<&str, &str> = launches[0]
+        .env
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect();
+    assert_eq!(
+        env["BEAM_UPDATE_PROG"],
+        std::path::absolute(&te.env.program_dir).unwrap().to_string_lossy()
+    );
+    assert_eq!(
+        env["BEAM_UPDATE_STAGED"],
+        std::path::absolute(&staged).unwrap().to_string_lossy()
+    );
+    assert!(env["BEAM_UPDATE_LOG"].ends_with(r"update\apply_update.log"));
+    assert!(env["BEAM_UPDATE_LOG"].contains("Zoë 漢字 50%"));
 }
 
 #[test]
@@ -754,7 +812,11 @@ fn startup_flow_matches_python() {
         } else {
             Value::Null
         };
-        assert_eq!(helper, case["helper"], "helper file, flow {name}");
+        let want_helper = match case["helper"].as_str() {
+            Some(text) => Value::String(with_env_paths(text)),
+            None => Value::Null,
+        };
+        assert_eq!(helper, want_helper, "helper file, flow {name}");
         assert_eq!(tree(&te.env.staged_dir), case["staged_tree"], "staged, flow {name}");
         assert_eq!(
             Value::Bool(te.env.update_dir.join(updater::ASSET_NAME).is_file()),

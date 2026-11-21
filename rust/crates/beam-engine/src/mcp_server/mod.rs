@@ -1016,11 +1016,31 @@ fn origin_ok(headers: &HeaderMap) -> bool {
     let Some(origin) = headers.get(header::ORIGIN) else {
         return true;
     };
-    let origin = String::from_utf8_lossy(origin.as_bytes());
+    origin_allowed(&String::from_utf8_lossy(origin.as_bytes()))
+}
+
+/// `_origin_ok` for one `Origin` value: none (empty) is allowed, as from a non-browser
+/// client; otherwise it must be exactly `http://127.0.0.1` or `http://localhost`, with an
+/// optional numeric port and nothing after it.
+///
+/// **Deliberate difference (python-bugs.md 66):** the Python accepted any origin that
+/// merely began with one of those, so `http://localhost.example.com` or
+/// `http://127.0.0.1.nip.io` passed, and a page served from such a name and rebound to
+/// 127.0.0.1 could call every tool, `lua_exec` included.
+#[doc(hidden)]
+pub fn origin_allowed(origin: &str) -> bool {
     if origin.is_empty() {
         return true;
     }
-    origin.starts_with("http://127.0.0.1") || origin.starts_with("http://localhost")
+    let Some(rest) = origin.strip_prefix("http://") else {
+        return false;
+    };
+    let (host, port) = match rest.split_once(':') {
+        Some((h, p)) => (h, Some(p)),
+        None => (rest, None),
+    };
+    let port_ok = port.is_none_or(|p| !p.is_empty() && p.len() <= 5 && p.bytes().all(|b| b.is_ascii_digit()));
+    port_ok && (host == "127.0.0.1" || host.eq_ignore_ascii_case("localhost"))
 }
 
 fn with_type(mut resp: Response, content_type: &'static str) -> Response {

@@ -51,4 +51,4 @@ E10's report was lost, so this audit also recorded the Python bugs E10 had found
 
 ## Open
 
-The decision on bug 67.
+None. **67 is fixed in the Rust** (user, 2026-11-21): the helper reads its paths from the environment, verified with a real `cmd` on a `Zoë 漢字 50%` folder; `e10_updater` `non_ascii_paths_reach_the_helper`.

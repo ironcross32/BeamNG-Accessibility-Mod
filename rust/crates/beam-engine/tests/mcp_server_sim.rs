@@ -485,6 +485,23 @@ fn mcp_server_over_http() {
         v.to_string(),
     );
 
+    // ---- 10b. the DNS-rebinding guard (python-bugs.md 66): a look-alike origin is
+    // refused over real HTTP, the loopback one still answered.
+    let with_origin = |origin: &str| {
+        let r = http
+            .agent
+            .post(format!("{}/mcp", http.base))
+            .header("Content-Type", "application/json")
+            .header("Origin", origin)
+            .send(json!({"jsonrpc": "2.0", "id": 12, "method": "ping"}).to_string())
+            .unwrap();
+        r.status().as_u16()
+    };
+    let s = with_origin("http://localhost.example.com");
+    check("10b a look-alike origin is refused", s == 403, s.to_string());
+    let s = with_origin("http://127.0.0.1:4481");
+    check("10c the loopback origin is answered", s == 200, s.to_string());
+
     // ---- 11. console tap correlation
     let ge = PyJson::from("ge");
     let feeder = std::thread::spawn(|| {
