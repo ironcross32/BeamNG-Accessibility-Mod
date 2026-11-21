@@ -54,6 +54,11 @@ local TRAILER_ANGLE_SIGN = 1.0
 local udpSend = nil
 local tickAcc = 0
 local lastSentDeg = nil      -- the last angle put on the wire, or nil if CLEAR was last sent
+-- A CLEAR is owed whenever this side cannot know what Python last heard: after a load or reload
+-- of this extension, a world load, or climbing into another vehicle. Resetting lastSentDeg to nil
+-- alone is not enough there -- nil means "CLEAR was last sent", so sendClear would stay silent
+-- and Python would hold the previous vehicle's angle until its stale timer ran out.
+local clearOwed = true
 local lastSendT = 0
 local sinceT = 0             -- accumulated real time, for the heartbeat
 local lastGoodFwd = {}       -- vehID -> last non-degenerate FLATTENED forward vector
@@ -115,14 +120,49 @@ end
 -- survives the save/load case the hook cannot see. Pairs are unordered -- the engine fires from
 -- whichever vehicle has the lower id -- so both slots are tested. freeformDelivery/goals.lua
 -- reads it the same way.
+--
+-- The list can go STALE, and an entry is only believed while its two coupler nodes are
+-- actually together. Replacing a vehicle keeps its object id and records no detach: a WL-40
+-- latched to a dry van's ramp, swapped for a Civetta, left {civetta id, trailer id} in the list
+-- with the trailer 723 m away, and the jackknife tone played on a car with nothing behind it,
+-- surviving every reload on both sides because the game itself kept asserting the pair. A real
+-- coupling holds the nodes within centimetres; COUPLER_MAX_GAP_M is generous for a fifth wheel's
+-- play, and a stale pair is typically hundreds of metres out. The game's list is left alone --
+-- other systems read it, and it is not this extension's to edit.
+local COUPLER_MAX_GAP_M = 2.0
+local staleLogged = {}        -- "id1:id2" -> true, so a stale pair is logged once, not 20 Hz
+
+local function couplerGap(c)
+  local ok, gap = pcall(function()
+    local a, b = be:getObjectByID(c[1]), be:getObjectByID(c[2])
+    if not a or not b or not c[3] or not c[4] then return nil end
+    if c[3] >= a:getNodeCount() or c[4] >= b:getNodeCount() then return nil end
+    local pa = a:getPosition() + a:getNodePosition(c[3])
+    local pb = b:getPosition() + b:getNodePosition(c[4])
+    return (pa - pb):length()
+  end)
+  if ok then return gap end
+  return nil
+end
+
 local function partnersFromCouplers(playerID)
   local out = {}
   local ok = pcall(function()
     if not core_vehicles or not core_vehicles.attachedCouplers then return end
     for _, c in ipairs(core_vehicles.attachedCouplers) do
-      if type(c) == "table" then
-        if c[1] == playerID and c[2] then out[#out + 1] = c[2]
-        elseif c[2] == playerID and c[1] then out[#out + 1] = c[1] end
+      if type(c) == "table" and (c[1] == playerID or c[2] == playerID) then
+        local partner = (c[1] == playerID) and c[2] or c[1]
+        local gap = couplerGap(c)
+        if partner and gap and gap <= COUPLER_MAX_GAP_M then
+          out[#out + 1] = partner
+        else
+          local key = tostring(c[1]) .. ":" .. tostring(c[2])
+          if not staleLogged[key] then
+            staleLogged[key] = true
+            taLog('I', string.format("ignoring stale coupler pair %s (node gap %s)", key,
+              gap and string.format("%.1f m", gap) or "unknown"))
+          end
+        end
       end
     end
   end)
@@ -214,10 +254,11 @@ end
 -- timeout alone -- a timeout is the failure path, and a tone that stays on because the failure
 -- path was the only way to turn it off is the worst outcome this feature has.
 local function sendClear()
-  if lastSentDeg ~= nil then
+  if lastSentDeg ~= nil or clearOwed then
     send("TRAILER:CLEAR")
     lastSentDeg = nil
     lastSendT = 0
+    clearOwed = false
   end
 end
 
@@ -249,6 +290,7 @@ local function tick()
   local tname = tveh and nameOf(tveh) or "trailer"
   send(string.format("TRAILER:%.2f,%d,%s", deg, trailerID, tname))
   lastSentDeg = deg
+  clearOwed = false
   lastSendT = sinceT
 end
 
@@ -269,6 +311,7 @@ end
 function M.onExtensionLoaded()
   setExtensionUnloadMode(M, "manual")
   setupSockets()
+  clearOwed = true
   taLog('I', "Trailer angle tracker loaded.")
 end
 
@@ -279,6 +322,7 @@ end
 function M.onWorldReadyState(state)
   if state == 2 then
     lastSentDeg = nil
+    clearOwed = true
     lastSendT = 0
     tickAcc = 0
     lastGoodFwd = {}
@@ -303,6 +347,7 @@ end
 function M.onVehicleSwitched(oldId, newId, player)
   if player == nil or player == 0 then
     lastSentDeg = nil
+    clearOwed = true
     lastSendT = 0
   end
 end

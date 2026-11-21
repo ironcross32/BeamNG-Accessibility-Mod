@@ -338,6 +338,51 @@ do
 end
 print()
 
+print("8. a stale coupler pair is ignored, and a CLEAR is owed after every reset of state")
+do
+  -- Replacing a vehicle keeps its object id and records no detach, so the game's own pair list
+  -- went on asserting {civetta, trailer} with the trailer 723 m away, and the tone never stopped.
+  local body = slurp(SRC)
+  local codeOnly = {}
+  for line in (body .. "\n"):gmatch("(.-)\n") do
+    if not line:match("^%s*%-%-") then codeOnly[#codeOnly + 1] = line end
+  end
+  codeOnly = table.concat(codeOnly, "\n")
+
+  local maxGap = tonumber(body:match("local%s+COUPLER_MAX_GAP_M%s*=%s*([%d%.]+)"))
+  check("a coupler gap limit exists", maxGap ~= nil, "COUPLER_MAX_GAP_M")
+  check("...generous for a fifth wheel's play, far under any stale pair",
+    maxGap ~= nil and maxGap >= 0.5 and maxGap <= 5.0, tostring(maxGap) .. " m")
+  check("pairs are judged by their coupler NODES, not the vehicles' origins",
+    codeOnly:find("getNodePosition(c[3])", 1, true) ~= nil
+      and codeOnly:find("getNodePosition(c[4])", 1, true) ~= nil,
+    "c[3] is a node on c[1], c[4] a node on c[2]; a long trailer's origin is metres from its kingpin")
+  check("a node id past the vehicle's node count is treated as stale, not looked up",
+    codeOnly:find("getNodeCount()", 1, true) ~= nil,
+    "a replaced vehicle may not have that node at all")
+  local partnersFn = codeOnly:match("local function partnersFromCouplers.-\nend")
+  check("partnersFromCouplers applies the limit",
+    partnersFn ~= nil and partnersFn:find("COUPLER_MAX_GAP_M", 1, true) ~= nil, "")
+
+  -- The filter itself, modelled: the live case, a tight coupling, and an unknown gap.
+  local function keep(gap) return gap ~= nil and gap <= (maxGap or 0) end
+  check("the observed stale pair (716.4 m) is dropped", not keep(716.4), "")
+  check("a coupled kingpin (0.05 m) is kept", keep(0.05), "")
+  check("an unmeasurable gap is dropped, not trusted", not keep(nil), "")
+
+  local clearFn = codeOnly:match("local function sendClear.-\nend")
+  check("sendClear honours an owed CLEAR even when nothing was sent",
+    clearFn ~= nil and clearFn:find("clearOwed", 1, true) ~= nil,
+    "nil lastSentDeg means 'CLEAR was last sent', so a reset alone silenced it")
+  for _, hook in ipairs({"onExtensionLoaded", "onWorldReadyState", "onVehicleSwitched"}) do
+    local fn = codeOnly:match("function M%." .. hook .. ".-\nend")
+    check(hook .. " owes a CLEAR",
+      fn ~= nil and fn:find("clearOwed = true", 1, true) ~= nil,
+      "Python cannot otherwise learn the previous vehicle's trailer is gone")
+  end
+end
+print()
+
 if #failures > 0 then
   print(string.format("%d CHECK(S) FAILED:", #failures))
   for _, f in ipairs(failures) do print("  - " .. f) end
