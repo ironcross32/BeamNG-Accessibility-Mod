@@ -1,0 +1,2024 @@
+{
+ "cases": [
+  {
+   "config": {
+    "ai_describer_api_key": "",
+    "ai_describer_disable_ui_toggle": false,
+    "ai_describer_model": "models/gemini-3-flash-preview",
+    "ai_describer_openai_api_key": "",
+    "ai_describer_openai_base_url": "https://api.openai.com/v1",
+    "ai_describer_openai_detail": "auto",
+    "ai_describer_openai_model": "gpt-5.6-terra",
+    "ai_describer_openai_reasoning_effort": "low",
+    "ai_describer_provider": "gemini",
+    "announce_clickspot_actions": false,
+    "announce_speed": true,
+    "announce_turn_signals": true,
+    "audio_poll_interval_sec": {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    "beamng_renderer": "d3d",
+    "binding_learn_speak_description": false,
+    "cannon_shot_readout": true,
+    "check_engine_buzzer_level_dbfs": {
+     "bits": 13846317054350589952,
+     "repr": "-12.0"
+    },
+    "compass_click_interval": 15,
+    "compass_click_level_dbfs": {
+     "bits": 13841813454723219456,
+     "repr": "-6.0"
+    },
+    "compass_highlight_enabled": true,
+    "compass_highlight_nth_click": 6,
+    "dock_tone_dbfs": {
+     "bits": 13849131804117696512,
+     "repr": "-18.0"
+    },
+    "dock_tones_enabled": true,
+    "drift_speech_enabled": true,
+    "follow_default_audio_device": true,
+    "gear_report_mode": "speech",
+    "gear_speech_number_style": "ordinal",
+    "gear_speech_sport_once": false,
+    "gear_tone_level_dbfs": {
+     "bits": 13837309855095848960,
+     "repr": "-3.0"
+    },
+    "gear_tone_octave": 4,
+    "gear_tone_root": "C",
+    "gear_tone_scale": "major",
+    "hrtf_distance_gain_db": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "hrtf_elevation_deg": {
+     "bits": 13837309855095848960,
+     "repr": "-3.0"
+    },
+    "hrtf_enabled": true,
+    "hrtf_equalise": true,
+    "hrtf_front_emphasis_db": {
+     "bits": 13841813454723219456,
+     "repr": "-6.0"
+    },
+    "hrtf_set": "mit_kemar",
+    "implement_ground_tone_dbfs": {
+     "bits": 13849554016582762496,
+     "repr": "-19.5"
+    },
+    "implement_proximity_speech": true,
+    "implement_tilt_tone_dbfs": {
+     "bits": 13849694754071117824,
+     "repr": "-20.0"
+    },
+    "implement_tones_enabled": true,
+    "launch_beamng": false,
+    "lowspeed_click_level_dbfs": {
+     "bits": 13847442954257432576,
+     "repr": "-14.0"
+    },
+    "lowspeed_stop_tone_level_dbfs": {
+     "bits": 13848568854164275200,
+     "repr": "-16.0"
+    },
+    "mcp_server_enabled": false,
+    "mcp_server_port": 4481,
+    "obstacle_buzz_volume_db": {
+     "bits": 13849131804117696512,
+     "repr": "-18.0"
+    },
+    "obstacle_warning_sensitivity": "normal",
+    "oil_chime_enabled": true,
+    "oil_chime_level_dbfs": {
+     "bits": 13846317054350589952,
+     "repr": "-12.0"
+    },
+    "pending_update_version": "",
+    "pitch_roll_max_dbfs": {
+     "bits": 13850820653977960448,
+     "repr": "-24.0"
+    },
+    "pitch_roll_min_dbfs": {
+     "bits": 13853635403745067008,
+     "repr": "-36.0"
+    },
+    "pitch_roll_tones_enabled": true,
+    "placement_ping_volume_db": {
+     "bits": 13846317054350589952,
+     "repr": "-12.0"
+    },
+    "preferred_device_name": "",
+    "road_beep_volume_db": {
+     "bits": 13847442954257432576,
+     "repr": "-14.0"
+    },
+    "road_correction_volume_db": {
+     "bits": 13850820653977960448,
+     "repr": "-24.0"
+    },
+    "road_follow_guidance_enabled": true,
+    "road_include_private": false,
+    "road_junction_earcon_enabled": true,
+    "road_junction_proximity_enabled": true,
+    "road_junction_speech_enabled": true,
+    "road_junction_volume_db": {
+     "bits": 13847442954257432576,
+     "repr": "-14.0"
+    },
+    "road_speed_limit_speech_enabled": true,
+    "road_stop_sign_speech_enabled": true,
+    "road_surface_speech_enabled": true,
+    "road_traffic_light_speech_enabled": true,
+    "route_beacon_volume_db": {
+     "bits": 13848568854164275200,
+     "repr": "-16.0"
+    },
+    "scan_tone_dbfs": {
+     "bits": 13849694754071117824,
+     "repr": "-20.0"
+    },
+    "scan_tones_enabled": true,
+    "scanner_base_freq_hz": {
+     "bits": 4652007308841189376,
+     "repr": "1000.0"
+    },
+    "scanner_distance_callout_enabled": false,
+    "scanner_distance_callout_interval": 10,
+    "scanner_pitch_offset_oct": {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    "scanner_steer_tone_enabled": true,
+    "shift_tone_frequency_hz": {
+     "bits": 4650951777678524416,
+     "repr": "880.0"
+    },
+    "shift_tone_level_dbfs": {
+     "bits": 13846317054350589952,
+     "repr": "-12.0"
+    },
+    "slip_tone_level_dbfs": {
+     "bits": 13849131804117696512,
+     "repr": "-18.0"
+    },
+    "speech_backend": "auto",
+    "speech_rate": 50,
+    "speech_voice_name": "",
+    "speech_volume": 100,
+    "speed_announce_interval": 25,
+    "tc_clicks_enabled": true,
+    "telemetry_protocol": "extended",
+    "ui_nav_hold_suppression": true,
+    "units": "imperial",
+    "update_check_enabled": true
+   },
+   "name": "defaults",
+   "saved": {
+    "announce_clickspot_actions": {
+     "bool": false
+    },
+    "announce_speed": {
+     "bool": true
+    },
+    "announce_turn_signals": {
+     "bool": true
+    },
+    "audio_poll_interval_sec": {
+     "float": {
+      "bits": 4611686018427387904,
+      "repr": "2.0"
+     }
+    },
+    "beamng_renderer": {
+     "str": "d3d"
+    },
+    "binding_learn_speak_description": {
+     "bool": false
+    },
+    "cannon_shot_readout": {
+     "bool": true
+    },
+    "check_engine_buzzer_level_dbfs": {
+     "float": {
+      "bits": 13846317054350589952,
+      "repr": "-12.0"
+     }
+    },
+    "compass_click_interval": {
+     "int": 15
+    },
+    "compass_click_level_dbfs": {
+     "float": {
+      "bits": 13841813454723219456,
+      "repr": "-6.0"
+     }
+    },
+    "compass_highlight_enabled": {
+     "bool": true
+    },
+    "compass_highlight_nth_click": {
+     "int": 6
+    },
+    "dock_tone_dbfs": {
+     "float": {
+      "bits": 13849131804117696512,
+      "repr": "-18.0"
+     }
+    },
+    "dock_tones_enabled": {
+     "bool": true
+    },
+    "drift_speech_enabled": {
+     "bool": true
+    },
+    "follow_default_audio_device": {
+     "bool": true
+    },
+    "gear_report_mode": {
+     "str": "speech"
+    },
+    "gear_speech_number_style": {
+     "str": "ordinal"
+    },
+    "gear_speech_sport_once": {
+     "bool": false
+    },
+    "gear_tone_level_dbfs": {
+     "float": {
+      "bits": 13837309855095848960,
+      "repr": "-3.0"
+     }
+    },
+    "gear_tone_octave": {
+     "int": 4
+    },
+    "gear_tone_root": {
+     "str": "C"
+    },
+    "gear_tone_scale": {
+     "str": "major"
+    },
+    "hrtf_distance_gain_db": {
+     "float": {
+      "bits": 0,
+      "repr": "0.0"
+     }
+    },
+    "hrtf_elevation_deg": {
+     "float": {
+      "bits": 13837309855095848960,
+      "repr": "-3.0"
+     }
+    },
+    "hrtf_enabled": {
+     "bool": true
+    },
+    "hrtf_equalise": {
+     "bool": true
+    },
+    "hrtf_front_emphasis_db": {
+     "float": {
+      "bits": 13841813454723219456,
+      "repr": "-6.0"
+     }
+    },
+    "hrtf_set": {
+     "str": "mit_kemar"
+    },
+    "implement_ground_tone_dbfs": {
+     "float": {
+      "bits": 13849554016582762496,
+      "repr": "-19.5"
+     }
+    },
+    "implement_proximity_speech": {
+     "bool": true
+    },
+    "implement_tilt_tone_dbfs": {
+     "float": {
+      "bits": 13849694754071117824,
+      "repr": "-20.0"
+     }
+    },
+    "implement_tones_enabled": {
+     "bool": true
+    },
+    "launch_beamng": {
+     "bool": false
+    },
+    "lowspeed_click_level_dbfs": {
+     "float": {
+      "bits": 13847442954257432576,
+      "repr": "-14.0"
+     }
+    },
+    "lowspeed_stop_tone_level_dbfs": {
+     "float": {
+      "bits": 13848568854164275200,
+      "repr": "-16.0"
+     }
+    },
+    "mcp_server_enabled": {
+     "bool": false
+    },
+    "mcp_server_port": {
+     "int": 4481
+    },
+    "obstacle_buzz_volume_db": {
+     "float": {
+      "bits": 13849131804117696512,
+      "repr": "-18.0"
+     }
+    },
+    "obstacle_warning_sensitivity": {
+     "str": "normal"
+    },
+    "oil_chime_enabled": {
+     "bool": true
+    },
+    "oil_chime_level_dbfs": {
+     "float": {
+      "bits": 13846317054350589952,
+      "repr": "-12.0"
+     }
+    },
+    "pitch_roll_max_dbfs": {
+     "float": {
+      "bits": 13850820653977960448,
+      "repr": "-24.0"
+     }
+    },
+    "pitch_roll_min_dbfs": {
+     "float": {
+      "bits": 13853635403745067008,
+      "repr": "-36.0"
+     }
+    },
+    "pitch_roll_tones_enabled": {
+     "bool": true
+    },
+    "placement_ping_volume_db": {
+     "float": {
+      "bits": 13846317054350589952,
+      "repr": "-12.0"
+     }
+    },
+    "road_beep_volume_db": {
+     "float": {
+      "bits": 13847442954257432576,
+      "repr": "-14.0"
+     }
+    },
+    "road_correction_volume_db": {
+     "float": {
+      "bits": 13850820653977960448,
+      "repr": "-24.0"
+     }
+    },
+    "road_follow_guidance_enabled": {
+     "bool": true
+    },
+    "road_include_private": {
+     "bool": false
+    },
+    "road_junction_earcon_enabled": {
+     "bool": true
+    },
+    "road_junction_proximity_enabled": {
+     "bool": true
+    },
+    "road_junction_speech_enabled": {
+     "bool": true
+    },
+    "road_junction_volume_db": {
+     "float": {
+      "bits": 13847442954257432576,
+      "repr": "-14.0"
+     }
+    },
+    "road_speed_limit_speech_enabled": {
+     "bool": true
+    },
+    "road_stop_sign_speech_enabled": {
+     "bool": true
+    },
+    "road_surface_speech_enabled": {
+     "bool": true
+    },
+    "road_traffic_light_speech_enabled": {
+     "bool": true
+    },
+    "scan_tone_dbfs": {
+     "float": {
+      "bits": 13849694754071117824,
+      "repr": "-20.0"
+     }
+    },
+    "scan_tones_enabled": {
+     "bool": true
+    },
+    "scanner_base_freq_hz": {
+     "float": {
+      "bits": 4652007308841189376,
+      "repr": "1000.0"
+     }
+    },
+    "scanner_distance_callout_enabled": {
+     "bool": false
+    },
+    "scanner_distance_callout_interval": {
+     "int": 10
+    },
+    "scanner_pitch_offset_oct": {
+     "float": {
+      "bits": 4607182418800017408,
+      "repr": "1.0"
+     }
+    },
+    "scanner_steer_tone_enabled": {
+     "bool": true
+    },
+    "shift_tone_frequency_hz": {
+     "float": {
+      "bits": 4650951777678524416,
+      "repr": "880.0"
+     }
+    },
+    "shift_tone_level_dbfs": {
+     "float": {
+      "bits": 13846317054350589952,
+      "repr": "-12.0"
+     }
+    },
+    "slip_tone_level_dbfs": {
+     "float": {
+      "bits": 13849131804117696512,
+      "repr": "-18.0"
+     }
+    },
+    "speech_rate": {
+     "int": 50
+    },
+    "speech_volume": {
+     "int": 100
+    },
+    "speed_announce_interval": {
+     "int": 25
+    },
+    "tc_clicks_enabled": {
+     "bool": true
+    },
+    "telemetry_protocol": {
+     "str": "extended"
+    },
+    "ui_nav_hold_suppression": {
+     "bool": true
+    },
+    "units": {
+     "str": "imperial"
+    },
+    "update_check_enabled": {
+     "bool": true
+    }
+   }
+  },
+  {
+   "config": {
+    "ai_describer_api_key": "",
+    "ai_describer_disable_ui_toggle": false,
+    "ai_describer_model": "models/gemini-3-flash-preview",
+    "ai_describer_openai_api_key": "",
+    "ai_describer_openai_base_url": "https://api.openai.com/v1",
+    "ai_describer_openai_detail": "auto",
+    "ai_describer_openai_model": "gpt-5.6-terra",
+    "ai_describer_openai_reasoning_effort": "low",
+    "ai_describer_provider": "gemini",
+    "announce_clickspot_actions": false,
+    "announce_speed": true,
+    "announce_turn_signals": true,
+    "audio_poll_interval_sec": {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    "beamng_renderer": "Vulkan",
+    "binding_learn_speak_description": false,
+    "cannon_shot_readout": true,
+    "check_engine_buzzer_level_dbfs": {
+     "bits": 13846317054350589952,
+     "repr": "-12.0"
+    },
+    "compass_click_interval": 15,
+    "compass_click_level_dbfs": {
+     "bits": 13841813454723219456,
+     "repr": "-6.0"
+    },
+    "compass_highlight_enabled": true,
+    "compass_highlight_nth_click": 6,
+    "dock_tone_dbfs": {
+     "bits": 13849131804117696512,
+     "repr": "-18.0"
+    },
+    "dock_tones_enabled": true,
+    "drift_speech_enabled": true,
+    "follow_default_audio_device": true,
+    "gear_report_mode": "speech",
+    "gear_speech_number_style": "ordinal",
+    "gear_speech_sport_once": false,
+    "gear_tone_level_dbfs": {
+     "bits": 13837309855095848960,
+     "repr": "-3.0"
+    },
+    "gear_tone_octave": 4,
+    "gear_tone_root": "C",
+    "gear_tone_scale": "major",
+    "hrtf_distance_gain_db": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "hrtf_elevation_deg": {
+     "bits": 13837309855095848960,
+     "repr": "-3.0"
+    },
+    "hrtf_enabled": true,
+    "hrtf_equalise": true,
+    "hrtf_front_emphasis_db": {
+     "bits": 13841813454723219456,
+     "repr": "-6.0"
+    },
+    "hrtf_set": "nope",
+    "implement_ground_tone_dbfs": {
+     "bits": 13849554016582762496,
+     "repr": "-19.5"
+    },
+    "implement_proximity_speech": true,
+    "implement_tilt_tone_dbfs": {
+     "bits": 13849694754071117824,
+     "repr": "-20.0"
+    },
+    "implement_tones_enabled": true,
+    "launch_beamng": false,
+    "lowspeed_click_level_dbfs": {
+     "bits": 13847442954257432576,
+     "repr": "-14.0"
+    },
+    "lowspeed_stop_tone_level_dbfs": {
+     "bits": 13848568854164275200,
+     "repr": "-16.0"
+    },
+    "mcp_server_enabled": false,
+    "mcp_server_port": 4481,
+    "obstacle_buzz_volume_db": {
+     "bits": 13849131804117696512,
+     "repr": "-18.0"
+    },
+    "obstacle_warning_sensitivity": "weird",
+    "oil_chime_enabled": true,
+    "oil_chime_level_dbfs": {
+     "bits": 13846317054350589952,
+     "repr": "-12.0"
+    },
+    "pending_update_version": "",
+    "pitch_roll_max_dbfs": {
+     "bits": 13850820653977960448,
+     "repr": "-24.0"
+    },
+    "pitch_roll_min_dbfs": {
+     "bits": 13853635403745067008,
+     "repr": "-36.0"
+    },
+    "pitch_roll_tones_enabled": true,
+    "placement_ping_volume_db": {
+     "bits": 13846317054350589952,
+     "repr": "-12.0"
+    },
+    "preferred_device_name": "",
+    "road_beep_volume_db": {
+     "bits": 13847442954257432576,
+     "repr": "-14.0"
+    },
+    "road_correction_volume_db": {
+     "bits": 13850820653977960448,
+     "repr": "-24.0"
+    },
+    "road_follow_guidance_enabled": true,
+    "road_include_private": false,
+    "road_junction_earcon_enabled": true,
+    "road_junction_proximity_enabled": true,
+    "road_junction_speech_enabled": true,
+    "road_junction_volume_db": {
+     "bits": 13847442954257432576,
+     "repr": "-14.0"
+    },
+    "road_speed_limit_speech_enabled": true,
+    "road_stop_sign_speech_enabled": true,
+    "road_surface_speech_enabled": true,
+    "road_traffic_light_speech_enabled": true,
+    "route_beacon_volume_db": {
+     "bits": 13848568854164275200,
+     "repr": "-16.0"
+    },
+    "scan_tone_dbfs": {
+     "bits": 13849694754071117824,
+     "repr": "-20.0"
+    },
+    "scan_tones_enabled": true,
+    "scanner_base_freq_hz": {
+     "bits": 4652029299073744896,
+     "repr": "1002.5"
+    },
+    "scanner_distance_callout_enabled": false,
+    "scanner_distance_callout_interval": {
+     "bits": 4629137466983448576,
+     "repr": "30.0"
+    },
+    "scanner_pitch_offset_oct": {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    "scanner_steer_tone_enabled": true,
+    "shift_tone_frequency_hz": {
+     "bits": 4650951777678524416,
+     "repr": "880.0"
+    },
+    "shift_tone_level_dbfs": {
+     "bits": 13846317054350589952,
+     "repr": "-12.0"
+    },
+    "slip_tone_level_dbfs": {
+     "bits": 13849131804117696512,
+     "repr": "-18.0"
+    },
+    "speech_backend": "auto",
+    "speech_rate": 50,
+    "speech_voice_name": "",
+    "speech_volume": 100,
+    "speed_announce_interval": 33,
+    "tc_clicks_enabled": true,
+    "telemetry_protocol": "OUTGAUGE",
+    "ui_nav_hold_suppression": true,
+    "units": "Metric",
+    "update_check_enabled": true
+   },
+   "name": "normalised",
+   "saved": {
+    "announce_clickspot_actions": {
+     "bool": false
+    },
+    "announce_speed": {
+     "bool": true
+    },
+    "announce_turn_signals": {
+     "bool": true
+    },
+    "audio_poll_interval_sec": {
+     "float": {
+      "bits": 4611686018427387904,
+      "repr": "2.0"
+     }
+    },
+    "beamng_renderer": {
+     "str": "vulkan"
+    },
+    "binding_learn_speak_description": {
+     "bool": false
+    },
+    "cannon_shot_readout": {
+     "bool": true
+    },
+    "check_engine_buzzer_level_dbfs": {
+     "float": {
+      "bits": 13846317054350589952,
+      "repr": "-12.0"
+     }
+    },
+    "compass_click_interval": {
+     "int": 15
+    },
+    "compass_click_level_dbfs": {
+     "float": {
+      "bits": 13841813454723219456,
+      "repr": "-6.0"
+     }
+    },
+    "compass_highlight_enabled": {
+     "bool": true
+    },
+    "compass_highlight_nth_click": {
+     "int": 6
+    },
+    "dock_tone_dbfs": {
+     "float": {
+      "bits": 13849131804117696512,
+      "repr": "-18.0"
+     }
+    },
+    "dock_tones_enabled": {
+     "bool": true
+    },
+    "drift_speech_enabled": {
+     "bool": true
+    },
+    "follow_default_audio_device": {
+     "bool": true
+    },
+    "gear_report_mode": {
+     "str": "speech"
+    },
+    "gear_speech_number_style": {
+     "str": "ordinal"
+    },
+    "gear_speech_sport_once": {
+     "bool": false
+    },
+    "gear_tone_level_dbfs": {
+     "float": {
+      "bits": 13837309855095848960,
+      "repr": "-3.0"
+     }
+    },
+    "gear_tone_octave": {
+     "int": 4
+    },
+    "gear_tone_root": {
+     "str": "C"
+    },
+    "gear_tone_scale": {
+     "str": "major"
+    },
+    "hrtf_distance_gain_db": {
+     "float": {
+      "bits": 0,
+      "repr": "0.0"
+     }
+    },
+    "hrtf_elevation_deg": {
+     "float": {
+      "bits": 13837309855095848960,
+      "repr": "-3.0"
+     }
+    },
+    "hrtf_enabled": {
+     "bool": true
+    },
+    "hrtf_equalise": {
+     "bool": true
+    },
+    "hrtf_front_emphasis_db": {
+     "float": {
+      "bits": 13841813454723219456,
+      "repr": "-6.0"
+     }
+    },
+    "hrtf_set": {
+     "str": "mit_kemar"
+    },
+    "implement_ground_tone_dbfs": {
+     "float": {
+      "bits": 13849554016582762496,
+      "repr": "-19.5"
+     }
+    },
+    "implement_proximity_speech": {
+     "bool": true
+    },
+    "implement_tilt_tone_dbfs": {
+     "float": {
+      "bits": 13849694754071117824,
+      "repr": "-20.0"
+     }
+    },
+    "implement_tones_enabled": {
+     "bool": true
+    },
+    "launch_beamng": {
+     "bool": false
+    },
+    "lowspeed_click_level_dbfs": {
+     "float": {
+      "bits": 13847442954257432576,
+      "repr": "-14.0"
+     }
+    },
+    "lowspeed_stop_tone_level_dbfs": {
+     "float": {
+      "bits": 13848568854164275200,
+      "repr": "-16.0"
+     }
+    },
+    "mcp_server_enabled": {
+     "bool": false
+    },
+    "mcp_server_port": {
+     "int": 4481
+    },
+    "obstacle_buzz_volume_db": {
+     "float": {
+      "bits": 13849131804117696512,
+      "repr": "-18.0"
+     }
+    },
+    "obstacle_warning_sensitivity": {
+     "str": "normal"
+    },
+    "oil_chime_enabled": {
+     "bool": true
+    },
+    "oil_chime_level_dbfs": {
+     "float": {
+      "bits": 13846317054350589952,
+      "repr": "-12.0"
+     }
+    },
+    "pitch_roll_max_dbfs": {
+     "float": {
+      "bits": 13850820653977960448,
+      "repr": "-24.0"
+     }
+    },
+    "pitch_roll_min_dbfs": {
+     "float": {
+      "bits": 13853635403745067008,
+      "repr": "-36.0"
+     }
+    },
+    "pitch_roll_tones_enabled": {
+     "bool": true
+    },
+    "placement_ping_volume_db": {
+     "float": {
+      "bits": 13846317054350589952,
+      "repr": "-12.0"
+     }
+    },
+    "road_beep_volume_db": {
+     "float": {
+      "bits": 13847442954257432576,
+      "repr": "-14.0"
+     }
+    },
+    "road_correction_volume_db": {
+     "float": {
+      "bits": 13850820653977960448,
+      "repr": "-24.0"
+     }
+    },
+    "road_follow_guidance_enabled": {
+     "bool": true
+    },
+    "road_include_private": {
+     "bool": false
+    },
+    "road_junction_earcon_enabled": {
+     "bool": true
+    },
+    "road_junction_proximity_enabled": {
+     "bool": true
+    },
+    "road_junction_speech_enabled": {
+     "bool": true
+    },
+    "road_junction_volume_db": {
+     "float": {
+      "bits": 13847442954257432576,
+      "repr": "-14.0"
+     }
+    },
+    "road_speed_limit_speech_enabled": {
+     "bool": true
+    },
+    "road_stop_sign_speech_enabled": {
+     "bool": true
+    },
+    "road_surface_speech_enabled": {
+     "bool": true
+    },
+    "road_traffic_light_speech_enabled": {
+     "bool": true
+    },
+    "scan_tone_dbfs": {
+     "float": {
+      "bits": 13849694754071117824,
+      "repr": "-20.0"
+     }
+    },
+    "scan_tones_enabled": {
+     "bool": true
+    },
+    "scanner_base_freq_hz": {
+     "float": {
+      "bits": 4652024901027233792,
+      "repr": "1002.0"
+     }
+    },
+    "scanner_distance_callout_enabled": {
+     "bool": false
+    },
+    "scanner_distance_callout_interval": {
+     "int": 30
+    },
+    "scanner_pitch_offset_oct": {
+     "float": {
+      "bits": 4607182418800017408,
+      "repr": "1.0"
+     }
+    },
+    "scanner_steer_tone_enabled": {
+     "bool": true
+    },
+    "shift_tone_frequency_hz": {
+     "float": {
+      "bits": 4650951777678524416,
+      "repr": "880.0"
+     }
+    },
+    "shift_tone_level_dbfs": {
+     "float": {
+      "bits": 13846317054350589952,
+      "repr": "-12.0"
+     }
+    },
+    "slip_tone_level_dbfs": {
+     "float": {
+      "bits": 13849131804117696512,
+      "repr": "-18.0"
+     }
+    },
+    "speech_rate": {
+     "int": 50
+    },
+    "speech_volume": {
+     "int": 100
+    },
+    "speed_announce_interval": {
+     "int": 25
+    },
+    "tc_clicks_enabled": {
+     "bool": true
+    },
+    "telemetry_protocol": {
+     "str": "outgauge"
+    },
+    "ui_nav_hold_suppression": {
+     "bool": true
+    },
+    "units": {
+     "str": "metric"
+    },
+    "update_check_enabled": {
+     "bool": true
+    }
+   }
+  },
+  {
+   "config": {
+    "ai_describer_api_key": "",
+    "ai_describer_disable_ui_toggle": false,
+    "ai_describer_model": "models/gemini-3-flash-preview",
+    "ai_describer_openai_api_key": "",
+    "ai_describer_openai_base_url": "https://api.openai.com/v1",
+    "ai_describer_openai_detail": "auto",
+    "ai_describer_openai_model": "gpt-5.6-terra",
+    "ai_describer_openai_reasoning_effort": "low",
+    "ai_describer_provider": "gemini",
+    "announce_clickspot_actions": false,
+    "announce_speed": true,
+    "announce_turn_signals": true,
+    "audio_poll_interval_sec": {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    "beamng_renderer": "d3d",
+    "binding_learn_speak_description": false,
+    "cannon_shot_readout": true,
+    "check_engine_buzzer_level_dbfs": {
+     "bits": 13846317054350589952,
+     "repr": "-12.0"
+    },
+    "compass_click_interval": 30,
+    "compass_click_level_dbfs": {
+     "bits": 13841813454723219456,
+     "repr": "-6.0"
+    },
+    "compass_highlight_enabled": true,
+    "compass_highlight_nth_click": 6,
+    "dock_tone_dbfs": {
+     "bits": 13849131804117696512,
+     "repr": "-18.0"
+    },
+    "dock_tones_enabled": true,
+    "drift_speech_enabled": true,
+    "follow_default_audio_device": true,
+    "gear_report_mode": "audio",
+    "gear_speech_number_style": "ordinal",
+    "gear_speech_sport_once": false,
+    "gear_tone_level_dbfs": {
+     "bits": 13849694754071117824,
+     "repr": "-20.0"
+    },
+    "gear_tone_octave": 3,
+    "gear_tone_root": "A#",
+    "gear_tone_scale": "mixolydian",
+    "hrtf_distance_gain_db": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "hrtf_elevation_deg": {
+     "bits": 13846317054350589952,
+     "repr": "-12.0"
+    },
+    "hrtf_enabled": true,
+    "hrtf_equalise": false,
+    "hrtf_front_emphasis_db": {
+     "bits": 13841813454723219456,
+     "repr": "-6.0"
+    },
+    "hrtf_set": "thk_ku100",
+    "implement_ground_tone_dbfs": {
+     "bits": 13849554016582762496,
+     "repr": "-19.5"
+    },
+    "implement_proximity_speech": true,
+    "implement_tilt_tone_dbfs": {
+     "bits": 13849694754071117824,
+     "repr": "-20.0"
+    },
+    "implement_tones_enabled": true,
+    "launch_beamng": true,
+    "lowspeed_click_level_dbfs": {
+     "bits": 13847442954257432576,
+     "repr": "-14.0"
+    },
+    "lowspeed_stop_tone_level_dbfs": {
+     "bits": 13848568854164275200,
+     "repr": "-16.0"
+    },
+    "mcp_server_enabled": true,
+    "mcp_server_port": 4500,
+    "obstacle_buzz_volume_db": {
+     "bits": 13849131804117696512,
+     "repr": "-18.0"
+    },
+    "obstacle_warning_sensitivity": "late",
+    "oil_chime_enabled": true,
+    "oil_chime_level_dbfs": {
+     "bits": 13846317054350589952,
+     "repr": "-12.0"
+    },
+    "pending_update_version": "",
+    "pitch_roll_max_dbfs": {
+     "bits": 13850820653977960448,
+     "repr": "-24.0"
+    },
+    "pitch_roll_min_dbfs": {
+     "bits": 13853635403745067008,
+     "repr": "-36.0"
+    },
+    "pitch_roll_tones_enabled": true,
+    "placement_ping_volume_db": {
+     "bits": 13846317054350589952,
+     "repr": "-12.0"
+    },
+    "preferred_device_name": "",
+    "road_beep_volume_db": {
+     "bits": 13847442954257432576,
+     "repr": "-14.0"
+    },
+    "road_correction_volume_db": {
+     "bits": 13850820653977960448,
+     "repr": "-24.0"
+    },
+    "road_follow_guidance_enabled": true,
+    "road_include_private": true,
+    "road_junction_earcon_enabled": true,
+    "road_junction_proximity_enabled": true,
+    "road_junction_speech_enabled": true,
+    "road_junction_volume_db": {
+     "bits": 13847442954257432576,
+     "repr": "-14.0"
+    },
+    "road_speed_limit_speech_enabled": true,
+    "road_stop_sign_speech_enabled": true,
+    "road_surface_speech_enabled": true,
+    "road_traffic_light_speech_enabled": true,
+    "route_beacon_volume_db": {
+     "bits": 13848568854164275200,
+     "repr": "-16.0"
+    },
+    "scan_tone_dbfs": {
+     "bits": 13849694754071117824,
+     "repr": "-20.0"
+    },
+    "scan_tones_enabled": true,
+    "scanner_base_freq_hz": {
+     "bits": 4652002910794678272,
+     "repr": "999.5"
+    },
+    "scanner_distance_callout_enabled": false,
+    "scanner_distance_callout_interval": 45,
+    "scanner_pitch_offset_oct": {
+     "bits": 4608308318706860032,
+     "repr": "1.25"
+    },
+    "scanner_steer_tone_enabled": true,
+    "shift_tone_frequency_hz": {
+     "bits": 4649016637213638656,
+     "repr": "660.0"
+    },
+    "shift_tone_level_dbfs": {
+     "bits": 13844909679467036672,
+     "repr": "-9.5"
+    },
+    "slip_tone_level_dbfs": {
+     "bits": 13849131804117696512,
+     "repr": "-18.0"
+    },
+    "speech_backend": "auto",
+    "speech_rate": 73,
+    "speech_voice_name": "",
+    "speech_volume": 40,
+    "speed_announce_interval": 75,
+    "tc_clicks_enabled": true,
+    "telemetry_protocol": "extended",
+    "ui_nav_hold_suppression": true,
+    "units": "metric",
+    "update_check_enabled": true
+   },
+   "name": "edited",
+   "saved": {
+    "announce_clickspot_actions": {
+     "bool": false
+    },
+    "announce_speed": {
+     "bool": true
+    },
+    "announce_turn_signals": {
+     "bool": true
+    },
+    "audio_poll_interval_sec": {
+     "float": {
+      "bits": 4611686018427387904,
+      "repr": "2.0"
+     }
+    },
+    "beamng_renderer": {
+     "str": "d3d"
+    },
+    "binding_learn_speak_description": {
+     "bool": false
+    },
+    "cannon_shot_readout": {
+     "bool": true
+    },
+    "check_engine_buzzer_level_dbfs": {
+     "float": {
+      "bits": 13846317054350589952,
+      "repr": "-12.0"
+     }
+    },
+    "compass_click_interval": {
+     "int": 30
+    },
+    "compass_click_level_dbfs": {
+     "float": {
+      "bits": 13841813454723219456,
+      "repr": "-6.0"
+     }
+    },
+    "compass_highlight_enabled": {
+     "bool": true
+    },
+    "compass_highlight_nth_click": {
+     "int": 6
+    },
+    "dock_tone_dbfs": {
+     "float": {
+      "bits": 13849131804117696512,
+      "repr": "-18.0"
+     }
+    },
+    "dock_tones_enabled": {
+     "bool": true
+    },
+    "drift_speech_enabled": {
+     "bool": true
+    },
+    "follow_default_audio_device": {
+     "bool": true
+    },
+    "gear_report_mode": {
+     "str": "audio"
+    },
+    "gear_speech_number_style": {
+     "str": "ordinal"
+    },
+    "gear_speech_sport_once": {
+     "bool": false
+    },
+    "gear_tone_level_dbfs": {
+     "float": {
+      "bits": 13849694754071117824,
+      "repr": "-20.0"
+     }
+    },
+    "gear_tone_octave": {
+     "int": 3
+    },
+    "gear_tone_root": {
+     "str": "A#"
+    },
+    "gear_tone_scale": {
+     "str": "mixolydian"
+    },
+    "hrtf_distance_gain_db": {
+     "float": {
+      "bits": 0,
+      "repr": "0.0"
+     }
+    },
+    "hrtf_elevation_deg": {
+     "float": {
+      "bits": 13846317054350589952,
+      "repr": "-12.0"
+     }
+    },
+    "hrtf_enabled": {
+     "bool": true
+    },
+    "hrtf_equalise": {
+     "bool": false
+    },
+    "hrtf_front_emphasis_db": {
+     "float": {
+      "bits": 13841813454723219456,
+      "repr": "-6.0"
+     }
+    },
+    "hrtf_set": {
+     "str": "thk_ku100"
+    },
+    "implement_ground_tone_dbfs": {
+     "float": {
+      "bits": 13849554016582762496,
+      "repr": "-19.5"
+     }
+    },
+    "implement_proximity_speech": {
+     "bool": true
+    },
+    "implement_tilt_tone_dbfs": {
+     "float": {
+      "bits": 13849694754071117824,
+      "repr": "-20.0"
+     }
+    },
+    "implement_tones_enabled": {
+     "bool": true
+    },
+    "launch_beamng": {
+     "bool": true
+    },
+    "lowspeed_click_level_dbfs": {
+     "float": {
+      "bits": 13847442954257432576,
+      "repr": "-14.0"
+     }
+    },
+    "lowspeed_stop_tone_level_dbfs": {
+     "float": {
+      "bits": 13848568854164275200,
+      "repr": "-16.0"
+     }
+    },
+    "mcp_server_enabled": {
+     "bool": true
+    },
+    "mcp_server_port": {
+     "int": 4500
+    },
+    "obstacle_buzz_volume_db": {
+     "float": {
+      "bits": 13849131804117696512,
+      "repr": "-18.0"
+     }
+    },
+    "obstacle_warning_sensitivity": {
+     "str": "late"
+    },
+    "oil_chime_enabled": {
+     "bool": true
+    },
+    "oil_chime_level_dbfs": {
+     "float": {
+      "bits": 13846317054350589952,
+      "repr": "-12.0"
+     }
+    },
+    "pitch_roll_max_dbfs": {
+     "float": {
+      "bits": 13850820653977960448,
+      "repr": "-24.0"
+     }
+    },
+    "pitch_roll_min_dbfs": {
+     "float": {
+      "bits": 13853635403745067008,
+      "repr": "-36.0"
+     }
+    },
+    "pitch_roll_tones_enabled": {
+     "bool": true
+    },
+    "placement_ping_volume_db": {
+     "float": {
+      "bits": 13846317054350589952,
+      "repr": "-12.0"
+     }
+    },
+    "road_beep_volume_db": {
+     "float": {
+      "bits": 13847442954257432576,
+      "repr": "-14.0"
+     }
+    },
+    "road_correction_volume_db": {
+     "float": {
+      "bits": 13850820653977960448,
+      "repr": "-24.0"
+     }
+    },
+    "road_follow_guidance_enabled": {
+     "bool": true
+    },
+    "road_include_private": {
+     "bool": true
+    },
+    "road_junction_earcon_enabled": {
+     "bool": true
+    },
+    "road_junction_proximity_enabled": {
+     "bool": true
+    },
+    "road_junction_speech_enabled": {
+     "bool": true
+    },
+    "road_junction_volume_db": {
+     "float": {
+      "bits": 13847442954257432576,
+      "repr": "-14.0"
+     }
+    },
+    "road_speed_limit_speech_enabled": {
+     "bool": true
+    },
+    "road_stop_sign_speech_enabled": {
+     "bool": true
+    },
+    "road_surface_speech_enabled": {
+     "bool": true
+    },
+    "road_traffic_light_speech_enabled": {
+     "bool": true
+    },
+    "scan_tone_dbfs": {
+     "float": {
+      "bits": 13849694754071117824,
+      "repr": "-20.0"
+     }
+    },
+    "scan_tones_enabled": {
+     "bool": true
+    },
+    "scanner_base_freq_hz": {
+     "float": {
+      "bits": 4652007308841189376,
+      "repr": "1000.0"
+     }
+    },
+    "scanner_distance_callout_enabled": {
+     "bool": false
+    },
+    "scanner_distance_callout_interval": {
+     "int": 45
+    },
+    "scanner_pitch_offset_oct": {
+     "float": {
+      "bits": 4608308318706860032,
+      "repr": "1.25"
+     }
+    },
+    "scanner_steer_tone_enabled": {
+     "bool": true
+    },
+    "shift_tone_frequency_hz": {
+     "float": {
+      "bits": 4649016637213638656,
+      "repr": "660.0"
+     }
+    },
+    "shift_tone_level_dbfs": {
+     "float": {
+      "bits": 13844909679467036672,
+      "repr": "-9.5"
+     }
+    },
+    "slip_tone_level_dbfs": {
+     "float": {
+      "bits": 13849131804117696512,
+      "repr": "-18.0"
+     }
+    },
+    "speech_rate": {
+     "int": 73
+    },
+    "speech_volume": {
+     "int": 40
+    },
+    "speed_announce_interval": {
+     "int": 75
+    },
+    "tc_clicks_enabled": {
+     "bool": true
+    },
+    "telemetry_protocol": {
+     "str": "extended"
+    },
+    "ui_nav_hold_suppression": {
+     "bool": true
+    },
+    "units": {
+     "str": "metric"
+    },
+    "update_check_enabled": {
+     "bool": true
+    }
+   }
+  },
+  {
+   "config": {
+    "ai_describer_api_key": "",
+    "ai_describer_disable_ui_toggle": false,
+    "ai_describer_model": "models/gemini-3-flash-preview",
+    "ai_describer_openai_api_key": "",
+    "ai_describer_openai_base_url": "https://api.openai.com/v1",
+    "ai_describer_openai_detail": "auto",
+    "ai_describer_openai_model": "gpt-5.6-terra",
+    "ai_describer_openai_reasoning_effort": "low",
+    "ai_describer_provider": "gemini",
+    "announce_clickspot_actions": false,
+    "announce_speed": true,
+    "announce_turn_signals": true,
+    "audio_poll_interval_sec": {
+     "bits": 4611686018427387904,
+     "repr": "2.0"
+    },
+    "beamng_renderer": "d3d",
+    "binding_learn_speak_description": false,
+    "cannon_shot_readout": true,
+    "check_engine_buzzer_level_dbfs": {
+     "bits": 13846317054350589952,
+     "repr": "-12.0"
+    },
+    "compass_click_interval": 15,
+    "compass_click_level_dbfs": {
+     "bits": 13841813454723219456,
+     "repr": "-6.0"
+    },
+    "compass_highlight_enabled": true,
+    "compass_highlight_nth_click": 6,
+    "dock_tone_dbfs": {
+     "bits": 13849131804117696512,
+     "repr": "-18.0"
+    },
+    "dock_tones_enabled": true,
+    "drift_speech_enabled": true,
+    "follow_default_audio_device": true,
+    "gear_report_mode": "bogus",
+    "gear_speech_number_style": "ordinal",
+    "gear_speech_sport_once": false,
+    "gear_tone_level_dbfs": {
+     "bits": 4617315517961601024,
+     "repr": "5.0"
+    },
+    "gear_tone_octave": 4,
+    "gear_tone_root": "C",
+    "gear_tone_scale": "major",
+    "hrtf_distance_gain_db": {
+     "bits": 0,
+     "repr": "0.0"
+    },
+    "hrtf_elevation_deg": {
+     "bits": 4632233691727265792,
+     "repr": "50.0"
+    },
+    "hrtf_enabled": true,
+    "hrtf_equalise": true,
+    "hrtf_front_emphasis_db": {
+     "bits": 13841813454723219456,
+     "repr": "-6.0"
+    },
+    "hrtf_set": "mit_kemar",
+    "implement_ground_tone_dbfs": {
+     "bits": 13849554016582762496,
+     "repr": "-19.5"
+    },
+    "implement_proximity_speech": true,
+    "implement_tilt_tone_dbfs": {
+     "bits": 13849694754071117824,
+     "repr": "-20.0"
+    },
+    "implement_tones_enabled": true,
+    "launch_beamng": false,
+    "lowspeed_click_level_dbfs": {
+     "bits": 13847442954257432576,
+     "repr": "-14.0"
+    },
+    "lowspeed_stop_tone_level_dbfs": {
+     "bits": 13848568854164275200,
+     "repr": "-16.0"
+    },
+    "mcp_server_enabled": false,
+    "mcp_server_port": 4481,
+    "obstacle_buzz_volume_db": {
+     "bits": 13849131804117696512,
+     "repr": "-18.0"
+    },
+    "obstacle_warning_sensitivity": "normal",
+    "oil_chime_enabled": true,
+    "oil_chime_level_dbfs": {
+     "bits": 13846317054350589952,
+     "repr": "-12.0"
+    },
+    "pending_update_version": "",
+    "pitch_roll_max_dbfs": {
+     "bits": 13850820653977960448,
+     "repr": "-24.0"
+    },
+    "pitch_roll_min_dbfs": {
+     "bits": 13853635403745067008,
+     "repr": "-36.0"
+    },
+    "pitch_roll_tones_enabled": true,
+    "placement_ping_volume_db": {
+     "bits": 13846317054350589952,
+     "repr": "-12.0"
+    },
+    "preferred_device_name": "",
+    "road_beep_volume_db": {
+     "bits": 13847442954257432576,
+     "repr": "-14.0"
+    },
+    "road_correction_volume_db": {
+     "bits": 13850820653977960448,
+     "repr": "-24.0"
+    },
+    "road_follow_guidance_enabled": true,
+    "road_include_private": false,
+    "road_junction_earcon_enabled": true,
+    "road_junction_proximity_enabled": true,
+    "road_junction_speech_enabled": true,
+    "road_junction_volume_db": {
+     "bits": 13847442954257432576,
+     "repr": "-14.0"
+    },
+    "road_speed_limit_speech_enabled": true,
+    "road_stop_sign_speech_enabled": true,
+    "road_surface_speech_enabled": true,
+    "road_traffic_light_speech_enabled": true,
+    "route_beacon_volume_db": {
+     "bits": 13848568854164275200,
+     "repr": "-16.0"
+    },
+    "scan_tone_dbfs": {
+     "bits": 13849694754071117824,
+     "repr": "-20.0"
+    },
+    "scan_tones_enabled": true,
+    "scanner_base_freq_hz": {
+     "bits": 4652007308841189376,
+     "repr": "1000.0"
+    },
+    "scanner_distance_callout_enabled": false,
+    "scanner_distance_callout_interval": 10,
+    "scanner_pitch_offset_oct": {
+     "bits": 4607182418800017408,
+     "repr": "1.0"
+    },
+    "scanner_steer_tone_enabled": true,
+    "shift_tone_frequency_hz": {
+     "bits": 4650951777678524416,
+     "repr": "880.0"
+    },
+    "shift_tone_level_dbfs": {
+     "bits": 13846317054350589952,
+     "repr": "-12.0"
+    },
+    "slip_tone_level_dbfs": {
+     "bits": 13849131804117696512,
+     "repr": "-18.0"
+    },
+    "speech_backend": "auto",
+    "speech_rate": 50,
+    "speech_voice_name": "",
+    "speech_volume": 100,
+    "speed_announce_interval": 25,
+    "tc_clicks_enabled": true,
+    "telemetry_protocol": "extended",
+    "ui_nav_hold_suppression": true,
+    "units": "imperial",
+    "update_check_enabled": true
+   },
+   "name": "clamped_backend",
+   "saved": {
+    "announce_clickspot_actions": {
+     "bool": false
+    },
+    "announce_speed": {
+     "bool": true
+    },
+    "announce_turn_signals": {
+     "bool": true
+    },
+    "audio_poll_interval_sec": {
+     "float": {
+      "bits": 4611686018427387904,
+      "repr": "2.0"
+     }
+    },
+    "beamng_renderer": {
+     "str": "d3d"
+    },
+    "binding_learn_speak_description": {
+     "bool": false
+    },
+    "cannon_shot_readout": {
+     "bool": true
+    },
+    "check_engine_buzzer_level_dbfs": {
+     "float": {
+      "bits": 13846317054350589952,
+      "repr": "-12.0"
+     }
+    },
+    "compass_click_interval": {
+     "int": 15
+    },
+    "compass_click_level_dbfs": {
+     "float": {
+      "bits": 13841813454723219456,
+      "repr": "-6.0"
+     }
+    },
+    "compass_highlight_enabled": {
+     "bool": true
+    },
+    "compass_highlight_nth_click": {
+     "int": 6
+    },
+    "dock_tone_dbfs": {
+     "float": {
+      "bits": 13849131804117696512,
+      "repr": "-18.0"
+     }
+    },
+    "dock_tones_enabled": {
+     "bool": true
+    },
+    "drift_speech_enabled": {
+     "bool": true
+    },
+    "follow_default_audio_device": {
+     "bool": true
+    },
+    "gear_report_mode": {
+     "str": "speech"
+    },
+    "gear_speech_number_style": {
+     "str": "ordinal"
+    },
+    "gear_speech_sport_once": {
+     "bool": false
+    },
+    "gear_tone_level_dbfs": {
+     "float": {
+      "bits": 0,
+      "repr": "0.0"
+     }
+    },
+    "gear_tone_octave": {
+     "int": 4
+    },
+    "gear_tone_root": {
+     "str": "C"
+    },
+    "gear_tone_scale": {
+     "str": "major"
+    },
+    "hrtf_distance_gain_db": {
+     "float": {
+      "bits": 0,
+      "repr": "0.0"
+     }
+    },
+    "hrtf_elevation_deg": {
+     "float": {
+      "bits": 4621819117588971520,
+      "repr": "10.0"
+     }
+    },
+    "hrtf_enabled": {
+     "bool": true
+    },
+    "hrtf_equalise": {
+     "bool": true
+    },
+    "hrtf_front_emphasis_db": {
+     "float": {
+      "bits": 13841813454723219456,
+      "repr": "-6.0"
+     }
+    },
+    "hrtf_set": {
+     "str": "mit_kemar"
+    },
+    "implement_ground_tone_dbfs": {
+     "float": {
+      "bits": 13849554016582762496,
+      "repr": "-19.5"
+     }
+    },
+    "implement_proximity_speech": {
+     "bool": true
+    },
+    "implement_tilt_tone_dbfs": {
+     "float": {
+      "bits": 13849694754071117824,
+      "repr": "-20.0"
+     }
+    },
+    "implement_tones_enabled": {
+     "bool": true
+    },
+    "launch_beamng": {
+     "bool": false
+    },
+    "lowspeed_click_level_dbfs": {
+     "float": {
+      "bits": 13847442954257432576,
+      "repr": "-14.0"
+     }
+    },
+    "lowspeed_stop_tone_level_dbfs": {
+     "float": {
+      "bits": 13848568854164275200,
+      "repr": "-16.0"
+     }
+    },
+    "mcp_server_enabled": {
+     "bool": false
+    },
+    "mcp_server_port": {
+     "int": 4481
+    },
+    "obstacle_buzz_volume_db": {
+     "float": {
+      "bits": 13849131804117696512,
+      "repr": "-18.0"
+     }
+    },
+    "obstacle_warning_sensitivity": {
+     "str": "normal"
+    },
+    "oil_chime_enabled": {
+     "bool": true
+    },
+    "oil_chime_level_dbfs": {
+     "float": {
+      "bits": 13846317054350589952,
+      "repr": "-12.0"
+     }
+    },
+    "pitch_roll_max_dbfs": {
+     "float": {
+      "bits": 13850820653977960448,
+      "repr": "-24.0"
+     }
+    },
+    "pitch_roll_min_dbfs": {
+     "float": {
+      "bits": 13853635403745067008,
+      "repr": "-36.0"
+     }
+    },
+    "pitch_roll_tones_enabled": {
+     "bool": true
+    },
+    "placement_ping_volume_db": {
+     "float": {
+      "bits": 13846317054350589952,
+      "repr": "-12.0"
+     }
+    },
+    "road_beep_volume_db": {
+     "float": {
+      "bits": 13847442954257432576,
+      "repr": "-14.0"
+     }
+    },
+    "road_correction_volume_db": {
+     "float": {
+      "bits": 13850820653977960448,
+      "repr": "-24.0"
+     }
+    },
+    "road_follow_guidance_enabled": {
+     "bool": true
+    },
+    "road_include_private": {
+     "bool": false
+    },
+    "road_junction_earcon_enabled": {
+     "bool": true
+    },
+    "road_junction_proximity_enabled": {
+     "bool": true
+    },
+    "road_junction_speech_enabled": {
+     "bool": true
+    },
+    "road_junction_volume_db": {
+     "float": {
+      "bits": 13847442954257432576,
+      "repr": "-14.0"
+     }
+    },
+    "road_speed_limit_speech_enabled": {
+     "bool": true
+    },
+    "road_stop_sign_speech_enabled": {
+     "bool": true
+    },
+    "road_surface_speech_enabled": {
+     "bool": true
+    },
+    "road_traffic_light_speech_enabled": {
+     "bool": true
+    },
+    "scan_tone_dbfs": {
+     "float": {
+      "bits": 13849694754071117824,
+      "repr": "-20.0"
+     }
+    },
+    "scan_tones_enabled": {
+     "bool": true
+    },
+    "scanner_base_freq_hz": {
+     "float": {
+      "bits": 4652007308841189376,
+      "repr": "1000.0"
+     }
+    },
+    "scanner_distance_callout_enabled": {
+     "bool": false
+    },
+    "scanner_distance_callout_interval": {
+     "int": 10
+    },
+    "scanner_pitch_offset_oct": {
+     "float": {
+      "bits": 4607182418800017408,
+      "repr": "1.0"
+     }
+    },
+    "scanner_steer_tone_enabled": {
+     "bool": true
+    },
+    "shift_tone_frequency_hz": {
+     "float": {
+      "bits": 4650951777678524416,
+      "repr": "880.0"
+     }
+    },
+    "shift_tone_level_dbfs": {
+     "float": {
+      "bits": 13846317054350589952,
+      "repr": "-12.0"
+     }
+    },
+    "slip_tone_level_dbfs": {
+     "float": {
+      "bits": 13849131804117696512,
+      "repr": "-18.0"
+     }
+    },
+    "speech_rate": {
+     "int": 50
+    },
+    "speech_volume": {
+     "int": 100
+    },
+    "speed_announce_interval": {
+     "int": 25
+    },
+    "tc_clicks_enabled": {
+     "bool": true
+    },
+    "telemetry_protocol": {
+     "str": "extended"
+    },
+    "ui_nav_hold_suppression": {
+     "bool": true
+    },
+    "units": {
+     "str": "imperial"
+    },
+    "update_check_enabled": {
+     "bool": true
+    }
+   }
+  }
+ ],
+ "written_keys": [
+  "announce_clickspot_actions",
+  "announce_speed",
+  "announce_turn_signals",
+  "audio_poll_interval_sec",
+  "beamng_renderer",
+  "binding_learn_speak_description",
+  "cannon_shot_readout",
+  "check_engine_buzzer_level_dbfs",
+  "compass_click_interval",
+  "compass_click_level_dbfs",
+  "compass_highlight_enabled",
+  "compass_highlight_nth_click",
+  "dock_tone_dbfs",
+  "dock_tones_enabled",
+  "drift_speech_enabled",
+  "follow_default_audio_device",
+  "gear_report_mode",
+  "gear_speech_number_style",
+  "gear_speech_sport_once",
+  "gear_tone_level_dbfs",
+  "gear_tone_octave",
+  "gear_tone_root",
+  "gear_tone_scale",
+  "hrtf_distance_gain_db",
+  "hrtf_elevation_deg",
+  "hrtf_enabled",
+  "hrtf_equalise",
+  "hrtf_front_emphasis_db",
+  "hrtf_set",
+  "implement_ground_tone_dbfs",
+  "implement_proximity_speech",
+  "implement_tilt_tone_dbfs",
+  "implement_tones_enabled",
+  "launch_beamng",
+  "lowspeed_click_level_dbfs",
+  "lowspeed_stop_tone_level_dbfs",
+  "mcp_server_enabled",
+  "mcp_server_port",
+  "obstacle_buzz_volume_db",
+  "obstacle_warning_sensitivity",
+  "oil_chime_enabled",
+  "oil_chime_level_dbfs",
+  "pitch_roll_max_dbfs",
+  "pitch_roll_min_dbfs",
+  "pitch_roll_tones_enabled",
+  "placement_ping_volume_db",
+  "preferred_device_name",
+  "road_beep_volume_db",
+  "road_correction_volume_db",
+  "road_follow_guidance_enabled",
+  "road_include_private",
+  "road_junction_earcon_enabled",
+  "road_junction_proximity_enabled",
+  "road_junction_speech_enabled",
+  "road_junction_volume_db",
+  "road_speed_limit_speech_enabled",
+  "road_stop_sign_speech_enabled",
+  "road_surface_speech_enabled",
+  "road_traffic_light_speech_enabled",
+  "scan_tone_dbfs",
+  "scan_tones_enabled",
+  "scanner_base_freq_hz",
+  "scanner_distance_callout_enabled",
+  "scanner_distance_callout_interval",
+  "scanner_pitch_offset_oct",
+  "scanner_steer_tone_enabled",
+  "shift_tone_frequency_hz",
+  "shift_tone_level_dbfs",
+  "slip_tone_level_dbfs",
+  "speech_backend",
+  "speech_rate",
+  "speech_voice_name",
+  "speech_volume",
+  "speed_announce_interval",
+  "tc_clicks_enabled",
+  "telemetry_protocol",
+  "ui_nav_hold_suppression",
+  "units",
+  "update_check_enabled"
+ ]
+}

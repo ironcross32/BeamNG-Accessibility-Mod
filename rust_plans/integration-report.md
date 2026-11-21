@@ -65,9 +65,10 @@ The Python sims checked these by reading `beamtel.py`; the Rust equivalents were
 
 ## Inherited by later workstreams
 
-- **R1 (packaging):** in development the HRTF `.npz` sets, `HRTF_DATA_LICENSES.md` and
-  `prism.dll` were found through the repository root. A shipped exe needs them beside
-  it, as `build.py` arranges for the Python build. Also `bng_screenreader_mod.zip`
+- **R1 (packaging):** in development the HRTF `.npz` sets and `HRTF_DATA_LICENSES.md`
+  were found through the repository root. A shipped exe needs them beside it, as
+  `build.py` arranges for the Python build. Not `prism.dll`: speech is moving to
+  Prismer (user, 2026-11-21), so do not build packaging around the DLL. Also `bng_screenreader_mod.zip`
   next to the exe for the mod installer. The release manifest is `asInvoker`.
 - **V1 (parity audits):**
   - The crates finished before the Python working tree moved (AH's HRTF, B3's road

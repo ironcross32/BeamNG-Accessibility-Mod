@@ -130,7 +130,22 @@ function spinParams(input) {
   };
 }
 
+// wx formats the value with printf ("%.*f"), and the Windows CRT rounds an exact tie to
+// even: -12.5 at 0 digits is -12, 0.125 at 2 digits is 0.12. toFixed() would round both
+// away from zero, so a value loaded or typed on a tie would differ from the wx build.
+// Ties are found on the exact binary value (toFixed's long expansion is exact): 2.675 is
+// really 2.67499..., not a tie, and printf gives 2.67 even though 2.675 * 100 === 267.5.
 function roundTo(value, digits) {
+  const exact = Math.abs(value).toFixed(Math.min(100, digits + 60));
+  const cut = exact.indexOf(".") + 1 + digits;
+  if (/^50*$/.test(exact.slice(cut))) {
+    const kept = exact.slice(0, digits === 0 ? cut - 1 : cut);
+    const down = Number(kept);
+    const mag = Number(kept[kept.length - 1]) % 2 === 0
+      ? down
+      : Number((down + 10 ** -digits).toFixed(digits));
+    return value < 0 ? -mag : mag;
+  }
   return Number(value.toFixed(digits));
 }
 

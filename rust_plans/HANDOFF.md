@@ -6,7 +6,7 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-21, with the I1 commit (integration report).
+2026-11-21, with the V1 config/UI audit commit.
 
 ## Done so far
 
@@ -98,9 +98,12 @@ U2 has been run by the user (2026-11-21), un-elevated, debug build:
   un-elevated hook cannot see.
 
 **I1 is done** (`integration-report.md`): builds clean, 557 tests pass, no stubs,
-wiring checked. Next: the V1 parity audits (slices and what each must widen are in the
-report), then R1 packaging, D1 docs, and the user's keep-or-fix pass over
-`python-bugs.md`.
+wiring checked. **V1 is under way, one slice at a time in this session** (the user chose
+that over eight agents). Done: config and UI (`audit-config-ui.md`). Remaining, in
+order: audio, telemetry, listeners, keyboard and F9/F10, spawner, bridge and MCP,
+updater. Each writes `audit-<slice>.md`. Then R1 packaging, D1 docs, and the user's
+keep-or-fix pass over `python-bugs.md`. Speech is moving to Prismer (user,
+2026-11-21): do not plan around `prism.dll`.
 Traps found in U2:
 - A Tauri test binary dies at load with `STATUS_ENTRYPOINT_NOT_FOUND` unless it embeds
   the Common Controls v6 manifest. `build.rs` adds it to `tests/` targets only
