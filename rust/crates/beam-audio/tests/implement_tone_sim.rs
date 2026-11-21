@@ -9,7 +9,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use audio_harness::{harness, Harness};
+use audio_harness::{Harness, harness};
 use beam_audio::consts::{
     IMPL_CLOSING_STALE_S, IMPL_CLOSING_TAU, IMPL_GATE_ATTACK_TAU, IMPL_GATE_CUT, IMPL_GATE_OFF,
     IMPL_GATE_ON, IMPL_GATE_REL_TAU, IMPL_GROUND_CARRIER_HZ, IMPL_GROUND_CLOSING_MPS,
@@ -31,11 +31,15 @@ const STEPS: i64 = IMPL_TILT_STEPS_PER_OCT;
 const TELEMETRY_HZ: f64 = 20.0; // the mod's implement tick; the callback runs ~5x faster
 
 fn check(label: &str, ok: bool, detail: &str) {
-    eprintln!("   {label}: {}{}", if ok { "OK" } else { "FAIL" }, if detail.is_empty() {
-        String::new()
-    } else {
-        format!(" - {detail}")
-    });
+    eprintln!(
+        "   {label}: {}{}",
+        if ok { "OK" } else { "FAIL" },
+        if detail.is_empty() {
+            String::new()
+        } else {
+            format!(" - {detail}")
+        }
+    );
     assert!(ok, "{label}: {detail}");
 }
 
@@ -77,7 +81,13 @@ struct Gate {
 
 impl Gate {
     fn new() -> Self {
-        Gate { env: 0.0, open: false, prev_clearance: None, clear_elapsed: 0.0, closing: 0.0 }
+        Gate {
+            env: 0.0,
+            open: false,
+            prev_clearance: None,
+            clear_elapsed: 0.0,
+            closing: 0.0,
+        }
     }
 
     fn block(&mut self, activity: f64, clearance: f64) -> f64 {
@@ -103,7 +113,11 @@ impl Gate {
             target = 0.0;
         }
         self.open = target > 0.0;
-        let tau = if target > self.env { IMPL_GATE_ATTACK_TAU } else { IMPL_GATE_REL_TAU };
+        let tau = if target > self.env {
+            IMPL_GATE_ATTACK_TAU
+        } else {
+            IMPL_GATE_REL_TAU
+        };
         let mut end = self.env + (1.0 - (-BLOCK_S / tau).exp()) * (target - self.env);
         if end < IMPL_GATE_CUT && target == 0.0 {
             end = 0.0;
@@ -122,7 +136,10 @@ struct Twin {
 
 impl Twin {
     fn new() -> Self {
-        Twin { gate: Gate::new(), h: harness(None) }
+        Twin {
+            gate: Gate::new(),
+            h: harness(None),
+        }
     }
 
     fn block(&mut self, activity: f64, clearance: f64) -> f64 {
@@ -135,8 +152,14 @@ impl Twin {
         });
         self.h.ctrl.render_block(FRAMES);
         let v = self.h.ctrl.voice.lock();
-        assert_eq!(v._impl_gate_env, env, "real gate env diverged from the mirror");
-        assert_eq!(v._impl_closing, self.gate.closing, "real closing rate diverged");
+        assert_eq!(
+            v._impl_gate_env, env,
+            "real gate env diverged from the mirror"
+        );
+        assert_eq!(
+            v._impl_closing, self.gate.closing,
+            "real closing rate diverged"
+        );
         env
     }
 }
@@ -187,7 +210,10 @@ struct PyRandom {
 
 impl PyRandom {
     fn new(seed: u32) -> Self {
-        let mut r = PyRandom { mt: [0; 624], idx: 624 };
+        let mut r = PyRandom {
+            mt: [0; 624],
+            idx: 624,
+        };
         r.init_genrand(19650218);
         let key = [seed];
         let (mut i, mut j) = (1usize, 0usize);
@@ -269,7 +295,11 @@ fn py_random_matches_cpython() {
 #[test]
 fn s01_ground_ratio_starts_on_the_integer_and_never_reaches_the_next() {
     let (r_far, _, _) = ground_params(IMPL_GROUND_FAR_M, 0.0);
-    check("clean at max range", (r_far - IMPL_GROUND_RATIO_BASE).abs() < 1e-6, "");
+    check(
+        "clean at max range",
+        (r_far - IMPL_GROUND_RATIO_BASE).abs() < 1e-6,
+        "",
+    );
     let worst = dsp::linspace(0.0, IMPL_GROUND_FAR_M, 400, true)
         .iter()
         .map(|&c| ground_params(c, 0.0).0)
@@ -279,14 +309,22 @@ fn s01_ground_ratio_starts_on_the_integer_and_never_reaches_the_next() {
         worst < IMPL_GROUND_RATIO_BASE + 1.0 - 1e-9,
         &format!("max ratio approaching = {worst:.4}"),
     );
-    check("drift constant stays under 0.5", IMPL_GROUND_RATIO_DRIFT < 0.5, "");
+    check(
+        "drift constant stays under 0.5",
+        IMPL_GROUND_RATIO_DRIFT < 0.5,
+        "",
+    );
 }
 
 #[test]
 fn s02_ground_grit_is_legible_from_about_a_metre() {
     let r_half = ground_params(IMPL_GROUND_FAR_M / 2.0, 0.0).0;
     let frac = (r_half - IMPL_GROUND_RATIO_BASE) / IMPL_GROUND_RATIO_DRIFT;
-    check("at half range the drift is well under way", frac > 0.15, &format!("{frac}"));
+    check(
+        "at half range the drift is well under way",
+        frac > 0.15,
+        &format!("{frac}"),
+    );
 }
 
 #[test]
@@ -297,9 +335,17 @@ fn s03_jacking_cleans_the_ratio_and_raises_the_carrier() {
         (r_jack - (IMPL_GROUND_RATIO_BASE + 1.0)).abs() < 1e-3,
         "",
     );
-    check("index settles to the clean value", (i_jack - IMPL_GROUND_JACK_INDEX).abs() < 1e-3, "");
+    check(
+        "index settles to the clean value",
+        (i_jack - IMPL_GROUND_JACK_INDEX).abs() < 1e-3,
+        "",
+    );
     let expect_c = IMPL_GROUND_CARRIER_HZ * 2.0f64.powf(IMPL_GROUND_JACK_OCTAVES);
-    check("carrier rises by the full octave span", (c_jack - expect_c).abs() < 1e-6, "");
+    check(
+        "carrier rises by the full octave span",
+        (c_jack - expect_c).abs() < 1e-6,
+        "",
+    );
     let mut carriers: Vec<u64> = dsp::linspace(0.0, IMPL_GROUND_FAR_M, 50, true)
         .iter()
         .map(|&c| ground_params(c, 0.0).2.to_bits())
@@ -332,22 +378,49 @@ fn s05_tilt_quarter_tone_scale() {
     let freqs: Vec<f64> = (-STEPS..=STEPS)
         .map(|st| IMPL_TILT_LEVEL_HZ * 2.0f64.powf(st as f64 / STEPS as f64))
         .collect();
-    let mut rounded: Vec<i64> = freqs.iter().map(|f| (f * 1e6).round_ties_even() as i64).collect();
+    let mut rounded: Vec<i64> = freqs
+        .iter()
+        .map(|f| (f * 1e6).round_ties_even() as i64)
+        .collect();
     rounded.sort();
     rounded.dedup();
     check("49 distinct frequencies", rounded.len() == 49, "");
-    check("level is exactly 400 Hz", (freqs[STEPS as usize] - 400.0).abs() < 1e-9, "");
-    check("down stop is exactly 200 Hz", (freqs[0] - 200.0).abs() < 1e-9, "");
-    check("up stop is exactly 800 Hz", (freqs[freqs.len() - 1] - 800.0).abs() < 1e-9, "");
+    check(
+        "level is exactly 400 Hz",
+        (freqs[STEPS as usize] - 400.0).abs() < 1e-9,
+        "",
+    );
+    check(
+        "down stop is exactly 200 Hz",
+        (freqs[0] - 200.0).abs() < 1e-9,
+        "",
+    );
+    check(
+        "up stop is exactly 800 Hz",
+        (freqs[freqs.len() - 1] - 800.0).abs() < 1e-9,
+        "",
+    );
     let step_ratio = 2.0f64.powf(1.0 / STEPS as f64);
     check(
         "adjacent steps share one fixed interval",
-        freqs.windows(2).map(|w| (w[1] / w[0] - step_ratio).abs()).fold(0.0, f64::max) < 1e-9,
+        freqs
+            .windows(2)
+            .map(|w| (w[1] / w[0] - step_ratio).abs())
+            .fold(0.0, f64::max)
+            < 1e-9,
         "",
     );
     check("level reads step 0", tilt_step(0.0, span, span) == 0, "");
-    check("full up reads step +24", tilt_step(span, span, span) == STEPS, "");
-    check("full down reads step -24", tilt_step(-span, span, span) == -STEPS, "");
+    check(
+        "full up reads step +24",
+        tilt_step(span, span, span) == STEPS,
+        "",
+    );
+    check(
+        "full down reads step -24",
+        tilt_step(-span, span, span) == -STEPS,
+        "",
+    );
     check(
         "past the stop clamps rather than running off the scale",
         tilt_step(span * 3.0, span, span) == STEPS,
@@ -358,9 +431,21 @@ fn s05_tilt_quarter_tone_scale() {
 #[test]
 fn s06_asymmetric_learned_stops_still_put_level_at_400_hz() {
     let (up, dn) = (32.0, 18.0);
-    check("level is step 0 on a lopsided range", tilt_step(0.0, up, dn) == 0, "");
-    check("up stop still reaches +24", tilt_step(up, up, dn) == STEPS, "");
-    check("down stop still reaches -24", tilt_step(-dn, up, dn) == -STEPS, "");
+    check(
+        "level is step 0 on a lopsided range",
+        tilt_step(0.0, up, dn) == 0,
+        "",
+    );
+    check(
+        "up stop still reaches +24",
+        tilt_step(up, up, dn) == STEPS,
+        "",
+    );
+    check(
+        "down stop still reaches -24",
+        tilt_step(-dn, up, dn) == -STEPS,
+        "",
+    );
 }
 
 /// Mirror of the span learning in audio.py's tilt block.
@@ -402,9 +487,17 @@ impl TiltSpanLearner {
                 self.stop_dn = self.seen_dn;
             }
         } else {
-            self.seen_up = if deg > self.seen_up { deg } else { self.seen_up };
+            self.seen_up = if deg > self.seen_up {
+                deg
+            } else {
+                self.seen_up
+            };
             self.stop_up = self.seen_up;
-            self.seen_dn = if -deg > self.seen_dn { -deg } else { self.seen_dn };
+            self.seen_dn = if -deg > self.seen_dn {
+                -deg
+            } else {
+                self.seen_dn
+            };
             self.stop_dn = self.seen_dn;
         }
         if !self.swap || deg.abs() < IMPL_TILT_SPAN_SWAP_DEG {
@@ -420,7 +513,11 @@ fn sweep(learner: &mut TiltSpanLearner, angles: &[f64]) -> Vec<i64> {
 }
 
 fn max_jump(steps: &[i64]) -> i64 {
-    steps.windows(2).map(|w| (w[1] - w[0]).abs()).max().unwrap_or(0)
+    steps
+        .windows(2)
+        .map(|w| (w[1] - w[0]).abs())
+        .max()
+        .unwrap_or(0)
 }
 
 const REAL_UP_STOP: f64 = 28.0; // what the WL-40's bucket reaches; the fallback assumes 50
@@ -442,12 +539,20 @@ fn s06b_the_first_stroke_snap() {
     check(
         "the first stroke now climbs one step at a time",
         max_jump(&new) <= 1,
-        &format!("biggest jump {} (old form: {})", max_jump(&new), max_jump(&old)),
+        &format!(
+            "biggest jump {} (old form: {})",
+            max_jump(&new),
+            max_jump(&old)
+        ),
     );
     check(
         "and it reads the fallback scale, not a pegged one",
         *new.last().unwrap()
-            == tilt_step(REAL_UP_STOP, IMPL_TILT_FALLBACK_SPAN_DEG, IMPL_TILT_FALLBACK_SPAN_DEG),
+            == tilt_step(
+                REAL_UP_STOP,
+                IMPL_TILT_FALLBACK_SPAN_DEG,
+                IMPL_TILT_FALLBACK_SPAN_DEG,
+            ),
         "",
     );
 
@@ -531,7 +636,11 @@ fn s07_tilt_glide_is_fast_enough_that_a_step_reads_as_a_step() {
         inc += beta * (target - inc);
         blocks += 1;
     }
-    check("a one-step change settles within ~2 buffers", blocks <= 2, &format!("{blocks}"));
+    check(
+        "a one-step change settles within ~2 buffers",
+        blocks <= 2,
+        &format!("{blocks}"),
+    );
 }
 
 #[test]
@@ -551,7 +660,11 @@ fn s08_fade_gate_sharp_in_about_a_second_out() {
         n += 1;
     }
     let s = n as f64 * BLOCK_S;
-    check("silent about a second after release", (0.5..=2.0).contains(&s), &format!("{s:.2} s"));
+    check(
+        "silent about a second after release",
+        (0.5..=2.0).contains(&s),
+        &format!("{s:.2} s"),
+    );
 }
 
 #[test]
@@ -564,7 +677,11 @@ fn s09_a_momentary_joystick_release_must_not_drop_it() {
     for _ in 0..(0.2 / BLOCK_S) as usize {
         low = g.block(0.35, 1.0);
     }
-    check("gate stays open through a 200 ms gap", low > 0.9, &format!("env={low:.3}"));
+    check(
+        "gate stays open through a 200 ms gap",
+        low > 0.9,
+        &format!("env={low:.3}"),
+    );
 }
 
 #[test]
@@ -572,7 +689,11 @@ fn s10_approaching_the_ground_opens_it_with_the_joystick_released() {
     let mut g = Twin::new();
     let envs = feed(&mut g, 3.0, &mut |_| 0.0, &mut |t| 2.0 - 0.6 * t);
     let env = *envs.last().unwrap();
-    check("closing on the ground alone opens the gate", env > 0.9, &format!("env={env:.3}"));
+    check(
+        "closing on the ground alone opens the gate",
+        env > 0.9,
+        &format!("env={env:.3}"),
+    );
 }
 
 fn noisy_clearance(
@@ -611,9 +732,18 @@ fn s11_s12_the_chatter_bug() {
 
     // 12. idle jitter must not sneak past the closing-rate term either
     let mut g = Twin::new();
-    let envs = feed(&mut g, 20.0, &mut |_| 0.0, &mut noisy_clearance(rng, jitter));
+    let envs = feed(
+        &mut g,
+        20.0,
+        &mut |_| 0.0,
+        &mut noisy_clearance(rng, jitter),
+    );
     let peak = envs.iter().cloned().fold(f64::MIN, f64::max);
-    check("raycast jitter alone never opens the gate", peak == 0.0, &format!("{peak:.4}"));
+    check(
+        "raycast jitter alone never opens the gate",
+        peak == 0.0,
+        &format!("{peak:.4}"),
+    );
 }
 
 #[test]
@@ -626,7 +756,11 @@ fn s13_activity_hovering_at_the_threshold_must_not_flutter() {
         &mut |_| 1.0,
     );
     let n = transitions(&envs);
-    check("no flutter between the two thresholds", n <= 1, &format!("{n} transitions"));
+    check(
+        "no flutter between the two thresholds",
+        n <= 1,
+        &format!("{n} transitions"),
+    );
 }
 
 #[test]
@@ -645,7 +779,11 @@ fn s14_real_work_still_reads_as_continuous() {
         &mut |_| 1.0,
     );
     let n = transitions(&envs);
-    check("one continuous sound through the whole cycle", n == 1, &format!("{n} transitions"));
+    check(
+        "one continuous sound through the whole cycle",
+        n == 1,
+        &format!("{n} transitions"),
+    );
 }
 
 #[test]

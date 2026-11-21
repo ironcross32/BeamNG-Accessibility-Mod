@@ -85,8 +85,7 @@ pub fn render(b: &mut Block<'_>, v: &mut Voice) {
     let aligned = scan_bearing.abs() <= SCANNER_ALIGN_THRESHOLD_DEG;
     let pitch_norm = 1.0 - (scan_bearing.abs() / 180.0);
     let align_norm = (-scan_bearing.abs() / SCANNER_ALIGN_PITCH_DECAY_DEG).exp();
-    let proximity =
-        SCANNER_ALIGN_WEIGHT * align_norm + (1.0 - SCANNER_ALIGN_WEIGHT) * pitch_norm;
+    let proximity = SCANNER_ALIGN_WEIGHT * align_norm + (1.0 - SCANNER_ALIGN_WEIGHT) * pitch_norm;
     let scan_freq = s.scan_base_freq * 2.0f64.powf(s.scan_offset_oct * proximity);
     let pitch_mult = scan_freq / SCANNER_BEEP_FREQ_HZ;
     let hrtf_az_scan = py_mod(scan_bearing, 360.0);
@@ -258,8 +257,8 @@ pub fn render(b: &mut Block<'_>, v: &mut Voice) {
         let mono_tone: Vec<f32> = (0..frames)
             .map(|k| {
                 let ph = v._scan_tone_phase + inc * k as f64;
-                let tri = (2.0 / std::f64::consts::PI)
-                    * (2.0 * std::f64::consts::PI * ph).sin().asin();
+                let tri =
+                    (2.0 / std::f64::consts::PI) * (2.0 * std::f64::consts::PI * ph).sin().asin();
                 (tri * gain) as f32
             })
             .collect();
@@ -315,7 +314,11 @@ pub fn render(b: &mut Block<'_>, v: &mut Voice) {
 
 /// `conv_r[:ol] += tail_r[:ol]` where Python took `ol` from the LEFT tail's length
 /// (`ol = min(len(overlap_L), len(conv_l))`). Both tails always have equal length.
-fn add_tail_len_of(conv: &mut [f64], tail: &crate::callback::common::Tail, len_from: &crate::callback::common::Tail) {
+fn add_tail_len_of(
+    conv: &mut [f64],
+    tail: &crate::callback::common::Tail,
+    len_from: &crate::callback::common::Tail,
+) {
     if let (Some(t), Some(lf)) = (tail, len_from) {
         let ol = lf.len().min(conv.len()).min(t.len());
         for k in 0..ol {

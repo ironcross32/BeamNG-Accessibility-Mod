@@ -25,7 +25,10 @@ fn events_are_buffered_until_ready() {
     let r = s.frontend_ready();
     assert_eq!(r["log_lines"], json!(["a"]));
     assert_eq!(r["console_lines"], json!(["  = 1"]));
-    assert_eq!(r["console_contexts"], json!([{"index": 0, "label": "GE - Lua"}]));
+    assert_eq!(
+        r["console_contexts"],
+        json!([{"index": 0, "label": "GE - Lua"}])
+    );
     // Ready now: nothing more is buffered (no app attached, so emits go nowhere).
     s.push_log("b");
     assert_eq!(s.buffered_log_count(), 0);

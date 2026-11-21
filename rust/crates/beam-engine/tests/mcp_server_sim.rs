@@ -107,9 +107,9 @@ fn deps(rec: &Arc<Rec>) -> Deps {
             next_seq: 1,
             dropped: false,
         }),
-        snapshot_state_fn: Arc::new(|_| {
-            json!({"liveness": {"world_active": false, "seconds_since_telemetry": 999.0}})
-        }),
+        snapshot_state_fn: Arc::new(
+            |_| json!({"liveness": {"world_active": false, "seconds_since_telemetry": 999.0}}),
+        ),
         load_config_fn: Arc::new(|| {
             let Value::Object(m) = json!({
                 "units": "imperial",
@@ -262,7 +262,11 @@ fn mcp_server_over_http() {
         "params": {"protocolVersion": "2025-06-18", "capabilities": {},
                    "clientInfo": {"name": "smoke", "version": "0"}}}));
     let init: Value = serde_json::from_slice(&r.body).unwrap();
-    check("1a initialize returns 200", r.status == 200, r.status.to_string());
+    check(
+        "1a initialize returns 200",
+        r.status == 200,
+        r.status.to_string(),
+    );
     check(
         "1b content-type is application/json",
         r.content_type.contains("application/json"),
@@ -283,7 +287,11 @@ fn mcp_server_over_http() {
         init["result"]["serverInfo"]["name"] == "beamtel",
         init.to_string(),
     );
-    check("1f no Mcp-Session-Id issued", r.session.is_none(), format!("{:?}", r.session));
+    check(
+        "1f no Mcp-Session-Id issued",
+        r.session.is_none(),
+        format!("{:?}", r.session),
+    );
     check(
         "1g instructions present",
         init["result"]["instructions"]
@@ -301,7 +309,11 @@ fn mcp_server_over_http() {
 
     // ---- 2. notifications
     let r = http.post(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
-    check("2a notification returns 202", r.status == 202, r.status.to_string());
+    check(
+        "2a notification returns 202",
+        r.status == 202,
+        r.status.to_string(),
+    );
     check(
         "2b notification body is empty",
         r.body.is_empty(),
@@ -309,12 +321,16 @@ fn mcp_server_over_http() {
     );
 
     // ---- 3. tools/list
-    let tools = http.json(&json!({"jsonrpc": "2.0", "id": 3, "method": "tools/list"}))["result"]
-        ["tools"]
-        .as_array()
-        .cloned()
-        .unwrap_or_default();
-    check("3a tools/list returns tools", tools.len() >= 10, tools.len().to_string());
+    let tools =
+        http.json(&json!({"jsonrpc": "2.0", "id": 3, "method": "tools/list"}))["result"]["tools"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+    check(
+        "3a tools/list returns tools",
+        tools.len() >= 10,
+        tools.len().to_string(),
+    );
     let names: HashSet<&str> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
     for expect in [
         "health",
@@ -349,23 +365,53 @@ fn mcp_server_over_http() {
 
     // ---- 4. ping
     let v = http.json(&json!({"jsonrpc": "2.0", "id": 4, "method": "ping"}));
-    check("4a ping returns empty result", v["result"] == json!({}), v.to_string());
+    check(
+        "4a ping returns empty result",
+        v["result"] == json!({}),
+        v.to_string(),
+    );
 
     // ---- 5. GET / DELETE / health
     let r = Http::reply(http.agent.get(format!("{}/mcp", http.base)).call().unwrap());
-    check("5a GET /mcp returns 405", r.status == 405, r.status.to_string());
-    let r = Http::reply(http.agent.delete(format!("{}/mcp", http.base)).call().unwrap());
-    check("5b DELETE /mcp returns 200", r.status == 200, r.status.to_string());
-    let r = Http::reply(http.agent.get(format!("{}/health", http.base)).call().unwrap());
+    check(
+        "5a GET /mcp returns 405",
+        r.status == 405,
+        r.status.to_string(),
+    );
+    let r = Http::reply(
+        http.agent
+            .delete(format!("{}/mcp", http.base))
+            .call()
+            .unwrap(),
+    );
+    check(
+        "5b DELETE /mcp returns 200",
+        r.status == 200,
+        r.status.to_string(),
+    );
+    let r = Http::reply(
+        http.agent
+            .get(format!("{}/health", http.base))
+            .call()
+            .unwrap(),
+    );
     check("5c /health responds", r.status == 200, r.status.to_string());
 
     // ---- 6. unknown method
     let v = http.json(&json!({"jsonrpc": "2.0", "id": 6, "method": "resources/list"}));
-    check("6a unknown method is -32601", v["error"]["code"] == -32601, v.to_string());
+    check(
+        "6a unknown method is -32601",
+        v["error"]["code"] == -32601,
+        v.to_string(),
+    );
 
     // ---- 7. tools that work with no game
     let r = http.call("list_commands", json!({}));
-    check("7a list_commands works with no game", !is_error(&r), r.to_string());
+    check(
+        "7a list_commands works with no game",
+        !is_error(&r),
+        r.to_string(),
+    );
     check(
         "7b list_commands returned the F9 entry",
         text(&r).contains("Speak speed"),
@@ -434,7 +480,11 @@ fn mcp_server_over_http() {
     let t0 = Instant::now();
     let r = http.call("lua_exec", json!({"code": "return 1", "timeout_s": 2.0}));
     let elapsed = t0.elapsed().as_secs_f64();
-    check("8a lua_exec with no game is an isError", is_error(&r), r.to_string());
+    check(
+        "8a lua_exec with no game is an isError",
+        is_error(&r),
+        r.to_string(),
+    );
     check(
         "8b ... names the port and points at health",
         text(&r).contains("4466") && text(&r).contains("health"),
@@ -460,21 +510,29 @@ fn mcp_server_over_http() {
     let sent_console = rec.sent_console.lock().clone();
     check(
         "8x the EXEC went to the console sender",
-        sent_console.iter().any(|m| m.starts_with("EXEC|0|return 1")),
+        sent_console
+            .iter()
+            .any(|m| m.starts_with("EXEC|0|return 1")),
         format!("{sent_console:?}"),
     );
     let r = http.call("health", json!({}));
     check("8f health works with no game", !is_error(&r), r.to_string());
     check(
         "8g health reports console unresponsive",
-        text(&r).to_lowercase().contains("\"console_responsive\": false"),
+        text(&r)
+            .to_lowercase()
+            .contains("\"console_responsive\": false"),
         text(&r).chars().take(400).collect(),
     );
 
     // ---- 9. unknown tool
     let v = http.json(&json!({"jsonrpc": "2.0", "id": 9, "method": "tools/call",
                               "params": {"name": "nosuchtool", "arguments": {}}}));
-    check("9a unknown tool is -32602", v["error"]["code"] == -32602, v.to_string());
+    check(
+        "9a unknown tool is -32602",
+        v["error"]["code"] == -32602,
+        v.to_string(),
+    );
 
     // ---- 10. batch
     let v = http.json(&json!([{"jsonrpc": "2.0", "id": 10, "method": "ping"},
@@ -498,9 +556,17 @@ fn mcp_server_over_http() {
         r.status().as_u16()
     };
     let s = with_origin("http://localhost.example.com");
-    check("10b a look-alike origin is refused", s == 403, s.to_string());
+    check(
+        "10b a look-alike origin is refused",
+        s == 403,
+        s.to_string(),
+    );
     let s = with_origin("http://127.0.0.1:4481");
-    check("10c the loopback origin is answered", s == 200, s.to_string());
+    check(
+        "10c the loopback origin is answered",
+        s == 200,
+        s.to_string(),
+    );
 
     // ---- 11. console tap correlation
     let ge = PyJson::from("ge");
@@ -552,11 +618,7 @@ fn mcp_server_over_http() {
     });
     let res = ms::exec_console(&ge, "x", &PyJson::Float(5.0), false, true).unwrap();
     feeder.join().unwrap();
-    let want = format!(
-        "{}{}",
-        "A".repeat(ms::MAX_DATAGRAM_CONTENT),
-        "B".repeat(10)
-    );
+    let want = format!("{}{}", "A".repeat(ms::MAX_DATAGRAM_CONTENT), "B".repeat(10));
     check(
         "11f chunked value concatenates",
         res.get("result").is_some_and(|v| v.eq_str(&want)),
@@ -609,10 +671,18 @@ fn mcp_server_over_http() {
     let shot_dir = shot.path().to_string_lossy().into_owned();
     let png_len = fake_png().len() as u64;
     let r = http.call("screenshot", json!({"dir": shot_dir}));
-    check("14a screenshot works with no game", !is_error(&r), r.to_string());
+    check(
+        "14a screenshot works with no game",
+        !is_error(&r),
+        r.to_string(),
+    );
     let p: Value = serde_json::from_str(&text(&r)).unwrap_or(Value::Null);
     let path = std::path::PathBuf::from(p["path"].as_str().unwrap_or(""));
-    check("14b ... returns an absolute path", path.is_absolute(), p.to_string());
+    check(
+        "14b ... returns an absolute path",
+        path.is_absolute(),
+        p.to_string(),
+    );
     check("14c ... wrote the file", path.is_file(), p.to_string());
     check(
         "14d ... and the reported byte count is the file's",
@@ -620,7 +690,11 @@ fn mcp_server_over_http() {
         p.to_string(),
     );
     let last = *rec.captures.lock().last().unwrap();
-    check("14e ... hides the UI by default", last.0, format!("{last:?}"));
+    check(
+        "14e ... hides the UI by default",
+        last.0,
+        format!("{last:?}"),
+    );
     check(
         "14e2 ... and raises the game window by default",
         last.2,
@@ -628,7 +702,11 @@ fn mcp_server_over_http() {
     );
     http.call("screenshot", json!({"dir": shot_dir, "hide_ui": false}));
     let last = *rec.captures.lock().last().unwrap();
-    check("14f hide_ui=false is honoured", !last.0, format!("{last:?}"));
+    check(
+        "14f hide_ui=false is honoured",
+        !last.0,
+        format!("{last:?}"),
+    );
     let path_of = |r: Value| -> String {
         serde_json::from_str::<Value>(&text(&r)).unwrap()["path"]
             .as_str()
@@ -642,7 +720,10 @@ fn mcp_server_over_http() {
         a != b,
         format!("{a} {b}"),
     );
-    let r = http.call("screenshot", json!({"dir": shot_dir, "filename": "named.png"}));
+    let r = http.call(
+        "screenshot",
+        json!({"dir": shot_dir, "filename": "named.png"}),
+    );
     check(
         "14h an explicit filename is used",
         std::path::Path::new(&path_of(r.clone())).file_name() == Some("named.png".as_ref()),
@@ -652,7 +733,11 @@ fn mcp_server_over_http() {
         "screenshot",
         json!({"dir": shot_dir, "filename": "../escape.png"}),
     );
-    check("14i a filename containing a path is refused", is_error(&r), r.to_string());
+    check(
+        "14i a filename containing a path is refused",
+        is_error(&r),
+        r.to_string(),
+    );
     *rec.capture_meta.lock() =
         json!({"focused_game": false, "game_window_found": false, "region": null});
     let r = http.call("screenshot", json!({"dir": shot_dir}));
@@ -670,14 +755,26 @@ fn mcp_server_over_http() {
     *rec.capture_meta.lock() = good_meta();
     http.call("screenshot", json!({"dir": shot_dir, "focus_game": false}));
     let last = *rec.captures.lock().last().unwrap();
-    check("14m focus_game=false is honoured", !last.2, format!("{last:?}"));
+    check(
+        "14m focus_game=false is honoured",
+        !last.2,
+        format!("{last:?}"),
+    );
     let sub = shot.path().join("sub").to_string_lossy().into_owned();
     let r = http.call("screenshot", json!({"dir": sub, "filename": "deep.png"}));
-    check("14j a missing directory is created", !is_error(&r), r.to_string());
+    check(
+        "14j a missing directory is created",
+        !is_error(&r),
+        r.to_string(),
+    );
 
     // ---- 15. camera_control: argument handling (no world in this harness)
     let r = http.call("camera_control", json!({"action": "get"}));
-    check("15a camera_control with no world is an isError", is_error(&r), r.to_string());
+    check(
+        "15a camera_control with no world is an isError",
+        is_error(&r),
+        r.to_string(),
+    );
     check(
         "15b ... and says so rather than timing out on the console",
         text(&r).contains("no live world"),
@@ -692,12 +789,27 @@ fn mcp_server_over_http() {
 
     // ---- 16. camera_control: the composed Lua
     for (name, args) in [
-        ("absolute", json!({"x": 10, "y": 20, "z": 5, "yaw_deg": 90, "pitch_deg": -10})),
-        ("relative", json!({"rel_fwd_m": -8, "rel_up_m": 3, "look_at": 1234})),
-        ("relative+veh", json!({"veh_id": 7, "rel_fwd_m": 5, "rel_right_m": 2})),
-        ("orbit", json!({"orbit_distance_m": 12, "orbit_azimuth_deg": 135,
-                         "orbit_elevation_deg": 25})),
-        ("abs+lookat_point", json!({"x": 1, "y": 2, "z": 3, "look_at": [4, 5, 6]})),
+        (
+            "absolute",
+            json!({"x": 10, "y": 20, "z": 5, "yaw_deg": 90, "pitch_deg": -10}),
+        ),
+        (
+            "relative",
+            json!({"rel_fwd_m": -8, "rel_up_m": 3, "look_at": 1234}),
+        ),
+        (
+            "relative+veh",
+            json!({"veh_id": 7, "rel_fwd_m": 5, "rel_right_m": 2}),
+        ),
+        (
+            "orbit",
+            json!({"orbit_distance_m": 12, "orbit_azimuth_deg": 135,
+                         "orbit_elevation_deg": 25}),
+        ),
+        (
+            "abs+lookat_point",
+            json!({"x": 1, "y": 2, "z": 3, "look_at": [4, 5, 6]}),
+        ),
     ] {
         let chunk = ms::cam_place_chunk(&pyjson::loads(&args.to_string()).unwrap()).unwrap();
         check(
@@ -772,10 +884,9 @@ fn mcp_server_over_http() {
         ms::CAM_READ_LUA.contains("math.atan2(-f.x,-f.y)"),
         String::new(),
     );
-    let caminfo = std::fs::read_to_string(
-        repo_root().join("bng_mod/lua/ge/extensions/cameraInfo.lua"),
-    )
-    .unwrap_or_default();
+    let caminfo =
+        std::fs::read_to_string(repo_root().join("bng_mod/lua/ge/extensions/cameraInfo.lua"))
+            .unwrap_or_default();
     check(
         "17g ... and cameraInfo.lua still uses it too",
         caminfo.contains("atan2(-fwd.x, -fwd.y)") || caminfo.contains("atan2(-fwd.x,-fwd.y)"),
@@ -843,9 +954,15 @@ fn mcp_server_over_http() {
     let tools_src = src("mcp_server/tools.rs");
     check(
         "19a the mask reads secretstore's list, not a copy of it",
-        tools_src.contains("secretstore::is_secret_setting(") && !tools_src.contains("SECRET_NAME_PARTS"),
+        tools_src.contains("secretstore::is_secret_setting(")
+            && !tools_src.contains("SECRET_NAME_PARTS"),
         String::new(),
     );
 
-    assert!(failures.is_empty(), "{} FAILURES:\n{}", failures.len(), failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "{} FAILURES:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
 }

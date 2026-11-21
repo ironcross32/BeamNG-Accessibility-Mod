@@ -85,15 +85,20 @@ fn quietly<T>(f: impl FnOnce() -> T) -> Option<T> {
 /// `_t_health(args)`.
 pub(super) fn t_health(_args: &PyJson) -> TResult<PyJson> {
     let d = deps()?;
-    let (console_ok, console_detail) =
-        match exec_console(&PyJson::from("ge"), "return 1", &PyJson::Float(2.0), false, true) {
-            Ok(res) => (
-                res.get("ok").is_some_and(PyJson::truthy)
-                    && !res.get("timed_out").is_some_and(PyJson::truthy),
-                res.get("result").cloned().unwrap_or(PyJson::from("")),
-            ),
-            Err(e) => (false, PyJson::Str(e.message().to_string())),
-        };
+    let (console_ok, console_detail) = match exec_console(
+        &PyJson::from("ge"),
+        "return 1",
+        &PyJson::Float(2.0),
+        false,
+        true,
+    ) {
+        Ok(res) => (
+            res.get("ok").is_some_and(PyJson::truthy)
+                && !res.get("timed_out").is_some_and(PyJson::truthy),
+            res.get("result").cloned().unwrap_or(PyJson::from("")),
+        ),
+        Err(e) => (false, PyJson::Str(e.message().to_string())),
+    };
     let mut cfg = Dict::new();
     if let Some(full) = quietly(|| (d.load_config_fn)()) {
         for k in [
@@ -158,7 +163,12 @@ pub(super) fn t_lua_contexts(args: &PyJson) -> TResult<PyJson> {
         "contexts",
         PyJson::List(
             ctxs.into_iter()
-                .map(|(i, label)| dict(vec![("index", PyJson::Int(i)), ("label", PyJson::Str(label))]))
+                .map(|(i, label)| {
+                    dict(vec![
+                        ("index", PyJson::Int(i)),
+                        ("label", PyJson::Str(label)),
+                    ])
+                })
                 .collect(),
         ),
     )]))
@@ -252,7 +262,11 @@ fn cursor_value(v: &PyJson) -> Result<i64, &'static str> {
     match v {
         PyJson::Bool(b) => Ok(*b as i64),
         PyJson::Int(i) => Ok(*i),
-        PyJson::BigInt(t) => Ok(if t.starts_with('-') { i64::MIN } else { i64::MAX }),
+        PyJson::BigInt(t) => Ok(if t.starts_with('-') {
+            i64::MIN
+        } else {
+            i64::MAX
+        }),
         PyJson::Float(f) if f.is_nan() => Ok(i64::MAX),
         PyJson::Float(f) => Ok(f.floor() as i64),
         other => Err(other.type_name()),
@@ -285,7 +299,11 @@ pub(super) fn t_speech_log(args: &PyJson) -> TResult<PyJson> {
             }
         }
     };
-    let source_filter = if source.truthy() { Some(source.clone()) } else { None };
+    let source_filter = if source.truthy() {
+        Some(source.clone())
+    } else {
+        None
+    };
     let contains = if contains.truthy() {
         match &contains {
             PyJson::Str(s) => Some(s.clone()),
@@ -369,7 +387,9 @@ pub(super) fn t_press_command(args: &PyJson) -> TResult<PyJson> {
     let d = deps()?;
     let name = aget_val(args, "name")?;
     if !name.truthy() {
-        return Err(ToolFail::tool("`name` is required (the key pressed after F9)"));
+        return Err(ToolFail::tool(
+            "`name` is required (the key pressed after F9)",
+        ));
     }
     let settle = aget_or(args, "settle_ms", PyJson::Int(300))?.py_float()? / 1000.0;
     let ctrl = aget_val(args, "ctrl")?.truthy();
@@ -382,14 +402,26 @@ pub(super) fn t_press_command(args: &PyJson) -> TResult<PyJson> {
         return Err(ToolFail::py("RuntimeError", e));
     }
     sleep(py_max(0.0, py_min(settle, 5.0)));
-    let after = speech_log_json(&(d.get_speech_log_fn)(Some(cursor), Some(50), None, None, false));
+    let after = speech_log_json(&(d.get_speech_log_fn)(
+        Some(cursor),
+        Some(50),
+        None,
+        None,
+        false,
+    ));
     Ok(dict(vec![
         ("pressed", name),
         (
             "speech",
-            after.get("entries").cloned().unwrap_or(PyJson::List(Vec::new())),
+            after
+                .get("entries")
+                .cloned()
+                .unwrap_or(PyJson::List(Vec::new())),
         ),
-        ("next_seq", after.get("next_seq").cloned().unwrap_or(PyJson::Null)),
+        (
+            "next_seq",
+            after.get("next_seq").cloned().unwrap_or(PyJson::Null),
+        ),
     ]))
 }
 
@@ -480,7 +512,11 @@ pub(super) fn t_vehicle_control(args: &PyJson) -> TResult<PyJson> {
                     "`vehicle_ids` is required for {action}"
                 )));
             }
-            let verb = if action == "remove" { "REMOVE" } else { "RELOAD" };
+            let verb = if action == "remove" {
+                "REMOVE"
+            } else {
+                "RELOAD"
+            };
             let msg = format!("{verb}:{}", iter_str(&ids)?.join(","));
             send_str(&d, 4461, &msg)?;
             Ok(dict(vec![("sent", PyJson::Str(msg))]))
@@ -669,7 +705,10 @@ pub(super) fn t_reset_test_state(_args: &PyJson) -> TResult<PyJson> {
             );
         }
         Err(e) => {
-            out.insert("ramp_retry_error".into(), PyJson::Str(e.message().to_string()));
+            out.insert(
+                "ramp_retry_error".into(),
+                PyJson::Str(e.message().to_string()),
+            );
         }
     }
     Ok(PyJson::Dict(out))
@@ -678,8 +717,7 @@ pub(super) fn t_reset_test_state(_args: &PyJson) -> TResult<PyJson> {
 /// `_t_assistant_diagnostic(args)`.
 pub(super) fn t_assistant_diagnostic(args: &PyJson) -> TResult<PyJson> {
     let d = deps()?;
-    let action = aget_or(args, "action", PyJson::from("status"))?
-        .py_str();
+    let action = aget_or(args, "action", PyJson::from("status"))?.py_str();
     let action = py_strip(&action).to_lowercase();
     if action == "start" {
         require_world()?;
@@ -720,8 +758,7 @@ fn opt_str(v: &PyJson) -> Option<String> {
 /// `_t_road_diagnostic(args)`.
 pub(super) fn t_road_diagnostic(args: &PyJson) -> TResult<PyJson> {
     let d = deps()?;
-    let action = aget_or(args, "action", PyJson::from("status"))?
-        .py_str();
+    let action = aget_or(args, "action", PyJson::from("status"))?.py_str();
     let action = py_strip(&action).to_lowercase();
     if action == "start" {
         require_world()?;
@@ -731,7 +768,11 @@ pub(super) fn t_road_diagnostic(args: &PyJson) -> TResult<PyJson> {
     let note = opt_str(&aget_val(args, "note")?);
     let limit_v = aget_or(args, "limit", PyJson::Int(20))?;
     // list_sessions(limit) is the only reader: int(limit) there.
-    let normalised = if action.is_empty() { "status" } else { action.as_str() };
+    let normalised = if action.is_empty() {
+        "status"
+    } else {
+        action.as_str()
+    };
     let limit = if normalised == "list" {
         limit_v.py_int().map_err(|e: PyErr| ToolFail::from(e))?
     } else {

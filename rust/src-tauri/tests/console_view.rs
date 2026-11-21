@@ -26,7 +26,14 @@ fn two_lines_are_not_spoken() {
 #[test]
 fn error_and_queued() {
     assert_eq!(
-        run(&["RESP|error|bad|thing", "EXECEND", "RESP|queued", "EXECEND", "RESP|error", "EXECEND"]),
+        run(&[
+            "RESP|error|bad|thing",
+            "EXECEND",
+            "RESP|queued",
+            "EXECEND",
+            "RESP|error",
+            "EXECEND"
+        ]),
         vec![
             Action::Line("  error: bad|thing".into()),
             Action::Speak("error: bad|thing".into()),
@@ -57,7 +64,14 @@ fn output_without_a_resp_is_shown_not_spoken() {
 #[test]
 fn contexts_accumulate_until_ctxend() {
     assert_eq!(
-        run(&["CTX|0|GE - Lua", "CTX|x|bad", "CTX|3|veh|1", "CTX|4", "CTXEND", "CTXEND"]),
+        run(&[
+            "CTX|0|GE - Lua",
+            "CTX|x|bad",
+            "CTX|3|veh|1",
+            "CTX|4",
+            "CTXEND",
+            "CTXEND"
+        ]),
         vec![Action::Contexts(vec![
             (0, "GE - Lua".into()),
             (3, "veh|1".into())

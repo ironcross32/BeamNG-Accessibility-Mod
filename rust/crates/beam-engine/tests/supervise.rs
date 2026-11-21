@@ -18,7 +18,7 @@ fn restarts_after_a_panic_and_an_unexpected_return_then_stops() {
     supervise("test listener", &stop, &move || {
         match r.fetch_add(1, Ordering::SeqCst) {
             0 => panic!("a malformed packet"),
-            1 => {} // a socket error ended the loop
+            1 => {}       // a socket error ended the loop
             _ => s.set(), // the engine is closing
         }
     });

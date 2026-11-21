@@ -27,7 +27,9 @@ fn fake_hrtf() -> HrtfSet {
 /// One-tap IRs: left 1.0, right `az / 360`.
 fn probe_hrtf() -> HrtfSet {
     let l = vec![vec![1.0f32]; 360];
-    let r = (0..360).map(|az| vec![(az as f64 / 360.0) as f32]).collect();
+    let r = (0..360)
+        .map(|az| vec![(az as f64 / 360.0) as f32])
+        .collect();
     HrtfSet::from_rows(l, r, 48000.0).expect("probe set")
 }
 
@@ -61,7 +63,10 @@ fn road_audio_simulation() {
     }));
     let h = harness(cfg.as_ref());
     let controller = &h.ctrl;
-    assert!(controller.is_enabled(), "audio dependencies are unavailable");
+    assert!(
+        controller.is_enabled(),
+        "audio dependencies are unavailable"
+    );
     controller.set_road_mode(true);
     {
         let s = controller.lock.lock();
@@ -102,7 +107,10 @@ fn road_audio_simulation() {
         .expect("correction block");
     assert!(max_abs(&correction.0) > max_abs(&correction.1));
     assert!(correction.0.iter().filter(|&&x| x.abs() < 1e-8).count() > 0);
-    assert_eq!(controller.voice.lock()._road_correction_render_bearing, 35.0);
+    assert_eq!(
+        controller.voice.lock()._road_correction_render_bearing,
+        35.0
+    );
     assert!(controller.voice.lock()._road_playback_pos < 0.0);
 
     // The unwind instruction is a directional doublet and begins immediately when the
@@ -116,7 +124,10 @@ fn road_audio_simulation() {
         .render_road_correction_block((sr * 0.25).trunc() as usize, true, -20.0, 0.4, "unwind")
         .expect("unwind block");
     assert!(max_abs(&unwind.1) > max_abs(&unwind.0));
-    assert_eq!(controller.voice.lock()._road_correction_render_bearing, -25.0);
+    assert_eq!(
+        controller.voice.lock()._road_correction_render_bearing,
+        -25.0
+    );
 
     for phase in ["correct", "unwind"] {
         for bearing in [-0.1, 0.0, 0.1] {
@@ -168,7 +179,10 @@ fn road_audio_simulation() {
                 .expect("block");
             // One-tap IRs leave no overlap tail, so the block is exactly this lookup.
             let got = probed_bearing(&l, &r);
-            assert!((got - expected).abs() < 1e-3, "{bearing}: looked up {got}, want {expected}");
+            assert!(
+                (got - expected).abs() < 1e-3,
+                "{bearing}: looked up {got}, want {expected}"
+            );
         }
     }
 
@@ -217,8 +231,14 @@ fn road_audio_simulation() {
     assert_eq!(delays, first_delays);
     controller.trigger_road_junction_entry_earcon();
     let waves = controller.waveforms();
-    let entry = waves.ROAD_JUNCTION_ENTRY_WAVEFORM.clone().expect("entry waveform");
-    let pip = waves.ROAD_JUNCTION_WAVEFORM.clone().expect("junction waveform");
+    let entry = waves
+        .ROAD_JUNCTION_ENTRY_WAVEFORM
+        .clone()
+        .expect("entry waveform");
+    let pip = waves
+        .ROAD_JUNCTION_WAVEFORM
+        .clone()
+        .expect("junction waveform");
     {
         let s = controller.lock.lock();
         assert_eq!(s._road_junction_queue.len(), 1);
@@ -234,16 +254,29 @@ fn road_audio_simulation() {
     let settled_packet = obj(json!({
         "active": false, "bearing": 0, "severity": 0, "phase": "idle", "settled": true,
     }));
-    let settled_event = controller.update_road_guidance("onRoad", None, Some(&settled_packet), true);
+    let settled_event =
+        controller.update_road_guidance("onRoad", None, Some(&settled_packet), true);
     assert_eq!(controller.voice.lock()._road_correction_settled_pos, 0);
-    assert_eq!(settled_event, RoadGuidanceResult { settled_triggered: true });
+    assert_eq!(
+        settled_event,
+        RoadGuidanceResult {
+            settled_triggered: true
+        }
+    );
     let repeated_event =
         controller.update_road_guidance("onRoad", None, Some(&settled_packet), true);
-    assert_eq!(repeated_event, RoadGuidanceResult { settled_triggered: false });
+    assert_eq!(
+        repeated_event,
+        RoadGuidanceResult {
+            settled_triggered: false
+        }
+    );
     h.clock.advance(ROAD_CORRECTION_SETTLED_REFRACTORY_S + 0.01);
     assert_eq!(
         controller.update_road_guidance("onRoad", None, Some(&settled_packet), true),
-        RoadGuidanceResult { settled_triggered: true }
+        RoadGuidanceResult {
+            settled_triggered: true
+        }
     );
     controller.clear_road_audio();
     {

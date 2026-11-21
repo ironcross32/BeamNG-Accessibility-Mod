@@ -32,13 +32,7 @@ pub fn render(b: &mut Block<'_>, v: &mut Voice) {
     if v._dock_approach_cue_pos >= 0.0 {
         match w.DOCK_APPROACH_CUE_WAVEFORM.as_ref() {
             None => v._dock_approach_cue_pos = -1.0,
-            Some(wf) => play_centred(
-                b.buf_l,
-                b.buf_r,
-                wf,
-                &mut v._dock_approach_cue_pos,
-                frames,
-            ),
+            Some(wf) => play_centred(b.buf_l, b.buf_r, wf, &mut v._dock_approach_cue_pos, frames),
         }
     }
 }

@@ -36,7 +36,9 @@ pub fn render(b: &mut Block<'_>, v: &mut Voice) {
         if v._scan_old_left > 0 {
             let len = ob.len();
             let opos = v._scan_old_pos.min(len);
-            let n = (frames as i64).min((len - opos) as i64).min(v._scan_old_left);
+            let n = (frames as i64)
+                .min((len - opos) as i64)
+                .min(v._scan_old_left);
             if n > 0 {
                 let n = n as usize;
                 let total = 1i64.max((b.sr * SCAN_CROSSFADE_MS / 1000.0).trunc() as i64);

@@ -200,7 +200,9 @@ pub fn render_road_correction_block(
         };
         v._road_correction_overlap_L = Some(tail(&conv_l));
         v._road_correction_overlap_R = Some(tail(&conv_r));
-        let head = |c: &[f64]| -> Vec<f32> { c[..frames.min(c.len())].iter().map(|&x| x as f32).collect() };
+        let head = |c: &[f64]| -> Vec<f32> {
+            c[..frames.min(c.len())].iter().map(|&x| x as f32).collect()
+        };
         return Some((head(&conv_l), head(&conv_r)));
     }
 

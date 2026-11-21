@@ -121,7 +121,11 @@ impl ConsoleView {
             }
             "LOG" => {
                 let (lvl, origin, msg) = if parts.len() >= 5 {
-                    (parts[2].to_string(), parts[3].to_string(), parts[4..].join("|"))
+                    (
+                        parts[2].to_string(),
+                        parts[3].to_string(),
+                        parts[4..].join("|"),
+                    )
                 } else {
                     (String::new(), String::new(), parts[1..].join("|"))
                 };

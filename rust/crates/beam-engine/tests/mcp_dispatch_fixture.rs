@@ -41,10 +41,18 @@ fn reply(cmd: &str) -> Vec<String> {
     if let Some(rest) = cmd.strip_prefix("EXEC|") {
         let code = rest.split_once('|').map_or("", |(_, c)| c);
         if code == ms::CAM_READ_LUA {
-            return vec!["RESP|ok".into(), format!("OUT|= {CAM_POSE}"), "EXECEND".into()];
+            return vec![
+                "RESP|ok".into(),
+                format!("OUT|= {CAM_POSE}"),
+                "EXECEND".into(),
+            ];
         }
         if code == ms::CAM_LIST_LUA {
-            return vec!["RESP|ok".into(), format!("OUT|= {CAM_LIST}"), "EXECEND".into()];
+            return vec![
+                "RESP|ok".into(),
+                format!("OUT|= {CAM_LIST}"),
+                "EXECEND".into(),
+            ];
         }
         if code.contains("boom") {
             return vec!["RESP|error|boom happened".into(), "EXECEND".into()];

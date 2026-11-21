@@ -111,9 +111,11 @@ pub fn config_reset(shell: State<'_, Arc<Shell>>) -> Cmd<Value> {
 
 #[tauri::command]
 pub async fn speech_list_backends() -> Cmd<Vec<String>> {
-    Ok(blocking(|| catch_unwind(beam_speech::speech::list_backends).unwrap_or_default())
-        .await
-        .unwrap_or_default())
+    Ok(
+        blocking(|| catch_unwind(beam_speech::speech::list_backends).unwrap_or_default())
+            .await
+            .unwrap_or_default(),
+    )
 }
 
 #[derive(Debug, Deserialize)]
@@ -129,7 +131,9 @@ pub async fn speech_list_voices(args: BackendArgs) -> Cmd<Value> {
         args.backend
     };
     let r = blocking(move || {
-        catch_unwind(AssertUnwindSafe(|| beam_speech::speech::list_voices(&backend)))
+        catch_unwind(AssertUnwindSafe(|| {
+            beam_speech::speech::list_voices(&backend)
+        }))
     })
     .await?;
     let (mut voices, feats) = r.unwrap_or_default();

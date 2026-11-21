@@ -25,8 +25,8 @@ pub fn render(b: &mut Block<'_>, v: &mut Voice) {
             // Rapid beeping: pitch higher, rate rising as the distance falls.
             let pitch_mult = COUPLER_BEEP_PITCH;
             let range_frac = py_max(0.0, 1.0 - (s.coupler_dist / COUPLER_RANGE_M));
-            let beep_rate =
-                COUPLER_BEEP_MIN_RATE + (COUPLER_BEEP_MAX_RATE - COUPLER_BEEP_MIN_RATE) * range_frac;
+            let beep_rate = COUPLER_BEEP_MIN_RATE
+                + (COUPLER_BEEP_MAX_RATE - COUPLER_BEEP_MIN_RATE) * range_frac;
             let beep_period = 1.0 / beep_rate;
             let beep_on = COUPLER_BEEP_DUR_MS as f64 / 1000.0;
 
@@ -53,7 +53,8 @@ pub fn render(b: &mut Block<'_>, v: &mut Voice) {
         } else {
             // Continuous tone, pitch scaling with distance.
             let dist_norm = (-s.coupler_dist / COUPLER_HALF_DIST_M).exp();
-            let pitch_mult = COUPLER_MIN_PITCH + (COUPLER_MAX_PITCH - COUPLER_MIN_PITCH) * dist_norm;
+            let pitch_mult =
+                COUPLER_MIN_PITCH + (COUPLER_MAX_PITCH - COUPLER_MIN_PITCH) * dist_norm;
             let freq = COUPLER_TONE_FREQ_HZ * pitch_mult;
             let inc = freq / sr;
             let mut last_phase = 0.0;

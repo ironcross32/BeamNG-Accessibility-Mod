@@ -34,7 +34,10 @@ fn load_normalises_like_load_into_controls() {
     c.insert("telemetry_protocol".into(), "OUTGAUGE".into());
     c.insert("beamng_renderer".into(), "Vulkan".into());
     c.insert("obstacle_warning_sensitivity".into(), "weird".into());
-    c.insert("scanner_distance_callout_interval".into(), PyValue::Float(30.0));
+    c.insert(
+        "scanner_distance_callout_interval".into(),
+        PyValue::Float(30.0),
+    );
     c.insert("speed_announce_interval".into(), 33i64.into());
     c.insert("scanner_base_freq_hz".into(), PyValue::Float(1002.5));
     c.insert("hrtf_set".into(), "nope".into());
@@ -92,7 +95,11 @@ fn save_after_reset_keeps_keys_the_panel_does_not_own() {
     let r = save_panel_at(&path, &mut snap, &args);
     assert_eq!(r, json!({"ok": true}));
     let back = config::load_config_configurator_at(&path).unwrap();
-    assert_eq!(back["units"], PyValue::from("imperial"), "the panel's own key resets");
+    assert_eq!(
+        back["units"],
+        PyValue::from("imperial"),
+        "the panel's own key resets"
+    );
     assert_eq!(back["route_beacon_volume_db"], PyValue::Float(-3.0));
     assert!(back.contains_key("from_a_newer_build"));
 }

@@ -86,9 +86,7 @@ fn call(h: &Harness, name: &str, args: &[Value]) {
         ),
         "set_obstacle_mode" => c.set_obstacle_mode(b(0)),
         "update_selected_hazard" => c.update_selected_hazard(hazard(&args[0]).as_ref()),
-        "update_obstacle" => {
-            c.update_obstacle(args[0].as_i64().expect("type"), f(1), f(2), f(3))
-        }
+        "update_obstacle" => c.update_obstacle(args[0].as_i64().expect("type"), f(1), f(2), f(3)),
         "set_road_mode" => c.set_road_mode(b(0)),
         "update_road_guidance" => {
             c.update_road_guidance(

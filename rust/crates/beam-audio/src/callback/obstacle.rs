@@ -43,8 +43,8 @@ pub fn render(b: &mut Block<'_>, v: &mut Voice) {
                 buzz,
                 v._obstacle_render_bearing,
             );
-            let second_delay = buzz.len() as i64
-                + (sr * OBSTACLE_DOUBLET_GAP_MS as f64 / 1000.0).trunc() as i64;
+            let second_delay =
+                buzz.len() as i64 + (sr * OBSTACLE_DOUBLET_GAP_MS as f64 / 1000.0).trunc() as i64;
             v._obstacle_pulse_queue = vec![
                 PulseEntry {
                     delay: 0,

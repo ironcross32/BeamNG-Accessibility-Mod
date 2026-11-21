@@ -1,4 +1,4 @@
-﻿//! Owner: E10. `updater.py`: the GitHub-only auto-updater.
+//! Owner: E10. `updater.py`: the GitHub-only auto-updater.
 //!
 //! The whole product ships as ONE release asset (`BeamNG_accessibility_mod.zip`, holding
 //! `beamtel.exe`, `README.md` and `bng_screenreader_mod.zip`), so an update is: fetch that
@@ -297,11 +297,7 @@ impl HttpClient for UreqClient {
         if status >= 400 {
             return Err(HttpError::Status {
                 code: status,
-                reason: resp
-                    .status()
-                    .canonical_reason()
-                    .unwrap_or("")
-                    .to_string(),
+                reason: resp.status().canonical_reason().unwrap_or("").to_string(),
             });
         }
         let content_length = resp
@@ -417,7 +413,11 @@ pub(crate) mod pyos {
     /// The `[WinError N] ...` form.
     pub fn win(e: &io::Error, f1: Option<&Path>, f2: Option<&Path>) -> String {
         match e.raw_os_error() {
-            Some(code) => with_files(format!("[WinError {code}] {}", win_message(e, code)), f1, f2),
+            Some(code) => with_files(
+                format!("[WinError {code}] {}", win_message(e, code)),
+                f1,
+                f2,
+            ),
             None => e.to_string(),
         }
     }
@@ -603,7 +603,10 @@ pub fn check_latest(env: &UpdaterEnv, timeout: f64) -> Result<Option<Release>, S
             return Ok(None);
         }
         Err(HttpError::Url(reason)) => {
-            env.log(Info, format!("Update check: could not reach GitHub ({reason})"));
+            env.log(
+                Info,
+                format!("Update check: could not reach GitHub ({reason})"),
+            );
             return Ok(None);
         }
         Err(HttpError::Other(e)) => {
@@ -1432,7 +1435,14 @@ fn run_with_progress<T: Send>(
 //  The flow
 // =========================
 
-fn message(sink: &dyn UiSink, kind: MessageKind, title: &str, text: String, buttons: Buttons, default: Answer) -> Answer {
+fn message(
+    sink: &dyn UiSink,
+    kind: MessageKind,
+    title: &str,
+    text: String,
+    buttons: Buttons,
+    default: Answer,
+) -> Answer {
     sink.message_box(&MessageBox {
         kind,
         title: title.to_string(),
@@ -1485,7 +1495,8 @@ fn startup_body(
     allow: &dyn Fn(),
     deny: &dyn Fn(),
 ) -> Result<(), String> {
-    let cfg = load_config_configurator_at(&env.config_path).map_err(|e| pyos::win(&e, None, None))?;
+    let cfg =
+        load_config_configurator_at(&env.config_path).map_err(|e| pyos::win(&e, None, None))?;
     let pending = match cfg.get(PENDING_KEY) {
         Some(v) if v.truthy() => py_strip(&v.py_str()).to_string(),
         _ => String::new(),
@@ -1622,7 +1633,9 @@ fn check_and_offer(
         sink,
         MessageKind::Question,
         "Update Available",
-        format!("You have version {APP_VERSION}. Version {version} is available.\n\nInstall it now?"),
+        format!(
+            "You have version {APP_VERSION}. Version {version} is available.\n\nInstall it now?"
+        ),
         Buttons::YesNo,
         Answer::Yes,
     );
@@ -1673,7 +1686,12 @@ fn check_and_offer(
     // Only now, with a validated and unpacked update on disk, does the pending flag go
     // in: a promise made before staging could not be kept.
     if let Err(e) = set_pending_update(env, &version) {
-        fail(sink, env, &format!("Could not record the pending update: {e}"), allow);
+        fail(
+            sink,
+            env,
+            &format!("Could not record the pending update: {e}"),
+            allow,
+        );
         return Ok(());
     }
 

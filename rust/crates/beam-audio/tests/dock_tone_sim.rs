@@ -7,7 +7,7 @@
 
 mod audio_harness;
 
-use audio_harness::{harness, Harness};
+use audio_harness::{Harness, harness};
 use beam_audio::consts::{
     DOCK_AM_ABOVE_HZ, DOCK_AM_BELOW_HZ, DOCK_ATTACK_TAU, DOCK_BEAT_HZ_PER_M, DOCK_BEAT_MAX_HZ,
     DOCK_BEAT_RANGE_M, DOCK_LATERAL_FULL_M, DOCK_LOCK_BEAT_HZ, DOCK_LOCK_REARM_BEAT_HZ,
@@ -123,23 +123,40 @@ impl Dock {
         if self.mode == Mode::Ramp {
             // The real controller starts in IMPL; a first packet in RAMP switches it,
             // which resets exactly what a fresh mirror already has at rest.
-            h.ctrl.update_dock_target(f64::INFINITY, 0.0, 0.0, "RAMP", false, 0.0);
+            h.ctrl
+                .update_dock_target(f64::INFINITY, 0.0, 0.0, "RAMP", false, 0.0);
         }
         self.real = Some((h, 0));
         self
     }
 
     fn max_range(&self) -> f64 {
-        if self.mode == Mode::Ramp { DOCK_RAMP_MAX_RANGE_M } else { DOCK_MAX_RANGE_M }
+        if self.mode == Mode::Ramp {
+            DOCK_RAMP_MAX_RANGE_M
+        } else {
+            DOCK_MAX_RANGE_M
+        }
     }
     fn beat_range(&self) -> f64 {
-        if self.mode == Mode::Ramp { DOCK_RAMP_BEAT_RANGE_M } else { DOCK_BEAT_RANGE_M }
+        if self.mode == Mode::Ramp {
+            DOCK_RAMP_BEAT_RANGE_M
+        } else {
+            DOCK_BEAT_RANGE_M
+        }
     }
     fn beat_slope(&self) -> f64 {
-        if self.mode == Mode::Ramp { DOCK_RAMP_BEAT_HZ_PER_DEG } else { DOCK_BEAT_HZ_PER_M }
+        if self.mode == Mode::Ramp {
+            DOCK_RAMP_BEAT_HZ_PER_DEG
+        } else {
+            DOCK_BEAT_HZ_PER_M
+        }
     }
     fn lat_full(&self) -> f64 {
-        if self.mode == Mode::Ramp { DOCK_RAMP_LATERAL_FULL_M } else { DOCK_LATERAL_FULL_M }
+        if self.mode == Mode::Ramp {
+            DOCK_RAMP_LATERAL_FULL_M
+        } else {
+            DOCK_LATERAL_FULL_M
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -193,7 +210,11 @@ impl Dock {
         let live = self.range < self.max_range() && (self.t - self.last_packet_t) < DOCK_STALE_S;
 
         let tgt = if live { 1.0 } else { 0.0 };
-        let tau = if tgt > self.gate { DOCK_ATTACK_TAU } else { DOCK_REL_TAU };
+        let tau = if tgt > self.gate {
+            DOCK_ATTACK_TAU
+        } else {
+            DOCK_REL_TAU
+        };
         self.gate += (1.0 - (-BLOCK_S / tau).exp()) * (tgt - self.gate);
         if self.gate < 0.01 && tgt == 0.0 {
             self.gate = 0.0;
@@ -205,7 +226,11 @@ impl Dock {
                 DOCK_PULSE_MIN_HZ + (DOCK_PULSE_MAX_HZ - DOCK_PULSE_MIN_HZ) * rng_norm.powf(2.0);
 
             // Pulse position accumulates; never elapsed-time-modulo-period.
-            let prev_rate = if self.rate > 0.0 { self.rate } else { self.pulse_hz };
+            let prev_rate = if self.rate > 0.0 {
+                self.rate
+            } else {
+                self.pulse_hz
+            };
             let advance = (prev_rate + self.pulse_hz) / 2.0 * BLOCK_S;
             self.cycle = py_mod(self.cycle + advance, 1.0);
             self.rate = self.pulse_hz;
@@ -230,8 +255,16 @@ impl Dock {
                 self.az = DOCK_MAX_AZIMUTH_DEG * clamp(self.lateral / self.lat_full(), -1.0, 1.0);
             }
 
-            let btgt = if live && !self.acquire && self.range < self.beat_range() { 1.0 } else { 0.0 };
-            let btau = if btgt > self.beat { DOCK_ATTACK_TAU } else { DOCK_REL_TAU };
+            let btgt = if live && !self.acquire && self.range < self.beat_range() {
+                1.0
+            } else {
+                0.0
+            };
+            let btau = if btgt > self.beat {
+                DOCK_ATTACK_TAU
+            } else {
+                DOCK_REL_TAU
+            };
             self.beat += (1.0 - (-BLOCK_S / btau).exp()) * (btgt - self.beat);
             if self.beat < 0.01 && btgt == 0.0 {
                 self.beat = 0.0;
@@ -289,7 +322,10 @@ impl Dock {
     }
 
     fn real_fires(&self) -> usize {
-        self.real.as_ref().map(|r| r.1).expect("driven without the real callback")
+        self.real
+            .as_ref()
+            .map(|r| r.1)
+            .expect("driven without the real callback")
     }
 }
 
@@ -323,18 +359,38 @@ fn c(v: f64) -> impl Fn(f64) -> f64 {
 fn s01_phasing_no_more_than_two_dimensions_during_acquire() {
     let mut s = Dock::imp();
     run(&mut s, 2.0, &c(4.0), &c(0.5), None, None);
-    check("pulse is running at 4 m", s.gate > 0.9, &format!("gate {:.3}", s.gate));
-    check("beat pair is silent at 4 m", s.beat == 0.0, &format!("beat env {:.3}", s.beat));
+    check(
+        "pulse is running at 4 m",
+        s.gate > 0.9,
+        &format!("gate {:.3}", s.gate),
+    );
+    check(
+        "beat pair is silent at 4 m",
+        s.beat == 0.0,
+        &format!("beat env {:.3}", s.beat),
+    );
     run(&mut s, 2.0, &c(1.5), &c(0.5), None, None);
-    check("beat pair enters inside the beat range", s.beat > 0.9, &format!("{:.3}", s.beat));
+    check(
+        "beat pair enters inside the beat range",
+        s.beat > 0.9,
+        &format!("{:.3}", s.beat),
+    );
 }
 
 #[test]
 fn s02_past_the_max_range_silent_not_merely_quiet() {
     let mut s = Dock::imp();
     run(&mut s, 2.0, &c(DOCK_MAX_RANGE_M + 1.0), &c(0.3), None, None);
-    check("gate is hard zero", s.gate == 0.0, &format!("gate {:.6}", s.gate));
-    check("a one-pole alone would never have reached it", (-2.0 / DOCK_REL_TAU).exp() > 0.0, "");
+    check(
+        "gate is hard zero",
+        s.gate == 0.0,
+        &format!("gate {:.6}", s.gate),
+    );
+    check(
+        "a one-pole alone would never have reached it",
+        (-2.0 / DOCK_REL_TAU).exp() > 0.0,
+        "",
+    );
 }
 
 #[test]
@@ -361,20 +417,47 @@ fn s03_the_beat_centre_pitch_fixed_only_the_rate_moves() {
         "",
     );
     let rmax = rates.iter().cloned().fold(f64::MIN, f64::max);
-    check("the whole range stays where beating is heard AS beating", rmax <= 15.0, "");
+    check(
+        "the whole range stays where beating is heard AS beating",
+        rmax <= 15.0,
+        "",
+    );
     let fine = 0.02 * DOCK_BEAT_HZ_PER_M;
-    check("a fine error still produces a countable beat", 0.2 < fine && fine < 2.0, "");
-    check("alignment is exact unison", partners(0.0).0 == partners(0.0).1, "");
-    check("the pair is never a musical interval", rmax / DOCK_REF_HZ < 0.06, "");
+    check(
+        "a fine error still produces a countable beat",
+        0.2 < fine && fine < 2.0,
+        "",
+    );
+    check(
+        "alignment is exact unison",
+        partners(0.0).0 == partners(0.0).1,
+        "",
+    );
+    check(
+        "the pair is never a musical interval",
+        rmax / DOCK_REF_HZ < 0.06,
+        "",
+    );
 }
 
 #[test]
 fn s04_the_lock_fires_once_on_the_way_through() {
     let mut s = Dock::imp().with_real();
     run(&mut s, 1.0, &c(1.0), &c(0.5), None, None);
-    run(&mut s, 2.0, &c(1.0), &|t| (0.5 - 0.25 * t).max(0.0), None, None);
+    run(
+        &mut s,
+        2.0,
+        &c(1.0),
+        &|t| (0.5 - 0.25 * t).max(0.0),
+        None,
+        None,
+    );
     run(&mut s, 3.0, &c(1.0), &c(0.0), None, None);
-    check("locked exactly once", s.lock_fires == 1, &format!("{} fires", s.lock_fires));
+    check(
+        "locked exactly once",
+        s.lock_fires == 1,
+        &format!("{} fires", s.lock_fires),
+    );
     assert_eq!(s.real_fires(), s.lock_fires, "real callback chimes");
 }
 
@@ -385,11 +468,22 @@ fn s05_hunting_around_the_null_cannot_machine_gun_the_lock() {
     run(&mut s, 1.0, &c(1.0), &c(0.0), None, None);
     let first = s.lock_fires;
     let wobble = (DOCK_LOCK_BEAT_HZ + DOCK_LOCK_REARM_BEAT_HZ) * 0.5 / DOCK_BEAT_HZ_PER_M;
-    run(&mut s, 4.0, &c(1.0), &|t| wobble * (t * 12.0).sin(), None, None);
+    run(
+        &mut s,
+        4.0,
+        &c(1.0),
+        &|t| wobble * (t * 12.0).sin(),
+        None,
+        None,
+    );
     check("no extra fires while hunting", s.lock_fires == first, "");
     run(&mut s, 1.0, &c(1.0), &c(0.5), None, None);
     run(&mut s, 1.5, &c(1.0), &c(0.0), None, None);
-    check("a real departure and return chimes again", s.lock_fires == first + 1, "");
+    check(
+        "a real departure and return chimes again",
+        s.lock_fires == first + 1,
+        "",
+    );
     assert_eq!(s.real_fires(), s.lock_fires, "real callback chimes");
 }
 
@@ -400,8 +494,16 @@ fn s06_the_sign_carrier_distinguishes_above_from_below() {
     let above = s.am_hz.expect("tremolo");
     run(&mut s, 1.0, &c(1.0), &c(-0.4), None, None);
     let below = s.am_hz.expect("tremolo");
-    check("the two rates differ", above != below, &format!("{above} vs {below}"));
-    check("they are far enough apart to name by ear", (above - below).abs() >= 2.0, "");
+    check(
+        "the two rates differ",
+        above != below,
+        &format!("{above} vs {below}"),
+    );
+    check(
+        "they are far enough apart to name by ear",
+        (above - below).abs() >= 2.0,
+        "",
+    );
     check(
         "both stay below the beat rates they coexist with",
         above.max(below) < DOCK_BEAT_MAX_HZ,
@@ -419,7 +521,11 @@ fn s07_a_stale_feed_fades_out() {
     for _ in 0..((DOCK_STALE_S + 1.0) / BLOCK_S) as usize {
         s.block();
     }
-    check("faded out after the stale window", s.gate == 0.0, &format!("gate {:.6}", s.gate));
+    check(
+        "faded out after the stale window",
+        s.gate == 0.0,
+        &format!("gate {:.6}", s.gate),
+    );
 }
 
 #[test]
@@ -439,7 +545,11 @@ fn s08_the_train_pulse_position_accumulates() {
         prev_c = s.cycle;
         prev_r = s.rate;
     }
-    check("phase advances by exactly rate x dt every block", worst < 1e-9, &format!("{worst:e}"));
+    check(
+        "phase advances by exactly rate x dt every block",
+        worst < 1e-9,
+        &format!("{worst:e}"),
+    );
 
     // The old formulation on the same approach, so the check cannot pass for free.
     let (mut worst_old, mut prev, mut abs_t) = (0.0f64, None::<f64>, 60.0f64);
@@ -455,7 +565,11 @@ fn s08_the_train_pulse_position_accumulates() {
         prev = Some(pos);
         abs_t += BLOCK_S;
     }
-    check("elapsed-time-modulo-period would teleport", worst_old > 0.1, &format!("{worst_old:.3}"));
+    check(
+        "elapsed-time-modulo-period would teleport",
+        worst_old > 0.1,
+        &format!("{worst_old:.3}"),
+    );
 }
 
 #[test]
@@ -469,7 +583,11 @@ fn s09_pulse_rate_rises_monotonically_and_stays_in_band() {
             rates.push(s.pulse_hz);
         }
     }
-    check("monotonic", rates.windows(2).all(|w| w[1] >= w[0] - 1e-9), "");
+    check(
+        "monotonic",
+        rates.windows(2).all(|w| w[1] >= w[0] - 1e-9),
+        "",
+    );
     check(
         "within the configured band",
         rates
@@ -493,18 +611,37 @@ fn s10_ramp_mode_is_live_where_implement_mode_is_silent() {
     let (mut imp, mut ramp) = (Dock::imp(), Dock::ramp());
     run(&mut imp, 2.0, &c(12.0), &c(0.0), None, None);
     run(&mut ramp, 2.0, &c(12.0), &c(0.0), Some(Mode::Ramp), None);
-    check("at 12 m the implement instrument is silent", imp.gate == 0.0, "");
+    check(
+        "at 12 m the implement instrument is silent",
+        imp.gate == 0.0,
+        "",
+    );
     check("at 12 m ramp mode is fully up", ramp.gate > 0.99, "");
     let mut far = Dock::ramp();
-    run(&mut far, 2.0, &c(DOCK_RAMP_MAX_RANGE_M + 1.0), &c(0.0), Some(Mode::Ramp), None);
-    check("past the ramp max range it is silent, not merely quiet", far.gate == 0.0, "");
+    run(
+        &mut far,
+        2.0,
+        &c(DOCK_RAMP_MAX_RANGE_M + 1.0),
+        &c(0.0),
+        Some(Mode::Ramp),
+        None,
+    );
+    check(
+        "past the ramp max range it is silent, not merely quiet",
+        far.gate == 0.0,
+        "",
+    );
 }
 
 #[test]
 fn s11_the_ramp_acquire_phase_is_two_dimensional() {
     let mut acq = Dock::ramp();
     run(&mut acq, 2.0, &c(12.0), &c(2.0), Some(Mode::Ramp), None);
-    check("at 12 m the null channel has not entered", acq.beat < 0.01, "");
+    check(
+        "at 12 m the null channel has not entered",
+        acq.beat < 0.01,
+        "",
+    );
     let mut close = Dock::ramp();
     run(&mut close, 2.0, &c(5.0), &c(2.0), Some(Mode::Ramp), None);
     check("at 5 m it is fully in", close.beat > 0.99, "");
@@ -520,17 +657,29 @@ fn s12_ramp_axes_yaw_drives_beats_lateral_drives_pulse_position() {
     let r = Some(Mode::Ramp);
     let mut yaw = Dock::ramp();
     run(&mut yaw, 1.0, &c(4.0), &c(12.0), r, None);
-    check("twelve degrees of yaw produces a 6 Hz beat", (yaw.beat_hz - 6.0).abs() < 1e-9, "");
+    check(
+        "twelve degrees of yaw produces a 6 Hz beat",
+        (yaw.beat_hz - 6.0).abs() < 1e-9,
+        "",
+    );
     check("yaw alone does not move the pulse", yaw.az == 0.0, "");
     let mut lat = Dock::ramp();
     run(&mut lat, 1.0, &c(4.0), &c(0.0), r, Some(&c(1.0)));
     check("a lateral offset moves the pulse", lat.az > 0.0, "");
-    check("lateral alone leaves the pair at unison", lat.beat_hz == 0.0, "");
+    check(
+        "lateral alone leaves the pair at unison",
+        lat.beat_hz == 0.0,
+        "",
+    );
     let mut side_l = Dock::ramp();
     run(&mut side_l, 1.0, &c(4.0), &c(6.0), r, None);
     let mut side_r = Dock::ramp();
     run(&mut side_r, 1.0, &c(4.0), &c(-6.0), r, None);
-    check("the two heading signs pick different tremolo rates", side_l.am_hz != side_r.am_hz, "");
+    check(
+        "the two heading signs pick different tremolo rates",
+        side_l.am_hz != side_r.am_hz,
+        "",
+    );
     check(
         "slow means turn left and fast means turn right",
         side_r.am_hz == Some(DOCK_AM_ABOVE_HZ) && side_l.am_hz == Some(DOCK_AM_BELOW_HZ),
@@ -547,18 +696,44 @@ fn s12_ramp_axes_yaw_drives_beats_lateral_drives_pulse_position() {
     );
     let mut sat = Dock::ramp();
     run(&mut sat, 1.0, &c(2.0), &c(24.0), r, None);
-    check("twenty-four degrees saturates the beat", (sat.beat_hz - DOCK_BEAT_MAX_HZ).abs() < 1e-9, "");
-    check("the ramp slope is 0.5 Hz per degree", (DOCK_RAMP_BEAT_HZ_PER_DEG - 0.5).abs() < 1e-9, "");
+    check(
+        "twenty-four degrees saturates the beat",
+        (sat.beat_hz - DOCK_BEAT_MAX_HZ).abs() < 1e-9,
+        "",
+    );
+    check(
+        "the ramp slope is 0.5 Hz per degree",
+        (DOCK_RAMP_BEAT_HZ_PER_DEG - 0.5).abs() < 1e-9,
+        "",
+    );
     check(
         "the ramp pan is scaled for a trough, not a bucket",
         DOCK_RAMP_LATERAL_FULL_M > DOCK_LATERAL_FULL_M * 2.0,
         "",
     );
     let mut centre = Dock::ramp();
-    run(&mut centre, 1.0, &c(4.0), &c(0.0), r, Some(&c(DOCK_RAMP_LATERAL_DEADZONE_M)));
+    run(
+        &mut centre,
+        1.0,
+        &c(4.0),
+        &c(0.0),
+        r,
+        Some(&c(DOCK_RAMP_LATERAL_DEADZONE_M)),
+    );
     let mut full = Dock::ramp();
-    run(&mut full, 1.0, &c(4.0), &c(0.0), r, Some(&c(DOCK_RAMP_LATERAL_FULL_M)));
-    check("15 cm is exactly centred in the pulse image", centre.az == 0.0, "");
+    run(
+        &mut full,
+        1.0,
+        &c(4.0),
+        &c(0.0),
+        r,
+        Some(&c(DOCK_RAMP_LATERAL_FULL_M)),
+    );
+    check(
+        "15 cm is exactly centred in the pulse image",
+        centre.az == 0.0,
+        "",
+    );
     check(
         "3.0 m still reaches the full 75 degree azimuth",
         (full.az - DOCK_MAX_AZIMUTH_DEG).abs() < 1e-9,
@@ -566,11 +741,40 @@ fn s12_ramp_axes_yaw_drives_beats_lateral_drives_pulse_position() {
     );
 
     let mut lock = Dock::ramp().with_real();
-    run(&mut lock, 1.0, &c(4.0), &c(0.0), r, Some(&c(DOCK_RAMP_REARM_LATERAL_M)));
-    run(&mut lock, 1.0, &c(4.0), &c(0.0), r, Some(&c(DOCK_RAMP_LOCK_LATERAL_M + 0.05)));
-    check("square but laterally displaced does not lock", lock.lock_fires == 0, "");
-    run(&mut lock, 1.0, &c(4.0), &c(DOCK_RAMP_LOCK_YAW_DEG + 1.0), r, Some(&c(0.0)));
-    check("centred but crooked does not lock", lock.lock_fires == 0, "");
+    run(
+        &mut lock,
+        1.0,
+        &c(4.0),
+        &c(0.0),
+        r,
+        Some(&c(DOCK_RAMP_REARM_LATERAL_M)),
+    );
+    run(
+        &mut lock,
+        1.0,
+        &c(4.0),
+        &c(0.0),
+        r,
+        Some(&c(DOCK_RAMP_LOCK_LATERAL_M + 0.05)),
+    );
+    check(
+        "square but laterally displaced does not lock",
+        lock.lock_fires == 0,
+        "",
+    );
+    run(
+        &mut lock,
+        1.0,
+        &c(4.0),
+        &c(DOCK_RAMP_LOCK_YAW_DEG + 1.0),
+        r,
+        Some(&c(0.0)),
+    );
+    check(
+        "centred but crooked does not lock",
+        lock.lock_fires == 0,
+        "",
+    );
     run(&mut lock, 1.0, &c(4.0), &c(0.0), r, Some(&c(0.0)));
     check("correcting both axes locks once", lock.lock_fires == 1, "");
     run(
@@ -582,10 +786,25 @@ fn s12_ramp_axes_yaw_drives_beats_lateral_drives_pulse_position() {
         Some(&c(DOCK_RAMP_REARM_LATERAL_M - 0.01)),
     );
     run(&mut lock, 1.0, &c(4.0), &c(0.0), r, Some(&c(0.0)));
-    check("sub-rearm departures do not produce another lock", lock.lock_fires == 1, "");
-    run(&mut lock, 1.0, &c(4.0), &c(DOCK_RAMP_REARM_YAW_DEG), r, Some(&c(0.0)));
+    check(
+        "sub-rearm departures do not produce another lock",
+        lock.lock_fires == 1,
+        "",
+    );
+    run(
+        &mut lock,
+        1.0,
+        &c(4.0),
+        &c(DOCK_RAMP_REARM_YAW_DEG),
+        r,
+        Some(&c(0.0)),
+    );
     run(&mut lock, 1.0, &c(4.0), &c(0.0), r, Some(&c(0.0)));
-    check("8 degrees re-arms and a return locks again", lock.lock_fires == 2, "");
+    check(
+        "8 degrees re-arms and a return locks again",
+        lock.lock_fires == 2,
+        "",
+    );
     assert_eq!(lock.real_fires(), lock.lock_fires, "real callback chimes");
 }
 
@@ -593,10 +812,18 @@ fn s12_ramp_axes_yaw_drives_beats_lateral_drives_pulse_position() {
 fn s13_changing_mode_does_not_fire_a_spurious_lock_chime() {
     let mut sw = Dock::imp().with_real();
     run(&mut sw, 1.0, &c(2.0), &c(0.4), None, None);
-    check("the latch is armed before the switch", sw.lock_armed, &format!("{:.2} Hz", sw.beat_hz));
+    check(
+        "the latch is armed before the switch",
+        sw.lock_armed,
+        &format!("{:.2} Hz", sw.beat_hz),
+    );
     let before = sw.lock_fires;
     run(&mut sw, 1.0, &c(2.0), &c(0.2), Some(Mode::Ramp), None);
-    check("no chime across the mode change", sw.lock_fires == before, "");
+    check(
+        "no chime across the mode change",
+        sw.lock_fires == before,
+        "",
+    );
     assert_eq!(sw.real_fires(), sw.lock_fires, "real callback chimes");
 
     // Without the reset, the same sequence chimes.
@@ -612,7 +839,11 @@ fn s13_changing_mode_does_not_fire_a_spurious_lock_chime() {
         }
         bug.block();
     }
-    check("without the latch reset it WOULD chime", bug.lock_fires > bug_before, "");
+    check(
+        "without the latch reset it WOULD chime",
+        bug.lock_fires > bug_before,
+        "",
+    );
 }
 
 fn hunt(sim: &mut Dock, seconds: f64, along: f64, lat: f64, bearing: f64) {
@@ -661,18 +892,53 @@ fn s14_hunting_for_the_mouth_the_pulse_is_a_beacon() {
         omax - omin < 1e-9 && (old[3] - DOCK_PULSE_MAX_HZ).abs() < 1e-9,
         "",
     );
-    check("a mouth astern is panned astern", h.az.abs() > DOCK_MAX_AZIMUTH_DEG, "");
+    check(
+        "a mouth astern is panned astern",
+        h.az.abs() > DOCK_MAX_AZIMUTH_DEG,
+        "",
+    );
 
     let mut h2 = Dock::ramp().with_real();
-    run(&mut h2, 1.0, &c(4.0), &c(DOCK_RAMP_REARM_YAW_DEG), Some(Mode::Ramp), None);
-    check("the latch can be armed before acquisition", h2.lock_armed, "");
+    run(
+        &mut h2,
+        1.0,
+        &c(4.0),
+        &c(DOCK_RAMP_REARM_YAW_DEG),
+        Some(Mode::Ramp),
+        None,
+    );
+    check(
+        "the latch can be armed before acquisition",
+        h2.lock_armed,
+        "",
+    );
     hunt(&mut h2, 1.5, -4.0, 3.0, 140.0);
-    check("the null channel is silent while hunting", h2.beat == 0.0, "");
-    check("...and no lock chime can fire from there", h2.lock_fires == 0, "");
-    check("acquisition clears a previously armed latch", !h2.lock_armed, "");
+    check(
+        "the null channel is silent while hunting",
+        h2.beat == 0.0,
+        "",
+    );
+    check(
+        "...and no lock chime can fire from there",
+        h2.lock_fires == 0,
+        "",
+    );
+    check(
+        "acquisition clears a previously armed latch",
+        !h2.lock_armed,
+        "",
+    );
     run(&mut h2, 1.0, &c(6.0), &c(0.5), Some(Mode::Ramp), None);
-    check("reaching the approach brings the null channel in", h2.beat > 0.9, "");
-    check("entering already aligned cannot produce a second cue", h2.lock_fires == 0, "");
+    check(
+        "reaching the approach brings the null channel in",
+        h2.beat > 0.9,
+        "",
+    );
+    check(
+        "entering already aligned cannot produce a second cue",
+        h2.lock_fires == 0,
+        "",
+    );
     assert_eq!(h2.real_fires(), h2.lock_fires, "real callback chimes");
     let v = h2.real.as_ref().unwrap().0.ctrl.voice.lock();
     assert!(v._dock_beat_env > 0.9, "real beat env {}", v._dock_beat_env);

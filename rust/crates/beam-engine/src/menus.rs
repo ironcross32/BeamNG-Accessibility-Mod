@@ -1007,9 +1007,7 @@ pub fn on_status_arrow_press(event: &KeyEvent) {
             drop(st);
             match event.name.as_str() {
                 "up" | "down" => crate::virtual_browser::on_vbrowser_nav(event),
-                "left" | "right" if adjustable => {
-                    crate::virtual_browser::on_vbrowser_adjust(event)
-                }
+                "left" | "right" if adjustable => crate::virtual_browser::on_vbrowser_adjust(event),
                 _ => {}
             }
             return;

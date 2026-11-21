@@ -305,7 +305,11 @@ pub fn push_obstacle_state(st: &mut State, force: bool, gear: Option<&str>) -> b
     } else {
         py_max(-1.0, py_min(1.0, raw))
     };
-    let path_bend = if direction == "R" { steering } else { 0.0 - steering };
+    let path_bend = if direction == "R" {
+        steering
+    } else {
+        0.0 - steering
+    };
     let new_state = (
         direction.to_string(),
         path_bend,

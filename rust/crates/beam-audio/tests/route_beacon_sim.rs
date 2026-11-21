@@ -114,7 +114,11 @@ fn scenario_5_audio_gate() {
     c.update_route_beacon(true, 45.0, 250.0);
     {
         let s = c.lock.lock();
-        check("an available route arms the renderer", s._route_beacon_available, "");
+        check(
+            "an available route arms the renderer",
+            s._route_beacon_available,
+            "",
+        );
         check(
             "bearing and distance are stored",
             s._route_beacon_bearing == 45.0 && s._route_beacon_distance == 250.0,
@@ -172,7 +176,11 @@ fn scenario_5_audio_gate() {
         "",
     );
     let (left, right) = c.render_directional_pulse(&[1.0f32; 16], -45.0);
-    check("...and -45 on the right", max_abs(&right) > max_abs(&left), "");
+    check(
+        "...and -45 on the right",
+        max_abs(&right) > max_abs(&left),
+        "",
+    );
 
     {
         let mut s = c.lock.lock();

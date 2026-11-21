@@ -281,7 +281,9 @@ pub fn cam_place_chunk(args: &PyJson) -> TResult<String> {
         let el = cam_num(args, "orbit_elevation_deg", Some(20.0), false)?;
         let dist = cam_num(args, "orbit_distance_m", None, true)?;
         if dist.is_some_and(|d| d <= 0.0) {
-            return Err(ToolFail::tool("`orbit_distance_m` must be greater than zero"));
+            return Err(ToolFail::tool(
+                "`orbit_distance_m` must be greater than zero",
+            ));
         }
         // Elevation is measured off the WORLD horizontal and the ring is built on the
         // vehicle's FLATTENED heading, so "30 degrees up at 10 metres" means the same
@@ -502,8 +504,13 @@ fn os_error_type(e: &std::io::Error) -> &'static str {
 
 fn write_png(directory: &Path, path: &Path, png: &[u8]) -> Result<(), String> {
     use crate::updater::pyos;
-    std::fs::create_dir_all(directory)
-        .map_err(|e| format!("{}: {}", os_error_type(&e), pyos::win(&e, Some(directory), None)))?;
+    std::fs::create_dir_all(directory).map_err(|e| {
+        format!(
+            "{}: {}",
+            os_error_type(&e),
+            pyos::win(&e, Some(directory), None)
+        )
+    })?;
     std::fs::write(path, png)
         .map_err(|e| format!("{}: {}", os_error_type(&e), pyos::errno(&e, Some(path))))
 }
@@ -594,7 +601,9 @@ pub(super) fn t_screenshot(args: &PyJson) -> TResult<PyJson> {
         ("hide_ui", PyJson::Bool(hide_ui)),
         (
             "note",
-            PyJson::from("written to disk only -- not sent to any model. Read the file to view it."),
+            PyJson::from(
+                "written to disk only -- not sent to any model. Read the file to view it.",
+            ),
         ),
     ]);
     // What was actually captured rides back with it. A grab of the desktop because the

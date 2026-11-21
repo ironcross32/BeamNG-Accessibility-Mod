@@ -136,11 +136,19 @@ pub fn control_values(cfg: &PyDict) -> Result<Value, String> {
         let v = match key {
             "units" => {
                 let s = py_str_of(raw, "imperial").to_lowercase();
-                json!(if s.starts_with('m') { "metric" } else { "imperial" })
+                json!(if s.starts_with('m') {
+                    "metric"
+                } else {
+                    "imperial"
+                })
             }
             "telemetry_protocol" => {
                 let s = py_str_of(raw, "extended").to_lowercase();
-                json!(if s == "outgauge" { "outgauge" } else { "extended" })
+                json!(if s == "outgauge" {
+                    "outgauge"
+                } else {
+                    "extended"
+                })
             }
             "beamng_renderer" => {
                 let s = py_str_of(raw, "d3d").to_lowercase();
@@ -175,9 +183,7 @@ pub fn control_values(cfg: &PyDict) -> Result<Value, String> {
             "scanner_distance_callout_interval" => json!(pick_listed(raw, &CALLOUT_INTERVALS, 10)),
             "speed_announce_interval" => json!(pick_listed(raw, &SPEED_INTERVALS, 25)),
             "scanner_base_freq_hz" => {
-                let f = raw
-                    .and_then(|v| v.py_float().ok())
-                    .unwrap_or(1000.0);
+                let f = raw.and_then(|v| v.py_float().ok()).unwrap_or(1000.0);
                 json!(f.round_ties_even() as i64)
             }
             "mcp_server_port" => {
@@ -229,14 +235,21 @@ fn coerce(kind: Kind, v: &Value) -> PyValue {
 /// `config_save_panel`: build the config `_auto_save` writes from the snapshot and the
 /// control values (steps 1-5 of the contract). `disk` is what `load_config()` returned,
 /// or `None` where it raised.
-pub fn build_saved_config(snapshot: &PyDict, args: &Map<String, Value>, disk: Option<&PyDict>) -> PyDict {
+pub fn build_saved_config(
+    snapshot: &PyDict,
+    args: &Map<String, Value>,
+    disk: Option<&PyDict>,
+) -> PyDict {
     let mut cfg = snapshot.clone();
     for (key, kind) in PANEL_KEYS {
         if let Some(v) = args.get(key) {
             cfg.insert(key.to_string(), coerce(kind, v));
         }
     }
-    if let Some(v) = cfg.get("scanner_base_freq_hz").and_then(|v| v.py_float().ok()) {
+    if let Some(v) = cfg
+        .get("scanner_base_freq_hz")
+        .and_then(|v| v.py_float().ok())
+    {
         cfg.insert("scanner_base_freq_hz".into(), PyValue::Float(v));
     }
     if let Some(v) = cfg

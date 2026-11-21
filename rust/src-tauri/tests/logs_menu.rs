@@ -22,7 +22,10 @@ fn flat_without_backups_submenu_with_them() {
     let p = paths(d.path());
     let e = entries(&p);
     assert_eq!(e.len(), 6);
-    assert_eq!(e[0], ("Application Log".into(), Target::File(p.app_log.clone())));
+    assert_eq!(
+        e[0],
+        ("Application Log".into(), Target::File(p.app_log.clone()))
+    );
     assert_eq!(e[5].0, "Update Helper Log");
 
     std::fs::write(d.path().join("bnvdahook.log.2"), "x").unwrap();
@@ -57,6 +60,9 @@ fn a_vanished_file_is_reported() {
     });
     assert_eq!(
         seen.into_inner(),
-        vec![("Not Found".into(), "File not found:\nC:\\no\\such\\file.log".into())]
+        vec![(
+            "Not Found".into(),
+            "File not found:\nC:\\no\\such\\file.log".into()
+        )]
     );
 }

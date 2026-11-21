@@ -404,7 +404,11 @@ fn every_key_and_modifier_matches_python() {
         };
         if let Some((text, excluded)) = departed {
             check("err", err, Value::Null);
-            check("spoken", Value::Array(spoken), json!([[text, true, excluded]]));
+            check(
+                "spoken",
+                Value::Array(spoken),
+                json!([[text, true, excluded]]),
+            );
             continue;
         }
         check("err", err, case["err"].clone());

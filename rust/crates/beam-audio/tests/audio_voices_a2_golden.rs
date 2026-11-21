@@ -92,10 +92,12 @@ fn scanner_feeds_the_hrtf_diagnostic() {
     use std::sync::Arc;
     let dir = std::env::temp_dir().join(format!("beam_a2_scanner_diag_{}", std::process::id()));
     let path = dir.join("scan.csv");
-    let diag = Arc::new(beam_audio::scanner_hrtf_diag::ScannerHrtfDiagnostic::with_enabled(
-        Some(path.clone()),
-        true,
-    ));
+    let diag = Arc::new(
+        beam_audio::scanner_hrtf_diag::ScannerHrtfDiagnostic::with_enabled(
+            Some(path.clone()),
+            true,
+        ),
+    );
     let h = audio_harness::harness(None);
     h.ctrl.voice.lock()._scanner_diag = Some(diag.clone());
     let hrtf = beam_testutil::repo_root().join("hrtf_mit_kemar.npz");

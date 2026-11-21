@@ -373,8 +373,7 @@ fn iter_strings(v: &PyJson) -> Vec<String> {
 
 /// `getattr(logger, level, logger.info)(msg)` for the `log` message.
 fn log_at(level: &str, msg: &str) -> Result<(), PyErr> {
-    let not_callable =
-        |t: &str| Err(PyErr::TypeError(format!("'{t}' object is not callable")));
+    let not_callable = |t: &str| Err(PyErr::TypeError(format!("'{t}' object is not callable")));
     match level {
         "debug" => log::debug!("{msg}"),
         "info" => log::info!("{msg}"),
@@ -425,7 +424,10 @@ pub fn handle_ws_message(data: &PyJson) -> Result<(), PyErr> {
     let is = |name: &str| msg_type.is_some_and(|t| t.eq_str(name));
 
     if is("speak") {
-        let mut text_val = data.get("text").cloned().unwrap_or(PyJson::Str(String::new()));
+        let mut text_val = data
+            .get("text")
+            .cloned()
+            .unwrap_or(PyJson::Str(String::new()));
         if text_val.as_str().is_none() {
             log::warn!(
                 "[UNSPEAKABLE] speak text is {}, not str: {}",
@@ -863,9 +865,8 @@ async fn health_handler(
         header_repr(&headers, header::ORIGIN)
     );
     let clients = BRIDGE.read().as_ref().map_or(0, |s| s.ws_count());
-    let body = format!(
-        "{{\"ok\": true, \"service\": \"bnvda\", \"websocket_clients\": {clients}}}"
-    );
+    let body =
+        format!("{{\"ok\": true, \"service\": \"bnvda\", \"websocket_clients\": {clients}}}");
     let mut resp = (StatusCode::OK, body).into_response();
     let h = resp.headers_mut();
     h.insert(
@@ -908,7 +909,10 @@ struct LineReader {
 impl LineReader {
     /// `Ok(None)` at a clean EOF (`readline()` returning `b""`); `Err` is the ValueError
     /// or the socket error.
-    async fn read_line(&mut self, rd: &mut tokio::net::tcp::OwnedReadHalf) -> Result<Option<Vec<u8>>, String> {
+    async fn read_line(
+        &mut self,
+        rd: &mut tokio::net::tcp::OwnedReadHalf,
+    ) -> Result<Option<Vec<u8>>, String> {
         loop {
             if let Some(isep) = self.buf.iter().position(|b| *b == b'\n') {
                 if isep > TCP_LINE_LIMIT {
@@ -941,7 +945,13 @@ impl LineReader {
 fn peer_text(peer: &SocketAddr) -> String {
     match peer {
         SocketAddr::V4(a) => format!("('{}', {})", a.ip(), a.port()),
-        SocketAddr::V6(a) => format!("('{}', {}, {}, {})", a.ip(), a.port(), a.flowinfo(), a.scope_id()),
+        SocketAddr::V6(a) => format!(
+            "('{}', {}, {}, {})",
+            a.ip(),
+            a.port(),
+            a.flowinfo(),
+            a.scope_id()
+        ),
     }
 }
 
@@ -1046,7 +1056,12 @@ pub fn start_server_in_thread(speak_func: SpeakFunc) -> Result<StopFn, String> {
 
 /// [`start_server_in_thread`] on an explicit host and ports (0 picks a free port).
 /// Waits for the binds so the bound addresses can be reported.
-pub fn start_server_on(speak_func: SpeakFunc, host: &str, ws_port: u16, tcp_port: u16) -> BridgeServer {
+pub fn start_server_on(
+    speak_func: SpeakFunc,
+    host: &str,
+    ws_port: u16,
+    tcp_port: u16,
+) -> BridgeServer {
     SPEAK.lock().func = Some(speak_func);
     let host = host.to_string();
     let (ready_tx, ready_rx) = std::sync::mpsc::channel::<Option<(SocketAddr, SocketAddr)>>();
@@ -1055,7 +1070,10 @@ pub fn start_server_on(speak_func: SpeakFunc, host: &str, ws_port: u16, tcp_port
     let spawned = std::thread::Builder::new()
         .name("bnvda-ws".to_string())
         .spawn(move || {
-            let rt = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
+            let rt = match tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
                 Ok(rt) => rt,
                 Err(e) => {
                     eprintln!("Exception in thread bnvda-ws: {e}");

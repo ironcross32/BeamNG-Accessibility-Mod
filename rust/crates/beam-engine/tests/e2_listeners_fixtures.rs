@@ -537,18 +537,39 @@ fn push_with(gear: &str, steering_input: f64) -> Value {
 #[test]
 fn steering_is_sent_as_the_bend_of_the_path() {
     let _g = setup();
-    assert_eq!(push_with("D", 1.0), json!([[4453, "STATE,F,-1.000,0.500,0.000"]]));
-    assert_eq!(push_with("D", -0.25), json!([[4453, "STATE,F,0.250,0.500,0.000"]]));
-    assert_eq!(push_with("D", 0.0), json!([[4453, "STATE,F,0.000,0.500,0.000"]]));
-    assert_eq!(push_with("R", 1.0), json!([[4453, "STATE,R,1.000,0.500,0.000"]]));
-    assert_eq!(push_with("R", -0.25), json!([[4453, "STATE,R,-0.250,0.500,0.000"]]));
+    assert_eq!(
+        push_with("D", 1.0),
+        json!([[4453, "STATE,F,-1.000,0.500,0.000"]])
+    );
+    assert_eq!(
+        push_with("D", -0.25),
+        json!([[4453, "STATE,F,0.250,0.500,0.000"]])
+    );
+    assert_eq!(
+        push_with("D", 0.0),
+        json!([[4453, "STATE,F,0.000,0.500,0.000"]])
+    );
+    assert_eq!(
+        push_with("R", 1.0),
+        json!([[4453, "STATE,R,1.000,0.500,0.000"]])
+    );
+    assert_eq!(
+        push_with("R", -0.25),
+        json!([[4453, "STATE,R,-0.250,0.500,0.000"]])
+    );
 }
 
 #[test]
 fn nan_steering_is_no_bend() {
     let _g = setup();
-    assert_eq!(push_with("D", f64::NAN), json!([[4453, "STATE,F,0.000,0.500,0.000"]]));
-    assert_eq!(push_with("R", f64::NAN), json!([[4453, "STATE,R,0.000,0.500,0.000"]]));
+    assert_eq!(
+        push_with("D", f64::NAN),
+        json!([[4453, "STATE,F,0.000,0.500,0.000"]])
+    );
+    assert_eq!(
+        push_with("R", f64::NAN),
+        json!([[4453, "STATE,R,0.000,0.500,0.000"]])
+    );
 }
 
 /// The real road listener with mode toggles, assistant handoffs, setting changes and
@@ -569,9 +590,7 @@ fn road_scripts_match_python() {
                 "road_follow_guidance_enabled" => st.cfg.road_follow_guidance_enabled = v,
                 "road_junction_speech_enabled" => st.cfg.road_junction_speech_enabled = v,
                 "road_stop_sign_speech_enabled" => st.cfg.road_stop_sign_speech_enabled = v,
-                "road_traffic_light_speech_enabled" => {
-                    st.cfg.road_traffic_light_speech_enabled = v
-                }
+                "road_traffic_light_speech_enabled" => st.cfg.road_traffic_light_speech_enabled = v,
                 "road_speed_limit_speech_enabled" => st.cfg.road_speed_limit_speech_enabled = v,
                 "road_surface_speech_enabled" => st.cfg.road_surface_speech_enabled = v,
                 "road_junction_earcon_enabled" => st.cfg.road_junction_earcon_enabled = v,
@@ -630,7 +649,16 @@ fn road_scripts_match_python() {
             let private = "Private road ahead";
             assert_eq!(
                 texts,
-                [gate, private, gate, gate, private, private, "Road detection on", gate],
+                [
+                    gate,
+                    private,
+                    gate,
+                    gate,
+                    private,
+                    private,
+                    "Road detection on",
+                    gate
+                ],
                 "{label}: speech"
             );
         } else {

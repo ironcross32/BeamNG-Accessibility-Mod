@@ -56,8 +56,10 @@ pub fn render(b: &mut Block<'_>, v: &mut Voice) {
             b.buf_l[k] += mono;
             b.buf_r[k] += mono;
         }
-        v._cannon_aim_pulse_phase =
-            py_mod(v._cannon_aim_pulse_phase + pulse_rate * frames as f64 / sr, 1.0);
+        v._cannon_aim_pulse_phase = py_mod(
+            v._cannon_aim_pulse_phase + pulse_rate * frames as f64 / sr,
+            1.0,
+        );
         v._cannon_aim_carrier_phase =
             py_mod(v._cannon_aim_carrier_phase + freq * frames as f64 / sr, 1.0);
     } else {

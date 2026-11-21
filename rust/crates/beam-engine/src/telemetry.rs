@@ -1074,7 +1074,11 @@ impl TelemetryLoop {
             st.tel.last_steering_input = steering_input;
             // Departure (python-bugs.md 33): a NaN or infinite flags word is no flags;
             // every later int() of it raised and ended the thread.
-            st.tel.last_implement_flags = if implement[0].is_finite() { implement[0] } else { 0.0 };
+            st.tel.last_implement_flags = if implement[0].is_finite() {
+                implement[0]
+            } else {
+                0.0
+            };
             st.tel.last_implement_edge_height = implement[1];
             st.tel.last_implement_min_clearance = implement[2];
             st.tel.last_implement_tilt_deg = implement[3];

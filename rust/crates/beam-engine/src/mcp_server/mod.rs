@@ -90,7 +90,10 @@ pub const DIAGNOSTICS: [(&str, &str); 13] = [
     ("ramp_states", "extensions.rampGeometry.diag()"),
     ("ramp_state_of", "extensions.rampGeometry.stateOf({id})"),
     ("ramp_retry", "extensions.rampGeometry.retry({id})"),
-    ("mouth_frame", "dumps(extensions.rampGeometry.mouthFrame({id}))"),
+    (
+        "mouth_frame",
+        "dumps(extensions.rampGeometry.mouthFrame({id}))",
+    ),
     ("cannon", "extensions.cannonShot.diag()"),
     ("trailer", "extensions.trailerAngle.diag()"),
     (
@@ -404,9 +407,9 @@ pub fn assemble(records: &[String]) -> Dict {
                 result_parts.push(value.to_string());
                 prev_out = None;
             } else {
-                let cont = prev_out.as_ref().is_some_and(|p| {
-                    char_len(p) >= MAX_DATAGRAM_CONTENT || p.ends_with('\n')
-                });
+                let cont = prev_out
+                    .as_ref()
+                    .is_some_and(|p| char_len(p) >= MAX_DATAGRAM_CONTENT || p.ends_with('\n'));
                 if cont && let Some(last) = out_lines.last_mut() {
                     last.push_str(&content);
                 } else {
@@ -468,7 +471,10 @@ fn fetch_contexts(timeout: f64) -> TResult<Vec<(i64, String)>> {
 
 fn contexts(force: bool) -> TResult<Vec<(i64, String)>> {
     let now = monotonic();
-    if !force && let Some((ts, ctxs)) = CTX_CACHE.lock().as_ref() && now - ts < CTX_CACHE_S {
+    if !force
+        && let Some((ts, ctxs)) = CTX_CACHE.lock().as_ref()
+        && now - ts < CTX_CACHE_S
+    {
         return Ok(ctxs.clone());
     }
     let ctxs = fetch_contexts(5.0)?;
@@ -848,7 +854,10 @@ fn rpc_error(id: PyJson, code: i64, message: String) -> PyJson {
         ("id", id),
         (
             "error",
-            pyjson::dict([("code", PyJson::Int(code)), ("message", PyJson::Str(message))]),
+            pyjson::dict([
+                ("code", PyJson::Int(code)),
+                ("message", PyJson::Str(message)),
+            ]),
         ),
     ])
 }
@@ -946,7 +955,10 @@ pub async fn dispatch(msg: &PyJson) -> Result<Option<PyJson>, PyErr> {
                 ("protocolVersion", PyJson::Str(version)),
                 (
                     "capabilities",
-                    pyjson::dict([("tools", pyjson::dict([("listChanged", PyJson::Bool(false))]))]),
+                    pyjson::dict([(
+                        "tools",
+                        pyjson::dict([("listChanged", PyJson::Bool(false))]),
+                    )]),
                 ),
                 (
                     "serverInfo",
@@ -1039,7 +1051,8 @@ pub fn origin_allowed(origin: &str) -> bool {
         Some((h, p)) => (h, Some(p)),
         None => (rest, None),
     };
-    let port_ok = port.is_none_or(|p| !p.is_empty() && p.len() <= 5 && p.bytes().all(|b| b.is_ascii_digit()));
+    let port_ok =
+        port.is_none_or(|p| !p.is_empty() && p.len() <= 5 && p.bytes().all(|b| b.is_ascii_digit()));
     port_ok && (host == "127.0.0.1" || host.eq_ignore_ascii_case("localhost"))
 }
 
@@ -1059,7 +1072,10 @@ fn text_response(status: StatusCode, body: &str) -> Response {
 /// `web.json_response(obj, status=...)`.
 fn json_response(status: StatusCode, obj: &PyJson) -> Response {
     let body = pyjson::dumps(obj, &DumpOpts::default_seps()).unwrap_or_default();
-    with_type((status, body).into_response(), "application/json; charset=utf-8")
+    with_type(
+        (status, body).into_response(),
+        "application/json; charset=utf-8",
+    )
 }
 
 /// `web.Response(status=202)`: no body.
@@ -1085,9 +1101,11 @@ fn body_text(headers: &HeaderMap, body: &[u8]) -> Option<String> {
         .get(header::CONTENT_TYPE)
         .map(|v| String::from_utf8_lossy(v.as_bytes()).to_lowercase())
         .and_then(|ct| {
-            ct.split(';')
-                .skip(1)
-                .find_map(|p| p.trim().strip_prefix("charset=").map(|c| c.trim_matches('"').to_string()))
+            ct.split(';').skip(1).find_map(|p| {
+                p.trim()
+                    .strip_prefix("charset=")
+                    .map(|c| c.trim_matches('"').to_string())
+            })
         });
     match charset.as_deref() {
         None | Some("utf-8") | Some("utf8") => String::from_utf8(body.to_vec()).ok(),

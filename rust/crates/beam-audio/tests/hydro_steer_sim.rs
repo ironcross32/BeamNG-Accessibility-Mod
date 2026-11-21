@@ -79,7 +79,11 @@ impl Sim {
         let frames = FRAMES;
         let abs_h = hydro_actual.abs();
         let dt = frames as f64 / SR;
-        let target = if abs_h > HYDRO_STEER_DEADZONE { 1.0 } else { 0.0 };
+        let target = if abs_h > HYDRO_STEER_DEADZONE {
+            1.0
+        } else {
+            0.0
+        };
         let mut peak = 0.0;
         let mut freq = 0.0;
         if target > 0.0 || self.env > 1e-4 {
@@ -154,7 +158,11 @@ impl Sim {
 
         if self.pos >= 0.0 {
             let nxt = self.pos as i64 + frames as i64;
-            self.pos = if nxt < self.click_len { nxt as f64 } else { -1.0 };
+            self.pos = if nxt < self.click_len {
+                nxt as f64
+            } else {
+                -1.0
+            };
         }
         (peak, freq)
     }
@@ -194,7 +202,11 @@ fn s01_normal_car_always_0() {
 
 #[test]
 fn s02_articulate_left_hold_straighten() {
-    scenario("articulate left, hold, straighten", &seq_articulate(), Some(1));
+    scenario(
+        "articulate left, hold, straighten",
+        &seq_articulate(),
+        Some(1),
+    );
 }
 
 #[test]
@@ -307,7 +319,10 @@ fn s08_fm_timbre() {
     }
     let clean = timbre(0.0).0;
     let dirty = timbre(1.0).0;
-    assert!(clean < 0.02 && 0.02 < dirty, "clean at straight, dirty at lock: {clean} {dirty}");
+    assert!(
+        clean < 0.02 && 0.02 < dirty,
+        "clean at straight, dirty at lock: {clean} {dirty}"
+    );
     let mid_ratio = fm_params(0.5).1;
     assert!(
         (mid_ratio - HYDRO_STEER_FM_RATIO_LO).abs() < 0.15,
@@ -339,7 +354,11 @@ fn s09_hrtf_image_width() {
             "HRTF width [{}]: ILD {near:.2}dB at 3/4 lock -> {full:.2}dB at full lock",
             info.set_id
         );
-        assert!(full > near, "[{}] harder turn reads as narrower", info.set_id);
+        assert!(
+            full > near,
+            "[{}] harder turn reads as narrower",
+            info.set_id
+        );
     }
 }
 
@@ -348,11 +367,17 @@ fn s10_pan_sanity() {
     let mut s = Sim::new();
     s.block(0.4);
     let (lg, rg) = s.last_pan;
-    assert!(lg > rg, "pan at +0.4 should be left-dominant: L={lg:.3} R={rg:.3}");
+    assert!(
+        lg > rg,
+        "pan at +0.4 should be left-dominant: L={lg:.3} R={rg:.3}"
+    );
     let mut s = Sim::new();
     s.block(-0.4);
     let (lg, rg) = s.last_pan;
-    assert!(rg > lg, "pan at -0.4 should be right-dominant: L={lg:.3} R={rg:.3}");
+    assert!(
+        rg > lg,
+        "pan at -0.4 should be right-dominant: L={lg:.3} R={rg:.3}"
+    );
 }
 
 /// Not in the Python sim: the scenario sequences through the REAL callback, block for
@@ -370,11 +395,15 @@ fn real_callback_tracks_the_mirror() {
     let sequences: Vec<(&str, Vec<f64>, bool)> = vec![
         ("articulate", seq_articulate(), false),
         ("sweeps", hunt, true),
-        ("cross", {
-            let mut c = linspace(0.5, -0.5, 80);
-            c.extend(vec![-0.5; 20]);
-            c
-        }, true),
+        (
+            "cross",
+            {
+                let mut c = linspace(0.5, -0.5, 80);
+                c.extend(vec![-0.5; 20]);
+                c
+            },
+            true,
+        ),
     ];
     for (name, seq, compare_clicks) in sequences {
         let h = harness(None);

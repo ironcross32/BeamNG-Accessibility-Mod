@@ -671,7 +671,9 @@ pub fn run_engine() {
         obstacle::obstacle_listener(Arc::clone(&a), &STOP)
     });
     let a = ac();
-    start_listener("road-listener", move || road::road_listener(Arc::clone(&a), &STOP));
+    start_listener("road-listener", move || {
+        road::road_listener(Arc::clone(&a), &STOP)
+    });
     let a = ac();
     start_listener("implement-listener", move || {
         implement::implement_listener(Arc::clone(&a), &STOP)
@@ -700,7 +702,9 @@ pub fn run_engine() {
         fuel::fuel_station_listener(&STOP)
     });
     let a = ac();
-    start_listener("camera-listener", move || camera::camera_listener(Arc::clone(&a), &STOP));
+    start_listener("camera-listener", move || {
+        camera::camera_listener(Arc::clone(&a), &STOP)
+    });
     let a = ac();
     start_listener("nodegrab-listener", move || {
         nodegrab::nodegrab_listener(Arc::clone(&a), &STOP)

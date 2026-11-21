@@ -63,8 +63,8 @@ pub fn mix_junction_proximity(
             (0..frames)
                 .map(|k| {
                     let cycles = py_mod(phase0 + t(k) / period, 1.0);
-                    let ramp = (cycles.min(duty - cycles) * period / STOP_BAR_EDGE_S)
-                        .clamp(0.0, 1.0);
+                    let ramp =
+                        (cycles.min(duty - cycles) * period / STOP_BAR_EDGE_S).clamp(0.0, 1.0);
                     let x = (0.5 * PI * ramp).sin();
                     x * x
                 })
@@ -116,8 +116,10 @@ pub fn mix_junction_proximity(
     let phase = s._stop_bar_phase;
     let sub_phase = s._stop_bar_sub_phase;
     s._stop_bar_phase = py_mod(s._stop_bar_phase + STOP_BAR_HZ * frames as f64 / sr, 1.0);
-    s._stop_bar_sub_phase =
-        py_mod(s._stop_bar_sub_phase + STOP_BAR_SUB_HZ * frames as f64 / sr, 1.0);
+    s._stop_bar_sub_phase = py_mod(
+        s._stop_bar_sub_phase + STOP_BAR_SUB_HZ * frames as f64 / sr,
+        1.0,
+    );
     let amp = s._road_junction_amp;
     for k in 0..frames {
         let cycles = phase + STOP_BAR_HZ * t(k);

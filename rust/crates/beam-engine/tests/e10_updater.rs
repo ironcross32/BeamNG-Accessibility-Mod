@@ -59,7 +59,8 @@ fn scrub(text: &str, root: &str) -> String {
         let t = text.replace(root, "<ROOT>");
         t.replace(&root.replace('\\', "\\\\"), "<ROOTR>")
     };
-    TS.replace_all(&t, ".pre-bnvda-removal-<TS>.bak").into_owned()
+    TS.replace_all(&t, ".pre-bnvda-removal-<TS>.bak")
+        .into_owned()
 }
 
 /// Every file under `dir` as `{relative/posix/path: base64}`, directories as null.
@@ -185,7 +186,12 @@ struct TestEnv {
     launches: Launches,
 }
 
-fn test_env(root: &Path, routes: HashMap<String, Value>, slow: bool, popen_raises: bool) -> TestEnv {
+fn test_env(
+    root: &Path,
+    routes: HashMap<String, Value>,
+    slow: bool,
+    popen_raises: bool,
+) -> TestEnv {
     let logs = Arc::new(Mutex::new(Vec::new()));
     let calls = Arc::new(Mutex::new(Vec::new()));
     let launches: Launches = Arc::new(Mutex::new(Vec::new()));
@@ -363,8 +369,14 @@ fn constants_match_python() {
     assert_eq!(c["HELPER_NAME"], updater::HELPER_NAME);
     assert_eq!(c["HELPER_LOG"], updater::HELPER_LOG);
     assert_eq!(c["USER_AGENT"], updater::USER_AGENT.as_str());
-    assert_eq!(c["CHECK_TIMEOUT_S"].as_f64(), Some(updater::CHECK_TIMEOUT_S));
-    assert_eq!(c["DOWNLOAD_TIMEOUT_S"].as_f64(), Some(updater::DOWNLOAD_TIMEOUT_S));
+    assert_eq!(
+        c["CHECK_TIMEOUT_S"].as_f64(),
+        Some(updater::CHECK_TIMEOUT_S)
+    );
+    assert_eq!(
+        c["DOWNLOAD_TIMEOUT_S"].as_f64(),
+        Some(updater::DOWNLOAD_TIMEOUT_S)
+    );
     assert_eq!(c["PENDING_KEY"], updater::PENDING_KEY);
     assert_eq!(c["ENABLED_KEY"], updater::ENABLED_KEY);
     assert_eq!(c["MOD_ZIP"], mod_install::MOD_ZIP);
@@ -384,7 +396,11 @@ fn parse_version_matches_python() {
         let text = case["text"].as_str().unwrap();
         let got = updater::parse_version(text)
             .map(|v| json!(v.0.iter().map(|n| n.to_string()).collect::<Vec<_>>()));
-        assert_eq!(got.unwrap_or(Value::Null), case["parsed"], "parse_version({text:?})");
+        assert_eq!(
+            got.unwrap_or(Value::Null),
+            case["parsed"],
+            "parse_version({text:?})"
+        );
     }
 }
 
@@ -432,9 +448,17 @@ fn check_latest_matches_python() {
             "check_latest logs, case {name}"
         );
         let calls = te.calls.lock();
-        assert_eq!(headers_json(&calls), case["request_headers"], "headers, case {name}");
+        assert_eq!(
+            headers_json(&calls),
+            case["request_headers"],
+            "headers, case {name}"
+        );
         assert_eq!(calls[0].url, updater::LATEST_URL);
-        assert_eq!(Some(calls[0].timeout), case["timeout"].as_f64(), "timeout, case {name}");
+        assert_eq!(
+            Some(calls[0].timeout),
+            case["timeout"].as_f64(),
+            "timeout, case {name}"
+        );
     }
 }
 
@@ -452,7 +476,11 @@ fn stage_matches_python() {
         std::fs::write(&zip_path, b64d(case["zip"].as_str().unwrap())).unwrap();
         let staged = t.path().join("staged");
         let res = updater::stage(&zip_path, &staged);
-        assert_eq!(outcome_json(res, &root), case["result"], "stage case {name}");
+        assert_eq!(
+            outcome_json(res, &root),
+            case["result"],
+            "stage case {name}"
+        );
         assert_eq!(tree(&staged), case["tree"], "staged tree, case {name}");
     }
 }
@@ -464,10 +492,7 @@ fn download_matches_python() {
         let t = tempdir();
         let root = root_str(&t);
         let url = case["url"].as_str().unwrap();
-        let key = url
-            .trim()
-            .trim_matches(['<', '>'])
-            .replace("URL:", "");
+        let key = url.trim().trim_matches(['<', '>']).replace("URL:", "");
         let routes = HashMap::from([(key, case["response"].clone())]);
         let te = test_env(t.path(), routes, false, false);
         let dest = t.path().join("update").join(updater::ASSET_NAME);
@@ -483,7 +508,11 @@ fn download_matches_python() {
             Some(&cancelled),
             updater::DOWNLOAD_TIMEOUT_S,
         );
-        assert_eq!(outcome_json(res, &root), case["result"], "download case {name}");
+        assert_eq!(
+            outcome_json(res, &root),
+            case["result"],
+            "download case {name}"
+        );
         let want_progress: Vec<Value> = case["progress"]
             .as_array()
             .unwrap()
@@ -491,7 +520,11 @@ fn download_matches_python() {
             .map(|p| json!([p[0].as_u64().unwrap(), p[1].as_f64().unwrap()]))
             .collect();
         assert_eq!(*progress_log.lock(), want_progress, "progress, case {name}");
-        assert_eq!(Value::Bool(dest.is_file()), case["dest_exists"], "dest, case {name}");
+        assert_eq!(
+            Value::Bool(dest.is_file()),
+            case["dest_exists"],
+            "dest, case {name}"
+        );
         let mut part = dest.as_os_str().to_os_string();
         part.push(".part");
         assert_eq!(
@@ -500,9 +533,17 @@ fn download_matches_python() {
             ".part, case {name}"
         );
         let calls = te.calls.lock();
-        assert_eq!(headers_json(&calls), case["request_headers"], "headers, case {name}");
+        assert_eq!(
+            headers_json(&calls),
+            case["request_headers"],
+            "headers, case {name}"
+        );
         if let Some(c) = calls.first() {
-            assert_eq!(Some(c.timeout), case["timeout"].as_f64(), "timeout, case {name}");
+            assert_eq!(
+                Some(c.timeout),
+                case["timeout"].as_f64(),
+                "timeout, case {name}"
+            );
         }
     }
 }
@@ -528,7 +569,11 @@ const ENV_PATHS_BLOCK: [&str; 9] = [
 /// The Python's helper text with its path lines replaced by [`ENV_PATHS_BLOCK`]; the
 /// rest must match byte for byte.
 fn with_env_paths(python: &str) -> String {
-    let nl = if python.contains("\r\n") { "\r\n" } else { "\n" };
+    let nl = if python.contains("\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
     let re = regex::Regex::new(
         r#"set "PROG=[^"\r\n]*"\r?\nset "STAGED=[^"\r\n]*"\r?\nset "LOGFILE=[^"\r\n]*""#,
     )
@@ -553,7 +598,10 @@ fn write_helper_writes_python_bytes_but_for_the_paths() {
     let root = root_str(&t);
     let update_dir = t.path().join("update");
     let path = updater::write_helper(&update_dir, 4242).unwrap();
-    assert_eq!(scrub(&path.to_string_lossy(), &root), h["path"].as_str().unwrap());
+    assert_eq!(
+        scrub(&path.to_string_lossy(), &root),
+        h["path"].as_str().unwrap()
+    );
     let bytes = std::fs::read(&path).unwrap();
     let text = String::from_utf8(bytes).unwrap();
     assert_eq!(
@@ -586,7 +634,9 @@ fn non_ascii_paths_reach_the_helper() {
         .collect();
     assert_eq!(
         env["BEAM_UPDATE_PROG"],
-        std::path::absolute(&te.env.program_dir).unwrap().to_string_lossy()
+        std::path::absolute(&te.env.program_dir)
+            .unwrap()
+            .to_string_lossy()
     );
     assert_eq!(
         env["BEAM_UPDATE_STAGED"],
@@ -616,7 +666,11 @@ fn list2cmdline_matches_python() {
             .iter()
             .map(|v| v.as_str().unwrap())
             .collect();
-        assert_eq!(updater::list2cmdline(&seq), case["line"].as_str().unwrap(), "{seq:?}");
+        assert_eq!(
+            updater::list2cmdline(&seq),
+            case["line"].as_str().unwrap(),
+            "{seq:?}"
+        );
     }
 }
 
@@ -631,10 +685,13 @@ fn mod_zip_version_matches_python() {
         let t = tempdir();
         let p = t.path().join("m.zip");
         std::fs::write(&p, b64d(case["zip"].as_str().unwrap())).unwrap();
-        let got = mod_install::mod_zip_version(&p).map(|(v, raw)| {
-            json!([v.0.iter().map(|n| n.to_string()).collect::<Vec<_>>(), raw])
-        });
-        assert_eq!(got.unwrap_or(Value::Null), case["result"], "mod_zip_version case {name}");
+        let got = mod_install::mod_zip_version(&p)
+            .map(|(v, raw)| json!([v.0.iter().map(|n| n.to_string()).collect::<Vec<_>>(), raw]));
+        assert_eq!(
+            got.unwrap_or(Value::Null),
+            case["result"],
+            "mod_zip_version case {name}"
+        );
     }
 }
 
@@ -677,7 +734,11 @@ fn install_mod_matches_python() {
                 local_appdata: lad.clone(),
             },
         );
-        assert_eq!(Value::Bool(result), case["result"], "install result, case {name}");
+        assert_eq!(
+            Value::Bool(result),
+            case["result"],
+            "install result, case {name}"
+        );
         assert_eq!(
             events_json(&sink.events(), &root),
             case["events"],
@@ -686,11 +747,9 @@ fn install_mod_matches_python() {
         assert_eq!(tree(&mods), case["mods_tree"], "mods dir, case {name}");
         if !case["layout"].is_null() {
             let lt = match tree(layout_path.parent().unwrap()) {
-                Value::Object(m) => Value::Object(
-                    m.into_iter()
-                        .map(|(k, v)| (scrub(&k, &root), v))
-                        .collect(),
-                ),
+                Value::Object(m) => {
+                    Value::Object(m.into_iter().map(|(k, v)| (scrub(&k, &root), v)).collect())
+                }
                 other => other,
             };
             assert_eq!(lt, case["layout_tree"], "layout dir, case {name}");
@@ -760,8 +819,16 @@ fn startup_flow_matches_python() {
 
         updater::run_startup_flow_with(&sink, &gate, manual, &te.env);
 
-        assert_eq!(events_json(&sink.events(), &root), case["events"], "dialogs, flow {name}");
-        assert_eq!(logs_json(&te.logs.lock(), &root), case["logs"], "logs, flow {name}");
+        assert_eq!(
+            events_json(&sink.events(), &root),
+            case["events"],
+            "dialogs, flow {name}"
+        );
+        assert_eq!(
+            logs_json(&te.logs.lock(), &root),
+            case["logs"],
+            "logs, flow {name}"
+        );
         assert_eq!(json!(*gate.0.lock()), case["gate"], "gate, flow {name}");
 
         let popen: Vec<Value> = te
@@ -799,7 +866,9 @@ fn startup_flow_matches_python() {
         )
         .unwrap();
         assert_eq!(
-            cfg.get("pending_update_version").cloned().unwrap_or(Value::Null),
+            cfg.get("pending_update_version")
+                .cloned()
+                .unwrap_or(Value::Null),
             case["pending_after"],
             "pending flag, flow {name}"
         );
@@ -817,7 +886,11 @@ fn startup_flow_matches_python() {
             None => Value::Null,
         };
         assert_eq!(helper, want_helper, "helper file, flow {name}");
-        assert_eq!(tree(&te.env.staged_dir), case["staged_tree"], "staged, flow {name}");
+        assert_eq!(
+            tree(&te.env.staged_dir),
+            case["staged_tree"],
+            "staged, flow {name}"
+        );
         assert_eq!(
             Value::Bool(te.env.update_dir.join(updater::ASSET_NAME).is_file()),
             case["zip_exists"],

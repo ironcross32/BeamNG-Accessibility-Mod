@@ -170,7 +170,10 @@ fn junction_proximity_stop_bar() {
         (STOP_BAR_HZ - 311.13).abs() < 0.01 && (STOP_BAR_SUB_HZ - 155.56).abs() < 0.01,
         "D#4 over D#3"
     );
-    assert!(0.48 < sub / top && sub / top < 0.52, "sub oscillator at half volume");
+    assert!(
+        0.48 < sub / top && sub / top < 0.52,
+        "sub oscillator at half volume"
+    );
     assert!(
         (rms(&solid).powi(2) / ((top * top + sub * sub) / 2.0) - 1.0).abs() < 0.02,
         "nothing but the two oscillators"
@@ -209,7 +212,10 @@ fn junction_proximity_stop_bar() {
         .collect();
     let last = *audible.last().expect("audible release") as f64 / sr;
     assert!(0.015 < last && last < 0.021, "released over about 20 ms");
-    assert!(!any(&sim.render(0.5)), "silent once departing past the line");
+    assert!(
+        !any(&sim.render(0.5)),
+        "silent once departing past the line"
+    );
     sim.update(Some(&at(-1.5, 0.0)));
     sim.render(0.1);
     assert!(
@@ -222,14 +228,21 @@ fn junction_proximity_stop_bar() {
     sim.render(0.1);
     sim.update(Some(&with(at(-0.6, 0.1), "id", json!("junction:S"))));
     sim.render(0.1);
-    assert_eq!(sim.mode(), "solid", "stopped past the line still on the bar");
+    assert_eq!(
+        sim.mode(),
+        "solid",
+        "stopped past the line still on the bar"
+    );
     sim.update(Some(&with(at(-0.6, 3.0), "id", json!("junction:S"))));
     sim.render(0.1);
     assert_eq!(sim.mode(), "silent", "pulling away from it is departing");
 
     sim.update(Some(&at(-3.0, 3.0)));
     sim.render(0.05);
-    assert!(!any(&sim.render(0.5)), "silent once the nose has cleared the bar");
+    assert!(
+        !any(&sim.render(0.5)),
+        "silent once the nose has cleared the bar"
+    );
     // Distance jitter at the edge of the bar does not flip it once on it.
     sim.update(Some(&with(at(0.3, 1.0), "id", json!("junction:edge"))));
     sim.render(0.1);
@@ -240,7 +253,10 @@ fn junction_proximity_stop_bar() {
     }
     sim.update(Some(&with(at(2.0, 0.0), "id", json!("junction:edge"))));
     sim.render(0.05);
-    assert!(!any(&sim.render(0.5)), "silent once reversed back off the bar");
+    assert!(
+        !any(&sim.render(0.5)),
+        "silent once reversed back off the bar"
+    );
     // Stopped short of a bar not yet reached: one quiet pulse every 2 s.
     sim.update(Some(&with(at(10.0, 0.0), "id", json!("junction:W"))));
     let waiting = sim.render(4.2);
@@ -251,7 +267,10 @@ fn junction_proximity_stop_bar() {
     );
     let third = &waiting[(w[2] * sr).trunc() as usize..((w[2] + 0.12) * sr).trunc() as usize];
     let drop = 20.0 * (rms(third) / moving_level).log10();
-    assert!(-19.5 < drop && drop < -16.5, "waiting pulse level {drop:.1} dB");
+    assert!(
+        -19.5 < drop && drop < -16.5,
+        "waiting pulse level {drop:.1} dB"
+    );
     for speed in [0.35, 0.1, 0.45, 0.3] {
         sim.update(Some(&with(at(10.0, speed), "id", json!("junction:W"))));
         sim.render(0.1);
@@ -302,7 +321,10 @@ fn junction_proximity_stop_bar() {
     sim.h.clock.set(101.0);
     assert!(!any(&sim.render(1.0)), "dead UDP feed silences cue");
     let off = config_from_json(&json!({"road_junction_proximity_enabled": false}));
-    sim.h.ctrl.apply_config(off.as_ref().expect("config")).expect("apply_config");
+    sim.h
+        .ctrl
+        .apply_config(off.as_ref().expect("config"))
+        .expect("apply_config");
     sim.update(Some(&target()));
     assert!(!any(&sim.render(1.0)), "configuration disables cue");
     eprintln!("junction_proximity_sim: stop-bar diagnostics passed");

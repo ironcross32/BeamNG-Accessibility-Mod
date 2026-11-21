@@ -155,14 +155,18 @@ fn load_config_matches_python() {
             let want = apply_departures(loader, input.as_deref(), case);
             if is_overflow_departure(name, loader) {
                 if let Err(why) = check_overflow_departure(name, &got) {
-                    failures.push(format!("{name} [{loader}] (departure): {why}\n  got:  {got}"));
+                    failures.push(format!(
+                        "{name} [{loader}] (departure): {why}\n  got:  {got}"
+                    ));
                 }
                 continue;
             }
             if got != want {
-                failures.push(format!("{name} [{loader}]
+                failures.push(format!(
+                    "{name} [{loader}]
   got:  {got}
-  want: {want}"));
+  want: {want}"
+                ));
             }
         }
     }
@@ -205,7 +209,9 @@ fn apply_departures(loader: &str, input: Option<&[u8]>, case: &Value) -> Value {
     let mut want = case[loader].clone();
     let engine = &case["engine"];
     let only_config = |files: &Value| {
-        files.as_object().is_some_and(|f| f.len() == 1 && f.contains_key("beamtel_config.json"))
+        files
+            .as_object()
+            .is_some_and(|f| f.len() == 1 && f.contains_key("beamtel_config.json"))
     };
     if loader == "configurator"
         && only_config(&want["files"])
@@ -282,7 +288,10 @@ fn check_overflow_departure(name: &str, got: &Value) -> Result<(), String> {
     }
     let files = got["files"].as_object().unwrap();
     if files.len() != 1 || !files.contains_key("beamtel_config.json") {
-        return Err(format!("expected only the config file, found {:?}", files.keys()));
+        return Err(format!(
+            "expected only the config file, found {:?}",
+            files.keys()
+        ));
     }
     if let Some((key, _)) = name.split_once(" = variant ")
         && !name.starts_with("all keys")
@@ -308,7 +317,10 @@ fn hold_for_reading(path: &Path) -> fs::File {
 #[test]
 fn failed_migration_write_keeps_the_config() {
     let cases: [(&str, &[u8]); 2] = [
-        ("engine", br#"{"announce_gear": true, "units": "metric", "speech_rate": 70}"#),
+        (
+            "engine",
+            br#"{"announce_gear": true, "units": "metric", "speech_rate": 70}"#,
+        ),
         (
             "configurator",
             br#"{"ai_describer_api_key": "sk-plain", "units": "metric", "speech_rate": 70}"#,
@@ -331,8 +343,16 @@ fn failed_migration_write_keeps_the_config() {
             .unwrap()
             .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
             .collect();
-        assert_eq!(names, ["beamtel_config.json"], "{loader}: backup or temp file left");
-        assert_eq!(fs::read(&path).unwrap(), input, "{loader}: config rewritten");
+        assert_eq!(
+            names,
+            ["beamtel_config.json"],
+            "{loader}: backup or temp file left"
+        );
+        assert_eq!(
+            fs::read(&path).unwrap(),
+            input,
+            "{loader}: config rewritten"
+        );
         // With the file free again, the next load completes the migration.
         let cfg = match loader {
             "engine" => load_config_engine_at(&path),
@@ -340,7 +360,11 @@ fn failed_migration_write_keeps_the_config() {
         }
         .unwrap();
         assert_eq!(cfg["units"].py_str(), "metric");
-        assert_ne!(fs::read(&path).unwrap(), input, "{loader}: migration not retried");
+        assert_ne!(
+            fs::read(&path).unwrap(),
+            input,
+            "{loader}: migration not retried"
+        );
     }
 }
 

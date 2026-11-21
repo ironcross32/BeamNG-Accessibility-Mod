@@ -45,8 +45,8 @@ pub fn render(b: &mut Block<'_>, v: &mut Voice) {
     let amp = 10.0f64.powf(COORD_GUIDE_AMP_DB / 20.0) * error_norm;
     let fc = COORD_GUIDE_FC_OFFCOURSE_HZ
         + (COORD_GUIDE_FC_ONCOURSE_HZ - COORD_GUIDE_FC_OFFCOURSE_HZ) * (1.0 - error_norm);
-    let fm_ratio =
-        COORD_GUIDE_FM_RATIO_MIN + (COORD_GUIDE_FM_RATIO_MAX - COORD_GUIDE_FM_RATIO_MIN) * error_norm;
+    let fm_ratio = COORD_GUIDE_FM_RATIO_MIN
+        + (COORD_GUIDE_FM_RATIO_MAX - COORD_GUIDE_FM_RATIO_MIN) * error_norm;
     let fm = fc * fm_ratio;
     let mod_index = COORD_GUIDE_MOD_INDEX_MAX * error_norm;
 

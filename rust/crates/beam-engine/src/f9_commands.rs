@@ -1315,7 +1315,10 @@ pub fn on_next_key_press(event: &KeyEvent, audio_controller: Option<Arc<AudioCon
         say_x("Checking damage");
         start_dump_thread(DumpKind::Damage);
     } else if name == "o" && !ctrl {
-        say_p(&format!("Oil temperature {}", reading(&s.otemp_val, s.otemp_unit)));
+        say_p(&format!(
+            "Oil temperature {}",
+            reading(&s.otemp_val, s.otemp_unit)
+        ));
     } else if name == "c" && ctrl && shift && alt {
         ext_unit("open_clickspot_browser", json!([]), || {
             crate::browsers::open_clickspot_browser()

@@ -5,7 +5,7 @@
 
 mod audio_harness;
 
-use audio_harness::{config_from_json, harness, Harness};
+use audio_harness::{Harness, config_from_json, harness};
 use beam_audio::controller::{HazardIn, TelemetryState};
 use serde_json::Value;
 
@@ -39,10 +39,7 @@ fn hex_f32(s: &str) -> Vec<f32> {
             _ => panic!("bad hex"),
         }
     };
-    let bytes: Vec<u8> = b
-        .chunks(2)
-        .map(|p| (nib(p[0]) << 4) | nib(p[1]))
-        .collect();
+    let bytes: Vec<u8> = b.chunks(2).map(|p| (nib(p[0]) << 4) | nib(p[1])).collect();
     bytes
         .chunks(4)
         .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
@@ -209,8 +206,15 @@ fn run_fixture(fixture: &str) {
     for case in fx["cases"].as_array().expect("cases") {
         let name = case["name"].as_str().unwrap();
         let (got, starts) = replay(case);
-        eprintln!("{name}: lock chimes {}, centre clicks {}", starts.0, starts.1);
-        assert_eq!(starts, expected_starts(name), "{name}: (lock chimes, centre clicks)");
+        eprintln!(
+            "{name}: lock chimes {}, centre clicks {}",
+            starts.0, starts.1
+        );
+        assert_eq!(
+            starts,
+            expected_starts(name),
+            "{name}: (lock chimes, centre clicks)"
+        );
         let (_, peak) = compare(name, &got, &want(case));
         assert!(peak > 1e-3, "{name}: the reference itself is silent");
     }

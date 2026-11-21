@@ -22,8 +22,7 @@ impl LogSink for Capture {
     fn emit(&self, level: log::Level, line: &str) {
         // "YYYY-MM-DD HH:MM:SS [LEVEL] message"
         let msg = line.split_once("] ").map_or(line, |(_, m)| m);
-        LOGS.lock()
-            .push(json!([logger::level_name(level), msg]));
+        LOGS.lock().push(json!([logger::level_name(level), msg]));
     }
 }
 
@@ -153,7 +152,9 @@ fn tcp_lines_match_python() {
             let ok = error.is_null()
                 && calls.len() > py_calls.len()
                 && calls[..py_calls.len()] == py_calls[..]
-                && invalid.iter().any(|m| m.as_str().unwrap().ends_with(py_error));
+                && invalid
+                    .iter()
+                    .any(|m| m.as_str().unwrap().ends_with(py_error));
             if !ok {
                 failures.push(format!(
                     "{name} (departure): error {error}, calls {calls:?}, invalid {invalid:?}"

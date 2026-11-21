@@ -47,8 +47,8 @@ pub fn render(b: &mut Block<'_>, v: &mut Voice) {
         } else {
             HYDRO_STEER_REL_TAU
         };
-        let env_end = v._hydro_steer_env
-            + (1.0 - (-dt_hs / tau_hs).exp()) * (hs_target - v._hydro_steer_env);
+        let env_end =
+            v._hydro_steer_env + (1.0 - (-dt_hs / tau_hs).exp()) * (hs_target - v._hydro_steer_env);
 
         let beta_hs = 1.0 - (-dt_hs / HYDRO_STEER_PITCH_TAU).exp();
         v._hydro_steer_sm_mag += beta_hs * (abs_hydro - v._hydro_steer_sm_mag);

@@ -64,7 +64,10 @@ pub fn entries(p: &LogPaths) -> Vec<(String, Target)> {
         .collect();
     let mut out = Vec::new();
     if rolled.is_empty() {
-        out.push(("Application Log".to_string(), Target::File(p.app_log.clone())));
+        out.push((
+            "Application Log".to_string(),
+            Target::File(p.app_log.clone()),
+        ));
     } else {
         let mut sub = vec![("Current".to_string(), p.app_log.clone())];
         sub.extend(rolled);
@@ -147,8 +150,8 @@ mod imp {
     use windows::Win32::UI::Shell::ShellExecuteW;
     use windows::Win32::UI::WindowsAndMessaging::{
         AppendMenuW, CreatePopupMenu, DestroyMenu, HMENU, MF_GRAYED, MF_POPUP, MF_SEPARATOR,
-        MF_STRING, SW_SHOWNORMAL, SetForegroundWindow, TPM_LEFTALIGN, TPM_RETURNCMD,
-        TPM_TOPALIGN, TrackPopupMenuEx,
+        MF_STRING, SW_SHOWNORMAL, SetForegroundWindow, TPM_LEFTALIGN, TPM_RETURNCMD, TPM_TOPALIGN,
+        TrackPopupMenuEx,
     };
     use windows::core::{HSTRING, PCWSTR};
 
@@ -185,7 +188,11 @@ mod imp {
 
     fn add_file(menu: HMENU, label: &str, path: &Path, id: usize) -> bool {
         let (text, enabled) = item_label(label, path);
-        let flags = if enabled { MF_STRING } else { MF_STRING | MF_GRAYED };
+        let flags = if enabled {
+            MF_STRING
+        } else {
+            MF_STRING | MF_GRAYED
+        };
         unsafe { AppendMenuW(menu, flags, id, &HSTRING::from(text)) }.is_ok()
     }
 
@@ -208,7 +215,12 @@ mod imp {
                         add_file(sub, sub_label, path, files.len());
                     }
                     let _ = unsafe {
-                        AppendMenuW(menu, MF_POPUP, sub.0 as usize, &HSTRING::from(label.as_str()))
+                        AppendMenuW(
+                            menu,
+                            MF_POPUP,
+                            sub.0 as usize,
+                            &HSTRING::from(label.as_str()),
+                        )
                     };
                 }
             }
@@ -216,7 +228,12 @@ mod imp {
         let folder_id = files.len() + 1;
         unsafe {
             let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
-            let _ = AppendMenuW(menu, MF_STRING, folder_id, &HSTRING::from("Open Log Folder"));
+            let _ = AppendMenuW(
+                menu,
+                MF_STRING,
+                folder_id,
+                &HSTRING::from("Open Log Folder"),
+            );
         }
         let mut pt = POINT { x, y };
         let cmd = unsafe {

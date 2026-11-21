@@ -187,9 +187,8 @@ fn obstacle_audio_simulation() {
     let render = &r.ctrl;
     render.set_obstacle_mode(true);
     render.update_selected_hazard(Some(&hazard));
-    let peak_of = |(l, rr): &(Vec<f32>, Vec<f32>)| {
-        l.iter().chain(rr).fold(0.0f32, |m, &x| m.max(x.abs()))
-    };
+    let peak_of =
+        |(l, rr): &(Vec<f32>, Vec<f32>)| l.iter().chain(rr).fold(0.0f32, |m, &x| m.max(x.abs()));
     let block = render.render_block(480);
     check(
         peak_of(&block) > 0.0,

@@ -629,7 +629,11 @@ pub fn induction_speak(report: Option<&PyDict>, answered: bool) -> Result<(), St
             // Departure (python-bugs.md 7, 53): a malformed field (a non-number boost,
             // a non-dict turbo) raised in the Python and nothing at all was spoken.
             Err(e) => {
-                log::error!("Forced induction report unreadable: {}: {}", e.kind.name(), e.msg);
+                log::error!(
+                    "Forced induction report unreadable: {}: {}",
+                    e.kind.name(),
+                    e.msg
+                );
                 say_excluded("Forced induction report could not be read");
             }
         }

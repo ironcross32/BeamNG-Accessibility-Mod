@@ -508,7 +508,11 @@ fn e4_cases_match_python() {
             let at = format!("{label} step {i} {}", step["step"]);
             assert_eq!(died, step["died"], "{at}: died");
             assert_eq!(result, norm(&step["result"]), "{at}: result");
-            assert_eq!(tap(), python_speech_after_departures(&step["tap"]), "{at}: speech");
+            assert_eq!(
+                tap(),
+                python_speech_after_departures(&step["tap"]),
+                "{at}: speech"
+            );
             assert_eq!(sent(), step["sent"], "{at}: sent");
             assert_eq!(vbrowser(), norm(&step["browser"]), "{at}: browser");
             let want = norm(&step["state"]);

@@ -167,10 +167,9 @@ pub fn render(b: &mut Block<'_>, v: &mut Voice) {
         // Beat rate straight from the null error, scaled by the mode's slope. The pair sits
         // symmetrically about DOCK_REF_HZ so the centre pitch never moves.
         let beat_hz = py_min(dock_null.abs() * dock_beat_slope, DOCK_BEAT_MAX_HZ);
-        let beat_max = beat_arr
-            .iter()
-            .copied()
-            .fold(f32::NEG_INFINITY, |a, x| if x > a || x.is_nan() { x } else { a });
+        let beat_max = beat_arr.iter().copied().fold(f32::NEG_INFINITY, |a, x| {
+            if x > a || x.is_nan() { x } else { a }
+        });
         let mut pair: Option<Vec<f32>> = None;
         if beat_end > 0.0 || beat_max > 0.0 {
             let inc_ref_tgt = (DOCK_REF_HZ - beat_hz * 0.5) / sr;

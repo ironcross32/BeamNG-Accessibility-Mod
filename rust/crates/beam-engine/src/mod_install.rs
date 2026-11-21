@@ -1,4 +1,4 @@
-﻿//! Owner: E10. The mod installer of `config_ui.py`: `install_mod_interactive`, the
+//! Owner: E10. The mod installer of `config_ui.py`: `install_mod_interactive`, the
 //! freeroam-layout cleanup and the stamped mod-version comparison. Prompts go through
 //! `ui_sink::UiSink::message_box`.
 //!
@@ -167,7 +167,8 @@ pub(crate) fn copy2(src: &Path, dst: &Path) -> Result<PathBuf, String> {
         .and_then(|f| f.set_times(times))
         .map_err(|e| pyos::win(&e, Some(&dst), None))?;
     if meta.permissions().readonly() {
-        fs::set_permissions(&dst, meta.permissions()).map_err(|e| pyos::win(&e, Some(&dst), None))?;
+        fs::set_permissions(&dst, meta.permissions())
+            .map_err(|e| pyos::win(&e, Some(&dst), None))?;
     }
     Ok(dst)
 }
@@ -207,7 +208,8 @@ pub fn write_layout_with_backup_at(
         drop(f);
 
         copy2(layout_path, &backup_path)?;
-        fs::rename(&path, layout_path).map_err(|e| pyos::win(&e, Some(&path), Some(layout_path)))?;
+        fs::rename(&path, layout_path)
+            .map_err(|e| pyos::win(&e, Some(&path), Some(layout_path)))?;
         temp_path = None;
         Ok(backup_path.clone())
     })();
