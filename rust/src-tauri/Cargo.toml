@@ -23,8 +23,9 @@ test = false
 
 [features]
 default = []
-# Embed a manifest with requestedExecutionLevel = requireAdministrator. Off by default
-# so `cargo run` and the tests work from an ordinary shell; release builds turn it on:
+# Embed a manifest with requestedExecutionLevel = requireAdministrator. Off by default,
+# releases included: the keyboard hook needs no elevation while the game is un-elevated.
+# Only for someone who runs Steam or BeamNG as administrator:
 #   cargo build --release -p beam-app --features uac-admin
 uac-admin = []
 

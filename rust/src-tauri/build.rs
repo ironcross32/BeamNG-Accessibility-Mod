@@ -1,7 +1,9 @@
 // Tauri build script. Selects the Windows application manifest: the default one
 // (Common Controls v6 only, which Tauri's dialogs need) or, with the `uac-admin`
-// feature, the same plus requestedExecutionLevel=requireAdministrator, because the
-// keyboard hooks must work while the elevated game has focus.
+// feature, the same plus requestedExecutionLevel=requireAdministrator. Releases do not
+// use it: the keyboard hook needs no elevation while the game runs un-elevated, which it
+// does when launched through Steam. The feature is for a user who runs the game as
+// administrator (see rust_plans/01-scope-and-architecture.md).
 
 fn main() {
     println!("cargo:rerun-if-changed=manifests/default.xml");

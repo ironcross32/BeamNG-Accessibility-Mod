@@ -126,9 +126,17 @@ looks it up rather than writing it from memory.
 - `beamtel.exe --configurator` opens the standalone configurator window (title
   `BeamTel Configurator`, the Configuration panel only, no engine), which replaces
   `python configurator.py`.
-- The process requires administrator rights (keyboard hooks must work while the game has
-  focus). The manifest sets `requireAdministrator` for release builds. A cargo feature
-  keeps debug builds un-elevated so tests and `cargo run` work from an ordinary shell.
+- **The process does not require administrator rights** (decided 2026-11-21, a change
+  from the Python build). A `WH_KEYBOARD_LL` hook needs no elevation to see and suppress
+  keys going to a window at the same integrity level, and BeamNG runs un-elevated: it is
+  launched through Steam (`steam.exe -applaunch`), which hands off to the running Steam.
+  Verified in game on 2026-11-21 with an un-elevated debug build: F9 then F read fuel and
+  did not exit the stationary car; the browse dialogs kept their arrows. Requiring admin
+  was in fact self-defeating: an elevated beamtel that starts Steam itself makes the game
+  elevated too. The one case it cannot handle is a user who runs Steam or BeamNG as
+  administrator (Windows hides an elevated window's keystrokes from a normal process's
+  hook); the `uac-admin` cargo feature still builds a `requireAdministrator` exe for that.
+  The release manifest is `asInvoker` (`manifests/default.xml`).
 - No console window in release builds.
 
 ### Frontend to backend contract

@@ -78,22 +78,28 @@ committed it on 2026-11-21:
 
 ## Next step
 
-U2 (the Tauri backend, `src-tauri/`) is written, builds clean under clippy, and its 24
-tests pass, but **the app has never been launched**. Launching main mode starts the
-engine (keyboard hooks, UDP listeners, possibly the game), and it puts a window in front
-of a screen-reader user, so do not launch it without asking.
+U2 has been run by the user (2026-11-21), un-elevated, debug build:
 
-1. With the user: launch `beamtel.exe --configurator` first (no engine), then main mode.
-   Check: the page loads (no mock banner), title, every panel fills, saves land in the
-   config file, Reset, Test Voice / Test Shift Tone / gear preview, the View Logs menu
-   position and its submenu, message boxes owned by the window, close with a pending
-   save, Exit, the console (contexts, Run, log stream), Install Mod, Check for Updates
-   with its progress dialog.
-2. Then wave 3: I1 integration (including the wiring the MCP sim's `beamtel.py` greps
-   checked: speech tap after the interrupt demotion, console tap before the GUI
-   forward), the V1 parity audits (the config/UI audit should add a Python fixture for
-   `config_load`'s values and `config_save_panel`'s output), fix-ups.
+- `--configurator`: panels filled from the real config, edits saved (gear mode, root,
+  scale verified on disk), clean exit 0. Reset to Defaults deliberately not tried (the
+  user wants a config backup first).
+- Main mode: game launched through Steam, the mod connected (UI bridge, console round
+  trip through the MCP server), F10 commands reached the game, and **F9 suppression
+  works without admin** (F9 then F read fuel and did not exit the car). Decision: no
+  elevation; see `01-scope-and-architecture.md`. Clean close, exit 0, no warnings.
+- **Audio crackled** with the scanner on and an AI car chasing; the Python build never
+  did. Probably the unoptimised debug build. Next: the same test with
+  `target\release\beamtel.exe`. If it still crackles, measure the callback's time
+  per block in release before touching anything.
+- Unconfirmed: with the beamtel window focused, NVDA queued speech instead of
+  interrupting. Only chase it if the user can reproduce it.
+- Optional, discussed: warn when the game itself runs elevated, the one case an
+  un-elevated hook cannot see.
 
+Then wave 3: I1 integration (including the wiring the MCP sim's `beamtel.py` greps
+checked: speech tap after the interrupt demotion, console tap before the GUI forward),
+the V1 parity audits (the config/UI audit should add a Python fixture for
+`config_load`'s values and `config_save_panel`'s output), fix-ups.
 Traps found in U2:
 - A Tauri test binary dies at load with `STATUS_ENTRYPOINT_NOT_FOUND` unless it embeds
   the Common Controls v6 manifest. `build.rs` adds it to `tests/` targets only
