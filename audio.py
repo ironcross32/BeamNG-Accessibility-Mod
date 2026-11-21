@@ -1,5 +1,6 @@
 # audio.py
 
+import os
 import threading
 import math
 import time
@@ -1507,6 +1508,7 @@ class AudioController:
 
         # HRTF State
         self._hrtf = None
+        self._hrtf_set_key = None  # (set id, elevation, equalise) of the loaded set
         self._click_conv_L = None
         self._click_conv_R = None
         self._hclick_conv_L = None
@@ -2351,6 +2353,10 @@ class AudioController:
         with self.lock:
             if not enabled or not self._junction_proximity_enabled:
                 target = None
+            # A private-road entry is a spoken cue, not a place to stop: the map
+            # keeps traffic off the road, and almost none have a gate.
+            if target and target.get("kind") == "privateEntry":
+                target = None
             if target and (not self._junction_proximity
                            or target["id"] != self._junction_proximity["id"]):
                 self._junction_proximity_phase = 0.0
@@ -2947,25 +2953,57 @@ class AudioController:
                 )
                 self._device_watcher_thread.start()
 
-    def load_hrtf(self, hrir_path):
-        """Load pre-baked HRIR data (.npz) for binaural compass clicks."""
+    def load_hrtf(self, hrir_path, set_key=None, elevation_deg=None, equalise=None):
+        """Load pre-baked HRIR data (.npz) for binaural compass clicks.
+
+        The new set is built and resampled completely before it replaces the old one
+        in a single assignment, so a switch made while audio is running never exposes
+        a half-loaded set. Every HRTF overlap-add tail already tolerates the IR length
+        changing between blocks (they add min(len) samples), as does the line-up
+        guide's crossfade, so nothing needs resetting. On failure the current set,
+        if any, stays in use.
+        """
         if not self._is_enabled:
-            return
+            return False
         try:
             from hrtf import HRTFSet
 
-            hrtf = HRTFSet(hrir_path, self.logger)
+            hrtf = HRTFSet(hrir_path, self.logger, elevation_deg, equalise)
             if hrtf.is_loaded:
                 hrtf.resample(self.samplerate)
                 self._hrtf = hrtf
-            else:
-                self.logger.warning(
-                    "HRTF file could not be loaded — falling back to stereo panning."
-                )
+                self._hrtf_set_key = set_key
+                return True
+            self.logger.warning(
+                "HRTF file could not be loaded — "
+                + ("keeping the current set." if self._hrtf is not None
+                   else "falling back to stereo panning.")
+            )
         except Exception as e:
             self.logger.warning(
-                f"HRTF initialization failed: {e} — falling back to stereo panning."
+                f"HRTF initialization failed: {e} — "
+                + ("keeping the current set." if self._hrtf is not None
+                   else "falling back to stereo panning.")
             )
+        return False
+
+    def select_hrtf_set(self, set_id, base_dir, elevation_deg=None, equalise=None):
+        """Load the named HRTF set (see hrtf_sets.py) at the given elevation and
+        equalisation, unless exactly that is already active. Loading processes the
+        whole ring (a few hundred ms), so it runs on the calling thread -- the config
+        watcher -- never the audio callback."""
+        import hrtf_sets
+
+        info = hrtf_sets.resolve(set_id)
+        elevation = hrtf_sets.clamp_elevation(
+            hrtf_sets.DEFAULT_ELEVATION_DEG if elevation_deg is None else elevation_deg
+        )
+        eq = hrtf_sets.DEFAULT_EQUALISE if equalise is None else bool(equalise)
+        key = (info.set_id, elevation, eq)
+        if self._hrtf is not None and key == self._hrtf_set_key:
+            return
+        if self.load_hrtf(os.path.join(base_dir, info.filename), key, elevation, eq):
+            self.logger.info(f"HRTF set: {info.label}")
 
     def update_telemetry_state(self, state):
         with self.lock:

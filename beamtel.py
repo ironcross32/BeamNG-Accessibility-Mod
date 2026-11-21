@@ -207,6 +207,9 @@ DEFAULT_CONFIG = {
     "compass_highlight_enabled": True,
     "compass_highlight_nth_click": 6,  # MODIFIED
     "hrtf_enabled": True,
+    "hrtf_set": "mit_kemar",  # an id from hrtf_sets.py
+    "hrtf_elevation_deg": -3.0,  # hrtf_sets.ELEVATION_MIN_DEG..MAX_DEG
+    "hrtf_equalise": True,
     "hrtf_front_emphasis_db": -6.0,
     "hrtf_distance_gain_db": 0.0,
     "follow_default_audio_device": True,
@@ -12216,6 +12219,14 @@ def _apply_live_config(audio_controller):
         ai_describer_disable_ui_toggle = cfg.get("ai_describer_disable_ui_toggle", False)
     if audio_controller is not None:
         audio_controller.apply_config(cfg)
+        # Outside state_lock like speech below: loading a set reads and resamples a
+        # file. A no-op unless the choice changed, so it costs nothing on other reloads.
+        audio_controller.select_hrtf_set(
+            cfg.get("hrtf_set"),
+            HERE,
+            cfg.get("hrtf_elevation_deg"),
+            cfg.get("hrtf_equalise"),
+        )
     _send_road_configuration()
     if obstacle_mode_active:
         _send_obstacle_configuration()
@@ -12303,9 +12314,6 @@ def _run_engine():
 
     watcher_thread = threading.Thread(target=_config_watcher, args=(STOP,), daemon=True)
     watcher_thread.start()
-
-    hrir_path = os.path.join(HERE, "hrtf_kemar_horizontal.npz")
-    audio_controller.load_hrtf(hrir_path)
 
     _ws_thread, _ws_stop = None, lambda: None
     HILL_CLIMB_CHALLENGE.set_finalize_callback(_hill_climb_finalized)

@@ -21,6 +21,7 @@ import time
 import speech
 import secretstore
 import gear_report
+import hrtf_sets
 
 # --- Audio Test Dependencies ---
 AUDIO_TEST_OK = False
@@ -104,6 +105,9 @@ DEFAULT_CONFIG = {
     # MODIFIED: Changed from degrees to a counter
     "compass_highlight_nth_click": 6,
     "hrtf_enabled": True,
+    "hrtf_set": hrtf_sets.DEFAULT_HRTF_SET,
+    "hrtf_elevation_deg": hrtf_sets.DEFAULT_ELEVATION_DEG,
+    "hrtf_equalise": hrtf_sets.DEFAULT_EQUALISE,
     "hrtf_front_emphasis_db": -6.0,
     "hrtf_distance_gain_db": 0.0,
     "follow_default_audio_device": True,
@@ -394,6 +398,9 @@ def load_config():
         _coerce("compass_highlight_enabled", bool, False)
         _coerce("compass_highlight_nth_click", int, 6) # MODIFIED
         _coerce("hrtf_enabled", bool, True)
+        _coerce("hrtf_set", str, hrtf_sets.DEFAULT_HRTF_SET)
+        _coerce("hrtf_elevation_deg", float, hrtf_sets.DEFAULT_ELEVATION_DEG)
+        _coerce("hrtf_equalise", bool, hrtf_sets.DEFAULT_EQUALISE)
         _coerce("hrtf_front_emphasis_db", float, -6.0)
         _coerce("hrtf_distance_gain_db", float, 0.0)
         _coerce("launch_beamng", bool, False)
@@ -501,6 +508,8 @@ def load_config():
             db = merged.get(key, -12.0)
             merged[key] = max(-120.0, min(0.0, db))
         merged["hrtf_distance_gain_db"] = max(-24.0, min(6.0, merged.get("hrtf_distance_gain_db", 0.0)))
+        merged["hrtf_set"] = hrtf_sets.resolve(merged.get("hrtf_set")).set_id
+        merged["hrtf_elevation_deg"] = hrtf_sets.clamp_elevation(merged.get("hrtf_elevation_deg"))
 
         merged["units"] = "metric" if str(merged.get("units", "imperial")).lower().startswith("m") else "imperial"
         merged["telemetry_protocol"] = "outgauge" if str(merged.get("telemetry_protocol", "extended")).lower() == "outgauge" else "extended"

@@ -240,28 +240,35 @@ print(f"   centroid at full lock ({peak_centroid:.0f}Hz) below the shrill thresh
 # 9. HRTF image width. The KEMAR set's interaural level difference peaks around 67.5°
 # and *falls* by ~5 dB out to 90°, so mapping full lock to 90° made a harder turn read as
 # coming back toward centre. Full lock must sit below that peak's far side.
-try:
-    import logging
+# Checked for every selectable set, since the user chooses which one plays.
+import logging
+import os
 
-    import hrtf as _hrtf
+import hrtf as _hrtf
+import hrtf_sets as _hrtf_sets
 
-    _log = logging.getLogger("hydro_steer_sim")
-    _log.addHandler(logging.NullHandler())
-    _set = _hrtf.HRTFSet("hrtf_kemar_horizontal.npz", _log)
+_log = logging.getLogger("hydro_steer_sim")
+_log.addHandler(logging.NullHandler())
+_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+for _info in _hrtf_sets.available_sets():
+    try:
+        _set = _hrtf.HRTFSet(os.path.join(_root, _info.filename), _log)
+        if not _set.is_loaded:
+            raise FileNotFoundError(_info.filename)
 
-    def _ild_db(az):
-        l, r = _set.get_hrir(az)
-        el = float(np.sum(l.astype(np.float64) ** 2))
-        er = float(np.sum(r.astype(np.float64) ** 2))
-        return 10.0 * np.log10(max(el, 1e-20) / max(er, 1e-20))
+        def _ild_db(az):
+            l, r = _set.get_hrir(az)
+            el = float(np.sum(l.astype(np.float64) ** 2))
+            er = float(np.sum(r.astype(np.float64) ** 2))
+            return 10.0 * np.log10(max(el, 1e-20) / max(er, 1e-20))
 
-    near = _ild_db(HYDRO_STEER_MAX_AZIMUTH_DEG * 0.75)
-    full = _ild_db(HYDRO_STEER_MAX_AZIMUTH_DEG)
-    print(f"HRTF width: at +/-{HYDRO_STEER_MAX_AZIMUTH_DEG:.0f}deg, ILD "
-          f"{near:.2f}dB at 3/4 lock -> {full:.2f}dB at full lock "
-          f"({'OK' if full > near else 'FAIL - harder turn reads as narrower'})")
-except Exception as exc:  # npz absent in a bare checkout; not a logic failure
-    print(f"HRTF width: skipped ({type(exc).__name__}: {exc})")
+        near = _ild_db(HYDRO_STEER_MAX_AZIMUTH_DEG * 0.75)
+        full = _ild_db(HYDRO_STEER_MAX_AZIMUTH_DEG)
+        print(f"HRTF width [{_info.set_id}]: at +/-{HYDRO_STEER_MAX_AZIMUTH_DEG:.0f}deg, ILD "
+              f"{near:.2f}dB at 3/4 lock -> {full:.2f}dB at full lock "
+              f"({'OK' if full > near else 'FAIL - harder turn reads as narrower'})")
+    except Exception as exc:  # npz absent in a bare checkout; not a logic failure
+        print(f"HRTF width [{_info.set_id}]: skipped ({type(exc).__name__}: {exc})")
 
 # 10. Pan sanity: positive articulation must be LEFT-dominant.
 s = Sim()

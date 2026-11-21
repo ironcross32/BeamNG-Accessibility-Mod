@@ -12,7 +12,7 @@ from audio import AudioController
 def main():
     audio = AudioController(logging.getLogger("assistant_audio_sim"))
     audio.apply_config({"hrtf_enabled": True})
-    audio.load_hrtf(str(Path(__file__).resolve().parents[1] / "hrtf_kemar_horizontal.npz"))
+    audio.load_hrtf(str(Path(__file__).resolve().parents[1] / "hrtf_mit_kemar.npz"))
     assert audio._hrtf is not None
     sample_rate = audio.samplerate
 

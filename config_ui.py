@@ -12,6 +12,7 @@ import zipfile
 import wx
 
 import gear_report
+import hrtf_sets
 import secretstore
 from configurator import (
     load_config,
@@ -1036,12 +1037,54 @@ class ConfigPanel(wx.ScrolledWindow):
         # HRTF controls
         self.chk_hrtf_enabled = wx.CheckBox(sb_compass, label="HRTF Binaural Processing")
         self.chk_hrtf_enabled.SetToolTip(
-            "Enable HRTF for 3D spatial audio on compass and low speed clicks. Requires SOFA file."
+            "Enable HRTF for 3D spatial audio on compass and low speed clicks."
         )
         compass_sizer.Add(self.chk_hrtf_enabled, 0, wx.LEFT | wx.RIGHT, 6)
 
         self.hrtf_grid = wx.FlexGridSizer(0, 2, 6, 8)
         self.hrtf_grid.AddGrowableCol(1, 1)
+
+        # Ids in the same order as the labels; save writes the id, never the label.
+        self._hrtf_sets = hrtf_sets.available_sets()
+        lbl_hrtf_set = wx.StaticText(sb_compass, label="HRTF Dataset:")
+        self.choice_hrtf_set = wx.Choice(
+            sb_compass, choices=[info.label for info in self._hrtf_sets]
+        )
+        self.choice_hrtf_set.SetName("HRTF Dataset")
+        self.choice_hrtf_set.SetToolTip(
+            "The head measurements used to place sounds around you. Each one sounds "
+            "a little different; pick whichever makes directions clearest for you. "
+            "Takes effect within a few seconds, no restart needed."
+        )
+        self.hrtf_grid.Add(lbl_hrtf_set, 0, wx.ALIGN_CENTER_VERTICAL)
+        self.hrtf_grid.Add(self.choice_hrtf_set, 0, wx.EXPAND)
+
+        lbl_hrtf_elevation = wx.StaticText(sb_compass, label="HRTF Elevation (degrees):")
+        self.spin_hrtf_elevation = wx.SpinCtrlDouble(
+            sb_compass,
+            min=hrtf_sets.ELEVATION_MIN_DEG,
+            max=hrtf_sets.ELEVATION_MAX_DEG,
+            inc=1.0,
+        )
+        self.spin_hrtf_elevation.SetDigits(0)
+        self.spin_hrtf_elevation.SetToolTip(
+            "How far below (negative) or above ear level directional sounds are placed. "
+            "Small values mostly change the tone slightly; try around -10 or -15 to "
+            "hear whether a lower placement suits you."
+        )
+        self.spin_hrtf_elevation.SetName("HRTF Elevation")
+        _label_spin(self.spin_hrtf_elevation, "HRTF Elevation")
+        self.hrtf_grid.Add(lbl_hrtf_elevation, 0, wx.ALIGN_CENTER_VERTICAL)
+        self.hrtf_grid.Add(self.spin_hrtf_elevation, 0, wx.EXPAND)
+
+        self.chk_hrtf_equalise = wx.CheckBox(sb_compass, label="Equalise HRTF Tone")
+        self.chk_hrtf_equalise.SetToolTip(
+            "Removes the tone colouring that a dataset adds to every direction alike, "
+            "such as the boxy or harsh sound of the measurement equipment, and keeps "
+            "only the differences that tell directions apart."
+        )
+        self.hrtf_grid.Add(self.chk_hrtf_equalise, 0, wx.ALIGN_CENTER_VERTICAL)
+        self.hrtf_grid.AddSpacer(0)
 
         lbl_hrtf_emphasis = wx.StaticText(sb_compass, label="HRTF Front Emphasis (dB):")
         self.spin_hrtf_front_emphasis = wx.SpinCtrlDouble(
@@ -1532,6 +1575,8 @@ class ConfigPanel(wx.ScrolledWindow):
         self.choice_renderer.Bind(wx.EVT_CHOICE, self._schedule_save)
         self.choice_callout_interval.Bind(wx.EVT_CHOICE, self._schedule_save)
         self.choice_obstacle_sensitivity.Bind(wx.EVT_CHOICE, self._schedule_save)
+        self.choice_hrtf_set.Bind(wx.EVT_CHOICE, self._schedule_save)
+        self.chk_hrtf_equalise.Bind(wx.EVT_CHECKBOX, self._schedule_save)
         for ctrl in (
             self.choice_gear_mode,
             self.choice_gear_number_style,
@@ -1576,6 +1621,7 @@ class ConfigPanel(wx.ScrolledWindow):
             self.spin_road_beep,
             self.spin_road_correction,
             self.spin_road_junction,
+            self.spin_hrtf_elevation,
             self.spin_hrtf_front_emphasis,
             self.spin_hrtf_distance_gain,
             self.spin_pitch_roll_max,
@@ -1630,7 +1676,13 @@ class ConfigPanel(wx.ScrolledWindow):
     def on_toggle_hrtf(self, evt):
         _set_row(
             self.hrtf_grid,
-            (self.spin_hrtf_front_emphasis, self.spin_hrtf_distance_gain),
+            (
+                self.choice_hrtf_set,
+                self.spin_hrtf_elevation,
+                self.chk_hrtf_equalise,
+                self.spin_hrtf_front_emphasis,
+                self.spin_hrtf_distance_gain,
+            ),
             self.chk_hrtf_enabled.IsChecked(),
             self.chk_hrtf_enabled,
         )
@@ -1845,6 +1897,19 @@ class ConfigPanel(wx.ScrolledWindow):
                 cfg.get("road_junction_volume_db", -14.0)
             )
             self.chk_hrtf_enabled.SetValue(cfg.get("hrtf_enabled", True))
+            hrtf_set_id = hrtf_sets.resolve(cfg.get("hrtf_set")).set_id
+            self.choice_hrtf_set.SetSelection(
+                next(
+                    (i for i, info in enumerate(self._hrtf_sets) if info.set_id == hrtf_set_id),
+                    0,
+                )
+            )
+            self.spin_hrtf_elevation.SetValue(
+                hrtf_sets.clamp_elevation(cfg.get("hrtf_elevation_deg"))
+            )
+            self.chk_hrtf_equalise.SetValue(
+                bool(cfg.get("hrtf_equalise", hrtf_sets.DEFAULT_EQUALISE))
+            )
             self.spin_hrtf_front_emphasis.SetValue(
                 cfg.get("hrtf_front_emphasis_db", -6.0)
             )
@@ -1963,6 +2028,11 @@ class ConfigPanel(wx.ScrolledWindow):
         cfg["road_correction_volume_db"] = self.spin_road_correction.GetValue()
         cfg["road_junction_volume_db"] = self.spin_road_junction.GetValue()
         cfg["hrtf_enabled"] = self.chk_hrtf_enabled.GetValue()
+        cfg["hrtf_set"] = self._hrtf_sets[
+            max(0, self.choice_hrtf_set.GetSelection())
+        ].set_id
+        cfg["hrtf_elevation_deg"] = self.spin_hrtf_elevation.GetValue()
+        cfg["hrtf_equalise"] = self.chk_hrtf_equalise.GetValue()
         cfg["hrtf_front_emphasis_db"] = self.spin_hrtf_front_emphasis.GetValue()
         cfg["hrtf_distance_gain_db"] = self.spin_hrtf_distance_gain.GetValue()
         cfg["pitch_roll_tones_enabled"] = self.chk_pitch_roll_enabled.GetValue()

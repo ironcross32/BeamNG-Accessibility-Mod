@@ -34,7 +34,7 @@ jobs:
       # bng_mod/ is a directory junction locally but its files are tracked, so
       # the checkout materialises it as a real directory and build.py's
       # ensure_mod_junction()/package_mod() work against it unchanged.
-      # hrtf_kemar_horizontal.npz is committed too, so bake_hrtf.py and h5py are
+      # The hrtf_*.npz sets are committed too, so bake_hrtf.py and h5py are
       # never needed here.
 
       # APP_VERSION is the only thing a shipped build compares against the release
