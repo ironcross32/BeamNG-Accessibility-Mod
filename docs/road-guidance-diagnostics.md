@@ -2,7 +2,7 @@
 
 The road diagnostic recorder captures the decisions behind the lane-correction sounds while
 the vehicle is being driven. It is deliberately opt-in: ordinary `R2` road packets remain
-compact, and `DIAG_ON` adds the detailed fields only after Python has opened a recording.
+compact, and `DIAG_ON` adds the detailed fields only after beamtel has opened a recording.
 
 Recordings are newline-delimited JSON under
 `%LOCALAPPDATA%/beamtel/road_diagnostics/`. Every sample is flushed immediately, so a crash or
@@ -18,14 +18,14 @@ The MCP `road_diagnostic` tool is the control surface:
 - `review` recomputes the review for the active, latest, or named session.
 - `list` enumerates previous sessions.
 
-Each 20 Hz sample pairs the Lua decision state with the closest Python telemetry snapshot.
+Each 20 Hz sample pairs the Lua decision state with the closest beamtel telemetry snapshot.
 The Lua half records the selected navigation edge, road radius, signed lateral position and
 filtered lateral velocity, prediction horizon and predicted position, target lane side,
 target offset/error/tolerance, heading error, correction bearing, boundary/target times, the
 three individual settled predicates, correction rearm state, and the consecutive-clear
 counter. During diagnostics the Lua side also samples raw/filtered steering and wheel contact
 material IDs/names directly from the vehicle VM, because legacy OutGauge has no steering
-channel. Python adds world position, vehicle and ground speed, throttle, brake, heading,
+channel. beamtel adds world position, vehicle and ground speed, throttle, brake, heading,
 pitch/roll, gear, traction-control state, and the wheel/ground speed divergence used to
 identify slip.
 

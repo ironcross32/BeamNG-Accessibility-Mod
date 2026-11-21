@@ -1,6 +1,6 @@
 # Lua: drift display speech (`driftAccessible.lua`)
 
-`driftAccessible.lua` speaks the stock drift display. It relays the game's drift hooks to Python as `drift_event` frames over `bnvdaBridge`, the same path `hillClimbChallenge.lua` uses. The events are few and need no fresh-data stream, so no UDP port is used. `drift_speech.py` turns them into speech; see [python-components.md](python-components.md).
+`driftAccessible.lua` speaks the stock drift display. It relays the game's drift hooks to beamtel as `drift_event` frames over `bnvdaBridge`, the same path `hillClimbChallenge.lua` uses. The events are few and need no fresh-data stream, so no UDP port is used. `beam-reports` `drift_speech.rs` turns them into speech; see [app-engine.md](app-engine.md).
 
 ## How the game's drift system works
 
@@ -31,7 +31,7 @@ All of this was read from `lua/ge/extensions/gameplay/drift/` and `ui/modules/ap
 - **Text comes from the game's own translations** (`translateLanguage`), with `{{score}}` placeholders filled. Each has an English fallback, so a renamed key degrades to plain words rather than a key name.
 - **Every hook body runs under `pcall`.** They are called from inside the game's drift update.
 - **A reload adopts the current context silently.** A reload mid-drift is not a new display.
-- **A silent `alive` goes out every 3 s while shown.** Python's quiet window times out 10 s after the last event, in case `hidden` is lost. Without the keepalive, one long slide would fall out of it.
+- **A silent `alive` goes out every 3 s while shown.** beamtel's quiet window times out 10 s after the last event, in case `hidden` is lost. Without the keepalive, one long slide would fall out of it.
 
 ## Drift spots
 
@@ -41,7 +41,7 @@ All of this was read from `lua/ge/extensions/gameplay/drift/` and `ui/modules/ap
 
 - Three chains were spoken in order, from "Drift. 638 points, combo 1.2" to "Drift over".
 - No automatic speed or compass speech came in the 26 s window.
-- Gear changes were spoken seven times during the drift, and each one interrupted. "second" came 0.2 s after a burst of four drift lines. During the window, gear speech now queues instead (see `drift_speech.py` in python-components.md).
+- Gear changes were spoken seven times during the drift, and each one interrupted. "second" came 0.2 s after a burst of four drift lines. During the window, gear speech now queues instead (see `beam-reports` `drift_speech.rs` in [app-engine.md](app-engine.md)).
 - "Big angle" and "Reverse drift" repeated across two slides. That is the game: both reset at each drift end, and the display showed them twice.
 
 ## Third driven run, after the fixes
@@ -53,5 +53,5 @@ All of this was read from `lua/ge/extensions/gameplay/drift/` and `ui/modules/ap
 
 ## Checks
 
-- `diagnostic/drift_speech_sim.py` covers phrases, interrupts, the quiet window, the keepalive, the timeout and the setting.
+- `drift_speech_sim` (`beam-reports`) covers phrases, interrupts, the quiet window, the keepalive, the timeout and the setting.
 - In game, the handlers were called directly with fake data and `bnvdaBridge.sendFromGE` stubbed. They produced the expected frames, filtered another vehicle's slide, and translated a spot end reason. Never test with `extensions.hook`, which also drives the game's own drift modules.

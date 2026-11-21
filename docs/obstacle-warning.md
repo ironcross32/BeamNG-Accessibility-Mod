@@ -6,7 +6,7 @@ tolerated in existing configuration files but no longer control the detector.
 
 ## State and wire protocol
 
-While the mode is active, Python sends driver intent to UDP 4453 on gear changes, material
+While the mode is active, beamtel sends driver intent to UDP 4453 on gear changes, material
 steering/pedal changes, and at least every 0.5 seconds:
 
 ```text
@@ -15,7 +15,7 @@ STATE,<F|R>,<steering>,<throttle>,<brake>
 
 Steering is normalized to -1..1 and positive means left. A pushed state expires after one
 second. Lua then derives forward/reverse from longitudinal velocity, sets steering to zero,
-and requires actual motion before warning. Python also sends `SENSITIVITY,early|normal|late`
+and requires actual motion before warning. beamtel also sends `SENSITIVITY,early|normal|late`
 when the mode starts or configuration changes.
 
 Lua sends either `0`, the unchanged terrain packet, or one selected static hazard:
@@ -27,7 +27,7 @@ Lua sends either `0`, the unchanged terrain packet, or one selected static hazar
 The first five fields are a valid one-entry legacy packet. State is 1 advisory, 2 urgent, or
 3 emergency; TTC is -1 when unavailable. Gap is clear air from the player's resolved vehicle
 perimeter to the static hit, not distance from the vehicle origin. Stopping margin is gap minus
-`closing² / (2 × 9 m/s²) + 0.3 m`. New Python still accepts old multi-entry packets, chooses
+`closing² / (2 × 9 m/s²) + 0.3 m`. New beamtel still accepts old multi-entry packets, chooses
 their highest urgency, and never infers emergency from their centre distances.
 
 ## Coverage and priority

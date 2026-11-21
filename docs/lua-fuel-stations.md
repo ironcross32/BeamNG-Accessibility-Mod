@@ -1,11 +1,11 @@
-# Fuel stations (`fuelStations.lua`, `beamtelFuelPark.lua`, `fuel_stations.py`)
+# Fuel stations (`fuelStations.lua`, `beamtelFuelPark.lua`, `beam-reports` `fuel_stations.rs`)
 
 Finds every place on the loaded map where a car can be refuelled or recharged, routes to the one
 the player picks, and on request parks the car at a free pump and hands it back. The player then
 shifts into park and refuels the way the game requires (Shift+E opens the stock prompt; in career
 that opens the refuelling screen).
 
-Ports: **4486** Game→Python (rows and events), **4488** Python→Game (commands).
+Ports: **4486** Game→beamtel (rows and events), **4488** beamtel→Game (commands).
 
 ## Keys
 
@@ -50,7 +50,7 @@ It is built on `onWorldReadyState(2)`, and on load into a live world. There are 
 ## Rows and compatibility
 
 - **Message framing:** `LIST` answers `FS_BEGIN:<n>`, then `FS:<json>` per station sorted by distance, then `FS_END`. While the catalogue is still building it answers `FS_WAIT`, and sends the list when the build finishes.
-- **Distance and bearing:** distance is to the station's edge (centre minus radius). Bearing is relative to the car, **positive left**, and lateral is `up:cross(fwd)`. Python only words it, so the 180° heading offset never comes into it.
+- **Distance and bearing:** distance is to the station's edge (centre minus radius). Bearing is relative to the car, **positive left**, and lateral is `up:cross(fwd)`. beamtel only words it, so the 180° heading offset never comes into it.
 - **`compatible`** is true, false, or null (unknown).
   - It comes from `core_vehicleBridge.requestValue(veh, cb, 'energyStorage')`, compared against the station's `energyTypes`.
   - `air` and `n2o` tanks are ignored, and `kerosene` (vehicle spelling) is mapped to `kerosine` (GE spelling).
@@ -62,7 +62,7 @@ It is built on `onWorldReadyState(2)`, and on load into a live world. There are 
 - **The range watch is independent of the route**, which stock clears on arrival.
   - It runs every 0.5 s.
   - `in_range` fires once inside radius + 40 m; `left_range` fires past radius + 70 m.
-  - Python then says "Arriving at …. Press F9 then Shift F to park at a pump".
+  - beamtel then says "Arriving at …. Press F9 then Shift F to park at a pump".
 
 ## Parking
 
@@ -171,7 +171,7 @@ Cross-VM chunks: GE→vehicle sends `start(token, {{x=,y=,z=},…}, beyond)` bui
 
 | Kind | Meaning |
 |---|---|
-| `scan_done` | The catalogue was rebuilt. Python forgets its target, because a new catalogue means a new level. |
+| `scan_done` | The catalogue was rebuilt. beamtel forgets its target, because a new catalogue means a new level. |
 | `target` | `id`, `station`, `here` |
 | `in_range`, `left_range` | The range watch |
 | `parking` | `pump`, `side` (pump on your left or right), `official` |

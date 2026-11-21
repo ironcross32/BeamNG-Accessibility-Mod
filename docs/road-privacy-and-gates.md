@@ -1,6 +1,6 @@
 # Private roads and gates
 
-Covers `roadDetector.lua`'s private-road handling, `roadGates.lua`, and the speech built on them (`beamtel.py`, `road_guidance.py`, `beamtelAssistant.lua`). Sims: `driving_assistant_sim.lua`, `road_detector_sim.lua`, `junction_proximity_sim.py`, `road_guidance_sim.py`.
+Covers `roadDetector.lua`'s private-road handling, `roadGates.lua`, and the speech built on them (`beam-engine`, `beam-road` `road_guidance.rs`, `beamtelAssistant.lua`). Sims: `driving_assistant_sim.lua`, `road_detector_sim.lua`, `junction_proximity_sim` (`beam-audio`, `beam-road`), `road_guidance_sim` (`beam-road`).
 
 ## What the game's "gated" flag means, 2026-11-13
 
@@ -35,7 +35,7 @@ A plain module required by `roadDetector`. `rebuildNavigationModel` calls `roadG
 | Assistant junction prompt (`exitAccess`) | "right through a gate" | "right onto a private road" |
 | Manual guidance (`findJunctionAhead`) | "Gate in N" (mid-link gate, or one within 15 m past a dead end) | "Private road in N" where the public road only goes on as private |
 
-- **The private entry rides on the next stop** when that stop is within `PRIVATE_ENTRY_CARRY_M` (40 m) past it: the stop keeps its own kind and bar and carries `privateEntry`. Otherwise the entry is its own target, `kind = 'privateEntry'`, which `audio.update_junction_proximity` drops, so it sounds no bar. `privateEntry` is an optional appended wire tail; an older receiver ignores it.
+- **The private entry rides on the next stop** when that stop is within `PRIVATE_ENTRY_CARRY_M` (40 m) past it: the stop keeps its own kind and bar and carries `privateEntry`. Otherwise the entry is its own target, `kind = 'privateEntry'`, which `update_junction_proximity` drops, so it sounds no bar. `privateEntry` is an optional appended wire tail; an older receiver ignores it.
 - **Private-to-private is never named.** The old "a gate between two private roads gets its own bar" rule fired on boundary artefacts (Johnson Valley's DR155) and is gone. Inside Johnson Valley no exit is labelled, which is what the report's "say *leaving public roads* once" rule wanted, without a level-wide share.
 - **The bar no longer lands one link early.** It used to sit wherever the route stepped onto a boundary link, which was sometimes the public road before the entrance.
 

@@ -1,5 +1,7 @@
 # Junction proximity cues
 
+> **History.** Recorded against the Python application, which has since been removed from the repository (see git history before "Remove the Python application"). File names, sims and commands below are as they were then; the app is now the Rust workspace in `rust/`, and each Python sim named here that was ported is a Rust test of the same name.
+
 ## Stop bar, 2026-10-27
 
 The stop bar replaces the 520 Hz pips below; their target selection survives. A bar is the line before a junction boundary, a mapped stop point, a gate mesh on the road, or a dead end. The start of a private road is spoken, not barred ([road-privacy-and-gates.md](road-privacy-and-gates.md)). The tone is D#4 (311.13 Hz) with a sub an octave down (D#3, 155.56 Hz) at half amplitude. It pulses faster towards the bar (period `clamp(min(d/30, d/speed/4), 0.18, 1.5)` s, half on), holds solid while the nose is on the bar (0.5 m before the line to 2.5 m past it), fades 18 dB over 0.6 s once stopped there, and stops when the nose leaves the bar either way.

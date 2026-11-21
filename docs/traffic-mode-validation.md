@@ -1,5 +1,7 @@
 # Shared traffic notifications
 
+> **History.** Recorded against the Python application, which has since been removed from the repository (see git history before "Remove the Python application"). File names, sims and commands below are as they were then; the app is now the Rust workspace in `rust/`, and each Python sim named here that was ported is a Rust test of the same name.
+
 Validated 2026-09-14 local time (2026-09-15 UTC).
 
 Stop-sign and traffic-light speech now uses the shared enabled state: road guidance OR confirmed driving assistance, with loading suppression and each notification's own configuration preference. The shared road feed continues while either mode is active. Switching road guidance while assistance is active preserves signal announcement history; enabling manual guidance rearms orientation separately. The Lua scanner also retains its tracking context when manual guidance joins an already active assistant. Turning both modes off stops notifications. The road-status command can read traffic information with either mode active.

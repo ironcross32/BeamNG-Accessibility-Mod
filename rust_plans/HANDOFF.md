@@ -6,11 +6,18 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-21, with the commit closing the keep-or-fix pass over `python-bugs.md`. Every
-entry is now fixed in the Rust (H) or kept by the user's decision (listed at the top of
-that file). Five commits: config data loss (1, 2, 23-25), listener/telemetry crashers
-(supervised threads), wrong readouts, input 42/55, and minor 14/19/20/62 (15 has no
-effect in the Rust).
+2026-11-21: **the Python application is gone from the branch.** The last Python work
+(private roads and gates, the trailerAngle stale-coupler fix, HRTF datasets) was committed
+first, then every Python module, sim, fixture generator and the Python release pipeline
+(`build.py`, `release.yml`, `scripts/release.ps1`, `pyproject.toml`, `uv.lock`) was
+deleted. The fixtures in `rust/fixtures/data/` are now frozen. `tools/` keeps the level
+generators with its own `tools/pyproject.toml`. Docs were rewritten for the Rust
+(`docs/app-*.md` replace `python-components.md`; the validation logs keep their Python
+history under a note). Consequences for the plan: **R1 (xtask release) is now the only
+way to ship**, and `find_prism_dll`'s `.venv` fallback finds nothing on a fresh checkout.
+
+Before that, the keep-or-fix pass over `python-bugs.md` closed: every entry is fixed in
+the Rust (H) or kept by the user's decision (listed at the top of that file).
 
 ## Done so far
 

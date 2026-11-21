@@ -1,6 +1,6 @@
 # Driving assistant: following a map route
 
-Added 2026-11-01. Files: `drivingAssistant.lua` (`syncRoute`, `arrive`), `roadDetector.lua` (`assistantSetDestination`, `assistantClearDestination`, `assistantGuidance`, `routeStopAhead`), `assistantRoutes.lua` (`search`), `beamtelAI.lua` (`onReachedTargetPos`), vehicle `beamtelAssistant.lua` (`replanRevision`), `assistant_route.py`, `driving_assistant.py`, `beamtel.py` (`ui_listener`, `_assistant_arrival`). Sims: `diagnostic/driving_assistant_sim.lua`, `diagnostic/assistant_route_sim.py`.
+Added 2026-11-01. Files: `drivingAssistant.lua` (`syncRoute`, `arrive`), `roadDetector.lua` (`assistantSetDestination`, `assistantClearDestination`, `assistantGuidance`, `routeStopAhead`), `assistantRoutes.lua` (`search`), `beamtelAI.lua` (`onReachedTargetPos`), vehicle `beamtelAssistant.lua` (`replanRevision`), `beam-road` `assistant_route.rs`, `beam-road` `driving_assistant.rs`, `beam-engine` (`ui_listener`, `assistant_arrival`). Sims: `diagnostic/driving_assistant_sim.lua`, `assistant_route_sim` (`beam-road`).
 
 With a route set on the big map, before switch-on or during the session, the AI chooses every turn and held steering selects nothing. The player keeps the pedals, as always. **Not yet driven:** the sims and a read-only search on the real map pass, but see "Still needs a driven run" below.
 
@@ -35,7 +35,7 @@ The search start is a **copy** of the last committed record, because the search 
 
 ## What is spoken
 
-Lua sends metres, and `assistant_route.py` decides wording and units, so `RouteCallouts` can be tested alone. `route` events arrive twice a second, and only a crossed threshold speaks.
+Lua sends metres, and `beam-road` `assistant_route.rs` decides wording and units, so `RouteCallouts` can be tested alone. `route` events arrive twice a second, and only a crossed threshold speaks.
 
 - **Turns:** see "Rules from the map survey". Short links (35 m or less) that branch are one grouped junction and one turn. A one-way ring is one word, "roundabout", with no exit number.
 - **Callouts:** imperial 2 miles, 1 mile, half a mile, 1000 feet, 500 feet. Metric 2 km, 1 km, 500 m, 200 m. A threshold within 20 percent of the distance just spoken is skipped, because it would only repeat it. "Turn left now" comes at `max(40 m, speed * 3 s)`.
@@ -57,7 +57,7 @@ These instructions carry `data.protect`, which opens the speech-protection windo
 
 ## Rules from the map survey
 
-The first driven run said "keep left/right" every 300 feet and never stopped counting in. Rather than tune to that one map, every stock map was surveyed. **No rule may use an absolute road class or name a map.** To rerun on new maps, including mod maps: `diagnostic/map_survey/extract_roads.py <levels dir> <out dir>`, then `analyse_roads.py <out dir>`, then `route_rules.py <that tools dir> <out dir>`.
+The first driven run said "keep left/right" every 300 feet and never stopped counting in. Rather than tune to that one map, every stock map was surveyed. **No rule may use an absolute road class or name a map.** The survey scripts (`diagnostic/map_survey/`: `extract_roads.py`, `analyse_roads.py`, `route_rules.py`, `turnaround_survey.py`) were Python and went with the Python application; to rerun the survey on new maps, including mod maps, recover them from git history before "Remove the Python application".
 
 The survey rebuilds each graph from the `DecalRoad` objects in the level zips, which is why it needs no level loaded. Against the live Johnson Valley graph it gave 85 km, 73.1 km private and 0.9 km one-way; the game has 85.1, 73.5 and 0.89. It uses control points rather than the game's subdivided edges, so node counts run lower and rates are for comparing rules, not exact. 13 of the 21 archives have a road network worth routing on. Measured with the real rule on the live Johnson Valley graph, over 30 routes and 68 km: 0.6 keeps, 2.1 turns and 3.6 bars per km, slowest search 72 ms.
 
@@ -74,9 +74,9 @@ What it found, and the rule each finding led to (`routeTurns`):
 
 At 7 m along the route, or on stock's hook. The hook is also what separates arrival from the player removing the route, since both leave no route on the next tick. A hook arrival is never spoken as off-road: the game has measured it as under 7 m away.
 
-The `off` event carries `data.arrival` and keeps its plain message as the fallback for an older receiver. Off the road the sentence gives distance and bearing, positive left, and `_assistant_arrival` copies the position to the marked waypoint so `F9 W` and `F9 Ctrl+G` carry on. This replaces any waypoint already marked. The route beacon cannot help here because it needs a route.
+The `off` event carries `data.arrival` and keeps its plain message as the fallback for an older receiver. Off the road the sentence gives distance and bearing, positive left, and `assistant_arrival` copies the position to the marked waypoint so `F9 W` and `F9 Ctrl+G` carry on. This replaces any waypoint already marked. The route beacon cannot help here because it needs a route.
 
-Steering is released on arrival even if the car is moving. The callouts and pips are the warning, and the sentence does not add "Brake now": stopping at a destination is what the driver is doing anyway. The same goes for "Go slowly" in reverse. "Brake now" stays on faults such as "Steering lost", where the release is a surprise. The disengage cue opens the existing speech-protection window (`_assistant_cue`), because a compass heading landing 6 ms after the arrival sentence cut it off on the first driven arrival.
+Steering is released on arrival even if the car is moving. The callouts and pips are the warning, and the sentence does not add "Brake now": stopping at a destination is what the driver is doing anyway. The same goes for "Go slowly" in reverse. "Brake now" stays on faults such as "Steering lost", where the release is a surprise. The disengage cue opens the existing speech-protection window (`assistant_cue`), because a compass heading landing 6 ms after the arrival sentence cut it off on the first driven arrival.
 
 **No trap on the next switch-on.** If the car is within 7 m of a route's destination, the assistant says "Already at the destination", clears the route if it owns it and otherwise ignores that destination for the session, and carries on with ordinary junctions.
 
@@ -88,7 +88,7 @@ The two-second throttle on searches exists for routes that keep moving, such as 
 
 ## Signals
 
-Stop signs and traffic lights already report with the assistant on and road guidance off: `roadDetector.onUpdate` scans while the assistant is active, and `beamtel.py` gates speech and stop-bar audio on `road_mode_active or driving_assistant.active`. The stop sign and traffic light speech settings still apply. Nothing needed changing.
+Stop signs and traffic lights already report with the assistant on and road guidance off: `roadDetector.onUpdate` scans while the assistant is active, and `beam-engine` gates speech and stop-bar audio on `road_mode_active or driving_assistant.active`. The stop sign and traffic light speech settings still apply. Nothing needed changing.
 
 ## Still needs a driven run
 

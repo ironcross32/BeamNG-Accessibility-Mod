@@ -1,5 +1,7 @@
 # Driving assistant: implementation and validation
 
+> **History.** Recorded against the Python application, which has since been removed from the repository (see git history before "Remove the Python application"). File names, sims and commands below are as they were then; the app is now the Rust workspace in `rust/`, and each Python sim named here that was ported is a Rust test of the same name.
+
 Switching on off the road first hands the whole car to stock AI until it is on one; see [driving-assistant-join.md](driving-assistant-join.md). With a route set on the big map, the AI chooses every turn; see [driving-assistant-route.md](driving-assistant-route.md).
 
 ## Gated roads, rough tracks and dead ends, 2026-10-27
@@ -100,7 +102,7 @@ Source inspection of the connected game's `input.lua` verified negative steering
 
 ## Required live acceptance checks
 
-Install the edited mod and run the edited Python receiver. Focus BeamNG before any reload and confirm a fresh load in `beamng.log`; a console command acknowledgement does not establish that a reload ran.
+Install the edited mod and run beamtel built from the edited source. Focus BeamNG before any reload and confirm a fresh load in `beamng.log`; a console command acknowledgement does not establish that a reload ran.
 
 1. On a clear road, verify AI steering through bends with effective player throttle, braking, handbrake, clutch, and manual shifts. Stop for more than five seconds both with and without throttle, then restart. Check for unwanted reversing, recovery, or throttle-model assumptions. Repeat with an automatic vehicle.
 2. Exercise keyboard, gamepad, and wheel steering. Verify the dead zone, stationary activation, early announcements, commitment using the latest held input, and locked choices after commitment.
