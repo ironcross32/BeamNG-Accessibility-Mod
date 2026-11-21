@@ -6,10 +6,11 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-21, with the commit fixing the configuration data-loss bugs (1, 2, 23, 24, 25)
-in the Rust. The user's keep-or-fix pass over `python-bugs.md` is done and recorded at
-the top of that file; the fixes it lists are being worked through, one commit per group
-(listener crashers, wrong readouts, input 42/55, minor 14/15/19/20/62).
+2026-11-21, with the commit closing the keep-or-fix pass over `python-bugs.md`. Every
+entry is now fixed in the Rust (H) or kept by the user's decision (listed at the top of
+that file). Five commits: config data loss (1, 2, 23-25), listener/telemetry crashers
+(supervised threads), wrong readouts, input 42/55, and minor 14/19/20/62 (15 has no
+effect in the Rust).
 
 ## Done so far
 
@@ -110,7 +111,11 @@ differences fixed (spin tie rounding in `util.js`, non-string MCP `speak`).
 
 **Next, with the user:**
 
-1. **Keep-or-fix decisions over `python-bugs.md`** (67 entries). **66** (the MCP origin
+1. **Done (2026-11-21): the keep-or-fix pass over `python-bugs.md`.** Needs in-game
+   checks: 30 (obstacle detection bends into a turn), 42 (a browser opened in status
+   mode takes the arrows), 62 (a gate first seen with the assistant off is announced when
+   it takes over). The history of the pass follows.
+   **Keep-or-fix decisions over `python-bugs.md`** (67 entries). **66** (the MCP origin
    guard's prefix match) and **67** (updates that could never apply for a non-ASCII
    Windows user name) are **fixed in the Rust** (user, 2026-11-21); whether to fix them
    in the shipping Python too was asked: **no, the Python is sunsetted** (user,

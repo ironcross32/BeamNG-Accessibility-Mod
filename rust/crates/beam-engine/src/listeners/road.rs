@@ -151,12 +151,17 @@ fn r2_packet(
     {
         say("Private road ahead", false, false, "road_guidance");
     }
-    if let Some(t) = target
+    // Departure (python-bugs.md 62): the Python recorded these ids on every packet,
+    // announced or not, so a gate or private road first seen while the assistant was off
+    // (or during loading) was never announced once the assistant took over approaching
+    // it. Only an id that could be announced is remembered.
+    if announce
+        && let Some(t) = target
         && t.kind == "gate"
     {
         ls.last_gate_id = Some(t.id.clone());
     }
-    if !private_entry.is_empty() {
+    if announce && !private_entry.is_empty() {
         ls.last_private_entry_id = Some(private_entry);
     }
     let proximity = json_to_pyjson(&junction_proximity_snapshot_json(

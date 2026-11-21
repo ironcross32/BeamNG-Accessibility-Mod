@@ -614,7 +614,28 @@ fn road_scripts_match_python() {
         beam_engine::state::driving_assistant().set_active_for_tests(false);
         speech_out::set_loading_for_tests(false, false);
         assert_eq!(died, c["died"], "{label}: died");
-        assert_eq!(tap(), c["tap"], "{label}: speech");
+        if label.as_str() == "\"gate and private entry\"" {
+            // python-bugs.md 62 (departure): an id is remembered only when it could be
+            // announced, so g2 and p2 (first seen with the assistant off) and g5 (first
+            // seen while loading) are announced once the assistant can speak. Nothing is
+            // said twice for the same id. The Python said only g1, p1, g3, p3.
+            let spoken = tap();
+            let texts: Vec<&str> = spoken
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|e| e["text"].as_str().unwrap())
+                .collect();
+            let gate = "Gate ahead. Stop at the bar";
+            let private = "Private road ahead";
+            assert_eq!(
+                texts,
+                [gate, private, gate, gate, private, private, "Road detection on", gate],
+                "{label}: speech"
+            );
+        } else {
+            assert_eq!(tap(), c["tap"], "{label}: speech");
+        }
         assert_eq!(sent(), c["sent"], "{label}: sent");
     }
     road_guidance_feed().reset();

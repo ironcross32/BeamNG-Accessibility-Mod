@@ -49,13 +49,13 @@ listed, pending the user's keep-or-fix pass.
 | # | Where | What happens | Rust now |
 |---|---|---|---|
 | 13 | audio device watcher | PortAudio caches its device list, so "Follow Default Audio Device" probably never sees a change | H: cpal enumerates live, so it follows |
-| 14 | `AudioController.__init__` | `buzzer_amp`/`chime_amp` start as `1.0 ** (-12/20)` = 1.0 (0 dB, not -12 dB) until the first `apply_config` | R |
-| 15 | `apply_config` | Never regenerates the TC, scanner, node, clickspot or describe waveforms | R |
+| 14 | `AudioController.__init__` | `buzzer_amp`/`chime_amp` start as `1.0 ** (-12/20)` = 1.0 (0 dB, not -12 dB) until the first `apply_config` | **H** (user, 2026-11-21): they start at -12 dB (`10 ** (-12/20)`) |
+| 15 | `apply_config` | Never regenerates the TC, scanner, node, clickspot or describe waveforms | No effect in the Rust (checked 2026-11-21): those five waveforms take only the sample rate, no config value, so there is nothing for `apply_config` to regenerate; `regenerate_waveforms` rebuilds them on a rate change |
 | 16 | `_world_is_active` | Any datagram on 4444, valid or not, marks the world active | R |
 | 17 | loading "Ready" cue | Demoted by the protection window it has just opened itself | R |
 | 18 | `_apply_live_config` | `drift_speech_enabled` passed without `bool()` | R |
-| 19 | config loaders | Road toggles: engine accepts only a real bool, configurator uses truthiness (`"false"` is true). Configurator migrates legacy speech/gear keys in memory but only writes back when a secret was sealed | R (both loaders reproduced) |
-| 20 | config loaders | `mcp_server_port` never range-checked | R |
+| 19 | config loaders | Road toggles: engine accepts only a real bool, configurator uses truthiness (`"false"` is true). Configurator migrates legacy speech/gear keys in memory but only writes back when a secret was sealed | **H** (user, 2026-11-21): the configurator reads the road toggles with the engine's rule (a real bool, else the default) and writes back any migration, as the engine does. `config_fixtures` `apply_departures` |
+| 20 | config loaders | `mcp_server_port` never range-checked | **H** (user, 2026-11-21): both loaders replace anything but a whole number 1-65535 with 4481. `config_fixtures` `apply_departures` |
 | 21 | `extra_args_for` | A truthy non-string OpenAI base URL crashes the describer | R |
 | 22 | Configuration panel | A gear root such as "Bb" or "c" passes validation and then crashes the wx panel on load | H: HTML selects the first entry |
 | 23 | Configuration panel | With no WASAPI devices, "(no WASAPI devices found)" is saved as the preferred device name. Also (same cause): a saved device that is unplugged when the panel opens is replaced by the first device on the next save | **H** (user, 2026-11-21): the device's value is saved, not the label; a saved device that is absent stays listed as "<name> (not connected)" and selected; the placeholder saves `""`. `config-panel.js` `fillDevices` |
@@ -96,13 +96,14 @@ listed, pending the user's keep-or-fix pass.
 | 59 | describer, `config_ui` validation | An OpenAI base URL with no scheme makes `urllib.request.Request` raise ValueError outside every try: the describer says "Description failed."; the config dialog's validation thread dies and the dialog stays on "Validating API key..." with the button disabled for good | R |
 | 60 | describer | A non-string API key, model or extra in the config raises AttributeError ("Unexpected error: ..." then "Description failed.") | R |
 | 61 | `capture_scene_png` (mss) | mss sets process DPI awareness on first use, after the window rect was read, so the first `focus_game` capture on a scaled display mixes logical and physical coordinates | H: the Rust process is DPI-aware from the start |
-| 62 | `road_listener` gate and private-entry words | The last gate id and private-entry id are recorded on every packet, announced or not. So a gate or private road first seen while the assistant is off, or during loading, is never announced once the assistant takes over approaching the same one (found by V1, `e2_listeners` `road_scripts`) | R |
+| 62 | `road_listener` gate and private-entry words | The last gate id and private-entry id are recorded on every packet, announced or not. So a gate or private road first seen while the assistant is off, or during loading, is never announced once the assistant takes over approaching the same one (found by V1, `e2_listeners` `road_scripts`) | **H** (user, 2026-11-21): an id is remembered only when it could be announced. `e2_listeners_fixtures` `road_scripts_match_python` |
 | 65 | `nvda_ws_speaker.hover_on` | `hover_on` sets `_HOVER_TOKEN`, then calls `hover_cancel()`, which clears it to None; the delayed task compares its own token against None, so a hover is never spoken. Dormant: `bnvdaRuntime.js` only ever sends `hover_cancel`. Found by E9 (noted in `ui_bridge.rs`), recorded by V1 | R |
 | 66 | `mcp_server._origin_ok` (**security**) | The DNS-rebinding guard is a prefix match: an `Origin` of `http://localhost.example.com` or `http://127.0.0.1.example.com` starts with an allowed prefix and passes. A page served from such a name, rebound to 127.0.0.1, can then call any tool, `lua_exec` included, whenever the MCP server is enabled. Fix: compare the parsed host exactly (`127.0.0.1`, `localhost`, optional port). Off by default and loopback-bound, which limits it to users who enabled it. Found by V1 | **H** (user decision 2026-11-21): the host must be exactly `127.0.0.1` or `localhost` with an optional numeric port; `tests/mcp_origin.rs`, `mcp_server_sim` 10b/c |
 | 67 | `updater.write_helper` / `apply_and_restart` | The helper `.cmd` is written with `encoding="ascii"`, and its paths include the update folder under `%LOCALAPPDATA%`, inside the Windows user profile. Any non-ASCII character in the user name or install path (José, Zoë, Cyrillic, CJK) raises UnicodeEncodeError, which `apply_and_restart` does not catch (it catches only OSError). By then the pending flag is written and the game launch denied, so the user is left with beamtel running, no game, no message (a log line only), and an update that never applies. Found by E10 (`helper_encoding_matches_python`), recorded by V1 | **H** (user decision 2026-11-21): the paths reach the helper through its environment, so the file stays ASCII and any path works (checked with a real `cmd` on a `Zoë 漢字 50%` folder); a write failure is reported like the other apply failures. `e10_updater` `non_ascii_paths_reach_the_helper` |
 | 40 | `_hill_climb_finalized` | A non-dict `statistics` raises AttributeError; the recorder swallows it and the data-quality log line is lost | R |
-## Recommendation
+## Status
 
-Harden 1-9 in the Rust (catch at the listener or per key, log, carry on), keep the rest as
-they are. None of 1-9 changes anything a user hears in normal operation; they only stop a
-malformed value from costing a feature or the whole config.
+The keep-or-fix pass is complete (2026-11-21). Every entry is either **H** (fixed in
+the Rust, a deliberate departure from the Python) or R with the user's decision to keep
+it (listed at the top). Each departure is pinned by the test named in its row; the
+golden tests derive or name the departing cases rather than skipping them.

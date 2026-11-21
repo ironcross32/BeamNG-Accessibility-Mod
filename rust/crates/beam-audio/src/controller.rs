@@ -932,8 +932,10 @@ fn new_shared() -> Shared {
         _phase_inc_shift: shift_freq / sr,
         // Python writes `1.0 ** (-12.0 / 20.0)`, which is 1.0, not -12 dB. Only the
         // initial value; apply_config replaces both before anything plays.
-        buzzer_amp: 1.0f64.powf(-12.0 / 20.0),
-        chime_amp: 1.0f64.powf(-12.0 / 20.0),
+        // Departure (python-bugs.md 14): the Python wrote 1.0 ** (-12 / 20), which is 1.0
+        // (0 dB), until the first apply_config. -12 dB is what was meant.
+        buzzer_amp: 10.0f64.powf(-12.0 / 20.0),
+        chime_amp: 10.0f64.powf(-12.0 / 20.0),
     }
 }
 

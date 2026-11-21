@@ -592,7 +592,22 @@ fn engine_body(path: &Path) -> Result<PyDict, Corrupt> {
         "obstacle_warning_sensitivity".into(),
         PyValue::Str(sensitivity),
     );
+    sanitise_mcp_port(&mut merged);
     Ok(merged)
+}
+
+/// Departure (python-bugs.md 20): neither Python loader range-checked
+/// `mcp_server_port`, so the engine failed to start the server on an out-of-range port
+/// and the configurator showed it. Anything that is not a whole number from 1 to 65535
+/// is the default, 4481.
+fn sanitise_mcp_port(merged: &mut PyDict) {
+    let ok = matches!(
+        merged.get("mcp_server_port"),
+        Some(PyValue::Int(n)) if n.to_i64().is_some_and(|p| (1..=65535).contains(&p))
+    );
+    if !ok {
+        merged.insert("mcp_server_port".into(), PyValue::Int(PyInt::Small(4481)));
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -842,16 +857,29 @@ fn configurator_body(path: &Path) -> Result<PyDict, Corrupt> {
     let PyValue::Dict(mut user) = user else {
         return Err(Corrupt("Config root is not an object".into()));
     };
-    speech_config::migrate_config(&mut user);
-    gear_report::migrate_config(&mut user);
+    // Departure (python-bugs.md 19): the Python wrote back only when a secret was
+    // sealed, so migrated speech and gear keys lived in memory and the next save of an
+    // unrelated panel decided what reached disk. Any migration is written back now, as
+    // the engine does.
+    let speech = speech_config::migrate_config(&mut user);
+    let gear = gear_report::migrate_config(&mut user);
     // Seal any plaintext secret the moment it is read, and write it back here rather
     // than waiting for the next edit -- a config that is only ever opened and closed
     // would otherwise stay in the clear forever.
-    if secretstore::migrate_config(&mut user) {
+    let sealed = secretstore::migrate_config(&mut user);
+    if speech || gear || sealed {
         write_back_migration(path, &user);
     }
 
     let mut merged = merge(default_config(), &user);
+    // Departure (python-bugs.md 19): the configurator took bool(value) for the road
+    // toggles while the engine accepts only a real bool, so a hand-edited "false" was on
+    // in the panel and the default in the engine. Both use the engine's rule.
+    for (key, fallback) in ENGINE_ROAD_BOOLS {
+        if !matches!(merged.get(key), Some(PyValue::Bool(_))) {
+            merged.insert(key.into(), PyValue::Bool(fallback));
+        }
+    }
     for &(key, cast, fallback) in COERCIONS_BEFORE_GEAR {
         coerce(&mut merged, key, cast, fallback);
     }
@@ -876,6 +904,7 @@ fn configurator_body(path: &Path) -> Result<PyDict, Corrupt> {
     }
 
     validate_ai(&mut merged);
+    sanitise_mcp_port(&mut merged);
 
     let v = int_at(&merged, "speech_rate").clamp_py(0, 100);
     set_int(&mut merged, "speech_rate", v);

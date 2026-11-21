@@ -152,17 +152,17 @@ fn load_config_matches_python() {
         let locked = case["locked"].as_bool().unwrap();
         for loader in ["engine", "configurator"] {
             let got = run(loader, input.as_deref(), locked);
+            let want = apply_departures(loader, input.as_deref(), case);
             if is_overflow_departure(name, loader) {
                 if let Err(why) = check_overflow_departure(name, &got) {
                     failures.push(format!("{name} [{loader}] (departure): {why}\n  got:  {got}"));
                 }
                 continue;
             }
-            if got != case[loader] {
-                failures.push(format!(
-                    "{name} [{loader}]\n  got:  {got}\n  want: {}",
-                    case[loader]
-                ));
+            if got != want {
+                failures.push(format!("{name} [{loader}]
+  got:  {got}
+  want: {want}"));
             }
         }
     }
@@ -178,6 +178,75 @@ fn load_config_matches_python() {
             .collect::<Vec<_>>()
             .join("\n")
     );
+}
+
+/// The road toggles both loaders now read with the engine's rule (python-bugs.md 19).
+const ROAD_BOOLS: [(&str, bool); 10] = [
+    ("road_follow_guidance_enabled", true),
+    ("road_junction_speech_enabled", true),
+    ("road_stop_sign_speech_enabled", true),
+    ("road_traffic_light_speech_enabled", true),
+    ("road_speed_limit_speech_enabled", true),
+    ("road_surface_speech_enabled", true),
+    ("drift_speech_enabled", true),
+    ("road_junction_earcon_enabled", true),
+    ("road_junction_proximity_enabled", true),
+    ("road_include_private", false),
+];
+
+/// The Python's answer for one loader with the user-approved departures applied
+/// (2026-11-21), derived rather than listed:
+/// - 19: the configurator writes back any migration. Its migrations and the engine's
+///   change the same keys in the same order, so its file is the engine's file.
+/// - 19: the configurator reads a road toggle as the engine does: a real bool, else
+///   the default.
+/// - 20: an `mcp_server_port` that is not a whole number from 1 to 65535 is 4481.
+fn apply_departures(loader: &str, input: Option<&[u8]>, case: &Value) -> Value {
+    let mut want = case[loader].clone();
+    let engine = &case["engine"];
+    let only_config = |files: &Value| {
+        files.as_object().is_some_and(|f| f.len() == 1 && f.contains_key("beamtel_config.json"))
+    };
+    if loader == "configurator"
+        && only_config(&want["files"])
+        && want["files"]["beamtel_config.json"] == "<input>"
+        && only_config(&engine["files"])
+        && engine["files"]["beamtel_config.json"] != "<input>"
+    {
+        want["files"] = engine["files"].clone();
+    }
+    let Some(diff) = want["result"]["diff"].as_object_mut() else {
+        return want;
+    };
+    if let Some(v) = diff.get("mcp_server_port") {
+        let in_range = v
+            .as_str()
+            .and_then(|t| t.parse::<i64>().ok())
+            .is_some_and(|p| (1..=65535).contains(&p));
+        if !in_range {
+            diff.remove("mcp_server_port");
+        }
+    }
+    if loader == "configurator" {
+        // The Python-compatible reader: inputs carry NaN and Infinity literals.
+        let user = input
+            .and_then(|b| std::str::from_utf8(b).ok())
+            .and_then(|t| beam_base::pyval::json_loads(t).ok());
+        if let Some(beam_base::pyval::PyValue::Dict(user)) = user {
+            for (key, default) in ROAD_BOOLS {
+                let value = match user.get(key) {
+                    Some(beam_base::pyval::PyValue::Bool(b)) => *b,
+                    _ => default,
+                };
+                if value == default {
+                    diff.remove(key);
+                } else {
+                    diff.insert(key.to_string(), Value::String(value.to_string()));
+                }
+            }
+        }
+    }
+    want
 }
 
 /// Cases where the Rust departs from the fixture on purpose (python-bugs.md 1): the
