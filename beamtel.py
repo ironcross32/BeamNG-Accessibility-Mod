@@ -1264,6 +1264,7 @@ def road_listener(audio_controller, stop_event):
         last_state = None  # "DORMANT" / "ON_ROAD" / "OFF_ROAD"
         last_r2_state = None
         last_gate_id = None
+        last_private_entry_id = None
 
         while not stop_event.is_set():
             try:
@@ -1315,22 +1316,22 @@ def road_listener(audio_controller, stop_event):
                         target,
                         enabled=awareness_active,
                     )
-                    # The assistant drives gated roads, so the gate gets a word and a
-                    # stop bar. Manual guidance says it as a junction phrase instead.
-                    if (
-                        awareness_active
-                        and driving_assistant.active
-                        and target
-                        and target["kind"] == "gate"
-                        and target["id"] != last_gate_id
-                    ):
-                        say(
-                            "Gated road ahead. Stop at the bar",
-                            interrupt=False,
-                            source="road_guidance",
-                        )
+                    # The assistant drives private roads and through gates, so both
+                    # get a word; manual guidance says them as junction phrases.
+                    # A "gate" is a gate mesh on the carriageway and gets a stop
+                    # bar. A private road is the map keeping traffic off -- almost
+                    # never with anything across it -- so no bar and no "stop".
+                    # See docs/road-privacy-and-gates.md.
+                    announce = awareness_active and driving_assistant.active and target
+                    if announce and target["kind"] == "gate" and target["id"] != last_gate_id:
+                        say("Gate ahead. Stop at the bar", interrupt=False, source="road_guidance")
+                    private_entry = target.get("privateEntry") if target else ""
+                    if announce and private_entry and private_entry != last_private_entry_id:
+                        say("Private road ahead", interrupt=False, source="road_guidance")
                     if target and target["kind"] == "gate":
                         last_gate_id = target["id"]
+                    if private_entry:
+                        last_private_entry_id = private_entry
                     ASSISTANT_DIAGNOSTICS.record_road(packet, audio_controller.junction_proximity_snapshot())
                     ROAD_DIAGNOSTICS.record(
                         packet, telemetry_snapshot, audio_event

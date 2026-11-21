@@ -280,9 +280,15 @@ def parse_r2_packet(text):
         target_kind = proximity.get("kind", "")
         if not isinstance(target_kind, str) or len(target_kind) > 40:
             raise ValueError("invalid proximity.kind")
+        # Optional tail: the id of a public-to-private step on the assistant's
+        # route at or before this stop, spoken once as "Private road ahead".
+        private_entry = proximity.get("privateEntry", "")
+        if not isinstance(private_entry, str) or len(private_entry) > 200:
+            raise ValueError("invalid proximity.privateEntry")
         proximity = {"id": target_id, "distance": distance, "speed": speed,
                      "action": action, "source": source,
-                     "signedDistance": signed, "kind": target_kind}
+                     "signedDistance": signed, "kind": target_kind,
+                     "privateEntry": private_entry}
 
     speed_limit = packet.get("speedLimit")
     if speed_limit is not None:
@@ -374,8 +380,12 @@ def junction_phrase(junction, units):
     exits = direction_list(junction.get("exits", []), conjunction="or" if kind in {"fork", "tJunction"} else "and")
     if kind == "deadEnd":
         return f"Road ends in {distance}."
+    # "gate" only where a gate mesh stands on the road. "private" is a road the
+    # map keeps traffic off, almost always with nothing across it.
     if kind == "gate":
-        return f"Gated road in {distance}."
+        return f"Gate in {distance}."
+    if kind == "private":
+        return f"Private road in {distance}."
     names = {
         "fork": "Road forks",
         "tJunction": "T-junction",

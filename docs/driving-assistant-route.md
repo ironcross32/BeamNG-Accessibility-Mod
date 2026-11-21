@@ -18,7 +18,7 @@ The destination is `routePlanner.path[#path].pos`, for the reason `lua-route-bea
 
 The road to drive is searched here, because the stock node list can begin with a U-turn behind the car and can use the median gaps stock AI gives up on (see the 2026-10-27 run in `driving-assistant-validation.md`).
 
-`assistantRoutes.search` is A* over directed road records. `routeNeighbours` keeps the assistant's rules: only one-way direction binds, no same-edge U-turn, nothing past 150 degrees, and at a branching node an exit whose `settledHeading` has turned round is rejected. Private and rough roads cost three times their length and a gate 300 m, so they are used when needed rather than as shortcuts.
+`assistantRoutes.search` is A* over directed road records. `routeNeighbours` keeps the assistant's rules: only one-way direction binds, no same-edge U-turn, nothing past 150 degrees, and at a branching node an exit whose `settledHeading` has turned round is rejected. Private and rough roads cost three times their length, and a link the map flags where private meets public (`edge.boundary`, not a gate: see [road-privacy-and-gates.md](road-privacy-and-gates.md)) 300 m, so they are used when needed rather than as shortcuts.
 
 **Forward only is deliberate.** A car facing away from its destination goes round the block. The stock "Please make a U-turn when possible" toast is therefore wrong while following a route, and `suppressed_toast` drops it.
 

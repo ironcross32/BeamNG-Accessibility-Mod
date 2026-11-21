@@ -55,7 +55,7 @@ local function packet()
   active.options = {}
   if active.motion ~= 'reverse' and state.junction and not state.committed then
     local junction = state.junction
-    value.junction = {id = junction.id, unsupported = junction.unsupported, choices = {}, gated = {}}
+    value.junction = {id = junction.id, unsupported = junction.unsupported, choices = {}, access = {}}
     for name in pairs(junction.choices) do
       local candidate = {records = {}, junction = junction, generation = state.generation,
         travelled = state.travelled, history = state.history}
@@ -65,7 +65,7 @@ local function packet()
         local path = require('ge/extensions/assistantRoutes').nodes(chosen.records)
         if path then
           value.junction.choices[name] = path
-          value.junction.gated[name] = junction.choices[name].gated or nil
+          value.junction.access[name] = junction.choices[name].access
           active.options[name] = chosen
         end
       end

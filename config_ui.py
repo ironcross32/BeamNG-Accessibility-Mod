@@ -858,10 +858,12 @@ class ConfigPanel(wx.ScrolledWindow):
         road_sizer.Add(self.chk_road_junction_earcon, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 
         self.chk_road_private = wx.CheckBox(
-            sb_road, label="Include private and gated roads"
+            sb_road, label="Include private roads"
         )
         self.chk_road_private.SetToolTip(
-            "Allow private driveways and gated roads in following and intersection guidance."
+            "List private roads as exits from public roads in manual guidance: driveways, "
+            "lots, yards and closed courses the map keeps traffic off. Most have no gate. "
+            "Once you are on a private road its exits are always listed."
         )
         road_sizer.Add(self.chk_road_private, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
 

@@ -192,15 +192,18 @@ said = events(before)
 assert(not vm.diagnosticState().active and said[#said].message:find('Steering lost. Brake now',1,true),
   'Zero AI steering at speed hands back control with a brake warning')
 input.lastInputs.ai.steering = nil
--- A gated exit is named in the prompt, before the choice is made.
+-- An exit through a gate, or onto a private road, is named in the prompt,
+-- before the choice is made.
 before = #callbacks
 local gatedPlan = {path={'a','b'},distance=60,junction={id='gated-prompt',
-  choices={straight={'a','b','s'},right={'a','b','r'}},gated={right=true}}}
+  choices={left={'a','b','l'},straight={'a','b','s'},right={'a','b','r'}},
+  access={left='private',right='gate'}}}
 vm.start('gated-prompt',gatedPlan)
 vm.heartbeat('gated-prompt'); vm.setPlan('gated-prompt',gatedPlan); vm.updateGFX(0.05)
 local prompt
 for _, e in ipairs(events(before)) do if e.message:find('Junction ahead',1,true) then prompt = e.message end end
-assert(prompt and prompt:find('straight or right through a gate. Hold a turn to select.',1,true), tostring(prompt))
+assert(prompt and prompt:find('left onto a private road or straight or right through a gate. Hold a turn to select.',1,true),
+  tostring(prompt))
 -- "Slow down" steps aside from junction speech for a second, not eight: the
 -- tight turn straight after "Turning left" is when it matters.
 input.lastInputs.ai.brake = 1
@@ -492,16 +495,23 @@ link('a','b'); link('b','c',true); link('b','l'); link('c','d'); link('c','r');
 link('l','endL'); link('r','endR')
 nodes.u, nodes.v = node(1000,0), node(1100,0)
 link('u','v',true)
--- A public road meeting a gated road straight on and a rough track to the left;
--- past the gate the road runs to a true dead end.
+-- A public road meeting a private road straight on and a rough track to the
+-- left, as map.lua leaves them: the private road's links are type = 'private',
+-- and the link where it meets public is flagged gatedRoad. Past it the road
+-- runs to a true dead end.
 for name, x in pairs({g1=2000, g2=2100, g3=2120, g4=2300}) do nodes[name]=node(x,0); nodes[name].radius=1 end
 nodes.track=node(2100,100)
-link('g1','g2'); link('g2','g3',false,{gatedRoad=true}); link('g3','g4')
+link('g1','g2'); link('g2','g3',false,{type='private',gatedRoad=true}); link('g3','g4',false,{type='private'})
 link('g2','track',false,{drivability=0.2})
--- A driveway: private road, a gate, more private road (Johnson Valley's DR155).
+-- A driveway inside private ground with a boundary flag between two private
+-- links (Johnson Valley's DR155): no gate stands there.
 for name, x in pairs({q1=8000, q2=8100, q3=8110, q4=8300}) do nodes[name]=node(x,0); nodes[name].radius=1 end
-link('q1','q2',false,{private=true}); link('q2','q3',false,{private=true,gatedRoad=true})
-link('q3','q4',false,{private=true})
+link('q1','q2',false,{type='private'}); link('q2','q3',false,{type='private',gatedRoad=true})
+link('q3','q4',false,{type='private'})
+-- A public road that simply becomes private at a two-link node, far from any
+-- junction: the map.lua case that flags the PUBLIC link.
+for name, x in pairs({e0=9000, e1=9100, e2=9400, e3=9700}) do nodes[name]=node(x,0); nodes[name].radius=1 end
+link('e0','e1',false,{gatedRoad=true}); link('e1','e2',false,{type='private'}); link('e2','e3',false,{type='private'})
 -- A grouped junction whose two-way crossovers form a triangle, as on Johnson
 -- Valley's divided roads, and a one-way ring, which really is a roundabout.
 nodes.h1, nodes.h2, nodes.h3, nodes.h4 = node(4000,0), node(4050,0), node(4058,6), node(4058,-6)
@@ -547,6 +557,7 @@ local pos, facing=vec3(10,0,0),vec3(1,0,0)
 local player={getPosition=function() return pos end, getDirectionVector=function() return facing end,
   getVelocity=function() return vec3(10,0,0) end}
 local rayHit, dropAt
+local gatesModule=module('bng_mod/lua/ge/extensions/roadGates.lua')
 local rd=module('bng_mod/lua/ge/extensions/roadDetector.lua', {
   map={getMap=function() return {nodes=nodes} end}, log=function() end,
   -- Not the game's: a real session in progress would lend stopBarAt its live route.
@@ -562,6 +573,7 @@ local rd=module('bng_mod/lua/ge/extensions/roadDetector.lua', {
   require=function(name)
     if name=='ge/extensions/assistantRoutes' then return routes end
     if name=='ge/extensions/roadSignals' then return module('bng_mod/lua/ge/extensions/roadSignals.lua') end
+    if name=='ge/extensions/roadGates' then return gatesModule end
     return {}
   end})
 local state=assert(rd.assistantStart(player))
@@ -632,31 +644,78 @@ assert(rd.assistantStart(player) and not rd.assistantStart(player,1,30), 'Forty-
 facing=vec3(1,0.2,0):normalized()
 assert(rd.assistantStart(player,1,30), 'On the road and aligned')
 
--- Gated roads and rough tracks are routes for the assistant, not dead ends.
+-- Private roads and rough tracks are routes for the assistant, not dead ends.
+-- The map's gated flag is no gate: only a gate mesh on the road is called one.
 pos,facing=vec3(2010,0,0),vec3(1,0,0)
 local gated=assert(rd.assistantStart(player))
 assert(rd.assistantUpdate(gated,player))
 assert(gated.junction and gated.junction.choices.straight and gated.junction.choices.left,
-  'Gated road and rough track are both exits')
+  'Private road and rough track are both exits')
 local manual=rd.proximityAt(vec3(2050,0,0),facing,10)
-assert(manual and manual.kind=='gate', 'Manual guidance calls a road that only goes on gated a gate')
+assert(manual and manual.kind=='private', 'Manual guidance: a public road that only goes on private says private')
 local stop=rd.proximityAt(vec3(2050,0,0),facing,10,nil,gated)
 assert(stop.kind=='junction' and math.abs(stop.distance-49)<0.01, 'Route stop bar sits at the junction boundary')
 assert(rd.assistantChoose(gated,'straight') and rd.assistantUpdate(gated,player))
 stop=rd.proximityAt(vec3(2050,0,0),facing,10,nil,gated)
-assert(stop.kind=='gate' and stop.id=='junction:g2', 'Committed into a gated road: the bar stays, as a gate')
+assert(stop.kind=='junction' and stop.id=='junction:g2' and stop.privateEntry=='private:g2',
+  'Committed onto a private road: the junction keeps its bar and carries the private entry')
 stop=rd.proximityAt(vec3(2150,0,0),facing,30,nil,gated)
-assert(stop.kind=='deadEnd' and math.abs(stop.distance-149)<0.01, 'Route ends at a dead end bar')
+assert(stop.kind=='deadEnd' and math.abs(stop.distance-149)<0.01 and not stop.privateEntry,
+  'Route ends at a dead end bar')
 local gatedExits=assert(rd.assistantStart(player))
 pos=vec3(2010,0,0); assert(rd.assistantUpdate(gatedExits,player))
-assert(gatedExits.junction.choices.straight.gated and not gatedExits.junction.choices.left.gated,
-  'The exit through the gate is flagged for the prompt, the rough track is not')
+assert(gatedExits.junction.choices.straight.access=='private' and not gatedExits.junction.choices.left.access,
+  'The exit onto the private road is named for the prompt, the rough track is not')
+-- A gate mesh on the private road, 10 m in from the junction.
+local function project(p, edge)
+  local a, b = edge.inPos, edge.outPos
+  local abx, aby = b.x - a.x, b.y - a.y
+  local t = math.max(0, math.min(1, ((p.x - a.x) * abx + (p.y - a.y) * aby) / (abx * abx + aby * aby)))
+  local qx, qy, qz = a.x + abx * t, a.y + aby * t, a.z + (b.z - a.z) * t
+  return {t = t, distance = math.sqrt((p.x - qx) ^ 2 + (p.y - qy) ^ 2), dz = qz - p.z}
+end
+assert(gatesModule.classify('/levels/hirochi_raceway/art/shapes/hr_boomgate_r.dae')=='hr_boomgate_r')
+assert(gatesModule.classify('s_metal_gate_left.DAE') and not gatesModule.classify('s_sign_gate_pillar.dae')
+  and not gatesModule.classify('guardhouse.dae') and not gatesModule.classify('italy_barrier_polizia.dae'),
+  'Only meshes that close a road are gates')
+local fence={}
+for k=0,5 do fence[#fence+1]={pos=vec3(k*3,500,0),base='ind_mesh_fence_gate_3m'} end
+fence[#fence+1]={pos=vec3(2110,2,0),base='hr_boomgate'}
+fence[#fence+1]={pos=vec3(2113,-2,0),base='hr_boomgate_r'}
+fence[#fence+1]={pos=vec3(2200,40,0),base='hr_boomgate'}
+local kept=gatesModule.dropFenceRuns(fence)
+assert(#kept==3, 'A run of gate panels is a fence; a boom pair and a lone boom are kept')
+assert(gatesModule.attach(kept, rd.edgesNear, project)==1,
+  'The boom pair is one gate on the road; the boom 40 m off it is on none')
+manual=rd.proximityAt(vec3(2050,0,0),facing,10)
+assert(manual and manual.kind=='gate', 'Manual guidance: private road with a gate at its start says gate')
+stop=rd.proximityAt(vec3(2101,0,0),facing,10,nil,gated)
+assert(stop.kind=='gate' and math.abs(stop.distance-9)<0.01 and stop.id:find('gate:',1,true),
+  'The route bar sits at the gate itself')
+local throughGate=assert(rd.assistantStart(player))
+pos=vec3(2010,0,0); assert(rd.assistantUpdate(throughGate,player))
+assert(throughGate.junction.choices.straight.access=='gate', 'The exit through a gate mesh is named a gate')
+for _, edge in ipairs(rd.edgesNear(vec3(2110,0,0))) do edge.gates=nil end
+-- A boundary flag between two private links is not a gate and has no bar.
 pos=vec3(8010,0,0)
 local driveway=assert(rd.assistantStart(player))
 assert(rd.assistantUpdate(driveway,player))
 stop=rd.proximityAt(vec3(8050,0,0),facing,10,nil,driveway)
-assert(stop and stop.kind=='gate' and stop.id=='junction:q2',
-  'A gate between two private roads gets its own bar')
+assert(stop==nil, 'No bar where the map flags a link between two private roads')
+stop=rd.proximityAt(vec3(8250,0,0),facing,10,nil,driveway)
+assert(stop and stop.kind=='deadEnd' and stop.id=='junction:q4' and not stop.privateEntry,
+  'The next bar is the real dead end')
+-- Manual guidance hides private roads only from public ones: on private ground
+-- the private way on is listed, so this is the dead end at q4, not one at q3.
+manual=rd.proximityAt(vec3(8105,0,0),facing,30)
+assert(manual and manual.kind=='deadEnd' and manual.id=='junction:q4', tostring(manual and manual.id))
+-- A public road becoming private far from any junction: a spoken entry with no bar.
+pos=vec3(9010,0,0)
+local entering=assert(rd.assistantStart(player))
+assert(rd.assistantUpdate(entering,player))
+stop=rd.proximityAt(vec3(9050,0,0),facing,10,nil,entering)
+assert(stop and stop.kind=='privateEntry' and stop.privateEntry=='private:e1' and math.abs(stop.distance-50)<0.01,
+  'The private entry is its own silent target when no stop follows closely')
 -- Ground models are named by family; unknown ones and the tire's own are silent.
 assert(rd.surfaceWord('DIRT_DUSTY')=='Dirt' and rd.surfaceWord('ASPHALT_WET')=='Asphalt')
 assert(rd.surfaceWord('GRASS2')=='Grass' and rd.surfaceWord('ROCKYDIRT')=='Dirt')
@@ -706,7 +765,7 @@ end
 assert(math.abs(bar(2050).signedDistance-49)<0.01)
 assert(math.abs(bar(2098.6).signedDistance-0.4)<0.01)
 local held=bar(2097.5)
-assert(held.id=='junction:g2' and held.kind=='gate' and math.abs(held.signedDistance-1.5)<0.01)
+assert(held.id=='junction:g2' and held.kind=='private' and math.abs(held.signedDistance-1.5)<0.01)
 held=bar(2100.5)
 assert(held and held.id=='junction:g2' and math.abs(held.signedDistance+1.5)<0.01 and held.distance==0,
   'Past the line but still on the bar')

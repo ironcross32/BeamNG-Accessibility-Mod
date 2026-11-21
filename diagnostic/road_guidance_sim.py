@@ -181,6 +181,15 @@ def main():
         {"id": "d", "phase": "approach", "kind": "deadEnd", "distance": 9.1, "exits": []},
         "metric",
     ) == "Road ends in 9 meters."
+    # The map's "gated" flag is a private road, almost never with a gate on it.
+    assert junction_phrase(
+        {"id": "p", "phase": "approach", "kind": "private", "distance": 30, "exits": []},
+        "metric",
+    ) == "Private road in 30 meters."
+    assert junction_phrase(
+        {"id": "g", "phase": "approach", "kind": "gate", "distance": 30, "exits": []},
+        "metric",
+    ) == "Gate in 30 meters."
 
     clock = Clock()
     feed = RoadGuidanceFeed(clock)

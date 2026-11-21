@@ -67,6 +67,7 @@ The per-file detail, and the reasoning behind every decision that is not obvious
 | `docs/lua-environment.md` | `environmentAccessible.lua`: ambient temperature browser. Ports 4474/4475 |
 | `docs/lua-trailer-angle.md` | `trailerAngle.lua`: trailer articulation tone. Port 4476 |
 | `docs/lua-wheel-report.md` | `wheelReport.lua` + `wheel_report.py`: every wheel's pressure and brake temperature on the vehicle and anything coupled, labelled from geometry. Port 4485 |
+| `docs/road-privacy-and-gates.md` | `roadDetector.lua`'s private roads and `roadGates.lua`: what the game's "gated" flag really means (not a gate), gate meshes, the private-entry cue, relative legality |
 | `docs/lua-route-beacon.md` | `routeBeacon.lua` and `route_beacon.relative_bearing`. Port 4482 |
 | `docs/lua-fuel-stations.md` | `fuelStations.lua` + vehicle `beamtelFuelPark.lua` + `fuel_stations.py`: the map's pumps and chargers, routing to one, measured pump placements, the parking controller. Ports 4486/4488 |
 | `docs/driving-assistant-route.md` | `drivingAssistant.lua` following a big-map route, `assistant_route.py`: what the game clears on arrival, the forward-only search, callouts, off-road destinations |

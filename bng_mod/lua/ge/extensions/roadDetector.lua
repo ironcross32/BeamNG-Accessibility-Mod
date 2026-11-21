@@ -3,6 +3,7 @@
 
 local M = {}
 local roadSignals = require('ge/extensions/roadSignals')
+local roadGates = require('ge/extensions/roadGates')
 local signalGeneration = 0
 local signalSnapshot = {}
 local activeSignalId = nil
@@ -24,6 +25,8 @@ local ENTER_TICKS = 4
 local EXIT_TICKS = 8
 local MIN_DRIVABILITY = 0.25
 local JUNCTION_SEARCH_M = 400.0
+-- A private-road entry rides on the next stop when that stop is this close past it.
+local PRIVATE_ENTRY_CARRY_M = 40.0
 -- BeamNG's radius is the whole road half-width, not a lane half-width. A
 -- correctly driven two-way lane commonly sits around ratio 0.5, so centreline
 -- recovery keeps the side the driver already occupies and aims for that band.
@@ -156,9 +159,14 @@ local function diagnosticForVehicle(vehicleId, diagnostic)
   return diagnostic
 end
 
+-- Privacy is the link's type: map.lua turns a road's authored gatedRoad into
+-- type = 'private' on every link of it, and traffic exclusion zones do the same.
+-- The link-level gatedRoad/gated flags are something else, edge.boundary: the
+-- link where private meets public, sometimes the PUBLIC one. Neither is a gate.
+-- See docs/road-privacy-and-gates.md.
 local function isPrivateEdge(data)
-  return truthy(data.private) or truthy(data.isPrivate) or truthy(data.gated)
-    or truthy(data.isGated) or truthy(data.gatedRoad) or truthy(data.privateRoad)
+  return data.type == 'private' or truthy(data.private) or truthy(data.isPrivate)
+    or truthy(data.privateRoad)
 end
 
 local function bearingToDir(reference, direction)
@@ -247,7 +255,7 @@ local function rebuildNavigationModel(reason)
                 oneWay = truthy(data.oneWay),
                 drivability = tonumber(data.drivability) or 1.0,
                 private = isPrivateEdge(data),
-                gated = truthy(data.gatedRoad) or truthy(data.gated) or truthy(data.isGated),
+                boundary = truthy(data.gatedRoad) or truthy(data.gated) or truthy(data.isGated),
                 raw = data,
               }
               edge.length = edgeLength(edge)
@@ -264,6 +272,7 @@ local function rebuildNavigationModel(reason)
     end
   end
   rdLog('info', string.format("Cached %d navigation edges (%s).", #edges, tostring(reason)))
+  if #edges > 0 then roadGates.begin() end
   return #edges > 0
 end
 
@@ -275,20 +284,24 @@ local function edgeDirection(edge, directionSign)
 end
 
 -- Permissive is the driving assistant's rule: a car can drive any road, so
--- gated, private and rough tracks are routes and only one-way direction binds.
--- Manual guidance keeps the stricter listing its settings describe.
-local function legalRecord(record, permissive)
+-- private roads and rough tracks are routes and only one-way direction binds.
+-- Manual guidance keeps the stricter listing its settings describe, but a
+-- private road is hidden only from a public one: once on private ground every
+-- way on is private (Johnson Valley is 98 percent private), and hiding them
+-- would make each junction there a dead end.
+local function legalRecord(record, permissive, fromPrivate)
   if record.edge.oneWay and not record.forward then return false end
   if permissive then return true end
   if record.edge.drivability < MIN_DRIVABILITY then return false end
-  if record.edge.private and not includePrivate then return false end
+  if record.edge.private and not fromPrivate and not includePrivate then return false end
   return true
 end
 
 local function outgoing(nodeId, incomingEdge, incomingDirection, permissive)
   local result = {}
+  local fromPrivate = incomingEdge and incomingEdge.private
   for _, record in ipairs(adjacency[nodeId] or {}) do
-    if record.edge ~= incomingEdge and legalRecord(record, permissive) then
+    if record.edge ~= incomingEdge and legalRecord(record, permissive, fromPrivate) then
       local direction = edgeDirection(record.edge, record.forward and 1 or -1)
       if direction and (not incomingDirection or math.abs(bearingToDir(incomingDirection, direction)) <= 150) then
         record.direction = direction
@@ -336,11 +349,26 @@ local function signalRoadCandidates(position)
   for x = bx - 1, bx + 1 do
     for y = by - 1, by + 1 do
       for _, edge in ipairs(buckets[tostring(x) .. ':' .. tostring(y)] or {}) do
-        if not seen[edge.id] and edge.drivability >= MIN_DRIVABILITY
-          and (includePrivate or not edge.private) then
+        -- Not filtered by privacy: this matches the road the car is on, and a
+        -- private road is still that road.
+        if not seen[edge.id] and edge.drivability >= MIN_DRIVABILITY then
           seen[edge.id] = true
           result[#result + 1] = edge
         end
+      end
+    end
+  end
+  return result
+end
+
+-- Every cached link with a bucket in the 3 x 3 around `position`.
+function M.edgesNear(position)
+  local result, seen = {}, {}
+  local bx, by = math.floor(position.x / BUCKET_SIZE_M), math.floor(position.y / BUCKET_SIZE_M)
+  for x = bx - 1, bx + 1 do
+    for y = by - 1, by + 1 do
+      for _, edge in ipairs(buckets[tostring(x) .. ':' .. tostring(y)] or {}) do
+        if not seen[edge.id] then seen[edge.id] = true; result[#result + 1] = edge end
       end
     end
   end
@@ -487,12 +515,13 @@ local function junctionZone(startNode, incomingEdge, incomingDirection, initialC
     local record = startRecords[1]
     startPos = record.from == record.edge.inNode and record.edge.inPos or record.edge.outPos
   end
+  local fromPrivate = incomingEdge and incomingEdge.private
   local head = 1
   while head <= #queue do
     local nodeId = queue[head]
     head = head + 1
     for _, record in ipairs(adjacency[nodeId] or {}) do
-      if legalRecord(record, permissive) and record.edge ~= incomingEdge and not zone[record.to]
+      if legalRecord(record, permissive, fromPrivate) and record.edge ~= incomingEdge and not zone[record.to]
         and record.edge.length <= 35 then
         local targetPos = record.to == record.edge.inNode and record.edge.inPos or record.edge.outPos
         local close = not startPos or horizontalDistance(startPos, targetPos) <= 40
@@ -508,7 +537,7 @@ local function junctionZone(startNode, incomingEdge, incomingDirection, initialC
   local exitBearings = {}
   for nodeId, _ in pairs(zone) do
     for _, record in ipairs(adjacency[nodeId] or {}) do
-      if legalRecord(record, permissive) and record.edge ~= incomingEdge and not zone[record.to] then
+      if legalRecord(record, permissive, fromPrivate) and record.edge ~= incomingEdge and not zone[record.to] then
         local direction = edgeDirection(record.edge, record.forward and 1 or -1)
         if direction then
           local bearing = bearingToDir(incomingDirection, direction)
@@ -541,17 +570,30 @@ local function findJunctionAhead(edge, projection, directionSign)
   local distance = directionSign > 0 and edge.length * (1 - projection.t) or edge.length * projection.t
   local nodeId = directionSign > 0 and edge.outNode or edge.inNode
   local incoming, incomingDir = edge, edgeDirection(edge, directionSign)
+  -- A gate mesh on the carriageway is a stop of its own, nearer than the node.
+  local travel = directionSign > 0 and projection.t or 1 - projection.t
+  local gateDistance, gate = roadGates.ahead({edge = edge, forward = directionSign > 0},
+    travel * edge.length)
+  local before = 0
   for _ = 1, 48 do
+    if gate and before + gateDistance <= JUNCTION_SEARCH_M then
+      local at = before + gateDistance
+      return {id = "gate:" .. gate.id, kind = "gate", distance = at, centreDistance = at, exits = {}}
+    end
     if distance > JUNCTION_SEARCH_M or not incomingDir then return nil end
     local choices = outgoing(nodeId, incoming, incomingDir)
     if #choices ~= 1 then
       local exits, ids = junctionZone(nodeId, incoming, incomingDir, choices)
       local kind = classifyJunction(exits, #ids > 1)
-      -- A road that only goes on as a gated or private road has not ended;
-      -- whether the gate opens is for the driver to find out at the bar.
+      -- A public road that only goes on as a private one has not ended: say so,
+      -- and call it a gate only when a gate mesh stands at the start of it.
       if kind == "deadEnd" then
         for _, record in ipairs(outgoing(nodeId, incoming, incomingDir, true)) do
-          if record.edge.private then kind = "gate"; break end
+          if record.edge.private then
+            local d = roadGates.ahead(record, 0)
+            kind = (d and d <= roadGates.AT_START_M) and "gate" or "private"
+            if kind == "gate" then break end
+          end
         end
       end
       return {
@@ -563,6 +605,8 @@ local function findJunctionAhead(edge, projection, directionSign)
       }
     end
     local choice = choices[1]
+    before = distance
+    gateDistance, gate = roadGates.ahead(choice, 0)
     distance = distance + choice.edge.length
     nodeId, incoming, incomingDir = choice.to, choice.edge, choice.direction
   end
@@ -583,28 +627,47 @@ local function routeStopAhead(route, position)
   end
   if not best then return nil end
   local first = records[index]
-  local distance = (first.forward and 1 - best.t or best.t) * first.edge.length
+  local travel = first.forward and best.t or 1 - best.t
+  local distance = (1 - travel) * first.edge.length
   local history = route.history or {}
   local behind = records[index - 1] or history[#history]
   local previousExits = behind and #outgoing(first.from, behind.edge,
     edgeDirection(behind.edge, behind.forward and 1 or -1), true) or 1
   local nav = route.nav
+  -- Where the route steps from a public road onto a private one. That is a
+  -- policy line, not a barrier, so it is a spoken cue with no bar of its own
+  -- (kind 'privateEntry', which the bar tone ignores), unless a real stop
+  -- follows closely enough to carry it as its privateEntry tail.
+  local entry
   for i = index, #records do
     local record = records[i]
     if i > index then distance = distance + record.edge.length end
+    local fromAlong = i == index and travel * record.edge.length or 0
+    local gateAt, gate = roadGates.ahead(record, fromAlong)
+    if gateAt then gateAt = distance - record.edge.length + fromAlong + gateAt end
     -- The destination is a stop like any other: the pips count down into it.
     if nav and i == #records and nav.tail == #nav.records then
       local toDestination = distance - (record.edge.length - nav.goalAlong)
+      if gate and gateAt < toDestination then
+        return {id = 'gate:' .. gate.id, centreDistance = gateAt, distance = gateAt,
+          kind = 'gate', privateEntry = entry and entry.id}
+      end
       if toDestination < -2 then return nil end
       return {id = 'destination', centreDistance = toDestination,
-        distance = math.max(0, toDestination), kind = 'destination'}
+        distance = math.max(0, toDestination), kind = 'destination',
+        privateEntry = entry and entry.id}
     end
-    if distance > JUNCTION_SEARCH_M then return nil end
+    -- A gate mesh on the carriageway: the one place to say "gate" and stop.
+    if gate and gateAt <= JUNCTION_SEARCH_M then
+      return {id = 'gate:' .. gate.id, centreDistance = gateAt, distance = gateAt,
+        kind = 'gate', privateEntry = entry and entry.id}
+    end
+    if distance > JUNCTION_SEARCH_M then break end
+    if entry and distance - entry.distance > PRIVATE_ENTRY_CARRY_M then break end
     local nextRecord = records[i + 1]
-    -- A gate between two private roads is still a gate: Johnson Valley's
-    -- driveways have them, and only the public-to-private step had a bar.
-    local gate = nextRecord and ((nextRecord.edge.private and not record.edge.private)
-      or (nextRecord.edge.gated and not record.edge.gated))
+    if not entry and nextRecord and nextRecord.edge.private and not record.edge.private then
+      entry = {id = 'private:' .. tostring(record.to), distance = distance}
+    end
     local exits = #outgoing(record.to, record.edge,
       edgeDirection(record.edge, record.forward and 1 or -1), true)
     -- The far nodes of a grouped junction are a short link on from a node that
@@ -616,11 +679,15 @@ local function routeStopAhead(route, position)
     local stopHere
     if nav then stopHere = nav.stopNodes[record.to] or exits == 0
     else stopHere = exits ~= 1 and not inside end
-    if gate or stopHere then
+    if stopHere then
       return {id = tostring(record.to), centreDistance = distance,
         distance = math.max(0, distance - nodeRadius(record.to)),
-        kind = gate and 'gate' or (exits == 0 and 'deadEnd' or 'junction')}
+        kind = exits == 0 and 'deadEnd' or 'junction', privateEntry = entry and entry.id}
     end
+  end
+  if entry then
+    return {id = entry.id, centreDistance = entry.distance,
+      distance = math.max(0, entry.distance), kind = 'privateEntry', privateEntry = entry.id}
   end
 end
 
@@ -1273,6 +1340,11 @@ function M.onUpdate(dtReal)
     end
   end
   surfaceTick(dtReal)
+  local gates = roadGates.step()
+  if gates then
+    local placed = roadGates.attach(gates, M.edgesNear, projectOnEdge)
+    rdLog('info', string.format("%d gate meshes, %d on the road network.", #gates, placed))
+  end
   if assistantActive and not assistantWasActive and not isActive then resetTracking('assistant on') end
   assistantWasActive = assistantActive
   if not isActive and not challengeCaptureActive and not assistantActive then return end
@@ -1336,22 +1408,30 @@ local function settledHeading(record)
   return direction
 end
 
--- Whether an exit passes a gate before it settles: inside the junction, or on
--- the road it joins before that road next branches (at most 40 m on). The
--- prompt names it so the choice is made knowing, not 2 s after committing.
+-- What an exit leads into before it settles: inside the junction, or on the
+-- road it joins before that road next branches (at most 40 m on). 'gate' when
+-- a gate mesh stands on it, 'private' when it leaves a public road for a
+-- private one, else nil. The prompt names it so the choice is made knowing,
+-- not 2 s after committing. Private-to-private is not named: inside Johnson
+-- Valley every exit would be.
 local GATE_LOOKAHEAD_M = 40
-function M.gatedAhead(records)
-  for _, record in ipairs(records) do if record.edge.gated then return true end end
+function M.exitAccess(records, fromPrivate)
+  local private = false
+  local function look(record)
+    if record.edge.gates then return 'gate' end
+    if record.edge.private and not fromPrivate then private = true end
+  end
+  for _, record in ipairs(records) do if look(record) then return 'gate' end end
   local last, travelled = records[#records], 0
   while last and travelled < GATE_LOOKAHEAD_M do
     local onward = outgoing(last.to, last.edge,
       edgeDirection(last.edge, last.forward and 1 or -1), true)
-    if #onward ~= 1 then return false end
+    if #onward ~= 1 then break end
     last = onward[1]
-    if last.edge.gated then return true end
+    if look(last) then return 'gate' end
     travelled = travelled + last.edge.length
   end
-  return false
+  return private and 'private' or nil
 end
 
 local function assistantJunction(record)
@@ -1396,7 +1476,7 @@ local function assistantJunction(record)
         -- Keep the first link's side, but a path that has turned round is no exit.
         if math.abs(bearingToDir(direction, settled)) > 150 then bearing = 180 end
         exits[#exits + 1] = {id = tostring(node) .. '>' .. tostring(nextRecord.to),
-          bearing = bearing, records = path, gated = M.gatedAhead(path)}
+          bearing = bearing, records = path, access = M.exitAccess(path, record.edge.private)}
         -- Detect compact one-way circuits outside the grouped intersection.
         local probe, visited, length = nextRecord, {}, 0
         for _ = 1, 32 do
@@ -1673,7 +1753,7 @@ local LESSER_ROAD_RATIO = 0.7
 local TURN_ROUND_LOOP_M = 80
 
 local function isPrivateRoad(edge)
-  return edge.private or edge.gated or (edge.raw and edge.raw.type == 'private') or false
+  return edge.private or false
 end
 
 -- Whether road `a` is clearly a lesser road than `b`. Only ever relative: private
@@ -1730,9 +1810,10 @@ local function routeNeighbours(record, visit, parent)
     if usable then
       local edge = nextRecord.edge
       local cost = edge.length
-      -- The stock navgraph spells a gated road as type = 'private' (map.lua).
+      -- The stock navgraph spells a gated road as type = 'private' (map.lua),
+      -- and flags the link where it meets public: edge.boundary, a cost only.
       if isPrivateRoad(edge) or edge.drivability < MIN_DRIVABILITY then cost = cost * ROUGH_ROAD_FACTOR end
-      if edge.gated then cost = cost + GATE_COST_M end
+      if edge.boundary then cost = cost + GATE_COST_M end
       if math.abs(bearing) > 30 then cost = cost + TURN_COST_M end
       visit(nextRecord, cost)
     end

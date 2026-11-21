@@ -159,6 +159,10 @@ def main():
         controller.set_road_mode(True)
         controller.update_junction_proximity(target)
         assert np.any(render(0.1)), "manual road guidance"
+        # A private-road entry is spoken, not a place to stop: no bar.
+        controller.update_junction_proximity(dict(target, kind="privateEntry"))
+        render(0.05)
+        assert not np.any(render(1)), "a private-road entry sounds no bar"
         controller.update_junction_proximity(target)
         controller.clear_road_audio()
         render(0.05)
@@ -173,15 +177,18 @@ def main():
     def parse(value, state="onRoad"):
         return parse_r2_packet("R2|" + json.dumps({"state": state, "proximity": value}))
 
-    assert parse(target)["proximity"] == dict(target, signedDistance=120, kind=""), "old mods"
-    passed = dict(target, distance=0, signedDistance=-1.5, kind="gate")
+    assert parse(target)["proximity"] == dict(target, signedDistance=120, kind="",
+                                              privateEntry=""), "old mods"
+    passed = dict(target, distance=0, signedDistance=-1.5, kind="gate", privateEntry="")
     assert parse(passed)["proximity"] == passed
+    entering = dict(target, kind="junction", privateEntry="private:g2")
+    assert parse(entering)["proximity"]["privateEntry"] == "private:g2"
     assert parse(None)["proximity"] is None
     for bad in ([], dict(target, distance=-1), dict(target, speed=float("nan")),
                 dict(target, distance=True), dict(target, action="stop"),
                 dict(target, id=""), dict(target, source="unknown"),
                 dict(target, signedDistance="near"), dict(target, signedDistance=-80),
-                dict(target, kind=5)):
+                dict(target, kind=5), dict(target, privateEntry=7)):
         try:
             parse(bad)
         except ValueError:

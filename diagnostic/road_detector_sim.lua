@@ -46,9 +46,11 @@ local function edge(id, a, b, radius, options)
     drivability = options.drivability or 1}
 end
 
-local function legal(record, includePrivate)
+-- Mirrors roadDetector's legalRecord: a private road is hidden only from a
+-- public one; once on private ground its ways on are listed.
+local function legal(record, includePrivate, fromPrivate)
   return record.edge.drivability >= 0.25
-    and (includePrivate or not record.edge.private)
+    and (includePrivate or fromPrivate or not record.edge.private)
     and (not record.edge.oneWay or record.forward)
 end
 
@@ -116,6 +118,7 @@ local private = edge("private", "p1", "p2", 4, {private = true})
 local _, privateAdj = build({private})
 assert(not legal(privateAdj.p1[1], false), "private road filtered")
 assert(legal(privateAdj.p1[1], true), "private road opt-in")
+assert(legal(privateAdj.p1[1], false, true), "private road listed from a private road")
 
 assertEqual(classify({}, false), "deadEnd", "dead end")
 assertEqual(classify({30, -30}, false), "fork", "fork")

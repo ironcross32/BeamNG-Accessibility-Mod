@@ -562,7 +562,11 @@ local function update(dt)
       local names = {}
       for _, name in ipairs({'left', 'straight', 'right'}) do
         if j.choices[name] then
-          names[#names + 1] = (j.gated or {})[name] and (name .. ' through a gate') or name
+          -- 'gate' only where a gate mesh stands on the way; 'private' is the
+          -- map keeping traffic off, which is usually a driveway or a yard.
+          local access = (j.access or {})[name]
+          names[#names + 1] = access == 'gate' and (name .. ' through a gate')
+            or access == 'private' and (name .. ' onto a private road') or name
         end
       end
       announceChoices(j)
