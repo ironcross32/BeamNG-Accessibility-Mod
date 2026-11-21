@@ -1,0 +1,406 @@
+{
+ "list_lua": "local g,v={},{} local ok,gc=pcall(core_camera.getGlobalCameras) if ok and type(gc)=='table' then for k,_ in pairs(gc) do g[#g+1]=k end end local vid=be:getPlayerVehicleID(0) local ok2,vc=pcall(core_camera.getCameraDataById,vid) if ok2 and type(vc)=='table' then for k,_ in pairs(vc) do v[#v+1]=k end end table.sort(g) table.sort(v) return jsonEncode({global_cameras=g,vehicle_cameras=v,player_veh_id=vid,active=(core_camera.getActiveCamName()) or 'unknown'})",
+ "place": [
+  {
+   "args": {
+    "pitch_deg": -10,
+    "x": 10,
+    "y": 20,
+    "yaw_deg": 90,
+    "z": 5
+   },
+   "result": {
+    "ok": "if not commands.isFreeCamera() then commands.setFreeCamera() end local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end local __p=vec3(10.0,20.0,5.0) local __y,__pi=90.0,-10.0 if __t then local __d=__t-__p local __l=__d:length() if __l>1e-6 then __y=n360(math.deg(math.atan2(-__d.x,-__d.y))) __pi=math.deg(math.asin(__d.z/__l)) end end core_camera.setPosition(0,__p) core_camera.setFreeCameraYawPitchRollDeg(n360(__y-180.0),-__pi,0.0) return 'placed'"
+   }
+  },
+  {
+   "args": {
+    "roll_deg": 3,
+    "x": 1.5,
+    "y": -2.25,
+    "z": 1e-07
+   },
+   "result": {
+    "ok": "if not commands.isFreeCamera() then commands.setFreeCamera() end local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end local __p=vec3(1.5,-2.25,1e-07) local __y,__pi=0.0,0.0 if __t then local __d=__t-__p local __l=__d:length() if __l>1e-6 then __y=n360(math.deg(math.atan2(-__d.x,-__d.y))) __pi=math.deg(math.asin(__d.z/__l)) end end core_camera.setPosition(0,__p) core_camera.setFreeCameraYawPitchRollDeg(n360(__y-180.0),-__pi,3.0) return 'placed'"
+   }
+  },
+  {
+   "args": {
+    "x": "4",
+    "y": true,
+    "z": 0
+   },
+   "result": {
+    "ok": "if not commands.isFreeCamera() then commands.setFreeCamera() end local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end local __p=vec3(4.0,1.0,0.0) local __y,__pi=0.0,0.0 if __t then local __d=__t-__p local __l=__d:length() if __l>1e-6 then __y=n360(math.deg(math.atan2(-__d.x,-__d.y))) __pi=math.deg(math.asin(__d.z/__l)) end end core_camera.setPosition(0,__p) core_camera.setFreeCameraYawPitchRollDeg(n360(__y-180.0),-__pi,0.0) return 'placed'"
+   }
+  },
+  {
+   "args": {
+    "look_at": 1234,
+    "rel_fwd_m": -8,
+    "rel_up_m": 3
+   },
+   "result": {
+    "ok": "if not commands.isFreeCamera() then commands.setFreeCamera() end local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end local __v=be:getPlayerVehicle(0) if not __v then error('no such vehicle for a relative placement',0) end local __vp=__v:getPosition() local __f=__v:getDirectionVector() local __u=__v:getDirectionVectorUp() local __r=__f:cross(__u) local __p=vec3(__vp.x,__vp.y,__vp.z)+__f*-8.0+__r*0.0+__u*3.0 local __lv=be:getObjectByID(1234) if not __lv then error('no such look_at vehicle',0) end local __lp=__lv:getPosition() local __t=vec3(__lp.x,__lp.y,__lp.z) local __y,__pi=0.0,0.0 if __t then local __d=__t-__p local __l=__d:length() if __l>1e-6 then __y=n360(math.deg(math.atan2(-__d.x,-__d.y))) __pi=math.deg(math.asin(__d.z/__l)) end end core_camera.setPosition(0,__p) core_camera.setFreeCameraYawPitchRollDeg(n360(__y-180.0),-__pi,0.0) return 'placed'"
+   }
+  },
+  {
+   "args": {
+    "rel_fwd_m": 5,
+    "rel_right_m": 2,
+    "veh_id": 7
+   },
+   "result": {
+    "ok": "if not commands.isFreeCamera() then commands.setFreeCamera() end local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end local __v=be:getObjectByID(7) if not __v then error('no such vehicle for a relative placement',0) end local __vp=__v:getPosition() local __f=__v:getDirectionVector() local __u=__v:getDirectionVectorUp() local __r=__f:cross(__u) local __p=vec3(__vp.x,__vp.y,__vp.z)+__f*5.0+__r*2.0+__u*0.0 local __y,__pi=0.0,0.0 if __t then local __d=__t-__p local __l=__d:length() if __l>1e-6 then __y=n360(math.deg(math.atan2(-__d.x,-__d.y))) __pi=math.deg(math.asin(__d.z/__l)) end end core_camera.setPosition(0,__p) core_camera.setFreeCameraYawPitchRollDeg(n360(__y-180.0),-__pi,0.0) return 'placed'"
+   }
+  },
+  {
+   "args": {
+    "rel_fwd_m": 1,
+    "veh_id": "12"
+   },
+   "result": {
+    "ok": "if not commands.isFreeCamera() then commands.setFreeCamera() end local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end local __v=be:getObjectByID(12) if not __v then error('no such vehicle for a relative placement',0) end local __vp=__v:getPosition() local __f=__v:getDirectionVector() local __u=__v:getDirectionVectorUp() local __r=__f:cross(__u) local __p=vec3(__vp.x,__vp.y,__vp.z)+__f*1.0+__r*0.0+__u*0.0 local __y,__pi=0.0,0.0 if __t then local __d=__t-__p local __l=__d:length() if __l>1e-6 then __y=n360(math.deg(math.atan2(-__d.x,-__d.y))) __pi=math.deg(math.asin(__d.z/__l)) end end core_camera.setPosition(0,__p) core_camera.setFreeCameraYawPitchRollDeg(n360(__y-180.0),-__pi,0.0) return 'placed'"
+   }
+  },
+  {
+   "args": {
+    "rel_up_m": 1,
+    "veh_id": ""
+   },
+   "result": {
+    "ok": "if not commands.isFreeCamera() then commands.setFreeCamera() end local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end local __v=be:getPlayerVehicle(0) if not __v then error('no such vehicle for a relative placement',0) end local __vp=__v:getPosition() local __f=__v:getDirectionVector() local __u=__v:getDirectionVectorUp() local __r=__f:cross(__u) local __p=vec3(__vp.x,__vp.y,__vp.z)+__f*0.0+__r*0.0+__u*1.0 local __y,__pi=0.0,0.0 if __t then local __d=__t-__p local __l=__d:length() if __l>1e-6 then __y=n360(math.deg(math.atan2(-__d.x,-__d.y))) __pi=math.deg(math.asin(__d.z/__l)) end end core_camera.setPosition(0,__p) core_camera.setFreeCameraYawPitchRollDeg(n360(__y-180.0),-__pi,0.0) return 'placed'"
+   }
+  },
+  {
+   "args": {
+    "rel_up_m": 1,
+    "veh_id": 3.9
+   },
+   "result": {
+    "ok": "if not commands.isFreeCamera() then commands.setFreeCamera() end local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end local __v=be:getObjectByID(3) if not __v then error('no such vehicle for a relative placement',0) end local __vp=__v:getPosition() local __f=__v:getDirectionVector() local __u=__v:getDirectionVectorUp() local __r=__f:cross(__u) local __p=vec3(__vp.x,__vp.y,__vp.z)+__f*0.0+__r*0.0+__u*1.0 local __y,__pi=0.0,0.0 if __t then local __d=__t-__p local __l=__d:length() if __l>1e-6 then __y=n360(math.deg(math.atan2(-__d.x,-__d.y))) __pi=math.deg(math.asin(__d.z/__l)) end end core_camera.setPosition(0,__p) core_camera.setFreeCameraYawPitchRollDeg(n360(__y-180.0),-__pi,0.0) return 'placed'"
+   }
+  },
+  {
+   "args": {
+    "orbit_azimuth_deg": 135,
+    "orbit_distance_m": 12,
+    "orbit_elevation_deg": 25
+   },
+   "result": {
+    "ok": "if not commands.isFreeCamera() then commands.setFreeCamera() end local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end local __v=be:getPlayerVehicle(0) if not __v then error('no such vehicle to orbit',0) end local __vp=__v:getPosition() local __vf=__v:getDirectionVector() local __h=vec3(__vf.x,__vf.y,0) if __h:length()<1e-6 then __h=vec3(0,1,0) end __h:normalize() local __rt=vec3(__h.y,-__h.x,0) local __az=math.rad(135.0) local __el=math.rad(25.0) local __d=12.0 local __ch=math.cos(__el)*__d local __p=vec3(__vp.x,__vp.y,__vp.z)+__h*(math.cos(__az)*__ch)+__rt*(math.sin(__az)*__ch)+vec3(0,0,math.sin(__el)*__d) local __t=vec3(__vp.x,__vp.y,__vp.z) local __y,__pi=0.0,0.0 if __t then local __d=__t-__p local __l=__d:length() if __l>1e-6 then __y=n360(math.deg(math.atan2(-__d.x,-__d.y))) __pi=math.deg(math.asin(__d.z/__l)) end end core_camera.setPosition(0,__p) core_camera.setFreeCameraYawPitchRollDeg(n360(__y-180.0),-__pi,0.0) return 'placed'"
+   }
+  },
+  {
+   "args": {
+    "orbit_distance_m": 1e+20
+   },
+   "result": {
+    "ok": "if not commands.isFreeCamera() then commands.setFreeCamera() end local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end local __v=be:getPlayerVehicle(0) if not __v then error('no such vehicle to orbit',0) end local __vp=__v:getPosition() local __vf=__v:getDirectionVector() local __h=vec3(__vf.x,__vf.y,0) if __h:length()<1e-6 then __h=vec3(0,1,0) end __h:normalize() local __rt=vec3(__h.y,-__h.x,0) local __az=math.rad(0.0) local __el=math.rad(20.0) local __d=1e+20 local __ch=math.cos(__el)*__d local __p=vec3(__vp.x,__vp.y,__vp.z)+__h*(math.cos(__az)*__ch)+__rt*(math.sin(__az)*__ch)+vec3(0,0,math.sin(__el)*__d) local __t=vec3(__vp.x,__vp.y,__vp.z) local __y,__pi=0.0,0.0 if __t then local __d=__t-__p local __l=__d:length() if __l>1e-6 then __y=n360(math.deg(math.atan2(-__d.x,-__d.y))) __pi=math.deg(math.asin(__d.z/__l)) end end core_camera.setPosition(0,__p) core_camera.setFreeCameraYawPitchRollDeg(n360(__y-180.0),-__pi,0.0) return 'placed'"
+   }
+  },
+  {
+   "args": {
+    "look_at": [
+     4,
+     5,
+     6
+    ],
+    "x": 1,
+    "y": 2,
+    "z": 3
+   },
+   "result": {
+    "ok": "if not commands.isFreeCamera() then commands.setFreeCamera() end local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end local __p=vec3(1.0,2.0,3.0) local __t=vec3(4.0,5.0,6.0) local __y,__pi=0.0,0.0 if __t then local __d=__t-__p local __l=__d:length() if __l>1e-6 then __y=n360(math.deg(math.atan2(-__d.x,-__d.y))) __pi=math.deg(math.asin(__d.z/__l)) end end core_camera.setPosition(0,__p) core_camera.setFreeCameraYawPitchRollDeg(n360(__y-180.0),-__pi,0.0) return 'placed'"
+   }
+  },
+  {
+   "args": {
+    "look_at": "77",
+    "x": 1,
+    "y": 2,
+    "z": 3
+   },
+   "result": {
+    "ok": "if not commands.isFreeCamera() then commands.setFreeCamera() end local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end local __p=vec3(1.0,2.0,3.0) local __lv=be:getObjectByID(77) if not __lv then error('no such look_at vehicle',0) end local __lp=__lv:getPosition() local __t=vec3(__lp.x,__lp.y,__lp.z) local __y,__pi=0.0,0.0 if __t then local __d=__t-__p local __l=__d:length() if __l>1e-6 then __y=n360(math.deg(math.atan2(-__d.x,-__d.y))) __pi=math.deg(math.asin(__d.z/__l)) end end core_camera.setPosition(0,__p) core_camera.setFreeCameraYawPitchRollDeg(n360(__y-180.0),-__pi,0.0) return 'placed'"
+   }
+  },
+  {
+   "args": {
+    "look_at": 7.6,
+    "x": 1,
+    "y": 2,
+    "z": 3
+   },
+   "result": {
+    "ok": "if not commands.isFreeCamera() then commands.setFreeCamera() end local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end local __p=vec3(1.0,2.0,3.0) local __lv=be:getObjectByID(7) if not __lv then error('no such look_at vehicle',0) end local __lp=__lv:getPosition() local __t=vec3(__lp.x,__lp.y,__lp.z) local __y,__pi=0.0,0.0 if __t then local __d=__t-__p local __l=__d:length() if __l>1e-6 then __y=n360(math.deg(math.atan2(-__d.x,-__d.y))) __pi=math.deg(math.asin(__d.z/__l)) end end core_camera.setPosition(0,__p) core_camera.setFreeCameraYawPitchRollDeg(n360(__y-180.0),-__pi,0.0) return 'placed'"
+   }
+  },
+  {
+   "args": {
+    "look_at": null,
+    "x": 1,
+    "y": 2,
+    "z": 3
+   },
+   "result": {
+    "ok": "if not commands.isFreeCamera() then commands.setFreeCamera() end local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end local __p=vec3(1.0,2.0,3.0) local __y,__pi=0.0,0.0 if __t then local __d=__t-__p local __l=__d:length() if __l>1e-6 then __y=n360(math.deg(math.atan2(-__d.x,-__d.y))) __pi=math.deg(math.asin(__d.z/__l)) end end core_camera.setPosition(0,__p) core_camera.setFreeCameraYawPitchRollDeg(n360(__y-180.0),-__pi,0.0) return 'placed'"
+   }
+  },
+  {
+   "args": {},
+   "result": {
+    "err": "ToolError",
+    "msg": "`place` needs a position: absolute (x/y/z), relative (rel_fwd_m/rel_right_m/rel_up_m) or orbit (orbit_distance_m + orbit_*)"
+   }
+  },
+  {
+   "args": {
+    "yaw_deg": 4
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`place` needs a position: absolute (x/y/z), relative (rel_fwd_m/rel_right_m/rel_up_m) or orbit (orbit_distance_m + orbit_*)"
+   }
+  },
+  {
+   "args": {
+    "rel_fwd_m": 4,
+    "x": 1,
+    "y": 2,
+    "z": 3
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "give exactly one position form: absolute (x/y/z), relative (rel_fwd_m/rel_right_m/rel_up_m) or orbit (orbit_*)"
+   }
+  },
+  {
+   "args": {
+    "orbit_distance_m": 4,
+    "rel_fwd_m": 1
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "give exactly one position form: absolute (x/y/z), relative (rel_fwd_m/rel_right_m/rel_up_m) or orbit (orbit_*)"
+   }
+  },
+  {
+   "args": {
+    "x": 1,
+    "y": 2
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`z` is required"
+   }
+  },
+  {
+   "args": {
+    "x": 1,
+    "y": null,
+    "z": 3
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`y` is required"
+   }
+  },
+  {
+   "args": {
+    "x": "abc",
+    "y": 2,
+    "z": 3
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`x` must be a number, got 'abc'"
+   }
+  },
+  {
+   "args": {
+    "x": [
+     1
+    ],
+    "y": 2,
+    "z": 3
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`x` must be a number, got [1]"
+   }
+  },
+  {
+   "args": {
+    "x": "nan",
+    "y": 2,
+    "z": 3
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`x` must be a finite number"
+   }
+  },
+  {
+   "args": {
+    "x": "inf",
+    "y": 2,
+    "z": 3
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`x` must be a finite number"
+   }
+  },
+  {
+   "args": {
+    "x": 1,
+    "y": 2,
+    "yaw_deg": null,
+    "z": 3
+   },
+   "result": {
+    "err": "TypeError",
+    "msg": "float() argument must be a string or a real number, not 'NoneType'"
+   }
+  },
+  {
+   "args": {
+    "pitch_deg": "up",
+    "x": 1,
+    "y": 2,
+    "z": 3
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`pitch_deg` must be a number, got 'up'"
+   }
+  },
+  {
+   "args": {
+    "rel_fwd_m": null
+   },
+   "result": {
+    "err": "TypeError",
+    "msg": "float() argument must be a string or a real number, not 'NoneType'"
+   }
+  },
+  {
+   "args": {
+    "rel_fwd_m": 1,
+    "veh_id": "car"
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`veh_id` must be an integer vehicle id, got 'car'"
+   }
+  },
+  {
+   "args": {
+    "rel_fwd_m": 1,
+    "veh_id": [
+     1
+    ]
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`veh_id` must be an integer vehicle id, got [1]"
+   }
+  },
+  {
+   "args": {
+    "orbit_azimuth_deg": 10
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`orbit_distance_m` is required"
+   }
+  },
+  {
+   "args": {
+    "orbit_distance_m": 0
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`orbit_distance_m` must be greater than zero"
+   }
+  },
+  {
+   "args": {
+    "orbit_distance_m": -3
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`orbit_distance_m` must be greater than zero"
+   }
+  },
+  {
+   "args": {
+    "orbit_distance_m": 5,
+    "orbit_elevation_deg": null
+   },
+   "result": {
+    "err": "TypeError",
+    "msg": "float() argument must be a string or a real number, not 'NoneType'"
+   }
+  },
+  {
+   "args": {
+    "look_at": [
+     1,
+     2
+    ],
+    "x": 1,
+    "y": 2,
+    "z": 3
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`look_at` as a point must be [x, y, z]"
+   }
+  },
+  {
+   "args": {
+    "look_at": [
+     1,
+     "b",
+     3
+    ],
+    "x": 1,
+    "y": 2,
+    "z": 3
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`v` must be a number, got 'b'"
+   }
+  },
+  {
+   "args": {
+    "look_at": "car",
+    "x": 1,
+    "y": 2,
+    "z": 3
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`look_at` must be [x, y, z] or a vehicle id, got 'car'"
+   }
+  },
+  {
+   "args": {
+    "look_at": {
+     "id": 1
+    },
+    "x": 1,
+    "y": 2,
+    "z": 3
+   },
+   "result": {
+    "err": "ToolError",
+    "msg": "`look_at` must be [x, y, z] or a vehicle id, got {'id': 1}"
+   }
+  }
+ ],
+ "read_lua": "local p=core_camera.getPosition() local f=core_camera.getForward() local function n360(a) a=math.fmod(a,360) if a<0 then a=a+360 end return a end local function r3(v) return math.floor(v*1000+0.5)/1000 end local y,pi=0,0 local l=math.sqrt(f.x*f.x+f.y*f.y+f.z*f.z) if l>1e-9 then y=n360(math.deg(math.atan2(-f.x,-f.y))) pi=math.deg(math.asin(f.z/l)) end local ro=0 local ok,t=pcall(core_camera.getYawPitchRoll) if ok and type(t)=='table' and t.rollDeg then ro=t.rollDeg end return jsonEncode({mode=(core_camera.getActiveCamName()) or 'unknown',is_free=(commands.isFreeCamera() and true or false),pos={r3(p.x),r3(p.y),r3(p.z)},yaw_deg=n360(r3(y)),pitch_deg=r3(pi),roll_deg=r3(ro),player_veh_id=be:getPlayerVehicleID(0)})"
+}

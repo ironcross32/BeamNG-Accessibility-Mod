@@ -564,4 +564,4 @@ fn controller_menu_sim() {
 // "Clickspot action announcements default off in both config backends" (B1, config),
 // "Configuration UI loads and saves the clickspot announcement checkbox" (U1/U2),
 // "Python listener accepts Lua pending and off lifecycle packets" (E4),
-// "Python bridge allows exactly the six controller actions" (E9, ui_bridge).
+// "Python bridge allows exactly the six controller actions" (E9: `ui_bridge_actions.rs`).

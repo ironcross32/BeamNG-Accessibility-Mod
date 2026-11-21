@@ -6,7 +6,7 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-21, with the E8/E10 commit (E9 code without its sim).
+2026-11-21, with the E9 completion commit (wave 2 batch 3 done except U2).
 
 ## Done so far
 
@@ -59,27 +59,31 @@ The short version of where the port is, for a fresh session. Updated at every co
 ## In flight
 
 Nothing is running. The batch 3 agents (E8, E9, E10) died with the session on
-2026-11-20 before reporting; their work was on disk and was finished and committed by
-the orchestrator on 2026-11-21:
+2026-11-20 before reporting. Their work was on disk, and the orchestrator finished and
+committed it on 2026-11-21:
 
-- **E8 (spawner) and E10 (updater, installer) are done**: all tests pass, fixtures
-  regenerate byte-identically. Their Python-bug reports were lost; the V1 audits for the
-  spawner and the updater must look for them.
-- **E9 is code-complete but untested**: the agent died before writing
-  `mcp_server/camera.rs` (written by the orchestrator from `mcp_server.py:745-1092`) and
-  before any test. The capture error carries no Python exception type name, so
-  `screen capture failed: <msg>` lacks the `<Type>: ` the Python prints.
+- **E8 (spawner), E9 (bridge, MCP) and E10 (updater, installer) are done.** All
+  workspace tests pass and the fixtures regenerate byte-identically. Their Python-bug
+  reports were lost, so the V1 audits for the spawner, the bridge/MCP and the updater
+  must look for them.
+- E9: the orchestrator wrote `mcp_server/camera.rs` (from `mcp_server.py:745-1092`),
+  `tests/mcp_server_sim.rs` (the Python sim over real HTTP), the `mcp_camera` fixture,
+  and `tests/ui_bridge_actions.rs` (the E5 carry-over). One known difference: the capture
+  error carries no Python exception type, so `screen capture failed: <msg>` lacks the
+  `<Type>: ` the Python prints. The E2 `challenge_event` guard and E4's `broadcast` are
+  in `ui_bridge.rs`.
+- Test-writing trap seen here: a `parking_lot` guard taken in one argument of a call
+  lives to the end of the statement, so locking the same mutex in another argument
+  deadlocks silently (the test hangs at 0 CPU). Clone into a local first.
 
 ## Next step
 
-1. Finish E9: port `diagnostic/mcp_server_sim.py` to `tests/mcp_server_sim.rs` (it
-   stands the server up and drives it over real HTTP; 202 + empty body for a
-   notification and 405 for `GET /mcp` must be tests), plus a fixture for the camera
-   chunks (`cam_place_chunk` per addressing mode against the Python's string). Then the
-   E5 carry-over checks for the six bridge actions (`controller_menu_sim.rs` lists them).
-2. Then U2 (the Tauri backend: `src-tauri/`), which wires the bridge and console into
-   the window.
-3. Then wave 3: I1 integration, the V1 parity audits, fix-ups.
+1. U2 (the Tauri backend: `src-tauri/`), which wires the bridge and console into the
+   window. Its brief is in `04-workstreams.md`; E7's note above says which describer
+   validation call to use.
+2. Then wave 3: I1 integration (including the wiring the MCP sim's `beamtel.py` greps
+   checked: speech tap after the interrupt demotion, console tap before the GUI
+   forward), the V1 parity audits, fix-ups.
 ## Things to know
 
 - **The Python reference has moved under the port.** The working tree has uncommitted
