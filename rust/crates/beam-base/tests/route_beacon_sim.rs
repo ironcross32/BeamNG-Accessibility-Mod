@@ -143,38 +143,8 @@ fn scenario_3_shared_helper_lives_in_route_beacon() {
     );
 }
 
-/// The Python sim reads beamtel.py by AST: at least three calls to relative_bearing
-/// (the waypoint readout, the beacon toggle and the telemetry loop), and the old
-/// open-coded `atan2(-dx, -dy)` gone. The Rust equivalent reads beam-engine's sources.
-#[test]
-#[ignore = "enable once beam-engine ports the waypoint readout, beacon toggle and telemetry loop"]
-fn scenario_3_engine_uses_shared_helper() {
-    let mut calls = 0;
-    let mut open_coded = Vec::new();
-    let mut stack = vec![repo_root().join("rust/crates/beam-engine/src")];
-    while let Some(dir) = stack.pop() {
-        for entry in std::fs::read_dir(&dir).unwrap() {
-            let path = entry.unwrap().path();
-            if path.is_dir() {
-                stack.push(path);
-            } else if path.extension().is_some_and(|e| e == "rs") {
-                let text = std::fs::read_to_string(&path).unwrap();
-                calls += text.matches("relative_bearing(").count();
-                if text.contains("(-dx).atan2(-dy)") {
-                    open_coded.push(path.display().to_string());
-                }
-            }
-        }
-    }
-    assert!(
-        calls >= 3,
-        "the engine calls relative_bearing in at least three places, found {calls}"
-    );
-    assert!(
-        open_coded.is_empty(),
-        "the open-coded atan2(-dx, -dy) waypoint bearing is gone from the engine: {open_coded:?}"
-    );
-}
+// The engine half of scenario 3 (at least three calls to relative_bearing and no
+// open-coded atan2(-dx, -dy)) is beam-engine's tests/route_beacon_sim.rs.
 
 // 4. Rate map, and 5. Audio gating and teardown: beam-audio (see the module doc).
 

@@ -6,7 +6,7 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-21, with the U2 commit (Tauri backend built, not yet launched).
+2026-11-21, with the I1 commit (integration report).
 
 ## Done so far
 
@@ -91,15 +91,16 @@ U2 has been run by the user (2026-11-21), un-elevated, debug build:
   release build does not** (same test, same session). The unoptimised callback was the
   cause. **Run beamtel from a release build** (`cargo build --release -p beam-app`,
   `target\release\beamtel.exe`); use debug only when debugging.
-- Unconfirmed: with the beamtel window focused, NVDA queued speech instead of
-  interrupting. Only chase it if the user can reproduce it.
+- With the beamtel window focused, NVDA queued speech instead of interrupting. It
+  happened twice and cleared on an NVDA restart; the user judges it NVDA's issue.
+  Dropped (2026-11-21).
 - Optional, discussed: warn when the game itself runs elevated, the one case an
   un-elevated hook cannot see.
 
-Then wave 3: I1 integration (including the wiring the MCP sim's `beamtel.py` greps
-checked: speech tap after the interrupt demotion, console tap before the GUI forward),
-the V1 parity audits (the config/UI audit should add a Python fixture for
-`config_load`'s values and `config_save_panel`'s output), fix-ups.
+**I1 is done** (`integration-report.md`): builds clean, 557 tests pass, no stubs,
+wiring checked. Next: the V1 parity audits (slices and what each must widen are in the
+report), then R1 packaging, D1 docs, and the user's keep-or-fix pass over
+`python-bugs.md`.
 Traps found in U2:
 - A Tauri test binary dies at load with `STATUS_ENTRYPOINT_NOT_FOUND` unless it embeds
   the Common Controls v6 manifest. `build.rs` adds it to `tests/` targets only
