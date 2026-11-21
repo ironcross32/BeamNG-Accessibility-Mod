@@ -508,9 +508,26 @@ pub fn json_loads(text: &str) -> Result<PyValue, JsonError> {
     let v = p.value()?;
     p.ws();
     if p.i != p.s.len() {
-        return Err(JsonError(format!("Extra data at {}", p.i)));
+        return Err(JsonError(decode_error_text("Extra data", text, p.i)));
     }
     Ok(v)
+}
+
+/// `str(JSONDecodeError(msg, doc, pos))`: `"<msg>: line L column C (char P)"`, where
+/// `P` counts characters and `byte_pos` is the parser's byte offset.
+fn decode_error_text(msg: &str, doc: &str, byte_pos: usize) -> String {
+    let mut b = byte_pos.min(doc.len());
+    while !doc.is_char_boundary(b) {
+        b -= 1;
+    }
+    let prefix = &doc[..b];
+    let pos = prefix.chars().count();
+    let lineno = prefix.matches('\n').count() + 1;
+    let colno = match prefix.rfind('\n') {
+        Some(nl) => pos - prefix[..nl].chars().count(),
+        None => pos + 1,
+    };
+    format!("{msg}: line {lineno} column {colno} (char {pos})")
 }
 
 struct Parser<'a> {
@@ -522,7 +539,7 @@ struct Parser<'a> {
 
 impl Parser<'_> {
     fn err<T>(&self, what: &str) -> Result<T, JsonError> {
-        Err(JsonError(format!("{what} at {}", self.i)))
+        Err(JsonError(decode_error_text(what, self.src, self.i)))
     }
 
     fn ws(&mut self) {

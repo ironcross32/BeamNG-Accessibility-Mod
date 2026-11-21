@@ -1,0 +1,3928 @@
+{
+ "app_version": "0.2.1",
+ "check_latest": [
+  {
+   "logs": [],
+   "name": "valid",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMjM0fV19",
+    "kind": "body"
+   },
+   "result": {
+    "ok": {
+     "size": "1234",
+     "tag": "'v0.3.0'",
+     "url": "'https://example.invalid/b.zip'",
+     "version": {
+      "ok": "0.3.0"
+     }
+    }
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [],
+   "name": "valid_second_asset",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJvdGhlci56aXAiLCAiYnJvd3Nlcl9kb3dubG9hZF91cmwiOiAiaHR0cHM6Ly94L28ifSwgeyJuYW1lIjogIkJlYW1OR19hY2Nlc3NpYmlsaXR5X21vZC56aXAiLCAiYnJvd3Nlcl9kb3dubG9hZF91cmwiOiAiaHR0cHM6Ly9leGFtcGxlLmludmFsaWQvYi56aXAiLCAic2l6ZSI6IDEyMzR9LCB7Im5hbWUiOiAiQmVhbU5HX2FjY2Vzc2liaWxpdHlfbW9kLnppcCIsICJicm93c2VyX2Rvd25sb2FkX3VybCI6ICJodHRwczovL3gvbGF0ZXIifV19",
+    "kind": "body"
+   },
+   "result": {
+    "ok": {
+     "size": "1234",
+     "tag": "'v0.3.0'",
+     "url": "'https://example.invalid/b.zip'",
+     "version": {
+      "ok": "0.3.0"
+     }
+    }
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: release 'v0.3.0' carries no BeamNG_accessibility_mod.zip asset"
+    ]
+   ],
+   "name": "no_assets",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAifQ==",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: release 'v0.3.0' carries no BeamNG_accessibility_mod.zip asset"
+    ]
+   ],
+   "name": "assets_null",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogbnVsbH0=",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: release 'v0.3.0' carries no BeamNG_accessibility_mod.zip asset"
+    ]
+   ],
+   "name": "assets_empty",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW119",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: release 'v0.3.0' carries no BeamNG_accessibility_mod.zip asset"
+    ]
+   ],
+   "name": "wrong_asset_name",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJ4LnppcCIsICJicm93c2VyX2Rvd25sb2FkX3VybCI6ICJ1In1dfQ==",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: release 'v0.3.0' carries no BeamNG_accessibility_mod.zip asset"
+    ]
+   ],
+   "name": "assets_dict",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogeyJuYW1lIjogIkJlYW1OR19hY2Nlc3NpYmlsaXR5X21vZC56aXAifX0=",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: release 'v0.3.0' carries no BeamNG_accessibility_mod.zip asset"
+    ]
+   ],
+   "name": "assets_str",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogImFiYyJ9",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [],
+   "name": "assets_int",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogN30=",
+    "kind": "body"
+   },
+   "result": {
+    "err": "'int' object is not iterable"
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [],
+   "name": "assets_true",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogdHJ1ZX0=",
+    "kind": "body"
+   },
+   "result": {
+    "err": "'bool' object is not iterable"
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: release 'v0.3.0' carries no BeamNG_accessibility_mod.zip asset"
+    ]
+   ],
+   "name": "assets_zero",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogMH0=",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: release 'v0.3.0' carries no BeamNG_accessibility_mod.zip asset"
+    ]
+   ],
+   "name": "asset_not_dict",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogWyJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgNSwgbnVsbF19",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: release '' carries no BeamNG_accessibility_mod.zip asset"
+    ]
+   ],
+   "name": "tag_missing",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJhc3NldHMiOiBbeyJuYW1lIjogIkJlYW1OR19hY2Nlc3NpYmlsaXR5X21vZC56aXAiLCAiYnJvd3Nlcl9kb3dubG9hZF91cmwiOiAiaHR0cHM6Ly9leGFtcGxlLmludmFsaWQvYi56aXAiLCAic2l6ZSI6IDEyMzR9XX0=",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: release '' carries no BeamNG_accessibility_mod.zip asset"
+    ]
+   ],
+   "name": "tag_empty",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICIiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMjM0fV19",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: release '' carries no BeamNG_accessibility_mod.zip asset"
+    ]
+   ],
+   "name": "tag_null",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6IG51bGwsICJhc3NldHMiOiBbeyJuYW1lIjogIkJlYW1OR19hY2Nlc3NpYmlsaXR5X21vZC56aXAiLCAiYnJvd3Nlcl9kb3dubG9hZF91cmwiOiAiaHR0cHM6Ly9leGFtcGxlLmludmFsaWQvYi56aXAiLCAic2l6ZSI6IDEyMzR9XX0=",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [],
+   "name": "tag_int",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6IDUsICJhc3NldHMiOiBbeyJuYW1lIjogIkJlYW1OR19hY2Nlc3NpYmlsaXR5X21vZC56aXAiLCAiYnJvd3Nlcl9kb3dubG9hZF91cmwiOiAiaHR0cHM6Ly9leGFtcGxlLmludmFsaWQvYi56aXAiLCAic2l6ZSI6IDEyMzR9XX0=",
+    "kind": "body"
+   },
+   "result": {
+    "ok": {
+     "size": "1234",
+     "tag": "5",
+     "url": "'https://example.invalid/b.zip'",
+     "version": {
+      "err": "'int' object has no attribute 'lstrip'"
+     }
+    }
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [],
+   "name": "tag_list",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6IFsxXSwgImFzc2V0cyI6IFt7Im5hbWUiOiAiQmVhbU5HX2FjY2Vzc2liaWxpdHlfbW9kLnppcCIsICJicm93c2VyX2Rvd25sb2FkX3VybCI6ICJodHRwczovL2V4YW1wbGUuaW52YWxpZC9iLnppcCIsICJzaXplIjogMTIzNH1dfQ==",
+    "kind": "body"
+   },
+   "result": {
+    "ok": {
+     "size": "1234",
+     "tag": "[1]",
+     "url": "'https://example.invalid/b.zip'",
+     "version": {
+      "err": "'list' object has no attribute 'lstrip'"
+     }
+    }
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [],
+   "name": "tag_upper_v",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJWdlYwLjQuMCIsICJhc3NldHMiOiBbeyJuYW1lIjogIkJlYW1OR19hY2Nlc3NpYmlsaXR5X21vZC56aXAiLCAiYnJvd3Nlcl9kb3dubG9hZF91cmwiOiAiaHR0cHM6Ly9leGFtcGxlLmludmFsaWQvYi56aXAiLCAic2l6ZSI6IDEyMzR9XX0=",
+    "kind": "body"
+   },
+   "result": {
+    "ok": {
+     "size": "1234",
+     "tag": "'VvV0.4.0'",
+     "url": "'https://example.invalid/b.zip'",
+     "version": {
+      "ok": "0.4.0"
+     }
+    }
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: release \"it's\" carries no BeamNG_accessibility_mod.zip asset"
+    ]
+   ],
+   "name": "tag_quote",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJpdCdzIiwgImFzc2V0cyI6IFtdfQ==",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: release 'v0.3.0' carries no BeamNG_accessibility_mod.zip asset"
+    ]
+   ],
+   "name": "url_missing",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgInNpemUiOiAzfV19",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: release 'v0.3.0' carries no BeamNG_accessibility_mod.zip asset"
+    ]
+   ],
+   "name": "url_empty",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogIiJ9XX0=",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [],
+   "name": "url_int",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogOX1dfQ==",
+    "kind": "body"
+   },
+   "result": {
+    "ok": {
+     "size": "0",
+     "tag": "'v0.3.0'",
+     "url": "9",
+     "version": {
+      "ok": "0.3.0"
+     }
+    }
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [],
+   "name": "size_missing",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogInUifV19",
+    "kind": "body"
+   },
+   "result": {
+    "ok": {
+     "size": "0",
+     "tag": "'v0.3.0'",
+     "url": "'u'",
+     "version": {
+      "ok": "0.3.0"
+     }
+    }
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [],
+   "name": "size_null",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogInUiLCAic2l6ZSI6IG51bGx9XX0=",
+    "kind": "body"
+   },
+   "result": {
+    "ok": {
+     "size": "0",
+     "tag": "'v0.3.0'",
+     "url": "'u'",
+     "version": {
+      "ok": "0.3.0"
+     }
+    }
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [],
+   "name": "size_str",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogInUiLCAic2l6ZSI6ICIxMiJ9XX0=",
+    "kind": "body"
+   },
+   "result": {
+    "ok": {
+     "size": "'12'",
+     "tag": "'v0.3.0'",
+     "url": "'u'",
+     "version": {
+      "ok": "0.3.0"
+     }
+    }
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: unexpected response shape"
+    ]
+   ],
+   "name": "not_dict",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "WzEsIDJd",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: unexpected response shape"
+    ]
+   ],
+   "name": "json_string",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "ImhlbGxvIg==",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check failed: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)"
+    ]
+   ],
+   "name": "invalid_json",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "ew==",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check failed: Expecting value: line 1 column 1 (char 0)"
+    ]
+   ],
+   "name": "empty_body",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [],
+   "name": "bom_json",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "77u/eyJ0YWdfbmFtZSI6ICJ2MSIsICJhc3NldHMiOiBbeyJuYW1lIjogIkJlYW1OR19hY2Nlc3NpYmlsaXR5X21vZC56aXAiLCAiYnJvd3Nlcl9kb3dubG9hZF91cmwiOiAiaHR0cHM6Ly9leGFtcGxlLmludmFsaWQvYi56aXAiLCAic2l6ZSI6IDEyMzR9XX0=",
+    "kind": "body"
+   },
+   "result": {
+    "ok": {
+     "size": "1234",
+     "tag": "'v1'",
+     "url": "'https://example.invalid/b.zip'",
+     "version": {
+      "ok": "1"
+     }
+    }
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check failed: 'utf-8' codec can't decode byte 0xff in position 14: invalid start byte"
+    ]
+   ],
+   "name": "bad_utf8",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0YWdfbmFtZSI6ICL/In0=",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check failed: 'utf-8' codec can't decode bytes in position 7-8: invalid continuation byte"
+    ]
+   ],
+   "name": "bad_utf8_cont",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0IjogIuS4eCJ9",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check failed: 'utf-8' codec can't decode bytes in position 7-8: unexpected end of data"
+    ]
+   ],
+   "name": "truncated_utf8",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "eyJ0IjogIuS4",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: GitHub returned HTTP 403"
+    ]
+   ],
+   "name": "http_403",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "code": 403,
+    "kind": "status",
+    "reason": "rate limit exceeded"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check: GitHub returned HTTP 500"
+    ]
+   ],
+   "name": "http_500",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "code": 500,
+    "kind": "status",
+    "reason": "Internal Server Error"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "INFO",
+     "Update check: could not reach GitHub ([Errno 11001] getaddrinfo failed)"
+    ]
+   ],
+   "name": "url_error",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "kind": "url",
+    "reason": "[Errno 11001] getaddrinfo failed"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  },
+  {
+   "logs": [
+    [
+     "WARNING",
+     "Update check failed: timed out"
+    ]
+   ],
+   "name": "timeout",
+   "request_headers": [
+    [
+     "Accept",
+     "application/vnd.github+json"
+    ],
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "kind": "other",
+    "msg": "timed out"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 8
+  }
+ ],
+ "constants": {
+  "ASSET_NAME": "BeamNG_accessibility_mod.zip",
+  "BNVDA_APP_NAME": "bnvdaHook",
+  "CHECK_TIMEOUT_S": 8,
+  "DOWNLOAD_TIMEOUT_S": 30,
+  "ENABLED_KEY": "update_check_enabled",
+  "HELPER_LOG": "apply_update.log",
+  "HELPER_NAME": "apply_update.cmd",
+  "LATEST_URL": "https://api.github.com/repos/ironcross32/BeamNG-Accessibility-Mod/releases/latest",
+  "MOD_VERSION_MEMBER": "bnvda_mod_version.json",
+  "MOD_ZIP": "bng_screenreader_mod.zip",
+  "PENDING_KEY": "pending_update_version",
+  "REPO": "ironcross32/BeamNG-Accessibility-Mod",
+  "REQUIRED_MEMBERS": [
+   "beamtel.exe",
+   "bng_screenreader_mod.zip"
+  ],
+  "USER_AGENT": "BEAM-accessibility-mod-updater/0.2.1",
+  "freeroam_layout_path": "C:\\LAD\\BeamNG\\BeamNG.drive\\current\\settings\\ui_apps\\layouts\\default\\freeroam.uilayout.json"
+ },
+ "download": [
+  {
+   "cancel": false,
+   "dest_exists": true,
+   "name": "good",
+   "part_exists": false,
+   "progress": [
+    [
+     709,
+     709
+    ]
+   ],
+   "request_headers": [
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "UEsDBBQAAAAIAIMYIlAzWChmDQAAAAsAAAALAAAAYmVhbXRlbC5leGXzjVJIS8xOVUitSAUAUEsDBBQAAAAIAIMYIlBTh4svCwAAAAkAAAAJAAAAUkVBRE1FLm1kU1YoSk1MyU3lAgBQSwMEFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXAL8GZmEWFgYOBgaJZQCjj74mCyGJAHEgHRSXllKYnxufkp8WWpRcWZ+Xl6WcX5eavDtLx1tc6dOR+8KSjA6ILxNeOAVawMASgmeZuHTmIH8liBmBOIc0oT9Sv0gOTlq6ErHjABVTMyiTDgthkGGhgZcLoD3Qx0OxFmeCG7IMCblQ0kzASE1UC6AqwIAFBLAwQUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAGRvY3MvAwBQSwMEFAAAAAgAgxgiUIymGwEHAAAABQAAABIAAABkb2NzL3N1Yi9ub3Rlcy50eHTLyy9JLQYAUEsBAhQAFAAAAAgAgxgiUDNYKGYNAAAACwAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUFOHiy8LAAAACQAAAAkAAAAAAAAAAAAAAIABNgAAAFJFQURNRS5tZFBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAWgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAAAAAAAAABAA/UEqAQAAZG9jcy9QSwECFAAUAAAACACDGCJQjKYbAQcAAAAFAAAAEgAAAAAAAAAAAAAAgAFPAQAAZG9jcy9zdWIvbm90ZXMudHh0UEsFBgAAAAAFAAUAKQEAAIYBAAAAAA==",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 30,
+   "url": "https://example.invalid/b.zip"
+  },
+  {
+   "cancel": false,
+   "dest_exists": true,
+   "name": "good_no_length",
+   "part_exists": false,
+   "progress": [
+    [
+     709,
+     0
+    ]
+   ],
+   "request_headers": [
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "UEsDBBQAAAAIAIMYIlAzWChmDQAAAAsAAAALAAAAYmVhbXRlbC5leGXzjVJIS8xOVUitSAUAUEsDBBQAAAAIAIMYIlBTh4svCwAAAAkAAAAJAAAAUkVBRE1FLm1kU1YoSk1MyU3lAgBQSwMEFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXAL8GZmEWFgYOBgaJZQCjj74mCyGJAHEgHRSXllKYnxufkp8WWpRcWZ+Xl6WcX5eavDtLx1tc6dOR+8KSjA6ILxNeOAVawMASgmeZuHTmIH8liBmBOIc0oT9Sv0gOTlq6ErHjABVTMyiTDgthkGGhgZcLoD3Qx0OxFmeCG7IMCblQ0kzASE1UC6AqwIAFBLAwQUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAGRvY3MvAwBQSwMEFAAAAAgAgxgiUIymGwEHAAAABQAAABIAAABkb2NzL3N1Yi9ub3Rlcy50eHTLyy9JLQYAUEsBAhQAFAAAAAgAgxgiUDNYKGYNAAAACwAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUFOHiy8LAAAACQAAAAkAAAAAAAAAAAAAAIABNgAAAFJFQURNRS5tZFBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAWgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAAAAAAAAABAA/UEqAQAAZG9jcy9QSwECFAAUAAAACACDGCJQjKYbAQcAAAAFAAAAEgAAAAAAAAAAAAAAgAFPAQAAZG9jcy9zdWIvbm90ZXMudHh0UEsFBgAAAAAFAAUAKQEAAIYBAAAAAA==",
+    "content_length": null,
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 30,
+   "url": "https://example.invalid/b.zip"
+  },
+  {
+   "cancel": false,
+   "dest_exists": true,
+   "name": "big_body",
+   "part_exists": false,
+   "progress": [
+    [
+     1399,
+     1399
+    ]
+   ],
+   "request_headers": [
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "UEsDBBQAAAAIAIMYIlBdm7CPBAAAAAIAAAALAAAAYmVhbXRlbC5leGXzjQIAUEsDBBQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwC/BmZhFhYGDgYGiWUAo4++JgshiQBxIB0Ul5ZSmJ8bn5KfFlqUXFmfl5elnF+Xmrw7S8dbXOnTkfvCkowOiC8TXjgFWsDAEoJnmbh05iB/JYgZgTiHNKE/Ur9IDk5auhKx4wAVUzMokw4LYZBhoYGXC6A90MdDsRZnghuyDAm5UNJMwEhNVAugKsCABQSwMEFAAAAAgAgxgiUNOMh4yZAwAAAFgCAAcAAABwYWQuYmlu7c9DAhgGAACw2rZt27bN1bZt27a51Vpt27Ztu6/oLflBAgQMFDhI0GDBQ4QMFTpM2HDhI0SMFDlK1GjRY8SMFTtO3HjxEyRMlDhJ0mTJU6RMlTpN2nTpM2TMlDlL1mzZc+TMlTtP3nz5CxQsVLhI0WLFS5QsVbpM2XLlK1SsVLlK1WrVa9T8p1btOnXr1W/QsFHjJk2bNW/RslXrNm3bte/QsVPnLl27de/Rs1fvPn379R8wcNDgIUOHDR8xctToMWPHjZ8wcdLkKVOnTZ8xc9bsOXPnzV+wcNHiJUuXLf/3vxUrV61es3bd+g0bN/2/ecvWbdt37Ny1e8/effsPHDx0+MjRY8dPnDx1+szZc+cvXLx0+crVa9dv3Lx1+87de/cfPHz0+MnTZ89fvHz1+s3bd+8/fPz0+cvXb99//Pz1O4C/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v/9f/P8BUEsBAhQAFAAAAAgAgxgiUF2bsI8EAAAAAgAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAAAAAAAAAAAAAIABLQAAAGJuZ19zY3JlZW5yZWFkZXJfbW9kLnppcFBLAQIUABQAAAAIAIMYIlDTjIeMmQMAAABYAgAHAAAAAAAAAAAAAACAAe8AAABwYWQuYmluUEsFBgAAAAADAAMAtAAAAK0EAAAAAA==",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 30,
+   "url": "https://example.invalid/b.zip"
+  },
+  {
+   "cancel": false,
+   "dest_exists": false,
+   "name": "not_zip",
+   "part_exists": false,
+   "progress": [
+    [
+     16,
+     16
+    ]
+   ],
+   "request_headers": [
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "PGh0bWw+NDA0PC9odG1sPg==",
+    "kind": "body"
+   },
+   "result": {
+    "ok": "The downloaded file is not a valid BEAM update (File is not a zip file)."
+   },
+   "timeout": 30,
+   "url": "https://example.invalid/b.zip"
+  },
+  {
+   "cancel": false,
+   "dest_exists": false,
+   "name": "missing_mod",
+   "part_exists": false,
+   "progress": [
+    [
+     123,
+     123
+    ]
+   ],
+   "request_headers": [
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "UEsDBBQAAAAIAIMYIlCDFtyMAwAAAAEAAAALAAAAYmVhbXRlbC5leGWrAABQSwECFAAUAAAACACDGCJQgxbcjAMAAAABAAAACwAAAAAAAAAAAAAAgAEAAAAAYmVhbXRlbC5leGVQSwUGAAAAAAEAAQA5AAAALAAAAAAA",
+    "kind": "body"
+   },
+   "result": {
+    "ok": "The downloaded file is not a valid BEAM update (archive does not contain bng_screenreader_mod.zip)."
+   },
+   "timeout": 30,
+   "url": "https://example.invalid/b.zip"
+  },
+  {
+   "cancel": false,
+   "dest_exists": false,
+   "name": "missing_both",
+   "part_exists": false,
+   "progress": [
+    [
+     103,
+     103
+    ]
+   ],
+   "request_headers": [
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "UEsDBBQAAAAIAIMYIlCDFtyMAwAAAAEAAAABAAAAeKsAAFBLAQIUABQAAAAIAIMYIlCDFtyMAwAAAAEAAAABAAAAAAAAAAAAAACAAQAAAAB4UEsFBgAAAAABAAEALwAAACIAAAAAAA==",
+    "kind": "body"
+   },
+   "result": {
+    "ok": "The downloaded file is not a valid BEAM update (archive does not contain beamtel.exe, bng_screenreader_mod.zip)."
+   },
+   "timeout": 30,
+   "url": "https://example.invalid/b.zip"
+  },
+  {
+   "cancel": false,
+   "dest_exists": false,
+   "name": "corrupt_crc",
+   "part_exists": false,
+   "progress": [
+    [
+     264,
+     264
+    ]
+   ],
+   "request_headers": [
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "UEsDBBQAAAAAAIMYIlALVwS7EAAAABAAAAALAAAAYmVhbXRlbC5leGVaQUFBQUFBQUFBQUFBQUFBUEsDBBQAAAAAAIMYIlA/G9o5BAAAAAQAAAAYAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwQkJCQlBLAQIUABQAAAAAAIMYIlALVwS7EAAAABAAAAALAAAAAAAAAAAAAACAAQAAAABiZWFtdGVsLmV4ZVBLAQIUABQAAAAAAIMYIlA/G9o5BAAAAAQAAAAYAAAAAAAAAAAAAACAATkAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwUGAAAAAAIAAgB/AAAAcwAAAAAA",
+    "kind": "body"
+   },
+   "result": {
+    "ok": "The downloaded file is not a valid BEAM update (archive contains a corrupt entry)."
+   },
+   "timeout": 30,
+   "url": "https://example.invalid/b.zip"
+  },
+  {
+   "cancel": false,
+   "dest_exists": false,
+   "name": "http_404",
+   "part_exists": false,
+   "progress": [],
+   "request_headers": [
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "code": 404,
+    "kind": "status",
+    "reason": "Not Found"
+   },
+   "result": {
+    "ok": "Download failed: HTTP Error 404: Not Found"
+   },
+   "timeout": 30,
+   "url": "https://example.invalid/b.zip"
+  },
+  {
+   "cancel": false,
+   "dest_exists": false,
+   "name": "url_error",
+   "part_exists": false,
+   "progress": [],
+   "request_headers": [
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "kind": "url",
+    "reason": "[Errno 11001] getaddrinfo failed"
+   },
+   "result": {
+    "ok": "Download failed: <urlopen error [Errno 11001] getaddrinfo failed>"
+   },
+   "timeout": 30,
+   "url": "https://example.invalid/b.zip"
+  },
+  {
+   "cancel": false,
+   "dest_exists": false,
+   "name": "bad_length",
+   "part_exists": false,
+   "progress": [],
+   "request_headers": [
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "UEsDBBQAAAAIAIMYIlAzWChmDQAAAAsAAAALAAAAYmVhbXRlbC5leGXzjVJIS8xOVUitSAUAUEsDBBQAAAAIAIMYIlBTh4svCwAAAAkAAAAJAAAAUkVBRE1FLm1kU1YoSk1MyU3lAgBQSwMEFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXAL8GZmEWFgYOBgaJZQCjj74mCyGJAHEgHRSXllKYnxufkp8WWpRcWZ+Xl6WcX5eavDtLx1tc6dOR+8KSjA6ILxNeOAVawMASgmeZuHTmIH8liBmBOIc0oT9Sv0gOTlq6ErHjABVTMyiTDgthkGGhgZcLoD3Qx0OxFmeCG7IMCblQ0kzASE1UC6AqwIAFBLAwQUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAGRvY3MvAwBQSwMEFAAAAAgAgxgiUIymGwEHAAAABQAAABIAAABkb2NzL3N1Yi9ub3Rlcy50eHTLyy9JLQYAUEsBAhQAFAAAAAgAgxgiUDNYKGYNAAAACwAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUFOHiy8LAAAACQAAAAkAAAAAAAAAAAAAAIABNgAAAFJFQURNRS5tZFBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAWgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAAAAAAAAABAA/UEqAQAAZG9jcy9QSwECFAAUAAAACACDGCJQjKYbAQcAAAAFAAAAEgAAAAAAAAAAAAAAgAFPAQAAZG9jcy9zdWIvbm90ZXMudHh0UEsFBgAAAAAFAAUAKQEAAIYBAAAAAA==",
+    "content_length": "abc",
+    "kind": "body"
+   },
+   "result": {
+    "ok": "Download failed: invalid literal for int() with base 10: 'abc'"
+   },
+   "timeout": 30,
+   "url": "https://example.invalid/b.zip"
+  },
+  {
+   "cancel": false,
+   "dest_exists": true,
+   "name": "spaced_length",
+   "part_exists": false,
+   "progress": [
+    [
+     709,
+     10
+    ]
+   ],
+   "request_headers": [
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "UEsDBBQAAAAIAIMYIlAzWChmDQAAAAsAAAALAAAAYmVhbXRlbC5leGXzjVJIS8xOVUitSAUAUEsDBBQAAAAIAIMYIlBTh4svCwAAAAkAAAAJAAAAUkVBRE1FLm1kU1YoSk1MyU3lAgBQSwMEFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXAL8GZmEWFgYOBgaJZQCjj74mCyGJAHEgHRSXllKYnxufkp8WWpRcWZ+Xl6WcX5eavDtLx1tc6dOR+8KSjA6ILxNeOAVawMASgmeZuHTmIH8liBmBOIc0oT9Sv0gOTlq6ErHjABVTMyiTDgthkGGhgZcLoD3Qx0OxFmeCG7IMCblQ0kzASE1UC6AqwIAFBLAwQUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAGRvY3MvAwBQSwMEFAAAAAgAgxgiUIymGwEHAAAABQAAABIAAABkb2NzL3N1Yi9ub3Rlcy50eHTLyy9JLQYAUEsBAhQAFAAAAAgAgxgiUDNYKGYNAAAACwAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUFOHiy8LAAAACQAAAAkAAAAAAAAAAAAAAIABNgAAAFJFQURNRS5tZFBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAWgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAAAAAAAAABAA/UEqAQAAZG9jcy9QSwECFAAUAAAACACDGCJQjKYbAQcAAAAFAAAAEgAAAAAAAAAAAAAAgAFPAQAAZG9jcy9zdWIvbm90ZXMudHh0UEsFBgAAAAAFAAUAKQEAAIYBAAAAAA==",
+    "content_length": " 1_0 ",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 30,
+   "url": "https://example.invalid/b.zip"
+  },
+  {
+   "cancel": false,
+   "dest_exists": true,
+   "name": "empty_length",
+   "part_exists": false,
+   "progress": [
+    [
+     709,
+     0
+    ]
+   ],
+   "request_headers": [
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "UEsDBBQAAAAIAIMYIlAzWChmDQAAAAsAAAALAAAAYmVhbXRlbC5leGXzjVJIS8xOVUitSAUAUEsDBBQAAAAIAIMYIlBTh4svCwAAAAkAAAAJAAAAUkVBRE1FLm1kU1YoSk1MyU3lAgBQSwMEFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXAL8GZmEWFgYOBgaJZQCjj74mCyGJAHEgHRSXllKYnxufkp8WWpRcWZ+Xl6WcX5eavDtLx1tc6dOR+8KSjA6ILxNeOAVawMASgmeZuHTmIH8liBmBOIc0oT9Sv0gOTlq6ErHjABVTMyiTDgthkGGhgZcLoD3Qx0OxFmeCG7IMCblQ0kzASE1UC6AqwIAFBLAwQUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAGRvY3MvAwBQSwMEFAAAAAgAgxgiUIymGwEHAAAABQAAABIAAABkb2NzL3N1Yi9ub3Rlcy50eHTLyy9JLQYAUEsBAhQAFAAAAAgAgxgiUDNYKGYNAAAACwAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUFOHiy8LAAAACQAAAAkAAAAAAAAAAAAAAIABNgAAAFJFQURNRS5tZFBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAWgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAAAAAAAAABAA/UEqAQAAZG9jcy9QSwECFAAUAAAACACDGCJQjKYbAQcAAAAFAAAAEgAAAAAAAAAAAAAAgAFPAQAAZG9jcy9zdWIvbm90ZXMudHh0UEsFBgAAAAAFAAUAKQEAAIYBAAAAAA==",
+    "content_length": "",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 30,
+   "url": "https://example.invalid/b.zip"
+  },
+  {
+   "cancel": true,
+   "dest_exists": false,
+   "name": "cancelled",
+   "part_exists": true,
+   "progress": [],
+   "request_headers": [
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "UEsDBBQAAAAIAIMYIlAzWChmDQAAAAsAAAALAAAAYmVhbXRlbC5leGXzjVJIS8xOVUitSAUAUEsDBBQAAAAIAIMYIlBTh4svCwAAAAkAAAAJAAAAUkVBRE1FLm1kU1YoSk1MyU3lAgBQSwMEFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXAL8GZmEWFgYOBgaJZQCjj74mCyGJAHEgHRSXllKYnxufkp8WWpRcWZ+Xl6WcX5eavDtLx1tc6dOR+8KSjA6ILxNeOAVawMASgmeZuHTmIH8liBmBOIc0oT9Sv0gOTlq6ErHjABVTMyiTDgthkGGhgZcLoD3Qx0OxFmeCG7IMCblQ0kzASE1UC6AqwIAFBLAwQUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAGRvY3MvAwBQSwMEFAAAAAgAgxgiUIymGwEHAAAABQAAABIAAABkb2NzL3N1Yi9ub3Rlcy50eHTLyy9JLQYAUEsBAhQAFAAAAAgAgxgiUDNYKGYNAAAACwAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUFOHiy8LAAAACQAAAAkAAAAAAAAAAAAAAIABNgAAAFJFQURNRS5tZFBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAWgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAAAAAAAAABAA/UEqAQAAZG9jcy9QSwECFAAUAAAACACDGCJQjKYbAQcAAAAFAAAAEgAAAAAAAAAAAAAAgAFPAQAAZG9jcy9zdWIvbm90ZXMudHh0UEsFBgAAAAAFAAUAKQEAAIYBAAAAAA==",
+    "kind": "body"
+   },
+   "result": {
+    "ok": "cancelled"
+   },
+   "timeout": 30,
+   "url": "https://example.invalid/b.zip"
+  },
+  {
+   "cancel": false,
+   "dest_exists": false,
+   "name": "not_a_url",
+   "part_exists": false,
+   "progress": [],
+   "request_headers": null,
+   "response": {
+    "body": "UEsDBBQAAAAIAIMYIlAzWChmDQAAAAsAAAALAAAAYmVhbXRlbC5leGXzjVJIS8xOVUitSAUAUEsDBBQAAAAIAIMYIlBTh4svCwAAAAkAAAAJAAAAUkVBRE1FLm1kU1YoSk1MyU3lAgBQSwMEFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXAL8GZmEWFgYOBgaJZQCjj74mCyGJAHEgHRSXllKYnxufkp8WWpRcWZ+Xl6WcX5eavDtLx1tc6dOR+8KSjA6ILxNeOAVawMASgmeZuHTmIH8liBmBOIc0oT9Sv0gOTlq6ErHjABVTMyiTDgthkGGhgZcLoD3Qx0OxFmeCG7IMCblQ0kzASE1UC6AqwIAFBLAwQUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAGRvY3MvAwBQSwMEFAAAAAgAgxgiUIymGwEHAAAABQAAABIAAABkb2NzL3N1Yi9ub3Rlcy50eHTLyy9JLQYAUEsBAhQAFAAAAAgAgxgiUDNYKGYNAAAACwAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUFOHiy8LAAAACQAAAAkAAAAAAAAAAAAAAIABNgAAAFJFQURNRS5tZFBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAWgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAAAAAAAAABAA/UEqAQAAZG9jcy9QSwECFAAUAAAACACDGCJQjKYbAQcAAAAFAAAAEgAAAAAAAAAAAAAAgAFPAQAAZG9jcy9zdWIvbm90ZXMudHh0UEsFBgAAAAAFAAUAKQEAAIYBAAAAAA==",
+    "kind": "body"
+   },
+   "result": {
+    "err": "unknown url type: 'not a url'"
+   },
+   "timeout": null,
+   "url": "not a url"
+  },
+  {
+   "cancel": false,
+   "dest_exists": true,
+   "name": "wrapped_url",
+   "part_exists": false,
+   "progress": [
+    [
+     709,
+     709
+    ]
+   ],
+   "request_headers": [
+    [
+     "User-agent",
+     "BEAM-accessibility-mod-updater/0.2.1"
+    ]
+   ],
+   "response": {
+    "body": "UEsDBBQAAAAIAIMYIlAzWChmDQAAAAsAAAALAAAAYmVhbXRlbC5leGXzjVJIS8xOVUitSAUAUEsDBBQAAAAIAIMYIlBTh4svCwAAAAkAAAAJAAAAUkVBRE1FLm1kU1YoSk1MyU3lAgBQSwMEFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXAL8GZmEWFgYOBgaJZQCjj74mCyGJAHEgHRSXllKYnxufkp8WWpRcWZ+Xl6WcX5eavDtLx1tc6dOR+8KSjA6ILxNeOAVawMASgmeZuHTmIH8liBmBOIc0oT9Sv0gOTlq6ErHjABVTMyiTDgthkGGhgZcLoD3Qx0OxFmeCG7IMCblQ0kzASE1UC6AqwIAFBLAwQUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAGRvY3MvAwBQSwMEFAAAAAgAgxgiUIymGwEHAAAABQAAABIAAABkb2NzL3N1Yi9ub3Rlcy50eHTLyy9JLQYAUEsBAhQAFAAAAAgAgxgiUDNYKGYNAAAACwAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUFOHiy8LAAAACQAAAAkAAAAAAAAAAAAAAIABNgAAAFJFQURNRS5tZFBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAWgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAAAAAAAAABAA/UEqAQAAZG9jcy9QSwECFAAUAAAACACDGCJQjKYbAQcAAAAFAAAAEgAAAAAAAAAAAAAAgAFPAQAAZG9jcy9zdWIvbm90ZXMudHh0UEsFBgAAAAAFAAUAKQEAAIYBAAAAAA==",
+    "kind": "body"
+   },
+   "result": {
+    "ok": null
+   },
+   "timeout": 30,
+   "url": " <URL:https://example.invalid/b.zip> "
+  }
+ ],
+ "flow": [
+  {
+   "case": {
+    "check": {
+     "code": 500,
+     "kind": "status",
+     "reason": "x"
+    },
+    "manual": true
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "warning",
+     "text": "Could not check for updates right now.",
+     "title": "Update Check Failed"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "WARNING",
+     "Update check: GitHub returned HTTP 500"
+    ],
+    [
+     "INFO",
+     "Update check found nothing to install"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "manual_check_http_error",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "kind": "url",
+     "reason": "offline"
+    },
+    "manual": true
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "warning",
+     "text": "Could not check for updates right now.",
+     "title": "Update Check Failed"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "INFO",
+     "Update check: could not reach GitHub (offline)"
+    ],
+    [
+     "INFO",
+     "Update check found nothing to install"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "manual_check_unreachable",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2MC4yLjEiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMH1dfQ==",
+     "kind": "body"
+    },
+    "manual": true
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "You are running the latest version (0.2.1).",
+     "title": "No Update Available"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "INFO",
+     "Up to date: running 0.2.1, latest release is v0.2.1"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "manual_up_to_date",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2MC4xLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMH1dfQ==",
+     "kind": "body"
+    },
+    "manual": true
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "You are running the latest version (0.2.1).",
+     "title": "No Update Available"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "INFO",
+     "Up to date: running 0.2.1, latest release is v0.1.0"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "manual_older_remote",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMH1dfQ==",
+     "kind": "body"
+    },
+    "config": {
+     "update_check_enabled": false
+    }
+   },
+   "events": [],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [],
+   "mods_tree": null,
+   "name": "startup_disabled",
+   "pending_after": null,
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2MC4yLjEiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMH1dfQ==",
+     "kind": "body"
+    },
+    "config": {
+     "update_check_enabled": false
+    },
+    "manual": true
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "You are running the latest version (0.2.1).",
+     "title": "No Update Available"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "INFO",
+     "Up to date: running 0.2.1, latest release is v0.2.1"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "manual_ignores_disabled",
+   "pending_after": null,
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2MC4yLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMH1dfQ==",
+     "kind": "body"
+    }
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "INFO",
+     "Up to date: running 0.2.1, latest release is v0.2.0"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "startup_up_to_date",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "code": 403,
+     "kind": "status",
+     "reason": "x"
+    }
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "WARNING",
+     "Update check: GitHub returned HTTP 403"
+    ],
+    [
+     "INFO",
+     "Update check found nothing to install"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "startup_check_fails_silently",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "answers": [
+     "no"
+    ],
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMH1dfQ==",
+     "kind": "body"
+    }
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "yes_no",
+     "default": "yes",
+     "event": "message",
+     "kind": "question",
+     "text": "You have version 0.2.1. Version 0.3.0 is available.\n\nInstall it now?",
+     "title": "Update Available"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "INFO",
+     "User declined update v0.3.0"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "startup_decline",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMH1dfQ==",
+     "kind": "body"
+    },
+    "download": {
+     "code": 404,
+     "kind": "status",
+     "reason": "Not Found"
+    }
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "yes_no",
+     "default": "yes",
+     "event": "message",
+     "kind": "question",
+     "text": "You have version 0.2.1. Version 0.3.0 is available.\n\nInstall it now?",
+     "title": "Update Available"
+    },
+    {
+     "cancellable": true,
+     "event": "progress",
+     "text": "Downloading BeamNG_accessibility_mod.zip...",
+     "title": "Downloading update"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "error",
+     "text": "The update could not be installed.\n\nDownload failed: HTTP Error 404: Not Found\n\nBEAM will carry on running the version you already have.",
+     "title": "Update Failed"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "ERROR",
+     "Update failed: Download failed: HTTP Error 404: Not Found"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "download_404",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMH1dfQ==",
+     "kind": "body"
+    },
+    "download": {
+     "body": "PGh0bWwvPg==",
+     "kind": "body"
+    }
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "yes_no",
+     "default": "yes",
+     "event": "message",
+     "kind": "question",
+     "text": "You have version 0.2.1. Version 0.3.0 is available.\n\nInstall it now?",
+     "title": "Update Available"
+    },
+    {
+     "cancellable": true,
+     "event": "progress",
+     "text": "Downloading BeamNG_accessibility_mod.zip...",
+     "title": "Downloading update"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "error",
+     "text": "The update could not be installed.\n\nThe downloaded file is not a valid BEAM update (File is not a zip file).\n\nBEAM will carry on running the version you already have.",
+     "title": "Update Failed"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "ERROR",
+     "Update failed: The downloaded file is not a valid BEAM update (File is not a zip file)."
+    ]
+   ],
+   "mods_tree": null,
+   "name": "download_not_zip",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMH1dfQ==",
+     "kind": "body"
+    },
+    "download": {
+     "body": "UEsDBBQAAAAIAIMYIlCDFtyMAwAAAAEAAAALAAAAYmVhbXRlbC5leGWrAABQSwECFAAUAAAACACDGCJQgxbcjAMAAAABAAAACwAAAAAAAAAAAAAAgAEAAAAAYmVhbXRlbC5leGVQSwUGAAAAAAEAAQA5AAAALAAAAAAA",
+     "kind": "body"
+    }
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "yes_no",
+     "default": "yes",
+     "event": "message",
+     "kind": "question",
+     "text": "You have version 0.2.1. Version 0.3.0 is available.\n\nInstall it now?",
+     "title": "Update Available"
+    },
+    {
+     "cancellable": true,
+     "event": "progress",
+     "text": "Downloading BeamNG_accessibility_mod.zip...",
+     "title": "Downloading update"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "error",
+     "text": "The update could not be installed.\n\nThe downloaded file is not a valid BEAM update (archive does not contain bng_screenreader_mod.zip).\n\nBEAM will carry on running the version you already have.",
+     "title": "Update Failed"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "ERROR",
+     "Update failed: The downloaded file is not a valid BEAM update (archive does not contain bng_screenreader_mod.zip)."
+    ]
+   ],
+   "mods_tree": null,
+   "name": "download_missing_member",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMH1dfQ==",
+     "kind": "body"
+    },
+    "download": {
+     "body": "UEsDBBQAAAAIAIMYIlBdm7CPBAAAAAIAAAALAAAAYmVhbXRlbC5leGXzjQIAUEsDBBQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwC/BmZhFhYGDgYGiWUAo4++JgshiQBxIB0Ul5ZSmJ8bn5KfFlqUXFmfl5elnF+Xmrw7S8dbXOnTkfvCkowOiC8TXjgFWsDAEoJnmbh05iB/JYgZgTiHNKE/Ur9IDk5auhKx4wAVUzMokw4LYZBhoYGXC6A90MdDsRZnghuyDAm5UNJMwEhNVAugKsCABQSwMEFAAAAAgAgxgiUIMW3IwDAAAAAQAAAAsAAAAuLi9ldmlsLnR4dKsAAFBLAQIUABQAAAAIAIMYIlBdm7CPBAAAAAIAAAALAAAAAAAAAAAAAACAAQAAAABiZWFtdGVsLmV4ZVBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAS0AAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQgxbcjAMAAAABAAAACwAAAAAAAAAAAAAAgAHvAAAALi4vZXZpbC50eHRQSwUGAAAAAAMAAwC4AAAAGwEAAAAA",
+     "kind": "body"
+    }
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "yes_no",
+     "default": "yes",
+     "event": "message",
+     "kind": "question",
+     "text": "You have version 0.2.1. Version 0.3.0 is available.\n\nInstall it now?",
+     "title": "Update Available"
+    },
+    {
+     "cancellable": true,
+     "event": "progress",
+     "text": "Downloading BeamNG_accessibility_mod.zip...",
+     "title": "Downloading update"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "error",
+     "text": "The update could not be installed.\n\nCould not unpack the update: parent-directory path in archive: ../evil.txt\n\nBEAM will carry on running the version you already have.",
+     "title": "Update Failed"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "ERROR",
+     "Update failed: Could not unpack the update: parent-directory path in archive: ../evil.txt"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "stage_zip_slip",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": true
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMH1dfQ==",
+     "kind": "body"
+    },
+    "download": {
+     "body": "UEsDBBQAAAAIAIMYIlAzWChmDQAAAAsAAAALAAAAYmVhbXRlbC5leGXzjVJIS8xOVUitSAUAUEsDBBQAAAAIAIMYIlBTh4svCwAAAAkAAAAJAAAAUkVBRE1FLm1kU1YoSk1MyU3lAgBQSwMEFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXAL8GZmEWFgYOBgaJZQCjj74mCyGJAHEgHRSXllKYnxufkp8WWpRcWZ+Xl6WcX5eavDtLx1tc6dOR+8KSjA6ILxNeOAVawMASgmeZuHTmIH8liBmBOIc0oT9Sv0gOTlq6ErHjABVTMyiTDgthkGGhgZcLoD3Qx0OxFmeCG7IMCblQ0kzASE1UC6AqwIAFBLAwQUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAGRvY3MvAwBQSwMEFAAAAAgAgxgiUIymGwEHAAAABQAAABIAAABkb2NzL3N1Yi9ub3Rlcy50eHTLyy9JLQYAUEsBAhQAFAAAAAgAgxgiUDNYKGYNAAAACwAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUFOHiy8LAAAACQAAAAkAAAAAAAAAAAAAAIABNgAAAFJFQURNRS5tZFBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAWgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAAAAAAAAABAA/UEqAQAAZG9jcy9QSwECFAAUAAAACACDGCJQjKYbAQcAAAAFAAAAEgAAAAAAAAAAAAAAgAFPAQAAZG9jcy9zdWIvbm90ZXMudHh0UEsFBgAAAAAFAAUAKQEAAIYBAAAAAA==",
+     "kind": "body"
+    }
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "yes_no",
+     "default": "yes",
+     "event": "message",
+     "kind": "question",
+     "text": "You have version 0.2.1. Version 0.3.0 is available.\n\nInstall it now?",
+     "title": "Update Available"
+    },
+    {
+     "cancellable": true,
+     "event": "progress",
+     "text": "Downloading BeamNG_accessibility_mod.zip...",
+     "title": "Downloading update"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "BEAM will now close and restart on the new version.",
+     "title": "Restarting to Update"
+    },
+    {
+     "event": "exit"
+    }
+   ],
+   "gate": [
+    "deny"
+   ],
+   "helper": "@echo off\r\nsetlocal\r\nset \"PID=4242\"\r\nset \"PROG=<ROOT>\\prog\"\r\nset \"STAGED=<ROOT>\\config\\update\\staged\"\r\nset \"LOGFILE=<ROOT>\\config\\update\\apply_update.log\"\r\nset \"SYS=%SystemRoot%\\System32\"\r\nset \"EXE=%PROG%\\beamtel.exe\"\r\n\r\necho [%DATE% %TIME%] waiting for \"%EXE%\" to be released (we were PID %PID%)> \"%LOGFILE%\"\r\nset /a TRIES=0\r\n:wait\r\nrem The question is not \"is a process called beamtel.exe running\", it is \"can\r\nrem I overwrite this file yet\" -- so ASK THE FILE. Opening the exe for append\r\nrem fails with a sharing violation for as long as Windows holds the image open,\r\nrem and succeeds (writing nothing) the moment the last handle goes. It costs one\r\nrem file open, enumerates nothing, and cannot be confused by a second install\r\nrem running elsewhere. The tasklist/find pipeline it replaces could be WRONG IN\r\nrem BOTH DIRECTIONS: its stderr went to nul, so a failure of tasklist itself was\r\nrem indistinguishable from \"no such process\". Observed 2026-08-28: one call took\r\nrem 103 seconds and then answered \"gone\" while beamtel was still up, and the\r\nrem post-start check answered \"did not appear\" about a process that had started.\r\nrem Both are that same false negative, and the second one made the log lie about\r\nrem the outcome of the update.\r\nif not exist \"%EXE%\" goto gone\r\n2>nul ( >>\"%EXE%\" (call ) ) && goto gone\r\nset /a TRIES+=1\r\nif %TRIES% GEQ 120 goto timeout\r\n\"%SYS%\\ping.exe\" -n 2 127.0.0.1 >nul\r\ngoto wait\r\n\r\n:timeout\r\nrem A locked executable cannot be replaced safely. In particular, do not remove\r\nrem the onefile cache or fall through to robocopy: either can damage the still\r\nrem running installation. Leave the staged update in place for diagnosis and\r\nrem stop this helper; a later update check can stage a fresh copy.\r\necho [%DATE% %TIME%] ERROR: \"%EXE%\" still locked after %TRIES% tries; update abandoned>> \"%LOGFILE%\"\r\ngoto finish\r\n\r\n:gone\r\nrem Give Windows a moment to release the executable image itself.\r\n\"%SYS%\\ping.exe\" -n 3 127.0.0.1 >nul\r\necho [%DATE% %TIME%] \"%EXE%\" released after %TRIES% tries>> \"%LOGFILE%\"\r\n\r\n:ready\r\n\r\nrem The Nuitka onefile cache holds the OLD exe's unpacked payload under a fixed\r\nrem name beside the exe (--onefile-tempdir-spec={PROGRAM_DIR}/.appdata with\r\nrem --onefile-cache-mode=cached). It is only safe to remove once the process is\r\nrem gone, which is precisely here. A HALF-removed cache is worse than a stale\r\nrem one -- the new bootstrap can sit on it -- so the outcome is recorded.\r\nif exist \"%PROG%\\.appdata\" rd /s /q \"%PROG%\\.appdata\"\r\nif exist \"%PROG%\\.appdata\" echo [%DATE% %TIME%] WARNING: .appdata survived the delete>> \"%LOGFILE%\"\r\n\r\necho [%DATE% %TIME%] copying \"%STAGED%\" -^> \"%PROG%\">> \"%LOGFILE%\"\r\n\"%SYS%\\robocopy.exe\" \"%STAGED%\" \"%PROG%\" /E /IS /IT /R:5 /W:2 >> \"%LOGFILE%\" 2>&1\r\nset RC=%ERRORLEVEL%\r\necho [%DATE% %TIME%] robocopy exit %RC% >> \"%LOGFILE%\"\r\nif %RC% GEQ 8 echo [%DATE% %TIME%] copy FAILED; not restarting>> \"%LOGFILE%\"\r\nif %RC% GEQ 8 goto done\r\n\r\nif not exist \"%EXE%\" echo [%DATE% %TIME%] ERROR: \"%EXE%\" missing after copy>> \"%LOGFILE%\"\r\nif not exist \"%EXE%\" goto done\r\n\r\nrem /D sets the new process's working directory: the helper's own is the update\r\nrem folder, and handing that to the program we are restarting is not what it\r\nrem would have had if the user had launched it themselves.\r\necho [%DATE% %TIME%] starting \"%EXE%\">> \"%LOGFILE%\"\r\nstart \"BEAM\" /B /D \"%PROG%\" \"%EXE%\"\r\necho [%DATE% %TIME%] start returned %ERRORLEVEL% >> \"%LOGFILE%\"\r\n\r\nrem \"start\" is asynchronous and reports almost nothing, so the launch is\r\nrem VERIFIED rather than assumed. Without this the log's last line is written\r\nrem before the attempt and a silent failure to restart leaves no evidence at\r\nrem all -- which is exactly how this went unexplained once already.\r\n\"%SYS%\\ping.exe\" -n 6 127.0.0.1 >nul\r\nrem The same lock test read the other way round: a running beamtel holds its\r\nrem own image open, so an exe we can still write to is one nothing is running.\r\n2>nul ( >>\"%EXE%\" (call ) ) && (echo [%DATE% %TIME%] ERROR: \"%EXE%\" is still writable; it did not start>> \"%LOGFILE%\") || (echo [%DATE% %TIME%] beamtel.exe is running>> \"%LOGFILE%\")\r\n\r\n:done\r\nrd /s /q \"%STAGED%\"\r\n:finish\r\necho [%DATE% %TIME%] helper finished>> \"%LOGFILE%\"\r\n(goto) 2>nul & del \"%~f0\"\r\n",
+   "logs": [
+    [
+     "INFO",
+     "Update v0.3.0 staged; restarting to apply it"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "success",
+   "pending_after": "0.3.0",
+   "popen": [
+    {
+     "args": [
+      "C:\\Windows\\System32\\cmd.exe",
+      "/d",
+      "/c",
+      "<ROOT>\\config\\update\\apply_update.cmd"
+     ],
+     "close_fds": true,
+     "creationflags": 134218240,
+     "cwd": "<ROOT>\\config\\update",
+     "line": "C:\\Windows\\System32\\cmd.exe /d /c <ROOT>\\config\\update\\apply_update.cmd",
+     "stderr": true,
+     "stdin": true,
+     "stdout": true
+    }
+   ],
+   "staged_tree": {
+    "README.md": "IyByZWFkbWUK",
+    "beamtel.exe": "TVogZmFrZSBleGU=",
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAYm52ZGFfbW9kX3ZlcnNpb24uanNvbqtWKkstKs7Mz1OyUlAy0DPWM1CqBQBQSwMEFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAABsdWEveC5sdWHT1VWo4AIAUEsBAhQAFAAAAAgAgxgiUM3owWMWAAAAFAAAABYAAAAAAAAAAAAAAIABAAAAAGJudmRhX21vZF92ZXJzaW9uLmpzb25QSwECFAAUAAAACACDGCJQSzdVkgcAAAAFAAAACQAAAAAAAAAAAAAAgAFKAAAAbHVhL3gubHVhUEsFBgAAAAACAAIAewAAAHgAAAAAAA==",
+    "docs/": null,
+    "docs/sub/": null,
+    "docs/sub/notes.txt": "bm90ZXM="
+   },
+   "zip_exists": true
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJWMC40LjAtcmMxIiwgImFzc2V0cyI6IFt7Im5hbWUiOiAiQmVhbU5HX2FjY2Vzc2liaWxpdHlfbW9kLnppcCIsICJicm93c2VyX2Rvd25sb2FkX3VybCI6ICJodHRwczovL2V4YW1wbGUuaW52YWxpZC9iLnppcCIsICJzaXplIjogMTB9XX0=",
+     "kind": "body"
+    },
+    "download": {
+     "body": "UEsDBBQAAAAIAIMYIlAzWChmDQAAAAsAAAALAAAAYmVhbXRlbC5leGXzjVJIS8xOVUitSAUAUEsDBBQAAAAIAIMYIlBTh4svCwAAAAkAAAAJAAAAUkVBRE1FLm1kU1YoSk1MyU3lAgBQSwMEFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXAL8GZmEWFgYOBgaJZQCjj74mCyGJAHEgHRSXllKYnxufkp8WWpRcWZ+Xl6WcX5eavDtLx1tc6dOR+8KSjA6ILxNeOAVawMASgmeZuHTmIH8liBmBOIc0oT9Sv0gOTlq6ErHjABVTMyiTDgthkGGhgZcLoD3Qx0OxFmeCG7IMCblQ0kzASE1UC6AqwIAFBLAwQUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAGRvY3MvAwBQSwMEFAAAAAgAgxgiUIymGwEHAAAABQAAABIAAABkb2NzL3N1Yi9ub3Rlcy50eHTLyy9JLQYAUEsBAhQAFAAAAAgAgxgiUDNYKGYNAAAACwAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUFOHiy8LAAAACQAAAAkAAAAAAAAAAAAAAIABNgAAAFJFQURNRS5tZFBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAWgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAAAAAAAAABAA/UEqAQAAZG9jcy9QSwECFAAUAAAACACDGCJQjKYbAQcAAAAFAAAAEgAAAAAAAAAAAAAAgAFPAQAAZG9jcy9zdWIvbm90ZXMudHh0UEsFBgAAAAAFAAUAKQEAAIYBAAAAAA==",
+     "kind": "body"
+    },
+    "manual": true
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "You are running the latest version (0.2.1).",
+     "title": "No Update Available"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "INFO",
+     "Up to date: running 0.2.1, latest release is V0.4.0-rc1"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "success_manual",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMH1dfQ==",
+     "kind": "body"
+    },
+    "download": {
+     "body": "UEsDBBQAAAAIAIMYIlAzWChmDQAAAAsAAAALAAAAYmVhbXRlbC5leGXzjVJIS8xOVUitSAUAUEsDBBQAAAAIAIMYIlBTh4svCwAAAAkAAAAJAAAAUkVBRE1FLm1kU1YoSk1MyU3lAgBQSwMEFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXAL8GZmEWFgYOBgaJZQCjj74mCyGJAHEgHRSXllKYnxufkp8WWpRcWZ+Xl6WcX5eavDtLx1tc6dOR+8KSjA6ILxNeOAVawMASgmeZuHTmIH8liBmBOIc0oT9Sv0gOTlq6ErHjABVTMyiTDgthkGGhgZcLoD3Qx0OxFmeCG7IMCblQ0kzASE1UC6AqwIAFBLAwQUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAGRvY3MvAwBQSwMEFAAAAAgAgxgiUIymGwEHAAAABQAAABIAAABkb2NzL3N1Yi9ub3Rlcy50eHTLyy9JLQYAUEsBAhQAFAAAAAgAgxgiUDNYKGYNAAAACwAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUFOHiy8LAAAACQAAAAkAAAAAAAAAAAAAAIABNgAAAFJFQURNRS5tZFBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAWgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAAAAAAAAABAA/UEqAQAAZG9jcy9QSwECFAAUAAAACACDGCJQjKYbAQcAAAAFAAAAEgAAAAAAAAAAAAAAgAFPAQAAZG9jcy9zdWIvbm90ZXMudHh0UEsFBgAAAAAFAAUAKQEAAIYBAAAAAA==",
+     "kind": "body"
+    },
+    "popen": "raise"
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "yes_no",
+     "default": "yes",
+     "event": "message",
+     "kind": "question",
+     "text": "You have version 0.2.1. Version 0.3.0 is available.\n\nInstall it now?",
+     "title": "Update Available"
+    },
+    {
+     "cancellable": true,
+     "event": "progress",
+     "text": "Downloading BeamNG_accessibility_mod.zip...",
+     "title": "Downloading update"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "error",
+     "text": "The update could not be installed.\n\nCould not start the update helper: boom\n\nBEAM will carry on running the version you already have.",
+     "title": "Update Failed"
+    }
+   ],
+   "gate": [
+    "deny"
+   ],
+   "helper": "@echo off\r\nsetlocal\r\nset \"PID=4242\"\r\nset \"PROG=<ROOT>\\prog\"\r\nset \"STAGED=<ROOT>\\config\\update\\staged\"\r\nset \"LOGFILE=<ROOT>\\config\\update\\apply_update.log\"\r\nset \"SYS=%SystemRoot%\\System32\"\r\nset \"EXE=%PROG%\\beamtel.exe\"\r\n\r\necho [%DATE% %TIME%] waiting for \"%EXE%\" to be released (we were PID %PID%)> \"%LOGFILE%\"\r\nset /a TRIES=0\r\n:wait\r\nrem The question is not \"is a process called beamtel.exe running\", it is \"can\r\nrem I overwrite this file yet\" -- so ASK THE FILE. Opening the exe for append\r\nrem fails with a sharing violation for as long as Windows holds the image open,\r\nrem and succeeds (writing nothing) the moment the last handle goes. It costs one\r\nrem file open, enumerates nothing, and cannot be confused by a second install\r\nrem running elsewhere. The tasklist/find pipeline it replaces could be WRONG IN\r\nrem BOTH DIRECTIONS: its stderr went to nul, so a failure of tasklist itself was\r\nrem indistinguishable from \"no such process\". Observed 2026-08-28: one call took\r\nrem 103 seconds and then answered \"gone\" while beamtel was still up, and the\r\nrem post-start check answered \"did not appear\" about a process that had started.\r\nrem Both are that same false negative, and the second one made the log lie about\r\nrem the outcome of the update.\r\nif not exist \"%EXE%\" goto gone\r\n2>nul ( >>\"%EXE%\" (call ) ) && goto gone\r\nset /a TRIES+=1\r\nif %TRIES% GEQ 120 goto timeout\r\n\"%SYS%\\ping.exe\" -n 2 127.0.0.1 >nul\r\ngoto wait\r\n\r\n:timeout\r\nrem A locked executable cannot be replaced safely. In particular, do not remove\r\nrem the onefile cache or fall through to robocopy: either can damage the still\r\nrem running installation. Leave the staged update in place for diagnosis and\r\nrem stop this helper; a later update check can stage a fresh copy.\r\necho [%DATE% %TIME%] ERROR: \"%EXE%\" still locked after %TRIES% tries; update abandoned>> \"%LOGFILE%\"\r\ngoto finish\r\n\r\n:gone\r\nrem Give Windows a moment to release the executable image itself.\r\n\"%SYS%\\ping.exe\" -n 3 127.0.0.1 >nul\r\necho [%DATE% %TIME%] \"%EXE%\" released after %TRIES% tries>> \"%LOGFILE%\"\r\n\r\n:ready\r\n\r\nrem The Nuitka onefile cache holds the OLD exe's unpacked payload under a fixed\r\nrem name beside the exe (--onefile-tempdir-spec={PROGRAM_DIR}/.appdata with\r\nrem --onefile-cache-mode=cached). It is only safe to remove once the process is\r\nrem gone, which is precisely here. A HALF-removed cache is worse than a stale\r\nrem one -- the new bootstrap can sit on it -- so the outcome is recorded.\r\nif exist \"%PROG%\\.appdata\" rd /s /q \"%PROG%\\.appdata\"\r\nif exist \"%PROG%\\.appdata\" echo [%DATE% %TIME%] WARNING: .appdata survived the delete>> \"%LOGFILE%\"\r\n\r\necho [%DATE% %TIME%] copying \"%STAGED%\" -^> \"%PROG%\">> \"%LOGFILE%\"\r\n\"%SYS%\\robocopy.exe\" \"%STAGED%\" \"%PROG%\" /E /IS /IT /R:5 /W:2 >> \"%LOGFILE%\" 2>&1\r\nset RC=%ERRORLEVEL%\r\necho [%DATE% %TIME%] robocopy exit %RC% >> \"%LOGFILE%\"\r\nif %RC% GEQ 8 echo [%DATE% %TIME%] copy FAILED; not restarting>> \"%LOGFILE%\"\r\nif %RC% GEQ 8 goto done\r\n\r\nif not exist \"%EXE%\" echo [%DATE% %TIME%] ERROR: \"%EXE%\" missing after copy>> \"%LOGFILE%\"\r\nif not exist \"%EXE%\" goto done\r\n\r\nrem /D sets the new process's working directory: the helper's own is the update\r\nrem folder, and handing that to the program we are restarting is not what it\r\nrem would have had if the user had launched it themselves.\r\necho [%DATE% %TIME%] starting \"%EXE%\">> \"%LOGFILE%\"\r\nstart \"BEAM\" /B /D \"%PROG%\" \"%EXE%\"\r\necho [%DATE% %TIME%] start returned %ERRORLEVEL% >> \"%LOGFILE%\"\r\n\r\nrem \"start\" is asynchronous and reports almost nothing, so the launch is\r\nrem VERIFIED rather than assumed. Without this the log's last line is written\r\nrem before the attempt and a silent failure to restart leaves no evidence at\r\nrem all -- which is exactly how this went unexplained once already.\r\n\"%SYS%\\ping.exe\" -n 6 127.0.0.1 >nul\r\nrem The same lock test read the other way round: a running beamtel holds its\r\nrem own image open, so an exe we can still write to is one nothing is running.\r\n2>nul ( >>\"%EXE%\" (call ) ) && (echo [%DATE% %TIME%] ERROR: \"%EXE%\" is still writable; it did not start>> \"%LOGFILE%\") || (echo [%DATE% %TIME%] beamtel.exe is running>> \"%LOGFILE%\")\r\n\r\n:done\r\nrd /s /q \"%STAGED%\"\r\n:finish\r\necho [%DATE% %TIME%] helper finished>> \"%LOGFILE%\"\r\n(goto) 2>nul & del \"%~f0\"\r\n",
+   "logs": [
+    [
+     "ERROR",
+     "Update failed: Could not start the update helper: boom"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "popen_fails",
+   "pending_after": "",
+   "popen": [
+    {
+     "args": [
+      "C:\\Windows\\System32\\cmd.exe",
+      "/d",
+      "/c",
+      "<ROOT>\\config\\update\\apply_update.cmd"
+     ],
+     "close_fds": true,
+     "creationflags": 134218240,
+     "cwd": "<ROOT>\\config\\update",
+     "line": "C:\\Windows\\System32\\cmd.exe /d /c <ROOT>\\config\\update\\apply_update.cmd",
+     "stderr": true,
+     "stdin": true,
+     "stdout": true
+    }
+   ],
+   "staged_tree": {
+    "README.md": "IyByZWFkbWUK",
+    "beamtel.exe": "TVogZmFrZSBleGU=",
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAYm52ZGFfbW9kX3ZlcnNpb24uanNvbqtWKkstKs7Mz1OyUlAy0DPWM1CqBQBQSwMEFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAABsdWEveC5sdWHT1VWo4AIAUEsBAhQAFAAAAAgAgxgiUM3owWMWAAAAFAAAABYAAAAAAAAAAAAAAIABAAAAAGJudmRhX21vZF92ZXJzaW9uLmpzb25QSwECFAAUAAAACACDGCJQSzdVkgcAAAAFAAAACQAAAAAAAAAAAAAAgAFKAAAAbHVhL3gubHVhUEsFBgAAAAACAAIAewAAAHgAAAAAAA==",
+    "docs/": null,
+    "docs/sub/": null,
+    "docs/sub/notes.txt": "bm90ZXM="
+   },
+   "zip_exists": true
+  },
+  {
+   "case": {
+    "cancel": true,
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMH1dfQ==",
+     "kind": "body"
+    },
+    "download": {
+     "body": "UEsDBBQAAAAIAIMYIlAzWChmDQAAAAsAAAALAAAAYmVhbXRlbC5leGXzjVJIS8xOVUitSAUAUEsDBBQAAAAIAIMYIlBTh4svCwAAAAkAAAAJAAAAUkVBRE1FLm1kU1YoSk1MyU3lAgBQSwMEFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXAL8GZmEWFgYOBgaJZQCjj74mCyGJAHEgHRSXllKYnxufkp8WWpRcWZ+Xl6WcX5eavDtLx1tc6dOR+8KSjA6ILxNeOAVawMASgmeZuHTmIH8liBmBOIc0oT9Sv0gOTlq6ErHjABVTMyiTDgthkGGhgZcLoD3Qx0OxFmeCG7IMCblQ0kzASE1UC6AqwIAFBLAwQUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAGRvY3MvAwBQSwMEFAAAAAgAgxgiUIymGwEHAAAABQAAABIAAABkb2NzL3N1Yi9ub3Rlcy50eHTLyy9JLQYAUEsBAhQAFAAAAAgAgxgiUDNYKGYNAAAACwAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUFOHiy8LAAAACQAAAAkAAAAAAAAAAAAAAIABNgAAAFJFQURNRS5tZFBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAWgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAAAAAAAAABAA/UEqAQAAZG9jcy9QSwECFAAUAAAACACDGCJQjKYbAQcAAAAFAAAAEgAAAAAAAAAAAAAAgAFPAQAAZG9jcy9zdWIvbm90ZXMudHh0UEsFBgAAAAAFAAUAKQEAAIYBAAAAAA==",
+     "kind": "body"
+    }
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "yes_no",
+     "default": "yes",
+     "event": "message",
+     "kind": "question",
+     "text": "You have version 0.2.1. Version 0.3.0 is available.\n\nInstall it now?",
+     "title": "Update Available"
+    },
+    {
+     "cancellable": true,
+     "event": "progress",
+     "text": "Downloading BeamNG_accessibility_mod.zip...",
+     "title": "Downloading update"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "INFO",
+     "User cancelled the download of v0.3.0"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "cancelled",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "answers": [
+     "no"
+    ],
+    "config": {
+     "pending_update_version": "0.2.1"
+    }
+   },
+   "events": [
+    {
+     "buttons": "yes_no",
+     "default": "yes",
+     "event": "message",
+     "kind": "question",
+     "text": "BEAM has been updated to version 0.2.1.\n\nInstall the updated BeamNG.drive mod now?",
+     "title": "Install the updated mod"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "INFO",
+     "Pending update 0.2.1: offering the mod install"
+    ],
+    [
+     "INFO",
+     "User declined the mod install for update 0.2.1"
+    ],
+    [
+     "INFO",
+     "Pending update 0.2.1 resolved (mod installed: False)"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "phase_two_decline",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "answers": [
+     "yes"
+    ],
+    "config": {
+     "pending_update_version": " v0.2.1 "
+    },
+    "mods": "ready"
+   },
+   "events": [
+    {
+     "buttons": "yes_no",
+     "default": "yes",
+     "event": "message",
+     "kind": "question",
+     "text": "BEAM has been updated to version v0.2.1.\n\nInstall the updated BeamNG.drive mod now?",
+     "title": "Install the updated mod"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: copied the mod file.\nFreeroam layout: layout file was not found; no cleanup was needed.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "INFO",
+     "Pending update v0.2.1: offering the mod install"
+    ],
+    [
+     "INFO",
+     "Pending update v0.2.1 resolved (mod installed: True)"
+    ]
+   ],
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "phase_two_install",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "answers": [
+     "yes"
+    ],
+    "config": {
+     "pending_update_version": "0.2.1"
+    }
+   },
+   "events": [
+    {
+     "buttons": "yes_no",
+     "default": "yes",
+     "event": "message",
+     "kind": "question",
+     "text": "BEAM has been updated to version 0.2.1.\n\nInstall the updated BeamNG.drive mod now?",
+     "title": "Install the updated mod"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "error",
+     "text": "'bng_screenreader_mod.zip' was not found in the program directory:\n<ROOT>\\prog\n\nInstallation cannot proceed.",
+     "title": "Mod File Not Found"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "INFO",
+     "Pending update 0.2.1: offering the mod install"
+    ],
+    [
+     "INFO",
+     "Pending update 0.2.1 resolved (mod installed: False)"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "phase_two_install_no_zip",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2MC4yLjEiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMH1dfQ==",
+     "kind": "body"
+    },
+    "config": {
+     "pending_update_version": "0.2.0"
+    }
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "ERROR",
+     "Discarding pending update 0.2.0: running version is still 0.2.1"
+    ],
+    [
+     "INFO",
+     "Up to date: running 0.2.1, latest release is v0.2.1"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "stale_pending",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "kind": "url",
+     "reason": "offline"
+    },
+    "config": {
+     "pending_update_version": "garbage"
+    }
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "ERROR",
+     "Discarding pending update garbage: running version is still 0.2.1"
+    ],
+    [
+     "INFO",
+     "Update check: could not reach GitHub (offline)"
+    ],
+    [
+     "INFO",
+     "Update check found nothing to install"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "stale_pending_garbage",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2MC4yLjEiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogImh0dHBzOi8vZXhhbXBsZS5pbnZhbGlkL2IuemlwIiwgInNpemUiOiAxMH1dfQ==",
+     "kind": "body"
+    },
+    "config": {
+     "pending_update_version": "0.2.1"
+    },
+    "manual": true
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "You are running the latest version (0.2.1).",
+     "title": "No Update Available"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "INFO",
+     "Up to date: running 0.2.1, latest release is v0.2.1"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "manual_with_pending",
+   "pending_after": "0.2.1",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6IDUsICJhc3NldHMiOiBbeyJuYW1lIjogIkJlYW1OR19hY2Nlc3NpYmlsaXR5X21vZC56aXAiLCAiYnJvd3Nlcl9kb3dubG9hZF91cmwiOiAiaHR0cHM6Ly9leGFtcGxlLmludmFsaWQvYi56aXAifV19",
+     "kind": "body"
+    }
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "ERROR",
+     "Updater flow failed: 'int' object has no attribute 'lstrip'"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "tag_int",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6IHRydWUsICJhc3NldHMiOiBbeyJuYW1lIjogIkJlYW1OR19hY2Nlc3NpYmlsaXR5X21vZC56aXAiLCAiYnJvd3Nlcl9kb3dubG9hZF91cmwiOiAiaHR0cHM6Ly9leGFtcGxlLmludmFsaWQvYi56aXAifV19",
+     "kind": "body"
+    },
+    "manual": true
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "You are running the latest version (0.2.1).",
+     "title": "No Update Available"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "INFO",
+     "Up to date: running 0.2.1, latest release is True"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "tag_true",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2OSIsICJhc3NldHMiOiA3fQ==",
+     "kind": "body"
+    },
+    "manual": true
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "warning",
+     "text": "Could not check for updates right now.",
+     "title": "Update Check Failed"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "INFO",
+     "Update check found nothing to install"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "assets_not_iterable",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  },
+  {
+   "case": {
+    "check": {
+     "body": "eyJ0YWdfbmFtZSI6ICJ2MC4zLjAiLCAiYXNzZXRzIjogW3sibmFtZSI6ICJCZWFtTkdfYWNjZXNzaWJpbGl0eV9tb2QuemlwIiwgImJyb3dzZXJfZG93bmxvYWRfdXJsIjogIm5vdCBhIHVybCIsICJzaXplIjogMTB9XX0=",
+     "kind": "body"
+    }
+   },
+   "events": [
+    {
+     "cancellable": false,
+     "event": "progress",
+     "text": "Contacting GitHub...",
+     "title": "Checking for updates"
+    },
+    {
+     "buttons": "yes_no",
+     "default": "yes",
+     "event": "message",
+     "kind": "question",
+     "text": "You have version 0.2.1. Version 0.3.0 is available.\n\nInstall it now?",
+     "title": "Update Available"
+    },
+    {
+     "cancellable": true,
+     "event": "progress",
+     "text": "Downloading BeamNG_accessibility_mod.zip...",
+     "title": "Downloading update"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "error",
+     "text": "The update could not be installed.\n\nunknown url type: 'not a url'\n\nBEAM will carry on running the version you already have.",
+     "title": "Update Failed"
+    }
+   ],
+   "gate": [
+    "allow"
+   ],
+   "helper": null,
+   "logs": [
+    [
+     "ERROR",
+     "Update failed: unknown url type: 'not a url'"
+    ]
+   ],
+   "mods_tree": null,
+   "name": "url_not_a_url",
+   "pending_after": "",
+   "popen": [],
+   "staged_tree": null,
+   "zip_exists": false
+  }
+ ],
+ "helper": {
+  "encode": [
+   {
+    "err": "'ascii' codec can't encode character '\\xe9' in position 3: ordinal not in range(128)",
+    "text": "a\né"
+   },
+   {
+    "err": "'ascii' codec can't encode characters in position 7-8: ordinal not in range(128)",
+    "text": "abc\n\nñé x"
+   },
+   {
+    "err": "'ascii' codec can't encode character '\\U0001f600' in position 1: ordinal not in range(128)",
+    "text": "x😀"
+   },
+   {
+    "err": "'ascii' codec can't encode character '\\u0101' in position 0: ordinal not in range(128)",
+    "text": "āb"
+   },
+   {
+    "err": "'ascii' codec can't encode character '\\xe9' in position 0: ordinal not in range(128)",
+    "text": "é\né"
+   },
+   {
+    "ok": "cGxhaW4NCg==",
+    "text": "plain\n"
+   }
+  ],
+  "list2cmdline": [
+   {
+    "line": "C:\\Windows\\System32\\cmd.exe /d /c C:\\Users\\x\\AppData\\Local\\beamtel\\update\\apply_update.cmd",
+    "seq": [
+     "C:\\Windows\\System32\\cmd.exe",
+     "/d",
+     "/c",
+     "C:\\Users\\x\\AppData\\Local\\beamtel\\update\\apply_update.cmd"
+    ]
+   },
+   {
+    "line": "C:\\Windows\\System32\\cmd.exe /d /c \"C:\\Users\\John Smith\\AppData\\Local\\beamtel\\update\\apply_update.cmd\"",
+    "seq": [
+     "C:\\Windows\\System32\\cmd.exe",
+     "/d",
+     "/c",
+     "C:\\Users\\John Smith\\AppData\\Local\\beamtel\\update\\apply_update.cmd"
+    ]
+   },
+   {
+    "line": "\"a b\\\\\" \"\" q\\\"uote back\\\\\\\\\\\"slash \"tab\there\" end\\\\",
+    "seq": [
+     "a b\\",
+     "",
+     "q\"uote",
+     "back\\\\\"slash",
+     "tab\there",
+     "end\\\\"
+    ]
+   }
+  ],
+  "template_body": "@echo off\nsetlocal\nset \"PID=4242\"\nset \"PROG=C:\\Program Files\\BEAM\"\nset \"STAGED=C:\\Users\\x\\AppData\\Local\\beamtel\\update\\staged\"\nset \"LOGFILE=C:\\Users\\x\\AppData\\Local\\beamtel\\update\\apply_update.log\"\nset \"SYS=%SystemRoot%\\System32\"\nset \"EXE=%PROG%\\beamtel.exe\"\n\necho [%DATE% %TIME%] waiting for \"%EXE%\" to be released (we were PID %PID%)> \"%LOGFILE%\"\nset /a TRIES=0\n:wait\nrem The question is not \"is a process called beamtel.exe running\", it is \"can\nrem I overwrite this file yet\" -- so ASK THE FILE. Opening the exe for append\nrem fails with a sharing violation for as long as Windows holds the image open,\nrem and succeeds (writing nothing) the moment the last handle goes. It costs one\nrem file open, enumerates nothing, and cannot be confused by a second install\nrem running elsewhere. The tasklist/find pipeline it replaces could be WRONG IN\nrem BOTH DIRECTIONS: its stderr went to nul, so a failure of tasklist itself was\nrem indistinguishable from \"no such process\". Observed 2026-08-28: one call took\nrem 103 seconds and then answered \"gone\" while beamtel was still up, and the\nrem post-start check answered \"did not appear\" about a process that had started.\nrem Both are that same false negative, and the second one made the log lie about\nrem the outcome of the update.\nif not exist \"%EXE%\" goto gone\n2>nul ( >>\"%EXE%\" (call ) ) && goto gone\nset /a TRIES+=1\nif %TRIES% GEQ 120 goto timeout\n\"%SYS%\\ping.exe\" -n 2 127.0.0.1 >nul\ngoto wait\n\n:timeout\nrem A locked executable cannot be replaced safely. In particular, do not remove\nrem the onefile cache or fall through to robocopy: either can damage the still\nrem running installation. Leave the staged update in place for diagnosis and\nrem stop this helper; a later update check can stage a fresh copy.\necho [%DATE% %TIME%] ERROR: \"%EXE%\" still locked after %TRIES% tries; update abandoned>> \"%LOGFILE%\"\ngoto finish\n\n:gone\nrem Give Windows a moment to release the executable image itself.\n\"%SYS%\\ping.exe\" -n 3 127.0.0.1 >nul\necho [%DATE% %TIME%] \"%EXE%\" released after %TRIES% tries>> \"%LOGFILE%\"\n\n:ready\n\nrem The Nuitka onefile cache holds the OLD exe's unpacked payload under a fixed\nrem name beside the exe (--onefile-tempdir-spec={PROGRAM_DIR}/.appdata with\nrem --onefile-cache-mode=cached). It is only safe to remove once the process is\nrem gone, which is precisely here. A HALF-removed cache is worse than a stale\nrem one -- the new bootstrap can sit on it -- so the outcome is recorded.\nif exist \"%PROG%\\.appdata\" rd /s /q \"%PROG%\\.appdata\"\nif exist \"%PROG%\\.appdata\" echo [%DATE% %TIME%] WARNING: .appdata survived the delete>> \"%LOGFILE%\"\n\necho [%DATE% %TIME%] copying \"%STAGED%\" -^> \"%PROG%\">> \"%LOGFILE%\"\n\"%SYS%\\robocopy.exe\" \"%STAGED%\" \"%PROG%\" /E /IS /IT /R:5 /W:2 >> \"%LOGFILE%\" 2>&1\nset RC=%ERRORLEVEL%\necho [%DATE% %TIME%] robocopy exit %RC% >> \"%LOGFILE%\"\nif %RC% GEQ 8 echo [%DATE% %TIME%] copy FAILED; not restarting>> \"%LOGFILE%\"\nif %RC% GEQ 8 goto done\n\nif not exist \"%EXE%\" echo [%DATE% %TIME%] ERROR: \"%EXE%\" missing after copy>> \"%LOGFILE%\"\nif not exist \"%EXE%\" goto done\n\nrem /D sets the new process's working directory: the helper's own is the update\nrem folder, and handing that to the program we are restarting is not what it\nrem would have had if the user had launched it themselves.\necho [%DATE% %TIME%] starting \"%EXE%\">> \"%LOGFILE%\"\nstart \"BEAM\" /B /D \"%PROG%\" \"%EXE%\"\necho [%DATE% %TIME%] start returned %ERRORLEVEL% >> \"%LOGFILE%\"\n\nrem \"start\" is asynchronous and reports almost nothing, so the launch is\nrem VERIFIED rather than assumed. Without this the log's last line is written\nrem before the attempt and a silent failure to restart leaves no evidence at\nrem all -- which is exactly how this went unexplained once already.\n\"%SYS%\\ping.exe\" -n 6 127.0.0.1 >nul\nrem The same lock test read the other way round: a running beamtel holds its\nrem own image open, so an exe we can still write to is one nothing is running.\n2>nul ( >>\"%EXE%\" (call ) ) && (echo [%DATE% %TIME%] ERROR: \"%EXE%\" is still writable; it did not start>> \"%LOGFILE%\") || (echo [%DATE% %TIME%] beamtel.exe is running>> \"%LOGFILE%\")\n\n:done\nrd /s /q \"%STAGED%\"\n:finish\necho [%DATE% %TIME%] helper finished>> \"%LOGFILE%\"\n(goto) 2>nul & del \"%~f0\"\n",
+  "written": {
+   "bytes": "@echo off\r\nsetlocal\r\nset \"PID=4242\"\r\nset \"PROG=<ROOT>\\Program Files\\BEAM\"\r\nset \"STAGED=<ROOT>\\update\\staged\"\r\nset \"LOGFILE=<ROOT>\\update\\apply_update.log\"\r\nset \"SYS=%SystemRoot%\\System32\"\r\nset \"EXE=%PROG%\\beamtel.exe\"\r\n\r\necho [%DATE% %TIME%] waiting for \"%EXE%\" to be released (we were PID %PID%)> \"%LOGFILE%\"\r\nset /a TRIES=0\r\n:wait\r\nrem The question is not \"is a process called beamtel.exe running\", it is \"can\r\nrem I overwrite this file yet\" -- so ASK THE FILE. Opening the exe for append\r\nrem fails with a sharing violation for as long as Windows holds the image open,\r\nrem and succeeds (writing nothing) the moment the last handle goes. It costs one\r\nrem file open, enumerates nothing, and cannot be confused by a second install\r\nrem running elsewhere. The tasklist/find pipeline it replaces could be WRONG IN\r\nrem BOTH DIRECTIONS: its stderr went to nul, so a failure of tasklist itself was\r\nrem indistinguishable from \"no such process\". Observed 2026-08-28: one call took\r\nrem 103 seconds and then answered \"gone\" while beamtel was still up, and the\r\nrem post-start check answered \"did not appear\" about a process that had started.\r\nrem Both are that same false negative, and the second one made the log lie about\r\nrem the outcome of the update.\r\nif not exist \"%EXE%\" goto gone\r\n2>nul ( >>\"%EXE%\" (call ) ) && goto gone\r\nset /a TRIES+=1\r\nif %TRIES% GEQ 120 goto timeout\r\n\"%SYS%\\ping.exe\" -n 2 127.0.0.1 >nul\r\ngoto wait\r\n\r\n:timeout\r\nrem A locked executable cannot be replaced safely. In particular, do not remove\r\nrem the onefile cache or fall through to robocopy: either can damage the still\r\nrem running installation. Leave the staged update in place for diagnosis and\r\nrem stop this helper; a later update check can stage a fresh copy.\r\necho [%DATE% %TIME%] ERROR: \"%EXE%\" still locked after %TRIES% tries; update abandoned>> \"%LOGFILE%\"\r\ngoto finish\r\n\r\n:gone\r\nrem Give Windows a moment to release the executable image itself.\r\n\"%SYS%\\ping.exe\" -n 3 127.0.0.1 >nul\r\necho [%DATE% %TIME%] \"%EXE%\" released after %TRIES% tries>> \"%LOGFILE%\"\r\n\r\n:ready\r\n\r\nrem The Nuitka onefile cache holds the OLD exe's unpacked payload under a fixed\r\nrem name beside the exe (--onefile-tempdir-spec={PROGRAM_DIR}/.appdata with\r\nrem --onefile-cache-mode=cached). It is only safe to remove once the process is\r\nrem gone, which is precisely here. A HALF-removed cache is worse than a stale\r\nrem one -- the new bootstrap can sit on it -- so the outcome is recorded.\r\nif exist \"%PROG%\\.appdata\" rd /s /q \"%PROG%\\.appdata\"\r\nif exist \"%PROG%\\.appdata\" echo [%DATE% %TIME%] WARNING: .appdata survived the delete>> \"%LOGFILE%\"\r\n\r\necho [%DATE% %TIME%] copying \"%STAGED%\" -^> \"%PROG%\">> \"%LOGFILE%\"\r\n\"%SYS%\\robocopy.exe\" \"%STAGED%\" \"%PROG%\" /E /IS /IT /R:5 /W:2 >> \"%LOGFILE%\" 2>&1\r\nset RC=%ERRORLEVEL%\r\necho [%DATE% %TIME%] robocopy exit %RC% >> \"%LOGFILE%\"\r\nif %RC% GEQ 8 echo [%DATE% %TIME%] copy FAILED; not restarting>> \"%LOGFILE%\"\r\nif %RC% GEQ 8 goto done\r\n\r\nif not exist \"%EXE%\" echo [%DATE% %TIME%] ERROR: \"%EXE%\" missing after copy>> \"%LOGFILE%\"\r\nif not exist \"%EXE%\" goto done\r\n\r\nrem /D sets the new process's working directory: the helper's own is the update\r\nrem folder, and handing that to the program we are restarting is not what it\r\nrem would have had if the user had launched it themselves.\r\necho [%DATE% %TIME%] starting \"%EXE%\">> \"%LOGFILE%\"\r\nstart \"BEAM\" /B /D \"%PROG%\" \"%EXE%\"\r\necho [%DATE% %TIME%] start returned %ERRORLEVEL% >> \"%LOGFILE%\"\r\n\r\nrem \"start\" is asynchronous and reports almost nothing, so the launch is\r\nrem VERIFIED rather than assumed. Without this the log's last line is written\r\nrem before the attempt and a silent failure to restart leaves no evidence at\r\nrem all -- which is exactly how this went unexplained once already.\r\n\"%SYS%\\ping.exe\" -n 6 127.0.0.1 >nul\r\nrem The same lock test read the other way round: a running beamtel holds its\r\nrem own image open, so an exe we can still write to is one nothing is running.\r\n2>nul ( >>\"%EXE%\" (call ) ) && (echo [%DATE% %TIME%] ERROR: \"%EXE%\" is still writable; it did not start>> \"%LOGFILE%\") || (echo [%DATE% %TIME%] beamtel.exe is running>> \"%LOGFILE%\")\r\n\r\n:done\r\nrd /s /q \"%STAGED%\"\r\n:finish\r\necho [%DATE% %TIME%] helper finished>> \"%LOGFILE%\"\r\n(goto) 2>nul & del \"%~f0\"\r\n",
+   "path": "<ROOT>\\update\\apply_update.cmd"
+  }
+ },
+ "mod_install": [
+  {
+   "answers": [],
+   "dst": null,
+   "events": [
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "error",
+     "text": "'bng_screenreader_mod.zip' was not found in the program directory:\n<ROOT>\\prog\n\nInstallation cannot proceed.",
+     "title": "Mod File Not Found"
+    }
+   ],
+   "layout": null,
+   "layout_tree": null,
+   "mods_exists": true,
+   "mods_tree": {},
+   "name": "no_src",
+   "result": false,
+   "src": null
+  },
+  {
+   "answers": [],
+   "dst": null,
+   "events": [
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "error",
+     "text": "The BeamNG.drive mods directory was not found:\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\n\nPlease run BeamNG.drive at least once before installing the mod.",
+     "title": "Mods Directory Not Found"
+    }
+   ],
+   "layout": null,
+   "layout_tree": null,
+   "mods_exists": false,
+   "mods_tree": null,
+   "name": "no_mods_dir",
+   "result": false,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [],
+   "dst": null,
+   "events": [
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: copied the mod file.\nFreeroam layout: layout file was not found; no cleanup was needed.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": null,
+   "layout_tree": null,
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "fresh",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [],
+   "dst": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA==",
+   "events": [
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: the installed file is already identical.\nFreeroam layout: layout file was not found; no cleanup was needed.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": null,
+   "layout_tree": null,
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "identical",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [],
+   "dst": "UEsDBBQAAAAIAIMYIlACQiwUCgAAAAgAAAAJAAAAbHVhL3gubHVh09VVqOBKKS4BAFBLAwQUAAAACACDGCJQfcGhXhYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz0jNQqgUAUEsBAhQAFAAAAAgAgxgiUAJCLBQKAAAACAAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlB9waFeFgAAABQAAAAWAAAAAAAAAAAAAACAATEAAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHsAAAAAAA==",
+   "events": [
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: copied the mod file.\nFreeroam layout: layout file was not found; no cleanup was needed.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": null,
+   "layout_tree": null,
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "newer",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [],
+   "dst": "UEsDBBQAAAAIAIMYIlACQiwUCgAAAAgAAAAJAAAAbHVhL3gubHVh09VVqOBKKS4BAFBLAwQUAAAACACDGCJQfcGhXhYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz0jNQqgUAUEsBAhQAFAAAAAgAgxgiUAJCLBQKAAAACAAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlB9waFeFgAAABQAAAAWAAAAAAAAAAAAAACAATEAAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHsAAAAAAA==",
+   "events": [
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: copied the mod file.\nFreeroam layout: layout file was not found; no cleanup was needed.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": null,
+   "layout_tree": null,
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQfcGhXhYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz0jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlB9waFeFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "same_version_rebuilt",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQfcGhXhYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz0jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlB9waFeFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [
+    "no"
+   ],
+   "dst": "UEsDBBQAAAAIAIMYIlACQiwUCgAAAAgAAAAJAAAAbHVhL3gubHVh09VVqOBKKS4BAFBLAwQUAAAACACDGCJQfcGhXhYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz0jNQqgUAUEsBAhQAFAAAAAgAgxgiUAJCLBQKAAAACAAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlB9waFeFgAAABQAAAAWAAAAAAAAAAAAAACAATEAAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHsAAAAAAA==",
+   "events": [
+    {
+     "buttons": "yes_no",
+     "default": "no",
+     "event": "message",
+     "kind": "warning",
+     "text": "The mod in the program directory is version 0.1.0, but version 0.2.0 is already installed.\nDo you want to install the older one anyway?",
+     "title": "Older Version Detected"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: kept the existing installed file.\nFreeroam layout: layout file was not found; no cleanup was needed.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": null,
+   "layout_tree": null,
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlACQiwUCgAAAAgAAAAJAAAAbHVhL3gubHVh09VVqOBKKS4BAFBLAwQUAAAACACDGCJQfcGhXhYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz0jNQqgUAUEsBAhQAFAAAAAgAgxgiUAJCLBQKAAAACAAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlB9waFeFgAAABQAAAAWAAAAAAAAAAAAAACAATEAAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHsAAAAAAA=="
+   },
+   "name": "older_declined",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQrbsBGRYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1DNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlCtuwEZFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [
+    "yes"
+   ],
+   "dst": "UEsDBBQAAAAIAIMYIlACQiwUCgAAAAgAAAAJAAAAbHVhL3gubHVh09VVqOBKKS4BAFBLAwQUAAAACACDGCJQfcGhXhYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz0jNQqgUAUEsBAhQAFAAAAAgAgxgiUAJCLBQKAAAACAAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlB9waFeFgAAABQAAAAWAAAAAAAAAAAAAACAATEAAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHsAAAAAAA==",
+   "events": [
+    {
+     "buttons": "yes_no",
+     "default": "no",
+     "event": "message",
+     "kind": "warning",
+     "text": "The mod in the program directory is version 0.1.0, but version 0.2.0 is already installed.\nDo you want to install the older one anyway?",
+     "title": "Older Version Detected"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: copied the mod file.\nFreeroam layout: layout file was not found; no cleanup was needed.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": null,
+   "layout_tree": null,
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQrbsBGRYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1DNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlCtuwEZFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "older_accepted",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQrbsBGRYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1DNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlCtuwEZFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [
+    "yes"
+   ],
+   "dst": "UEsDBBQAAAAIAIMYIlDWIiKQCAAAAAYAAAAJAAAAbHVhL3gubHVh09VVqOBKAgBQSwECFAAUAAAACACDGCJQ1iIikAgAAAAGAAAACQAAAAAAAAAAAAAAgAEAAAAAbHVhL3gubHVhUEsFBgAAAAABAAEANwAAAC8AAAAAAA==",
+   "events": [
+    {
+     "buttons": "yes_no",
+     "default": "yes",
+     "event": "message",
+     "kind": "question",
+     "text": "The mod in the program directory differs from the one already installed, but neither carries a version stamp, so which is newer cannot be determined.\n\nInstall the one from the program directory?",
+     "title": "Cannot Determine Version"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: copied the mod file.\nFreeroam layout: layout file was not found; no cleanup was needed.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": null,
+   "layout_tree": null,
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBscysJCAAAAAYAAAAJAAAAbHVhL3gubHVh09VVqOBKBABQSwECFAAUAAAACACDGCJQbHMrCQgAAAAGAAAACQAAAAAAAAAAAAAAgAEAAAAAbHVhL3gubHVhUEsFBgAAAAABAAEANwAAAC8AAAAAAA=="
+   },
+   "name": "both_unstamped_yes",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBscysJCAAAAAYAAAAJAAAAbHVhL3gubHVh09VVqOBKBABQSwECFAAUAAAACACDGCJQbHMrCQgAAAAGAAAACQAAAAAAAAAAAAAAgAEAAAAAbHVhL3gubHVhUEsFBgAAAAABAAEANwAAAC8AAAAAAA=="
+  },
+  {
+   "answers": [
+    "no"
+   ],
+   "dst": "UEsDBBQAAAAIAIMYIlDWIiKQCAAAAAYAAAAJAAAAbHVhL3gubHVh09VVqOBKAgBQSwECFAAUAAAACACDGCJQ1iIikAgAAAAGAAAACQAAAAAAAAAAAAAAgAEAAAAAbHVhL3gubHVhUEsFBgAAAAABAAEANwAAAC8AAAAAAA==",
+   "events": [
+    {
+     "buttons": "yes_no",
+     "default": "yes",
+     "event": "message",
+     "kind": "question",
+     "text": "The mod in the program directory differs from the one already installed, but neither carries a version stamp, so which is newer cannot be determined.\n\nInstall the one from the program directory?",
+     "title": "Cannot Determine Version"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: kept the existing installed file.\nFreeroam layout: layout file was not found; no cleanup was needed.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": null,
+   "layout_tree": null,
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlDWIiKQCAAAAAYAAAAJAAAAbHVhL3gubHVh09VVqOBKAgBQSwECFAAUAAAACACDGCJQ1iIikAgAAAAGAAAACQAAAAAAAAAAAAAAgAEAAAAAbHVhL3gubHVhUEsFBgAAAAABAAEANwAAAC8AAAAAAA=="
+   },
+   "name": "both_unstamped_no",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBscysJCAAAAAYAAAAJAAAAbHVhL3gubHVh09VVqOBKBABQSwECFAAUAAAACACDGCJQbHMrCQgAAAAGAAAACQAAAAAAAAAAAAAAgAEAAAAAbHVhL3gubHVhUEsFBgAAAAABAAEANwAAAC8AAAAAAA=="
+  },
+  {
+   "answers": [
+    "no"
+   ],
+   "dst": "UEsDBBQAAAAIAIMYIlACQiwUCgAAAAgAAAAJAAAAbHVhL3gubHVh09VVqOBKKS4BAFBLAwQUAAAACACDGCJQfcGhXhYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz0jNQqgUAUEsBAhQAFAAAAAgAgxgiUAJCLBQKAAAACAAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlB9waFeFgAAABQAAAAWAAAAAAAAAAAAAACAATEAAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHsAAAAAAA==",
+   "events": [
+    {
+     "buttons": "yes_no",
+     "default": "yes",
+     "event": "message",
+     "kind": "question",
+     "text": "The mod in the program directory differs from the one already installed, but neither carries a version stamp, so which is newer cannot be determined.\n\nInstall the one from the program directory?",
+     "title": "Cannot Determine Version"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: kept the existing installed file.\nFreeroam layout: layout file was not found; no cleanup was needed.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": null,
+   "layout_tree": null,
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlACQiwUCgAAAAgAAAAJAAAAbHVhL3gubHVh09VVqOBKKS4BAFBLAwQUAAAACACDGCJQfcGhXhYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz0jNQqgUAUEsBAhQAFAAAAAgAgxgiUAJCLBQKAAAACAAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlB9waFeFgAAABQAAAAWAAAAAAAAAAAAAACAATEAAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHsAAAAAAA=="
+   },
+   "name": "src_unstamped_dst_stamped",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBscysJCAAAAAYAAAAJAAAAbHVhL3gubHVh09VVqOBKBABQSwECFAAUAAAACACDGCJQbHMrCQgAAAAGAAAACQAAAAAAAAAAAAAAgAEAAAAAbHVhL3gubHVhUEsFBgAAAAABAAEANwAAAC8AAAAAAA=="
+  },
+  {
+   "answers": [],
+   "dst": "UEsDBBQAAAAIAIMYIlDWIiKQCAAAAAYAAAAJAAAAbHVhL3gubHVh09VVqOBKAgBQSwECFAAUAAAACACDGCJQ1iIikAgAAAAGAAAACQAAAAAAAAAAAAAAgAEAAAAAbHVhL3gubHVhUEsFBgAAAAABAAEANwAAAC8AAAAAAA==",
+   "events": [
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: copied the mod file.\nFreeroam layout: layout file was not found; no cleanup was needed.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": null,
+   "layout_tree": null,
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "src_stamped_dst_unstamped",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [],
+   "dst": "DIR",
+   "events": [
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "warning",
+     "text": "The copy appeared to succeed but the destination file cannot be found.\nInstallation may have failed.",
+     "title": "Verification Failed"
+    }
+   ],
+   "layout": null,
+   "layout_tree": null,
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip/": null,
+    "bng_screenreader_mod.zip/bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "dst_is_dir",
+   "result": false,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [],
+   "dst": null,
+   "events": [
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "warning",
+     "text": "The mod file was copied the mod file, but the BeamNG.drive freeroam UI layout could not be read:\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\settings\\ui_apps\\layouts\\default\\freeroam.uilayout.json\n\nExpecting property name enclosed in double quotes: line 1 column 2 (char 1)\n\nThe layout was not changed.",
+     "title": "Invalid Freeroam Layout"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: copied the mod file.\nFreeroam layout: could not inspect the layout; it was not changed.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": "e25vdCBqc29u",
+   "layout_tree": {
+    "freeroam.uilayout.json": "e25vdCBqc29u"
+   },
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "layout_invalid_json",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [],
+   "dst": null,
+   "events": [
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "warning",
+     "text": "The mod file was copied the mod file, but the BeamNG.drive freeroam UI layout could not be read:\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\settings\\ui_apps\\layouts\\default\\freeroam.uilayout.json\n\nExpecting value: line 1 column 1 (char 0)\n\nThe layout was not changed.",
+     "title": "Invalid Freeroam Layout"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: copied the mod file.\nFreeroam layout: could not inspect the layout; it was not changed.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": "",
+   "layout_tree": {
+    "freeroam.uilayout.json": ""
+   },
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "layout_empty",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [],
+   "dst": null,
+   "events": [
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "warning",
+     "text": "The mod file was copied the mod file, but the BeamNG.drive freeroam UI layout could not be read:\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\settings\\ui_apps\\layouts\\default\\freeroam.uilayout.json\n\nThe layout's top-level JSON value is not an object.\n\nThe layout was not changed.",
+     "title": "Invalid Freeroam Layout"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: copied the mod file.\nFreeroam layout: could not inspect the layout; it was not changed.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": "WzEsIDJd",
+   "layout_tree": {
+    "freeroam.uilayout.json": "WzEsIDJd"
+   },
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "layout_not_object",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [],
+   "dst": null,
+   "events": [
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "warning",
+     "text": "The mod file was copied the mod file, but the BeamNG.drive freeroam UI layout could not be read:\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\settings\\ui_apps\\layouts\\default\\freeroam.uilayout.json\n\nThe layout does not contain an 'apps' list.\n\nThe layout was not changed.",
+     "title": "Invalid Freeroam Layout"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: copied the mod file.\nFreeroam layout: could not inspect the layout; it was not changed.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": "eyJhcHBzIjogeyJhIjogMX19",
+   "layout_tree": {
+    "freeroam.uilayout.json": "eyJhcHBzIjogeyJhIjogMX19"
+   },
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "layout_no_apps",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [],
+   "dst": null,
+   "events": [
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "warning",
+     "text": "The mod file was copied the mod file, but the BeamNG.drive freeroam UI layout could not be read:\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\settings\\ui_apps\\layouts\\default\\freeroam.uilayout.json\n\n'utf-8' codec can't decode byte 0xff in position 11: invalid start byte\n\nThe layout was not changed.",
+     "title": "Invalid Freeroam Layout"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: copied the mod file.\nFreeroam layout: could not inspect the layout; it was not changed.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": "eyJhcHBzIjogWyL/Il19",
+   "layout_tree": {
+    "freeroam.uilayout.json": "eyJhcHBzIjogWyL/Il19"
+   },
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "layout_bad_utf8",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [],
+   "dst": null,
+   "events": [
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: copied the mod file.\nFreeroam layout: obsolete BNVDA Hook entry was not present.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": "eyJhcHBzIjogW10sICJ2ZXJzaW9uIjogMS41LCAibmFtZSI6ICJGcmVlcm9hbSBcdTAwZTkifQ==",
+   "layout_tree": {
+    "freeroam.uilayout.json": "eyJhcHBzIjogW10sICJ2ZXJzaW9uIjogMS41LCAibmFtZSI6ICJGcmVlcm9hbSBcdTAwZTkifQ=="
+   },
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "layout_zero",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [
+    "no"
+   ],
+   "dst": null,
+   "events": [
+    {
+     "buttons": "yes_no",
+     "default": "no",
+     "event": "message",
+     "kind": "question",
+     "text": "The freeroam UI layout contains 1 obsolete BNVDA Hook entry. The mod now starts automatically when the game starts, so these HUD entries are no longer needed.\n\nDo you want to back up the layout and remove them?",
+     "title": "Remove Obsolete HUD App"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: copied the mod file.\nFreeroam layout: kept 1 obsolete entry at your request.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": "eyJhcHBzIjogW3siYXBwTmFtZSI6ICJibnZkYUhvb2siLCAicGxhY2VtZW50IjogeyJ4IjogMH19XSwgInZlcnNpb24iOiAxLjUsICJuYW1lIjogIkZyZWVyb2FtIFx1MDBlOSJ9",
+   "layout_tree": {
+    "freeroam.uilayout.json": "eyJhcHBzIjogW3siYXBwTmFtZSI6ICJibnZkYUhvb2siLCAicGxhY2VtZW50IjogeyJ4IjogMH19XSwgInZlcnNpb24iOiAxLjUsICJuYW1lIjogIkZyZWVyb2FtIFx1MDBlOSJ9"
+   },
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "layout_one_no",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [
+    "yes"
+   ],
+   "dst": null,
+   "events": [
+    {
+     "buttons": "yes_no",
+     "default": "no",
+     "event": "message",
+     "kind": "question",
+     "text": "The freeroam UI layout contains 2 obsolete BNVDA Hook entries. The mod now starts automatically when the game starts, so these HUD entries are no longer needed.\n\nDo you want to back up the layout and remove them?",
+     "title": "Remove Obsolete HUD App"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: copied the mod file.\nFreeroam layout: removed 2 obsolete entries.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip\nLayout backup: <ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\settings\\ui_apps\\layouts\\default\\freeroam.uilayout.json.pre-bnvda-removal-<TS>.bak",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": "eyJhcHBzIjogW3siYXBwTmFtZSI6ICJvdGhlciJ9LCAic3RyIiwgeyJhcHBOYW1lIjogImJudmRhSG9vazIifSwgeyJhcHBOYW1lIjogImJudmRhSG9vayIsICJwbGFjZW1lbnQiOiB7IngiOiAwfX0sIHsiYXBwTmFtZSI6ICJibnZkYUhvb2siLCAicGxhY2VtZW50IjogeyJ4IjogMX19XSwgInZlcnNpb24iOiAxLjUsICJuYW1lIjogIkZyZWVyb2FtIFx1MDBlOSJ9",
+   "layout_tree": {
+    "freeroam.uilayout.json": "ewogICJhcHBzIjogWwogICAgewogICAgICAiYXBwTmFtZSI6ICJvdGhlciIKICAgIH0sCiAgICAic3RyIiwKICAgIHsKICAgICAgImFwcE5hbWUiOiAiYm52ZGFIb29rMiIKICAgIH0KICBdLAogICJ2ZXJzaW9uIjogMS41LAogICJuYW1lIjogIkZyZWVyb2FtIMOpIgp9Cg==",
+    "freeroam.uilayout.json.pre-bnvda-removal-<TS>.bak": "eyJhcHBzIjogW3siYXBwTmFtZSI6ICJvdGhlciJ9LCAic3RyIiwgeyJhcHBOYW1lIjogImJudmRhSG9vazIifSwgeyJhcHBOYW1lIjogImJudmRhSG9vayIsICJwbGFjZW1lbnQiOiB7IngiOiAwfX0sIHsiYXBwTmFtZSI6ICJibnZkYUhvb2siLCAicGxhY2VtZW50IjogeyJ4IjogMX19XSwgInZlcnNpb24iOiAxLjUsICJuYW1lIjogIkZyZWVyb2FtIFx1MDBlOSJ9"
+   },
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "layout_two_yes",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [
+    "yes"
+   ],
+   "dst": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA==",
+   "events": [
+    {
+     "buttons": "yes_no",
+     "default": "no",
+     "event": "message",
+     "kind": "question",
+     "text": "The freeroam UI layout contains 1 obsolete BNVDA Hook entry. The mod now starts automatically when the game starts, so these HUD entries are no longer needed.\n\nDo you want to back up the layout and remove them?",
+     "title": "Remove Obsolete HUD App"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: the installed file is already identical.\nFreeroam layout: removed 1 obsolete entry.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip\nLayout backup: <ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\settings\\ui_apps\\layouts\\default\\freeroam.uilayout.json.pre-bnvda-removal-<TS>.bak",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": "77u/eyJhcHBzIjogW3siYXBwTmFtZSI6ICJibnZkYUhvb2siLCAicGxhY2VtZW50IjogeyJ4IjogMH19XSwgInZlcnNpb24iOiAxLjUsICJuYW1lIjogIkZyZWVyb2FtIMOpIn0=",
+   "layout_tree": {
+    "freeroam.uilayout.json": "ewogICJhcHBzIjogW10sCiAgInZlcnNpb24iOiAxLjUsCiAgIm5hbWUiOiAiRnJlZXJvYW0gw6kiCn0K",
+    "freeroam.uilayout.json.pre-bnvda-removal-<TS>.bak": "77u/eyJhcHBzIjogW3siYXBwTmFtZSI6ICJibnZkYUhvb2siLCAicGxhY2VtZW50IjogeyJ4IjogMH19XSwgInZlcnNpb24iOiAxLjUsICJuYW1lIjogIkZyZWVyb2FtIMOpIn0="
+   },
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "layout_bom_yes",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "answers": [
+    "yes"
+   ],
+   "dst": null,
+   "events": [
+    {
+     "buttons": "yes_no",
+     "default": "no",
+     "event": "message",
+     "kind": "question",
+     "text": "The freeroam UI layout contains 1 obsolete BNVDA Hook entry. The mod now starts automatically when the game starts, so these HUD entries are no longer needed.\n\nDo you want to back up the layout and remove them?",
+     "title": "Remove Obsolete HUD App"
+    },
+    {
+     "buttons": "ok",
+     "default": "ok",
+     "event": "message",
+     "kind": "info",
+     "text": "The mod installation is complete.\n\nMod file: copied the mod file.\nFreeroam layout: removed 1 obsolete entry.\n\n<ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\mods\\bng_screenreader_mod.zip\nLayout backup: <ROOT>\\lad\\BeamNG\\BeamNG.drive\\current\\settings\\ui_apps\\layouts\\default\\freeroam.uilayout.json.pre-bnvda-removal-<TS>.bak",
+     "title": "Installation Complete"
+    }
+   ],
+   "layout": "eyJhcHBzIjogW3siYXBwTmFtZSI6ICJibnZkYUhvb2sifSwgeyJ3IjogMWUxMDAsICJoIjogMC4xLCAiYmlnIjogMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwLCAibmVnIjogLTAuMCwgInMiOiAiXHUyNjAzIFxuIn1dLCAieiI6IFtdfQ==",
+   "layout_tree": {
+    "freeroam.uilayout.json": "ewogICJhcHBzIjogWwogICAgewogICAgICAidyI6IDFlKzEwMCwKICAgICAgImgiOiAwLjEsCiAgICAgICJiaWciOiAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAsCiAgICAgICJuZWciOiAtMC4wLAogICAgICAicyI6ICLimIMgXG4iCiAgICB9CiAgXSwKICAieiI6IFtdCn0K",
+    "freeroam.uilayout.json.pre-bnvda-removal-<TS>.bak": "eyJhcHBzIjogW3siYXBwTmFtZSI6ICJibnZkYUhvb2sifSwgeyJ3IjogMWUxMDAsICJoIjogMC4xLCAiYmlnIjogMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwLCAibmVnIjogLTAuMCwgInMiOiAiXHUyNjAzIFxuIn1dLCAieiI6IFtdfQ=="
+   },
+   "mods_exists": true,
+   "mods_tree": {
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+   },
+   "name": "layout_floats_yes",
+   "result": true,
+   "src": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  }
+ ],
+ "mod_version": [
+  {
+   "name": "stamped",
+   "result": [
+    [
+     "0",
+     "3",
+     "0"
+    ],
+    "0.3.0"
+   ],
+   "zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQzejBYxYAAAAUAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQMtAz1jNQqgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHgAAAAAAA=="
+  },
+  {
+   "name": "stamped_v",
+   "result": [
+    [
+     "1",
+     "2",
+     "0"
+    ],
+    "v1.2"
+   ],
+   "zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQhGQwxxUAAAATAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQKjPUM1KqBQBQSwECFAAUAAAACACDGCJQSzdVkgcAAAAFAAAACQAAAAAAAAAAAAAAgAEAAAAAbHVhL3gubHVhUEsBAhQAFAAAAAgAgxgiUIRkMMcVAAAAEwAAABYAAAAAAAAAAAAAAIABLgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb25QSwUGAAAAAAIAAgB7AAAAdwAAAAAA"
+  },
+  {
+   "name": "unstamped",
+   "result": null,
+   "zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAQIUABQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAAAAAAAAAAACAAQAAAABsdWEveC5sdWFQSwUGAAAAAAEAAQA3AAAALgAAAAAA"
+  },
+  {
+   "name": "not_dict",
+   "result": null,
+   "zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQmPv3CAsAAAAJAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26LVjLQM9YzUIoFAFBLAQIUABQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAAAAAAAAAAACAAQAAAABsdWEveC5sdWFQSwECFAAUAAAACACDGCJQmPv3CAsAAAAJAAAAFgAAAAAAAAAAAAAAgAEuAAAAYm52ZGFfbW9kX3ZlcnNpb24uanNvblBLBQYAAAAAAgACAHsAAABtAAAAAAA="
+  },
+  {
+   "name": "version_int",
+   "result": null,
+   "zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQTBgJMBAAAAAOAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslIwrgUAUEsBAhQAFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAAAAAAAAAAAAAIABAAAAAGx1YS94Lmx1YVBLAQIUABQAAAAIAIMYIlBMGAkwEAAAAA4AAAAWAAAAAAAAAAAAAACAAS4AAABibnZkYV9tb2RfdmVyc2lvbi5qc29uUEsFBgAAAAACAAIAewAAAHIAAAAAAA=="
+  },
+  {
+   "name": "version_garbage",
+   "result": null,
+   "zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQLTKuWBUAAAATAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQSkotSVSqBQBQSwECFAAUAAAACACDGCJQSzdVkgcAAAAFAAAACQAAAAAAAAAAAAAAgAEAAAAAbHVhL3gubHVhUEsBAhQAFAAAAAgAgxgiUC0yrlgVAAAAEwAAABYAAAAAAAAAAAAAAIABLgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb25QSwUGAAAAAAIAAgB7AAAAdwAAAAAA"
+  },
+  {
+   "name": "invalid_json",
+   "result": null,
+   "zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQOUfVFQMAAAABAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rBgBQSwECFAAUAAAACACDGCJQSzdVkgcAAAAFAAAACQAAAAAAAAAAAAAAgAEAAAAAbHVhL3gubHVhUEsBAhQAFAAAAAgAgxgiUDlH1RUDAAAAAQAAABYAAAAAAAAAAAAAAIABLgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb25QSwUGAAAAAAIAAgB7AAAAZQAAAAAA"
+  },
+  {
+   "name": "bad_utf8",
+   "result": null,
+   "zip": "UEsDBBQAAAAIAIMYIlBLN1WSBwAAAAUAAAAJAAAAbHVhL3gubHVh09VVqOACAFBLAwQUAAAACACDGCJQHA5rjRIAAAAQAAAAFgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb26rVipLLSrOzM9TslJQ+q9UCwBQSwECFAAUAAAACACDGCJQSzdVkgcAAAAFAAAACQAAAAAAAAAAAAAAgAEAAAAAbHVhL3gubHVhUEsBAhQAFAAAAAgAgxgiUBwOa40SAAAAEAAAABYAAAAAAAAAAAAAAIABLgAAAGJudmRhX21vZF92ZXJzaW9uLmpzb25QSwUGAAAAAAIAAgB7AAAAdAAAAAAA"
+  },
+  {
+   "name": "not_zip",
+   "result": null,
+   "zip": "bm9wZQ=="
+  }
+ ],
+ "newer": [
+  {
+   "local": "0.2.1",
+   "newer": true,
+   "remote": "v0.3.0"
+  },
+  {
+   "local": "0.2.1",
+   "newer": false,
+   "remote": "0.2.1"
+  },
+  {
+   "local": "0.2.1",
+   "newer": false,
+   "remote": "v0.2.0"
+  },
+  {
+   "local": "0.9.9",
+   "newer": true,
+   "remote": "v0.10.0"
+  },
+  {
+   "local": "0.2.1",
+   "newer": false,
+   "remote": "garbage"
+  },
+  {
+   "local": "0.2.1",
+   "newer": true,
+   "remote": "v1"
+  },
+  {
+   "local": "garbage",
+   "newer": false,
+   "remote": "0.2.1"
+  },
+  {
+   "local": "0.2.1",
+   "newer": false,
+   "remote": ""
+  },
+  {
+   "local": "0.2.1",
+   "newer": false,
+   "remote": "v0.2.1-beta"
+  },
+  {
+   "local": "0.2.1",
+   "newer": true,
+   "remote": "v0.2.2-beta"
+  },
+  {
+   "local": "0.2.1",
+   "newer": true,
+   "remote": "5"
+  },
+  {
+   "local": "0.2.1",
+   "newer": false,
+   "remote": "True"
+  },
+  {
+   "local": "0.2.1",
+   "newer": true,
+   "remote": "1.5"
+  },
+  {
+   "local": "1",
+   "newer": true,
+   "remote": "99999999999999999999"
+  }
+ ],
+ "stage": [
+  {
+   "name": "good",
+   "result": {
+    "ok": null
+   },
+   "tree": {
+    "README.md": "IyByZWFkbWUK",
+    "beamtel.exe": "TVogZmFrZSBleGU=",
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAYm52ZGFfbW9kX3ZlcnNpb24uanNvbqtWKkstKs7Mz1OyUlAy0DPWM1CqBQBQSwMEFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAABsdWEveC5sdWHT1VWo4AIAUEsBAhQAFAAAAAgAgxgiUM3owWMWAAAAFAAAABYAAAAAAAAAAAAAAIABAAAAAGJudmRhX21vZF92ZXJzaW9uLmpzb25QSwECFAAUAAAACACDGCJQSzdVkgcAAAAFAAAACQAAAAAAAAAAAAAAgAFKAAAAbHVhL3gubHVhUEsFBgAAAAACAAIAewAAAHgAAAAAAA==",
+    "docs/": null,
+    "docs/sub/": null,
+    "docs/sub/notes.txt": "bm90ZXM="
+   },
+   "zip": "UEsDBBQAAAAIAIMYIlAzWChmDQAAAAsAAAALAAAAYmVhbXRlbC5leGXzjVJIS8xOVUitSAUAUEsDBBQAAAAIAIMYIlBTh4svCwAAAAkAAAAJAAAAUkVBRE1FLm1kU1YoSk1MyU3lAgBQSwMEFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXAL8GZmEWFgYOBgaJZQCjj74mCyGJAHEgHRSXllKYnxufkp8WWpRcWZ+Xl6WcX5eavDtLx1tc6dOR+8KSjA6ILxNeOAVawMASgmeZuHTmIH8liBmBOIc0oT9Sv0gOTlq6ErHjABVTMyiTDgthkGGhgZcLoD3Qx0OxFmeCG7IMCblQ0kzASE1UC6AqwIAFBLAwQUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAGRvY3MvAwBQSwMEFAAAAAgAgxgiUIymGwEHAAAABQAAABIAAABkb2NzL3N1Yi9ub3Rlcy50eHTLyy9JLQYAUEsBAhQAFAAAAAgAgxgiUDNYKGYNAAAACwAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUFOHiy8LAAAACQAAAAkAAAAAAAAAAAAAAIABNgAAAFJFQURNRS5tZFBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAWgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQAAAAAAIAAAAAAAAABQAAAAAAAAAAABAA/UEqAQAAZG9jcy9QSwECFAAUAAAACACDGCJQjKYbAQcAAAAFAAAAEgAAAAAAAAAAAAAAgAFPAQAAZG9jcy9zdWIvbm90ZXMudHh0UEsFBgAAAAAFAAUAKQEAAIYBAAAAAA=="
+  },
+  {
+   "name": "parent_dir",
+   "result": {
+    "ok": "Could not unpack the update: parent-directory path in archive: ../evil.txt"
+   },
+   "tree": null,
+   "zip": "UEsDBBQAAAAIAIMYIlBdm7CPBAAAAAIAAAALAAAAYmVhbXRlbC5leGXzjQIAUEsDBBQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwC/BmZhFhYGDgYGiWUAo4++JgshiQBxIB0Ul5ZSmJ8bn5KfFlqUXFmfl5elnF+Xmrw7S8dbXOnTkfvCkowOiC8TXjgFWsDAEoJnmbh05iB/JYgZgTiHNKE/Ur9IDk5auhKx4wAVUzMokw4LYZBhoYGXC6A90MdDsRZnghuyDAm5UNJMwEhNVAugKsCABQSwMEFAAAAAgAgxgiUIMW3IwDAAAAAQAAAAsAAAAuLi9ldmlsLnR4dKsAAFBLAQIUABQAAAAIAIMYIlBdm7CPBAAAAAIAAAALAAAAAAAAAAAAAACAAQAAAABiZWFtdGVsLmV4ZVBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAS0AAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQgxbcjAMAAAABAAAACwAAAAAAAAAAAAAAgAHvAAAALi4vZXZpbC50eHRQSwUGAAAAAAMAAwC4AAAAGwEAAAAA"
+  },
+  {
+   "name": "parent_mid",
+   "result": {
+    "ok": "Could not unpack the update: parent-directory path in archive: a/../b.txt"
+   },
+   "tree": null,
+   "zip": "UEsDBBQAAAAIAIMYIlBdm7CPBAAAAAIAAAALAAAAYmVhbXRlbC5leGXzjQIAUEsDBBQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwC/BmZhFhYGDgYGiWUAo4++JgshiQBxIB0Ul5ZSmJ8bn5KfFlqUXFmfl5elnF+Xmrw7S8dbXOnTkfvCkowOiC8TXjgFWsDAEoJnmbh05iB/JYgZgTiHNKE/Ur9IDk5auhKx4wAVUzMokw4LYZBhoYGXC6A90MdDsRZnghuyDAm5UNJMwEhNVAugKsCABQSwMEFAAAAAgAgxgiUIMW3IwDAAAAAQAAAAoAAABhLy4uL2IudHh0qwAAUEsBAhQAFAAAAAgAgxgiUF2bsI8EAAAAAgAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAAAAAAAAAAAAAIABLQAAAGJuZ19zY3JlZW5yZWFkZXJfbW9kLnppcFBLAQIUABQAAAAIAIMYIlCDFtyMAwAAAAEAAAAKAAAAAAAAAAAAAACAAe8AAABhLy4uL2IudHh0UEsFBgAAAAADAAMAtwAAABoBAAAAAA=="
+  },
+  {
+   "name": "abs_slash",
+   "result": {
+    "ok": "Could not unpack the update: absolute path in archive: /abs.txt"
+   },
+   "tree": null,
+   "zip": "UEsDBBQAAAAIAIMYIlBdm7CPBAAAAAIAAAALAAAAYmVhbXRlbC5leGXzjQIAUEsDBBQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwC/BmZhFhYGDgYGiWUAo4++JgshiQBxIB0Ul5ZSmJ8bn5KfFlqUXFmfl5elnF+Xmrw7S8dbXOnTkfvCkowOiC8TXjgFWsDAEoJnmbh05iB/JYgZgTiHNKE/Ur9IDk5auhKx4wAVUzMokw4LYZBhoYGXC6A90MdDsRZnghuyDAm5UNJMwEhNVAugKsCABQSwMEFAAAAAgAgxgiUIMW3IwDAAAAAQAAAAgAAAAvYWJzLnR4dKsAAFBLAQIUABQAAAAIAIMYIlBdm7CPBAAAAAIAAAALAAAAAAAAAAAAAACAAQAAAABiZWFtdGVsLmV4ZVBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAS0AAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQgxbcjAMAAAABAAAACAAAAAAAAAAAAAAAgAHvAAAAL2Ficy50eHRQSwUGAAAAAAMAAwC1AAAAGAEAAAAA"
+  },
+  {
+   "name": "abs_drive",
+   "result": {
+    "ok": "Could not unpack the update: absolute path in archive: C:/abs.txt"
+   },
+   "tree": null,
+   "zip": "UEsDBBQAAAAIAIMYIlBdm7CPBAAAAAIAAAALAAAAYmVhbXRlbC5leGXzjQIAUEsDBBQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwC/BmZhFhYGDgYGiWUAo4++JgshiQBxIB0Ul5ZSmJ8bn5KfFlqUXFmfl5elnF+Xmrw7S8dbXOnTkfvCkowOiC8TXjgFWsDAEoJnmbh05iB/JYgZgTiHNKE/Ur9IDk5auhKx4wAVUzMokw4LYZBhoYGXC6A90MdDsRZnghuyDAm5UNJMwEhNVAugKsCABQSwMEFAAAAAgAgxgiUIMW3IwDAAAAAQAAAAoAAABDOi9hYnMudHh0qwAAUEsBAhQAFAAAAAgAgxgiUF2bsI8EAAAAAgAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAAAAAAAAAAAAAIABLQAAAGJuZ19zY3JlZW5yZWFkZXJfbW9kLnppcFBLAQIUABQAAAAIAIMYIlCDFtyMAwAAAAEAAAAKAAAAAAAAAAAAAACAAe8AAABDOi9hYnMudHh0UEsFBgAAAAADAAMAtwAAABoBAAAAAA=="
+  },
+  {
+   "name": "drive_relative",
+   "result": {
+    "ok": null
+   },
+   "tree": {
+    "beamtel.exe": "TVo=",
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAYm52ZGFfbW9kX3ZlcnNpb24uanNvbqtWKkstKs7Mz1OyUlAy0DPWM1CqBQBQSwMEFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAABsdWEveC5sdWHT1VWo4AIAUEsBAhQAFAAAAAgAgxgiUM3owWMWAAAAFAAAABYAAAAAAAAAAAAAAIABAAAAAGJudmRhX21vZF92ZXJzaW9uLmpzb25QSwECFAAUAAAACACDGCJQSzdVkgcAAAAFAAAACQAAAAAAAAAAAAAAgAFKAAAAbHVhL3gubHVhUEsFBgAAAAACAAIAewAAAHgAAAAAAA==",
+    "rel.txt": "eA=="
+   },
+   "zip": "UEsDBBQAAAAIAIMYIlBdm7CPBAAAAAIAAAALAAAAYmVhbXRlbC5leGXzjQIAUEsDBBQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwC/BmZhFhYGDgYGiWUAo4++JgshiQBxIB0Ul5ZSmJ8bn5KfFlqUXFmfl5elnF+Xmrw7S8dbXOnTkfvCkowOiC8TXjgFWsDAEoJnmbh05iB/JYgZgTiHNKE/Ur9IDk5auhKx4wAVUzMokw4LYZBhoYGXC6A90MdDsRZnghuyDAm5UNJMwEhNVAugKsCABQSwMEFAAAAAgAgxgiUIMW3IwDAAAAAQAAAAkAAABDOnJlbC50eHSrAABQSwECFAAUAAAACACDGCJQXZuwjwQAAAACAAAACwAAAAAAAAAAAAAAgAEAAAAAYmVhbXRlbC5leGVQSwECFAAUAAAACACDGCJQ5Hi2hYwAAAAJAQAAGAAAAAAAAAAAAAAAgAEtAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwUEsBAhQAFAAAAAgAgxgiUIMW3IwDAAAAAQAAAAkAAAAAAAAAAAAAAIAB7wAAAEM6cmVsLnR4dFBLBQYAAAAAAwADALYAAAAZAQAAAAA="
+  },
+  {
+   "name": "backslash_name",
+   "result": {
+    "ok": null
+   },
+   "tree": {
+    "beamtel.exe": "TVo=",
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAYm52ZGFfbW9kX3ZlcnNpb24uanNvbqtWKkstKs7Mz1OyUlAy0DPWM1CqBQBQSwMEFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAABsdWEveC5sdWHT1VWo4AIAUEsBAhQAFAAAAAgAgxgiUM3owWMWAAAAFAAAABYAAAAAAAAAAAAAAIABAAAAAGJudmRhX21vZF92ZXJzaW9uLmpzb25QSwECFAAUAAAACACDGCJQSzdVkgcAAAAFAAAACQAAAAAAAAAAAAAAgAFKAAAAbHVhL3gubHVhUEsFBgAAAAACAAIAewAAAHgAAAAAAA==",
+    "dir/": null,
+    "dir/file.txt": "eA=="
+   },
+   "zip": "UEsDBBQAAAAIAIMYIlBdm7CPBAAAAAIAAAALAAAAYmVhbXRlbC5leGXzjQIAUEsDBBQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwC/BmZhFhYGDgYGiWUAo4++JgshiQBxIB0Ul5ZSmJ8bn5KfFlqUXFmfl5elnF+Xmrw7S8dbXOnTkfvCkowOiC8TXjgFWsDAEoJnmbh05iB/JYgZgTiHNKE/Ur9IDk5auhKx4wAVUzMokw4LYZBhoYGXC6A90MdDsRZnghuyDAm5UNJMwEhNVAugKsCABQSwMEFAAAAAgAgxgiUIMW3IwDAAAAAQAAAAwAAABkaXIvZmlsZS50eHSrAABQSwECFAAUAAAACACDGCJQXZuwjwQAAAACAAAACwAAAAAAAAAAAAAAgAEAAAAAYmVhbXRlbC5leGVQSwECFAAUAAAACACDGCJQ5Hi2hYwAAAAJAQAAGAAAAAAAAAAAAAAAgAEtAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwUEsBAhQAFAAAAAgAgxgiUIMW3IwDAAAAAQAAAAwAAAAAAAAAAAAAAIAB7wAAAGRpci9maWxlLnR4dFBLBQYAAAAAAwADALkAAAAcAQAAAAA="
+  },
+  {
+   "name": "illegal_chars",
+   "result": {
+    "ok": null
+   },
+   "tree": {
+    "beamtel.exe": "TVo=",
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAYm52ZGFfbW9kX3ZlcnNpb24uanNvbqtWKkstKs7Mz1OyUlAy0DPWM1CqBQBQSwMEFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAABsdWEveC5sdWHT1VWo4AIAUEsBAhQAFAAAAAgAgxgiUM3owWMWAAAAFAAAABYAAAAAAAAAAAAAAIABAAAAAGJudmRhX21vZF92ZXJzaW9uLmpzb25QSwECFAAUAAAACACDGCJQSzdVkgcAAAAFAAAACQAAAAAAAAAAAAAAgAFKAAAAbHVhL3gubHVhUEsFBgAAAAACAAIAewAAAHgAAAAAAA==",
+    "q_u_o_te.txt": "eQ==",
+    "we_ird__n_.txt": "eA=="
+   },
+   "zip": "UEsDBBQAAAAIAIMYIlBdm7CPBAAAAAIAAAALAAAAYmVhbXRlbC5leGXzjQIAUEsDBBQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwC/BmZhFhYGDgYGiWUAo4++JgshiQBxIB0Ul5ZSmJ8bn5KfFlqUXFmfl5elnF+Xmrw7S8dbXOnTkfvCkowOiC8TXjgFWsDAEoJnmbh05iB/JYgZgTiHNKE/Ur9IDk5auhKx4wAVUzMokw4LYZBhoYGXC6A90MdDsRZnghuyDAm5UNJMwEhNVAugKsCABQSwMEFAAAAAgAgxgiUIMW3IwDAAAAAQAAAA4AAAB3ZTppcmQ/PG4+LnR4dKsAAFBLAwQUAAAACACDGCJQFSbb+wMAAAABAAAADAAAAHEidXxvKnRlLnR4dKsEAFBLAQIUABQAAAAIAIMYIlBdm7CPBAAAAAIAAAALAAAAAAAAAAAAAACAAQAAAABiZWFtdGVsLmV4ZVBLAQIUABQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAAAAAAAAAAACAAS0AAABibmdfc2NyZWVucmVhZGVyX21vZC56aXBQSwECFAAUAAAACACDGCJQgxbcjAMAAAABAAAADgAAAAAAAAAAAAAAgAHvAAAAd2U6aXJkPzxuPi50eHRQSwECFAAUAAAACACDGCJQFSbb+wMAAAABAAAADAAAAAAAAAAAAAAAgAEeAQAAcSJ1fG8qdGUudHh0UEsFBgAAAAAEAAQA9QAAAEsBAAAAAA=="
+  },
+  {
+   "name": "trailing_dots",
+   "result": {
+    "ok": null
+   },
+   "tree": {
+    "beamtel.exe": "TVo=",
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAYm52ZGFfbW9kX3ZlcnNpb24uanNvbqtWKkstKs7Mz1OyUlAy0DPWM1CqBQBQSwMEFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAABsdWEveC5sdWHT1VWo4AIAUEsBAhQAFAAAAAgAgxgiUM3owWMWAAAAFAAAABYAAAAAAAAAAAAAAIABAAAAAGJudmRhX21vZF92ZXJzaW9uLmpzb25QSwECFAAUAAAACACDGCJQSzdVkgcAAAAFAAAACQAAAAAAAAAAAAAAgAFKAAAAbHVhL3gubHVhUEsFBgAAAAACAAIAewAAAHgAAAAAAA==",
+    "dir/": null,
+    "dir/f.txt": "eQ==",
+    "name": "eA=="
+   },
+   "zip": "UEsDBBQAAAAIAIMYIlBdm7CPBAAAAAIAAAALAAAAYmVhbXRlbC5leGXzjQIAUEsDBBQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwC/BmZhFhYGDgYGiWUAo4++JgshiQBxIB0Ul5ZSmJ8bn5KfFlqUXFmfl5elnF+Xmrw7S8dbXOnTkfvCkowOiC8TXjgFWsDAEoJnmbh05iB/JYgZgTiHNKE/Ur9IDk5auhKx4wAVUzMokw4LYZBhoYGXC6A90MdDsRZnghuyDAm5UNJMwEhNVAugKsCABQSwMEFAAAAAgAgxgiUIMW3IwDAAAAAQAAAAcAAABuYW1lLiAuqwAAUEsDBBQAAAAIAIMYIlAVJtv7AwAAAAEAAAALAAAAZGlyLiAvZi50eHSrBABQSwECFAAUAAAACACDGCJQXZuwjwQAAAACAAAACwAAAAAAAAAAAAAAgAEAAAAAYmVhbXRlbC5leGVQSwECFAAUAAAACACDGCJQ5Hi2hYwAAAAJAQAAGAAAAAAAAAAAAAAAgAEtAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwUEsBAhQAFAAAAAgAgxgiUIMW3IwDAAAAAQAAAAcAAAAAAAAAAAAAAIAB7wAAAG5hbWUuIC5QSwECFAAUAAAACACDGCJQFSbb+wMAAAABAAAACwAAAAAAAAAAAAAAgAEXAQAAZGlyLiAvZi50eHRQSwUGAAAAAAQABADtAAAAQwEAAAAA"
+  },
+  {
+   "name": "dot_components",
+   "result": {
+    "ok": null
+   },
+   "tree": {
+    "a/": null,
+    "a/b/": null,
+    "a/b/c.txt": "eQ==",
+    "beamtel.exe": "TVo=",
+    "bng_screenreader_mod.zip": "UEsDBBQAAAAIAIMYIlDN6MFjFgAAABQAAAAWAAAAYm52ZGFfbW9kX3ZlcnNpb24uanNvbqtWKkstKs7Mz1OyUlAy0DPWM1CqBQBQSwMEFAAAAAgAgxgiUEs3VZIHAAAABQAAAAkAAABsdWEveC5sdWHT1VWo4AIAUEsBAhQAFAAAAAgAgxgiUM3owWMWAAAAFAAAABYAAAAAAAAAAAAAAIABAAAAAGJudmRhX21vZF92ZXJzaW9uLmpzb25QSwECFAAUAAAACACDGCJQSzdVkgcAAAAFAAAACQAAAAAAAAAAAAAAgAFKAAAAbHVhL3gubHVhUEsFBgAAAAACAAIAewAAAHgAAAAAAA==",
+    "x.txt": "eA=="
+   },
+   "zip": "UEsDBBQAAAAIAIMYIlBdm7CPBAAAAAIAAAALAAAAYmVhbXRlbC5leGXzjQIAUEsDBBQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwC/BmZhFhYGDgYGiWUAo4++JgshiQBxIB0Ul5ZSmJ8bn5KfFlqUXFmfl5elnF+Xmrw7S8dbXOnTkfvCkowOiC8TXjgFWsDAEoJnmbh05iB/JYgZgTiHNKE/Ur9IDk5auhKx4wAVUzMokw4LYZBhoYGXC6A90MdDsRZnghuyDAm5UNJMwEhNVAugKsCABQSwMEFAAAAAgAgxgiUIMW3IwDAAAAAQAAAAcAAAAuL3gudHh0qwAAUEsDBBQAAAAIAIMYIlAVJtv7AwAAAAEAAAAMAAAAYS8uL2IvL2MudHh0qwQAUEsBAhQAFAAAAAgAgxgiUF2bsI8EAAAAAgAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAAAAAAAAAAAAAIABLQAAAGJuZ19zY3JlZW5yZWFkZXJfbW9kLnppcFBLAQIUABQAAAAIAIMYIlCDFtyMAwAAAAEAAAAHAAAAAAAAAAAAAACAAe8AAAAuL3gudHh0UEsBAhQAFAAAAAgAgxgiUBUm2/sDAAAAAQAAAAwAAAAAAAAAAAAAAIABFwEAAGEvLi9iLy9jLnR4dFBLBQYAAAAABAAEAO4AAABEAQAAAAA="
+  },
+  {
+   "name": "empty_name",
+   "result": {
+    "ok": "Could not unpack the update: Empty filename."
+   },
+   "tree": null,
+   "zip": "UEsDBBQAAAAIAIMYIlBdm7CPBAAAAAIAAAALAAAAYmVhbXRlbC5leGXzjQIAUEsDBBQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwC/BmZhFhYGDgYGiWUAo4++JgshiQBxIB0Ul5ZSmJ8bn5KfFlqUXFmfl5elnF+Xmrw7S8dbXOnTkfvCkowOiC8TXjgFWsDAEoJnmbh05iB/JYgZgTiHNKE/Ur9IDk5auhKx4wAVUzMokw4LYZBhoYGXC6A90MdDsRZnghuyDAm5UNJMwEhNVAugKsCABQSwMEFAAAAAgAgxgiUIMW3IwDAAAAAQAAAAEAAAAuqwAAUEsBAhQAFAAAAAgAgxgiUF2bsI8EAAAAAgAAAAsAAAAAAAAAAAAAAIABAAAAAGJlYW10ZWwuZXhlUEsBAhQAFAAAAAgAgxgiUOR4toWMAAAACQEAABgAAAAAAAAAAAAAAIABLQAAAGJuZ19zY3JlZW5yZWFkZXJfbW9kLnppcFBLAQIUABQAAAAIAIMYIlCDFtyMAwAAAAEAAAABAAAAAAAAAAAAAACAAe8AAAAuUEsFBgAAAAADAAMArgAAABEBAAAAAA=="
+  },
+  {
+   "name": "missing_exe",
+   "result": {
+    "ok": "The unpacked update is missing beamtel.exe."
+   },
+   "tree": null,
+   "zip": "UEsDBBQAAAAIAIMYIlDkeLaFjAAAAAkBAAAYAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwC/BmZhFhYGDgYGiWUAo4++JgshiQBxIB0Ul5ZSmJ8bn5KfFlqUXFmfl5elnF+Xmrw7S8dbXOnTkfvCkowOiC8TXjgFWsDAEoJnmbh05iB/JYgZgTiHNKE/Ur9IDk5auhKx4wAVUzMokw4LYZBhoYGXC6A90MdDsRZnghuyDAm5UNJMwEhNVAugKsCABQSwMEFAAAAAgAgxgiUJ3/CWwDAAAAAQAAAAkAAABSRUFETUUubWQrAgBQSwECFAAUAAAACACDGCJQ5Hi2hYwAAAAJAQAAGAAAAAAAAAAAAAAAgAEAAAAAYm5nX3NjcmVlbnJlYWRlcl9tb2QuemlwUEsBAhQAFAAAAAgAgxgiUJ3/CWwDAAAAAQAAAAkAAAAAAAAAAAAAAIABwgAAAFJFQURNRS5tZFBLBQYAAAAAAgACAH0AAADsAAAAAAA="
+  },
+  {
+   "name": "missing_both",
+   "result": {
+    "ok": "The unpacked update is missing beamtel.exe."
+   },
+   "tree": null,
+   "zip": "UEsDBBQAAAAIAIMYIlCd/wlsAwAAAAEAAAAJAAAAUkVBRE1FLm1kKwIAUEsBAhQAFAAAAAgAgxgiUJ3/CWwDAAAAAQAAAAkAAAAAAAAAAAAAAIABAAAAAFJFQURNRS5tZFBLBQYAAAAAAQABADcAAAAqAAAAAAA="
+  },
+  {
+   "name": "exe_is_dir",
+   "result": {
+    "ok": "The unpacked update is missing beamtel.exe."
+   },
+   "tree": null,
+   "zip": "UEsDBBQAAAAIAIMYIlAAAAAAAgAAAAAAAAAMAAAAYmVhbXRlbC5leGUvAwBQSwMEFAAAAAgAgxgiUK930mIDAAAAAQAAABgAAABibmdfc2NyZWVucmVhZGVyX21vZC56aXCrAgBQSwECFAAUAAAACACDGCJQAAAAAAIAAAAAAAAADAAAAAAAAAAAABAA/UEAAAAAYmVhbXRlbC5leGUvUEsBAhQAFAAAAAgAgxgiUK930mIDAAAAAQAAABgAAAAAAAAAAAAAAIABLAAAAGJuZ19zY3JlZW5yZWFkZXJfbW9kLnppcFBLBQYAAAAAAgACAIAAAABlAAAAAAA="
+  },
+  {
+   "name": "not_zip",
+   "result": {
+    "ok": "Could not unpack the update: File is not a zip file"
+   },
+   "tree": null,
+   "zip": "PGh0bWw+bm90IGEgemlwPC9odG1sPg=="
+  },
+  {
+   "name": "dir_entries_only",
+   "result": {
+    "ok": "The unpacked update is missing beamtel.exe."
+   },
+   "tree": null,
+   "zip": "UEsDBBQAAAAIAIMYIlAAAAAAAgAAAAAAAAACAAAAYS8DAFBLAwQUAAAACACDGCJQAAAAAAIAAAAAAAAABAAAAGEvYi8DAFBLAQIUABQAAAAIAIMYIlAAAAAAAgAAAAAAAAACAAAAAAAAAAAAEAD9QQAAAABhL1BLAQIUABQAAAAIAIMYIlAAAAAAAgAAAAAAAAAEAAAAAAAAAAAAEAD9QSIAAABhL2IvUEsFBgAAAAACAAIAYgAAAEYAAAAAAA=="
+  }
+ ],
+ "versions": [
+  {
+   "parsed": null,
+   "text": ""
+  },
+  {
+   "parsed": [
+    "1",
+    "2",
+    "3"
+   ],
+   "text": "v1.2.3"
+  },
+  {
+   "parsed": [
+    "1",
+    "2",
+    "0"
+   ],
+   "text": "1.2"
+  },
+  {
+   "parsed": [
+    "1",
+    "0",
+    "0"
+   ],
+   "text": "1"
+  },
+  {
+   "parsed": [
+    "1",
+    "2",
+    "3"
+   ],
+   "text": "v1.2.3-beta"
+  },
+  {
+   "parsed": null,
+   "text": "V1.2.3"
+  },
+  {
+   "parsed": [
+    "0",
+    "2",
+    "1"
+   ],
+   "text": " v0.2.1 "
+  },
+  {
+   "parsed": [
+    "0",
+    "2",
+    "1"
+   ],
+   "text": "0.2.1"
+  },
+  {
+   "parsed": null,
+   "text": "x1"
+  },
+  {
+   "parsed": [
+    "1",
+    "0",
+    "0"
+   ],
+   "text": "1..2"
+  },
+  {
+   "parsed": [
+    "1",
+    "2",
+    "3"
+   ],
+   "text": "01.002.0003"
+  },
+  {
+   "parsed": [
+    "99999999999999999999",
+    "1",
+    "0"
+   ],
+   "text": "99999999999999999999.1"
+  },
+  {
+   "parsed": [
+    "1",
+    "2",
+    "3"
+   ],
+   "text": "١.٢.٣"
+  },
+  {
+   "parsed": [
+    "1",
+    "2",
+    "0"
+   ],
+   "text": "𝟏.𝟐"
+  },
+  {
+   "parsed": null,
+   "text": "v"
+  },
+  {
+   "parsed": [
+    "1",
+    "2",
+    "3"
+   ],
+   "text": "1.2.3.4"
+  },
+  {
+   "parsed": [
+    "2",
+    "0",
+    "0"
+   ],
+   "text": "\t2.0\n"
+  },
+  {
+   "parsed": [
+    "0",
+    "3",
+    "0"
+   ],
+   "text": "v0.3.0"
+  },
+  {
+   "parsed": [
+    "0",
+    "2",
+    "10"
+   ],
+   "text": "0.2.10"
+  },
+  {
+   "parsed": null,
+   "text": "vv1"
+  },
+  {
+   "parsed": [
+    "1",
+    "0",
+    "0"
+   ],
+   "text": "1.a"
+  },
+  {
+   "parsed": null,
+   "text": "  "
+  },
+  {
+   "parsed": [
+    "1",
+    "0",
+    "0"
+   ],
+   "text": " 1.0"
+  },
+  {
+   "parsed": [
+    "0",
+    "2",
+    "1"
+   ],
+   "text": "0.2.1rc1"
+  },
+  {
+   "parsed": null,
+   "text": "-1.0"
+  },
+  {
+   "parsed": [
+    "1",
+    "0",
+    "0"
+   ],
+   "text": "1.-2"
+  }
+ ]
+}

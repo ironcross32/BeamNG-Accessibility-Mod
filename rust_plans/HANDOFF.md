@@ -6,7 +6,7 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-20, with the E7 commit.
+2026-11-21, with the E8/E10 commit (E9 code without its sim).
 
 ## Done so far
 
@@ -58,24 +58,28 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## In flight
 
-- E3 (instruments) and E4 (listeners B and browsers), running as background Opus agents.
-- E8 (vehicle spawner, one agent, may convert `vehicle_spawner.rs` to a directory
-  module), started 2026-11-20.
-- E9 (UI bridge and MCP), started 2026-11-20. Its brief carries the E2, E4 and E5
-  obligations listed above.
-- E10 (updater, mod installer), started 2026-11-20.
-- Then U2 (the Tauri backend: `src-tauri/`), best started once E9 lands, since it wires
-  the bridge and console into the window. If the session died, check their files for `not_ported!` and relaunch
-  whichever is unfinished, telling it to continue from what is on disk.
+Nothing is running. The batch 3 agents (E8, E9, E10) died with the session on
+2026-11-20 before reporting; their work was on disk and was finished and committed by
+the orchestrator on 2026-11-21:
+
+- **E8 (spawner) and E10 (updater, installer) are done**: all tests pass, fixtures
+  regenerate byte-identically. Their Python-bug reports were lost; the V1 audits for the
+  spawner and the updater must look for them.
+- **E9 is code-complete but untested**: the agent died before writing
+  `mcp_server/camera.rs` (written by the orchestrator from `mcp_server.py:745-1092`) and
+  before any test. The capture error carries no Python exception type name, so
+  `screen capture failed: <msg>` lacks the `<Type>: ` the Python prints.
 
 ## Next step
 
-1. When the batch 1 agents report: review each report's stub list, run
-   `cargo build --workspace` and `cargo test --workspace` in `rust/`, update `README.md`,
-   commit by explicit path (only `rust/` and `rust_plans/`), and update this file.
-2. Then batch 2: E3, E4, E6, E7. Then batch 3: E8 (spawner), E9, E10, U2.
+1. Finish E9: port `diagnostic/mcp_server_sim.py` to `tests/mcp_server_sim.rs` (it
+   stands the server up and drives it over real HTTP; 202 + empty body for a
+   notification and 405 for `GET /mcp` must be tests), plus a fixture for the camera
+   chunks (`cam_place_chunk` per addressing mode against the Python's string). Then the
+   E5 carry-over checks for the six bridge actions (`controller_menu_sim.rs` lists them).
+2. Then U2 (the Tauri backend: `src-tauri/`), which wires the bridge and console into
+   the window.
 3. Then wave 3: I1 integration, the V1 parity audits, fix-ups.
-
 ## Things to know
 
 - **The Python reference has moved under the port.** The working tree has uncommitted
