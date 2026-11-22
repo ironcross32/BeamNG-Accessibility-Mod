@@ -71,12 +71,15 @@ pub fn convolve_full_into(a: &[f64], b: &[f64], out: &mut Vec<f64>) {
         return;
     }
     out.resize(a.len() + b.len() - 1, 0.0);
+    // Slice the destination once per input sample so the inner loop has no bounds
+    // checks and vectorises; the summation order is unchanged, so results are identical.
     for (i, &x) in a.iter().enumerate() {
         if x == 0.0 {
             continue;
         }
-        for (j, &h) in b.iter().enumerate() {
-            out[i + j] += x * h;
+        let dst = &mut out[i..i + b.len()];
+        for (o, &h) in dst.iter_mut().zip(b) {
+            *o += x * h;
         }
     }
 }
