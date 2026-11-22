@@ -5,7 +5,7 @@ order they run in, every coupling between them, the locking pattern, and the ass
 the voice bodies to the wave 2 agents A1, A2 and A3. Written by AA. Line numbers are
 `audio.py` on `rust-port` at the start of the port.
 
-Rust layout (all in `rust/crates/beam-audio/src/`):
+Rust layout (all in `crates/beam-audio/src/`):
 
 | File | What |
 |---|---|
@@ -241,6 +241,6 @@ missing helper or field goes back to the orchestrator rather than being edited i
   tables and the centre click can be compared sample for sample.
 - Tests: `tests/audio_harness/mod.rs` (`mod audio_harness;`) builds a controller with no
   stream and a `FakeClock`, zero detune, waveforms and config; `run_blocks(n, frames)`.
-  `rust/fixtures/gen/audio_callback_harness.py`'s `run_script(script, config)` produces
+  `fixtures/gen/audio_callback_harness.py`'s `run_script(script, config)` produces
   the matching Python blocks (steps: `call`, `set`, `clock`, `advance`, `blocks`).
   `tests/common` belongs to AH.

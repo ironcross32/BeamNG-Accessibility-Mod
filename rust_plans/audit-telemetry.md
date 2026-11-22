@@ -15,7 +15,7 @@ not write E1.
 2. **Coverage of the real loop, measured.** The generator was run under `coverage`:
 
    ```
-   uv run --with coverage python -m coverage run --include=beamtel.py rust/fixtures/gen/telemetry.py
+   uv run --with coverage python -m coverage run --include=beamtel.py fixtures/gen/telemetry.py
    uv run --with coverage python -m coverage json -o tcov.json
    ```
 

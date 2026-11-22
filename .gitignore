@@ -1,3 +1,10 @@
+# Rust and the Tauri CLI
+/target/
+node_modules/
+# Tauri's generated schema and platform output
+/src-tauri/gen/
+/src-tauri/target/
+
 # Python (the level generators in tools/)
 __pycache__/
 *.py[oc]

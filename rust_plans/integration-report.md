@@ -9,7 +9,7 @@ workstreams inherit.
 - Clippy reports nothing in `src-tauri/`. The audio callback crates carry deliberate
   warnings (negated comparisons that keep Python's NaN behaviour, indexed loops in the
   voice mixers); leave them.
-- The release exe is `rust/target/release/beamtel.exe`, about 21 MB. **Run release
+- The release exe is `target/release/beamtel.exe`, about 21 MB. **Run release
   builds**: the debug build's audio callback is too slow and crackles (see below).
 
 ## Tests

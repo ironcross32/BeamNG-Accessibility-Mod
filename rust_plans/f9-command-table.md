@@ -6,8 +6,8 @@ The audit artefact for `_on_next_key_press` (`beamtel.py:8292-9352`) and its Rus
 test only some modifiers, so an earlier, looser branch answers combinations a later one
 names; the matrix at the bottom resolves every key and modifier combination.
 
-Golden test: `rust/crates/beam-engine/tests/f9_commands.rs` over
-`rust/fixtures/data/f9_commands.json` (generator `rust/fixtures/gen/f9_commands.py`):
+Golden test: `crates/beam-engine/tests/f9_commands.rs` over
+`fixtures/data/f9_commands.json` (generator `fixtures/gen/f9_commands.py`):
 every key below plus `/ ? f9 enter f1`, modifier names and an upper-case name, in all eight
 modifier combinations over two states, and targeted cases for each branch's internals.
 

@@ -2,19 +2,19 @@
 
 ## Project Structure & Module Organization
 
-BEAM's application is the Rust workspace in `rust/`: `crates/beam-engine` (telemetry, UDP listeners, keyboard layers, menus, MCP server, updater), `crates/beam-audio` (synthesis, HRTF, the output callback), `crates/beam-speech`, `crates/beam-road` (road guidance and the driving assistant), `crates/beam-reports` (pure report and phrasing modules), `crates/beam-base` (config, paths, logger, HRTF set list), and `src-tauri` (the window; binary `beamtel.exe`) with its frontend in `ui/`. `rust/README.md` has the full layout. The BeamNG mod lives under `bng_mod/`: game-engine and vehicle logic is in `lua/`, the loader is in `scripts/`, UI bridge code is in `ui/`, and sounds are in `art/`. The HRTF sets (`hrtf_*.npz`, listed in `rust/crates/beam-base/src/hrtf_sets.rs`) remain at the repository root. Treat `rust/target/`, logs, backups, and local configuration as generated files.
+BEAM's application is the Rust workspace at the repository root: `crates/beam-engine` (telemetry, UDP listeners, keyboard layers, menus, MCP server, updater), `crates/beam-audio` (synthesis, HRTF, the output callback), `crates/beam-speech`, `crates/beam-road` (road guidance and the driving assistant), `crates/beam-reports` (pure report and phrasing modules), `crates/beam-base` (config, paths, logger, HRTF set list), and `src-tauri` (the window; binary `beamtel.exe`) with its frontend in `ui/`. `BUILDING.md` has the full layout. The BeamNG mod lives under `bng_mod/`: game-engine and vehicle logic is in `lua/`, the loader is in `scripts/`, UI bridge code is in `ui/`, and sounds are in `art/`. The HRTF sets (`hrtf_*.npz`, listed in `crates/beam-base/src/hrtf_sets.rs`) remain at the repository root. Treat `target/`, logs, backups, and local configuration as generated files.
 
 The only Python left is the level generators in `tools/`, which have their own `tools/pyproject.toml`.
 
 ## Build, Test, and Development Commands
 
-Run from `rust/`:
+Run from the repository root:
 
 - `cargo build --workspace` builds everything; `cargo run -p beam-app` opens the app (debug builds keep a console).
 - `cargo build --release -p beam-app` builds the shipped `beamtel.exe`. It needs no elevation: keyboard suppression works while the game is un-elevated. `--features uac-admin` is opt-in, only for someone who runs the game as administrator.
 - `cargo test --workspace` runs the unit, fixture and sim tests; `cargo clippy --workspace --all-targets` and `cargo fmt --all` before committing.
 
-There is no release pipeline yet: `rust/xtask` is meant to package the exe and the mod, and has no commands.
+There is no release pipeline yet: `xtask` is meant to package the exe and the mod, and has no commands.
 
 ## Coding Style & Naming Conventions
 
@@ -22,7 +22,7 @@ Rust follows `cargo fmt` and `rust_plans/02-porting-conventions.md`. Follow the 
 
 ## Testing Guidelines
 
-`cargo test --workspace` must pass. The golden fixtures in `rust/fixtures/data/` were recorded from the old Python application and are frozen; never edit one by hand. Lua and JavaScript sims live in `diagnostic/` (`*_sim.lua`, `*_sim.js`); run the one matching the area you touched. Changes spanning the app and `bng_mod/` must be verified in BeamNG.drive, including speech/audio output and both sides of any UDP or WebSocket exchange. Describe manual checks in the pull request.
+`cargo test --workspace` must pass. The golden fixtures in `fixtures/data/` were recorded from the old Python application and are frozen; never edit one by hand. Lua and JavaScript sims live in `diagnostic/` (`*_sim.lua`, `*_sim.js`); run the one matching the area you touched. Changes spanning the app and `bng_mod/` must be verified in BeamNG.drive, including speech/audio output and both sides of any UDP or WebSocket exchange. Describe manual checks in the pull request.
 
 ## Map Generator Knowledge
 

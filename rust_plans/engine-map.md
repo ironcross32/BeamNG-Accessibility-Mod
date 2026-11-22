@@ -183,7 +183,7 @@ All bind `127.0.0.1` except telemetry (`0.0.0.0:4444`). None sets `SO_REUSEADDR`
 Line counts are the Python lines each workstream ports out of `beamtel.py` (from the ranges
 in the table), plus other Python files where named.
 
-| WS | Rust files it owns (in `rust/crates/beam-engine/`) | Python lines |
+| WS | Rust files it owns (in `crates/beam-engine/`) | Python lines |
 |---|---|---|
 | E1 | `src/telemetry.rs` (+ `tests/` it adds) | ~1,070 (`647-735`, `4306-4316`, `10526-11481`) |
 | E2 | `src/listeners/{ui_toast,scanner,obstacle,road,fuel,hill_climb}.rs` | ~1,250 |

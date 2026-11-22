@@ -1,6 +1,6 @@
 # Driving assistant: implementation and validation
 
-> **History.** Recorded against the Python application, which has since been removed from the repository (see git history before "Remove the Python application"). File names, sims and commands below are as they were then; the app is now the Rust workspace in `rust/`, and each Python sim named here that was ported is a Rust test of the same name.
+> **History.** Recorded against the Python application, which has since been removed from the repository (see git history before "Remove the Python application"). File names, sims and commands below are as they were then; the app is now the Rust workspace at the repository root, and each Python sim named here that was ported is a Rust test of the same name.
 
 Switching on off the road first hands the whole car to stock AI until it is on one; see [driving-assistant-join.md](driving-assistant-join.md). With a route set on the big map, the AI chooses every turn; see [driving-assistant-route.md](driving-assistant-route.md).
 

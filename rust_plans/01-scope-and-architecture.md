@@ -161,7 +161,7 @@ agent (U2).
 ## Parity strategy in one paragraph
 
 Every pure function is checked against the Python by golden fixtures: a script in
-`rust/fixtures/gen/` imports the real Python module, runs it over a table of inputs and
+`fixtures/gen/` imports the real Python module, runs it over a table of inputs and
 writes the outputs; a Rust test loads them and compares. Every Python simulator in
 `diagnostic/` is ported as a Rust test with the same scenarios and the same assertions.
 What neither can reach (the hooks, the audio device, the web view, the game) is covered

@@ -6,7 +6,14 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-22, latest: **this file and the README table were brought up to date.** D1 is
+2026-11-22, latest: **the workspace moved out of `rust/` to the repository root.** The
+Python-era master is kept as the `legacy` branch. `beam_base::paths::find_repo_root_from`
+now looks for `Cargo.toml` beside a `crates` directory, `beam_testutil::repo_root` is
+two levels above a crate, `rust/README.md` became `BUILDING.md`, and `rust/.gitignore`
+was folded into the root one. Old screenshots, logs and Python-era build output were
+removed from the root.
+
+Earlier, 2026-11-22: **this file and the README table were brought up to date.** D1 is
 marked done, the stale "62-65 still to go" and the uncommitted-Python note are gone, and
 Next step lists what is actually left (R1 first).
 
@@ -24,7 +31,7 @@ NVDA works in the app window, layers work, and both survive an NVDA restart. Rea
 `docs/app-engine.md`.
 
 Earlier, 2026-11-21: **the docs no longer say the app needs elevation.** `CLAUDE.md`,
-`AGENTS.md`, `rust/README.md`, the user `README.md` and `docs/app-mcp.md` still described
+`AGENTS.md`, `BUILDING.md`, the user `README.md` and `docs/app-mcp.md` still described
 the Python-era rule, under which the shipped exe had to be built with `uac-admin`. They now
 match the decision in `01-scope-and-architecture.md`: the release build is plain
 `cargo build --release -p beam-app` (`npx tauri build` is equivalent, since bundling is off
@@ -37,7 +44,7 @@ build script compiles Prism with CMake and links it into the exe. `find_prism_dl
 from `beam-base` `paths.rs`, and nothing ships or looks for a DLL. The wrapper keeps the
 shape `speech.rs` expects (an `Arc<Context>` each `Backend` holds, calls serialised by a
 mutex, capability checks by name), so the speech layer and its 30 tests barely changed.
-Building now needs CMake 3.24+ and a C++23 MSVC (`rust/README.md`). Checked live:
+Building now needs CMake 3.24+ and a C++23 MSVC (`BUILDING.md`). Checked live:
 `cargo run -p beam-speech --example speak -- --list` finds NVDA, OneCore and SAPI.
 Prism 0.1.7 also lists `Clipboard` and `No Speech` backends, which the configurator's
 backend list will now show.
@@ -46,7 +53,7 @@ Earlier on 2026-11-21: **the Python application is gone from the branch.** The l
 (private roads and gates, the trailerAngle stale-coupler fix, HRTF datasets) was committed
 first, then every Python module, sim, fixture generator and the Python release pipeline
 (`build.py`, `release.yml`, `scripts/release.ps1`, `pyproject.toml`, `uv.lock`) was
-deleted. The fixtures in `rust/fixtures/data/` are now frozen. `tools/` keeps the level
+deleted. The fixtures in `fixtures/data/` are now frozen. `tools/` keeps the level
 generators with its own `tools/pyproject.toml`. Docs were rewritten for the Rust
 (`docs/app-*.md` replace `python-components.md`; the validation logs keep their Python
 history under a note). Consequences for the plan: **R1 (xtask release) is now the only
@@ -159,10 +166,10 @@ were rewritten for the Rust when the Python was removed.
 
 **Next, with the user:**
 
-1. **R1, packaging.** `rust/xtask` has no commands yet, and it is now the only way to
+1. **R1, packaging.** `xtask` has no commands yet, and it is now the only way to
    ship. It must put the HRTF `.npz` sets and their licence notice beside the exe and
    build the mod zip. There is no speech DLL, since Prism is linked in. Update
-   `rust/README.md` when it lands.
+   `BUILDING.md` when it lands.
 2. **In-game checks of fixed bugs:**
    - 30: with obstacle mode on, a turn should move the detection toward the inside of
      the turn.
@@ -188,8 +195,10 @@ Traps found in U2:
 ## Things to know
 
 - **The Python reference is in git history only**, before "Remove the Python
-  application". The fixtures in `rust/fixtures/data/` are frozen and can no longer be
+  application". The fixtures in `fixtures/data/` are frozen and can no longer be
   regenerated. Line ranges cited in `04-workstreams.md` and the audits refer to that
   history.
-- Port commits stage only `rust/` and `rust_plans/`, by explicit path. Never push, branch
-  or merge.
+- The workspace lives at the repository root (`Cargo.toml`, `crates/`, `src-tauri/`,
+  `ui/`, `fixtures/`, `xtask/`) since 2026-11-22; `rust_plans/` text that says `rust/`
+  describes the layout before that. Port commits stage by explicit path. Never push,
+  branch or merge without the user asking.

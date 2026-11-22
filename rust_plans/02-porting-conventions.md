@@ -66,7 +66,7 @@ These produce code that compiles, looks right and speaks the wrong number.
 | numpy RNG (`default_rng(seed)`) | PCG64 stream | Not reproduced. See "Noise" below |
 | Integer overflow | None | Use `i64`/`u64`, or checked maths where a wire value is untrusted |
 
-### What the scaffold established (read `rust/README.md` too)
+### What the scaffold established (read `BUILDING.md` too)
 
 - `beam_base::pyfmt` already has `py_round`, `py_round0`, `try_py_int`, `py_float_str`,
   `py_g`, `py_f`, `py_mod`, `py_float_parse`, `py_strip`, each with `try_` variants where
@@ -83,7 +83,7 @@ These produce code that compiles, looks right and speaks the wrong number.
   copy of `direction_label`. `beam_road::road_guidance::direction_label` is canonical.
 - The app package is `beam-app` (binary `beamtel`); `ui/` is embedded at build time, so a
   UI change needs a rebuild. Tauri is pinned to 2.x (crates.io also lists a 3.0 alpha).
-- Crate versions are in `rust/Cargo.toml`; note `ureq` is 3.x and `zip` is deflate-only.
+- Crate versions are in `Cargo.toml`; note `ureq` is 3.x and `zip` is deflate-only.
 
 ### Noise
 
@@ -104,9 +104,9 @@ whether a packet with one bad byte is used or dropped.
 
 ## Golden fixtures
 
-- Generator: `rust/fixtures/gen/<module>.py`. It imports the real Python module from the
-  repository root, runs a table of inputs, and writes `rust/fixtures/data/<module>.json`.
-  Run it with the project's interpreter: `uv run python rust/fixtures/gen/<module>.py`.
+- Generator: `fixtures/gen/<module>.py`. It imports the real Python module from the
+  repository root, runs a table of inputs, and writes `fixtures/data/<module>.json`.
+  Run it with the project's interpreter: `uv run python fixtures/gen/<module>.py`.
 - Fixtures are committed. A generator must be deterministic so regenerating is a no-op.
 - Choose inputs that cross every branch: both unit systems, sentinels (`-1`, `-999`,
   `~`, `NA`), empty and malformed packets, boundary values either side of every threshold
@@ -116,7 +116,7 @@ whether a packet with one bad byte is used or dropped.
 
 ## Simulators
 
-Each `diagnostic/<name>_sim.py` becomes `rust/crates/<crate>/tests/<name>_sim.rs` with the
+Each `diagnostic/<name>_sim.py` becomes `crates/<crate>/tests/<name>_sim.rs` with the
 same scenario numbers and names in the same order, so a doc that says "scenario 17
 asserts X" still points at something. Where a sim reads constants out of the Lua mod
 (`terrain_scan_sim.py` reads the ring count), the Rust test reads the same file.

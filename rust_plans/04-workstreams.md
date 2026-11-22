@@ -20,10 +20,10 @@ Creates `rust/` so that every later agent has a place to write and a build that 
 - Each crate's `lib.rs` declares every module named in this file, each as an empty file
   with a one-line doc comment, so no later agent has to edit another's `lib.rs`.
 - A Tauri 2 application that builds and opens a window showing a placeholder
-  `rust/ui/index.html`, static frontend (`frontendDist: "../ui"`, `withGlobalTauri`), no
+  `ui/index.html`, static frontend (`frontendDist: "../ui"`, `withGlobalTauri`), no
   bundler. Binary name `beamtel`. Admin manifest behind a cargo feature that is off for
   debug builds. Tauri CLI available (as a dev dependency or `cargo install`), and the
-  exact build and run commands written to `rust/README.md`.
+  exact build and run commands written to `BUILDING.md`.
 - `beam_base::pyfmt`: `py_round`, `py_float_str`, and the printf-style helpers, with
   fixtures generated from Python over a few thousand values including ties, negative
   zero, large and tiny magnitudes.
@@ -31,7 +31,7 @@ Creates `rust/` so that every later agent has a place to write and a build that 
   `diagnostic/route_beacon_sim.py`) and `hrtf_sets.py` in `beam-base`, plus
   `beam_base::paths` (config directory, program directory, the `.npz` lookup that works
   both beside a release exe and from a source checkout).
-- `rust/fixtures/gen/_common.py`: puts the repo root on `sys.path`, writes JSON
+- `fixtures/gen/_common.py`: puts the repo root on `sys.path`, writes JSON
   deterministically (sorted keys where order is not the point, fixed float repr).
 - Verifies: `cargo build --workspace`, `cargo test --workspace`, and the Tauri app
   launches.
@@ -143,10 +143,10 @@ may be left off that map.
 
 ### U1: Frontend
 
-Owns `rust/ui/`. Follows `03-ui-spec.md`. Reads `config_ui.py`, `BeamTelFrame`,
+Owns `ui/`. Follows `03-ui-spec.md`. Reads `config_ui.py`, `BeamTelFrame`,
 `configurator.py:main`, `updater.py` in full. Delivers `index.html`, `styles.css`,
 `js/*.js`, `CONTRACT.md` (the exact command and event list), and
-`rust/ui/CONTROL-INVENTORY.md`: a table of every wx control (source line, label, name,
+`ui/CONTROL-INVENTORY.md`: a table of every wx control (source line, label, name,
 tooltip, range, default, enable and show rules) against its HTML counterpart. Includes a
 mock backend (`js/mock-backend.js`, used only when `window.__TAURI__` is absent) so the
 page can be opened in a browser and driven with a screen reader before the Rust exists.
@@ -239,7 +239,7 @@ by the build as well.
 
 ### U2: Tauri backend
 
-Owns `src-tauri/`. Implements `rust/ui/CONTRACT.md`: every command and event; the log
+Owns `src-tauri/`. Implements `ui/CONTRACT.md`: every command and event; the log
 sink that feeds `log-line`; the console record parser and history; the native View Logs
 menu; `MessageBoxW` dialogs; window title; the close sequence (flush saves, stop the
 engine, join with a timeout); `--configurator` mode; the startup update flow scheduled

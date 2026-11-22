@@ -1,6 +1,6 @@
 # Traffic signal notification investigation
 
-> **History.** Recorded against the Python application, which has since been removed from the repository (see git history before "Remove the Python application"). File names, sims and commands below are as they were then; the app is now the Rust workspace in `rust/`, and each Python sim named here that was ported is a Rust test of the same name.
+> **History.** Recorded against the Python application, which has since been removed from the repository (see git history before "Remove the Python application"). File names, sims and commands below are as they were then; the app is now the Rust workspace at the repository root, and each Python sim named here that was ported is a Rust test of the same name.
 
 Investigated 2026-09-13 against the running game through BeamTel's GE Lua console.
 The investigation below led to the implemented road-guidance notifications.

@@ -1,6 +1,6 @@
 # Map speed limit awareness
 
-> **History.** Recorded against the Python application, which has since been removed from the repository (see git history before "Remove the Python application"). File names, sims and commands below are as they were then; the app is now the Rust workspace in `rust/`, and each Python sim named here that was ported is a Rust test of the same name.
+> **History.** Recorded against the Python application, which has since been removed from the repository (see git history before "Remove the Python application"). File names, sims and commands below are as they were then; the app is now the Rust workspace at the repository root, and each Python sim named here that was ported is a Rust test of the same name.
 
 Validated on 2026-09-14 local time (2026-09-15 UTC).
 

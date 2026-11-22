@@ -8,7 +8,7 @@ BEAM is a screen reader mod for BeamNG.drive — an accessibility tool that conv
 
 ## Build & Run Commands
 
-The application is the Rust workspace in `rust/`; run these from there (PowerShell). `rust/README.md` has the details: prerequisites, the opt-in `uac-admin` feature, fixtures, paths.
+The application is the Rust workspace at the repository root (`Cargo.toml`, `crates/`, `src-tauri/`, `ui/`); run these from there (PowerShell). `BUILDING.md` has the details: prerequisites, the opt-in `uac-admin` feature, fixtures, paths.
 
 ```powershell
 cargo build --workspace                                  # debug, everything
@@ -19,9 +19,9 @@ cargo clippy --workspace --all-targets
 cargo fmt --all
 ```
 
-Run beamtel from a release build; a debug build's audio crackles. There is no release pipeline yet: `rust/xtask` is meant to package the exe and the mod and has no commands.
+Run beamtel from a release build; a debug build's audio crackles. There is no release pipeline yet: `xtask` is meant to package the exe and the mod and has no commands.
 
-The Python application this was ported from has been removed (it is in git history before "Remove the Python application"). Code comments and docs that cite a Python name, like `beamtel.py:5066` or `_dock_phrase`, refer to that history; the Rust keeps the name without the leading underscore, and `rust_plans/engine-map.md` maps every old `beamtel.py` name to its module. The only Python left is the level generators in `tools/` (`uv run --project tools python tools/...`).
+The Python application this was ported from has been removed (it is in git history before "Remove the Python application", and the `legacy` branch is master as it stood with the Python app). Code comments and docs that cite a Python name, like `beamtel.py:5066` or `_dock_phrase`, refer to that history; the Rust keeps the name without the leading underscore, and `rust_plans/engine-map.md` maps every old `beamtel.py` name to its module. The only Python left is the level generators in `tools/` (`uv run --project tools python tools/...`).
 
 ## Architecture
 
@@ -29,7 +29,7 @@ The Python application this was ported from has been removed (it is in git histo
 
 The project has two halves that communicate via UDP:
 
-1. **The app** (`rust/`, binary `beamtel.exe`) — Receives telemetry, generates audio, handles speech output. The docs call this side "beamtel"
+1. **The app** (`crates/` + `src-tauri/`, binary `beamtel.exe`) — Receives telemetry, generates audio, handles speech output. The docs call this side "beamtel"
 2. **Lua mod** (`bng_mod/`) — A directory junction to `%LOCALAPPDATA%/BeamNG/BeamNG.drive/current/mods/unpacked/bng_mod/`. Edits to `bng_mod/` are live in the game. Claude Code resolves the junction before checking permissions, so that real folder must be in `permissions.additionalDirectories` (`.claude/settings.local.json`) or every mod edit prompts.
 
 ### Component Docs (read on demand)
@@ -170,7 +170,7 @@ beamtel       --UDP:4448-->  vehicleScanner.lua
               --UDP:4457-->  clickspotAccessible.lua
 ```
 
-Every listener lives in `rust/crates/beam-engine/src/listeners/`; ports are constants in `net.rs`.
+Every listener lives in `crates/beam-engine/src/listeners/`; ports are constants in `net.rs`.
 
 ### Threading Model
 
@@ -190,7 +190,7 @@ Shared engine state is `state::state()`, a `parking_lot` mutex guard over `state
 
 ### Configuration
 
-Config file: `%LOCALAPPDATA%/beamtel/beamtel_config.json`. Defaults, coercion and clamping are `beam-base` `config.rs` (`DEFAULT_CONFIG`); user values are merged on top, and the settings panel (`src-tauri` `panel.rs` + `rust/ui/`) edits the same file. Config corruption triggers auto-backup (.bak) and reset to defaults.
+Config file: `%LOCALAPPDATA%/beamtel/beamtel_config.json`. Defaults, coercion and clamping are `beam-base` `config.rs` (`DEFAULT_CONFIG`); user values are merged on top, and the settings panel (`src-tauri` `panel.rs` + `ui/`) edits the same file. Config corruption triggers auto-backup (.bak) and reset to defaults.
 
 Most settings are consumed in the app. `ui_nav_hold_suppression` is the exception: it is enforced in the mod's JS runtime, so beamtel pushes it over the bridge as a `settings` message. The runtime pulls it with a `settings_request` on every transport activation rather than relying on the push alone — at startup the config-change broadcast fires before the Lua bridge has connected and would be dropped.
 
@@ -214,6 +214,6 @@ BeamNG.drive retail uses **LuaJIT (Lua 5.1)**:
 
 ## Dependencies
 
-Rust (`rust/Cargo.toml`, `[workspace.dependencies]`): Tauri 2 for the window, `cpal` for audio output, `rustfft`/`realfft` for the HRTF processing, `tokio` + `axum` for the WebSocket bridge and the MCP server, `ureq` for the updater and AI describer, `windows` for the keyboard hooks and window utilities, `parking_lot`, `serde_json` (with `preserve_order` and `float_roundtrip`), `zip`.
+Rust (`Cargo.toml`, `[workspace.dependencies]`): Tauri 2 for the window, `cpal` for audio output, `rustfft`/`realfft` for the HRTF processing, `tokio` + `axum` for the WebSocket bridge and the MCP server, `ureq` for the updater and AI describer, `windows` for the keyboard hooks and window utilities, `parking_lot`, `serde_json` (with `preserve_order` and `float_roundtrip`), `zip`.
 
 Speech is Prism through the `prismer` crate with its `static` feature (`beam-speech` `prism.rs` adapts it to the speech layer): Prism is compiled from source by the build script and linked into the exe, so there is no DLL to ship, and building needs CMake 3.24+ and a C++23 MSVC. The HRTF sets are read straight from the committed `hrtf_*.npz` files (`beam-audio` `npy.rs`); the `.sofa` sources and the baker went with the Python, so adding a set means baking it outside the repo.

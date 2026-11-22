@@ -3,14 +3,14 @@
 2026-11-21. Python: `configurator.py`, `beamtel.py`'s config half, `config_ui.py`
 (`ConfigPanel`, `AIDescriberPanel`), `BeamTelFrame`'s non-console controls and
 `_on_console_run`. Rust: `beam_base::config`, `src-tauri` (`panel.rs`, `describer.rs`,
-`choices.rs`, `commands.rs`, `tones.rs`), and `rust/ui/js/util.js` where the frontend
+`choices.rs`, `commands.rs`, `tones.rs`), and `ui/js/util.js` where the frontend
 owns a behaviour. Audited by the orchestrator, which wrote U2 (the plan wanted a
 non-author; the user chose sequential audits here instead).
 
 ## Method
 
 1. **Every fixture regenerated against today's Python.** All generators in
-   `rust/fixtures/gen/` were rerun on 2026-11-21. Every data file came out byte-identical
+   `fixtures/gen/` were rerun on 2026-11-21. Every data file came out byte-identical
    except `config.json`, whose one difference is a DPAPI-sealed secret: sealing is
    randomised, so that blob changes on every run. So the modules finished before the
    Python working tree moved (AH's HRTF, B3's road guidance, A1-A3) still match it
@@ -49,7 +49,7 @@ non-author; the user chose sequential audits here instead).
 
 ## Fixed
 
-- **Spin rounding on a tie** (`rust/ui/js/util.js`, U1's code). wx formats a spin value
+- **Spin rounding on a tie** (`ui/js/util.js`, U1's code). wx formats a spin value
   with printf, and the Windows CRT rounds an exact tie to even: -12.5 at 0 digits is -12,
   0.125 at 2 digits is 0.12. The page used `toFixed`, which rounds both away from zero.
   So a tie, loaded or typed, differed from the wx build. `roundTo` now finds a true tie

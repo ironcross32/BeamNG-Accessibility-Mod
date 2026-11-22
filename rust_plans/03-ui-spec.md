@@ -170,7 +170,7 @@ background with the button disabled and focus restored afterwards.
 
 ## Frontend to backend contract
 
-The frontend agent (U1) owns `rust/ui/CONTRACT.md` and writes the final, exact list there
+The frontend agent (U1) owns `ui/CONTRACT.md` and writes the final, exact list there
 (names, argument and return shapes). The backend agent (U2) implements what that file
 says. The starting list:
 
@@ -213,7 +213,7 @@ the backlog and filter.
 - Every control in `config_ui.py` and `BeamTelFrame` has a counterpart; the audit produces
   a two-column table and it has no empty cells.
 - Heading outline: one `<h1>` per panel, an `<h2>` per group, an `<h3>` per radio group.
-- `grep` for `aria-` and `role=` in `rust/ui/` finds only the tab pattern and commented,
+- `grep` for `aria-` and `role=` in `ui/` finds only the tab pattern and commented,
   justified exceptions.
 - No `<div>` or `<span>` with a click handler.
 - Every input has a `<label for>`; every `id` is unique.
