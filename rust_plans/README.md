@@ -83,6 +83,6 @@ Update this table as work lands. One line per workstream from `04-workstreams.md
 | I1 | Integration: whole workspace builds, engine wired to shell | done | `integration-report.md`. 557 tests pass, no stubs left, wiring checked, user run in game un-elevated. Hands R1 the data files to package and V1 the audits it must widen |
 | V1 | Parity audits, module by module | done | Eight `audit-*.md`, done sequentially by the orchestrator (user's choice). Every fixture regenerates unchanged from today's Python. Coverage of the real Python under the fixtures was measured per function, and the gaps walked by hand. New fixtures: `config_panel` (real wx panel), `road_scripts` (incl. the last unported sim), `bridge`, `mcp_dispatch`. Fixed: spin tie rounding (`util.js`), non-string MCP `speak`. Python bugs 62-67 added; **66 (MCP origin prefix match, security) and 67 (updates fail for non-ASCII user names) fixed in the Rust** at the user's decision |
 | R1 | Build, package, release pipeline (port of build.py) | not started | |
-| D1 | Docs: CLAUDE.md, AGENTS.md, README, docs/ updates | not started | |
+| D1 | Docs: CLAUDE.md, AGENTS.md, README, docs/ updates | done | Rewritten for the Rust-only project when the Python was removed (2026-11-21, commits 4c80375, 063c914): `docs/app-*.md` replace `python-components.md`, and the elevation requirement is gone. R1 must update `rust/README.md` once xtask has commands |
 | T1 | Developer tooling ports | not started | last |
 | UV | User validation in game with a screen reader | not started | needs the user |

@@ -6,7 +6,11 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-21, latest: **no keyboard hook stays installed, which fixes NVDA in the app
+2026-11-22, latest: **this file and the README table were brought up to date.** D1 is
+marked done, the stale "62-65 still to go" and the uncommitted-Python note are gone, and
+Next step lists what is actually left (R1 first).
+
+Earlier, 2026-11-21: **no keyboard hook stays installed, which fixes NVDA in the app
 window.** The resident `WH_KEYBOARD_LL` hook (the Python `keyboard` package's model)
 fought NVDA's over chain order: beamtel started after NVDA left NVDA not interrupting and
 NVDA+Space dead in the beamtel window (quitting beamtel fixed it at once); restarting NVDA
@@ -148,24 +152,31 @@ moved still match it. Fixture coverage of the real Python was measured per funct
 were added (`config_panel`, `road_scripts`, `bridge`, `mcp_dispatch`) and two
 differences fixed (spin tie rounding in `util.js`, non-string MCP `speak`).
 
+The keep-or-fix pass over `python-bugs.md` is closed (2026-11-21): all 67 entries are
+fixed in the Rust or kept by the user's decision, as recorded in that file. The bug reports
+E8-E10 lost were recovered by V1 and recorded there (63, for example). D1 is done: the docs
+were rewritten for the Rust when the Python was removed.
+
 **Next, with the user:**
 
-1. **Done (2026-11-21): the keep-or-fix pass over `python-bugs.md`.** Needs in-game
-   checks: 30 (obstacle detection bends into a turn), 42 (a browser opened in status
-   mode takes the arrows), 62 (a gate first seen with the assistant off is announced when
-   it takes over). The history of the pass follows.
-   **Keep-or-fix decisions over `python-bugs.md`** (67 entries). **66** (the MCP origin
-   guard's prefix match) and **67** (updates that could never apply for a non-ASCII
-   Windows user name) are **fixed in the Rust** (user, 2026-11-21); whether to fix them
-   in the shipping Python too was asked: **no, the Python is sunsetted** (user,
-   2026-11-21); fixes go in the Rust only. **30 is fixed in the Rust** too: steering
-   reaches the obstacle detector, sent as the path's bend (-steering forward, +steering
-   in reverse, NaN as none). **It needs an in-game check**: with obstacle mode on, a
-   turn should move the detection toward the inside of the turn. 62-65 and the rest
-   are still to go through with the user.
-2. Then R1 (packaging: the HRTF `.npz` sets and their licence notice beside the exe,
-   the mod zip; no speech DLL, since Prism is linked in) and D1 (docs still
-   describe the Python build, including the admin requirement).
+1. **R1, packaging.** `rust/xtask` has no commands yet, and it is now the only way to
+   ship. It must put the HRTF `.npz` sets and their licence notice beside the exe and
+   build the mod zip. There is no speech DLL, since Prism is linked in. Update
+   `rust/README.md` when it lands.
+2. **In-game checks of fixed bugs:**
+   - 30: with obstacle mode on, a turn should move the detection toward the inside of
+     the turn.
+   - 42: a browser opened in status mode takes the arrows.
+   - 62: a gate first seen with the assistant off is announced when it takes over.
+3. **Not yet tried:**
+   - Reset to Defaults in the configurator. Back up the config first, as the user asked.
+   - From E7: F10+Space in game, the MCP screenshot with `focus_game`, node-grabber
+     SNAP warping, and API key validation behind a corporate or registry proxy.
+4. **Optional, undecided:** warn when the game itself runs elevated, the one case an
+   un-elevated hook cannot see.
+5. T1 (developer tooling) and UV (the full validation in game with a screen reader) come
+   last (README table).
+
 Traps found in U2:
 - A Tauri test binary dies at load with `STATUS_ENTRYPOINT_NOT_FOUND` unless it embeds
   the Common Controls v6 manifest. `build.rs` adds it to `tests/` targets only
@@ -176,13 +187,9 @@ Traps found in U2:
 
 ## Things to know
 
-- **The Python reference has moved under the port.** The working tree has uncommitted
-  Python changes made after the port's base: `hrtf.py` (several HRTF sets, `hrtf_sets.py`,
-  the new `.npz` files), `audio.py`, `beamtel.py` (road listener, live config),
-  `road_guidance.py`, `config_ui.py`, `configurator.py`, and `roadGates.lua` with its
-  docs. Line ranges in `04-workstreams.md` can be off by a few lines. Agents port the
-  working-tree Python. The crates that were already finished (AH's hrtf, B3's road
-  guidance, A1-A3) predate these changes; V1 confirmed they still match it (every
-  fixture regenerates unchanged). These Python files are never staged by port commits.
+- **The Python reference is in git history only**, before "Remove the Python
+  application". The fixtures in `rust/fixtures/data/` are frozen and can no longer be
+  regenerated. Line ranges cited in `04-workstreams.md` and the audits refer to that
+  history.
 - Port commits stage only `rust/` and `rust_plans/`, by explicit path. Never push, branch
   or merge.
