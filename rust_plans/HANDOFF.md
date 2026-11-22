@@ -10,8 +10,10 @@ The short version of where the port is, for a fresh session. Updated at every co
 Python-era master is kept as the `legacy` branch. `beam_base::paths::find_repo_root_from`
 now looks for `Cargo.toml` beside a `crates` directory, `beam_testutil::repo_root` is
 two levels above a crate, `rust/README.md` became `BUILDING.md`, and `rust/.gitignore`
-was folded into the root one. Old screenshots, logs and Python-era build output were
-removed from the root.
+was folded into the root one. Old screenshots, logs, Python-era build output, backups,
+the `.sofa` HRTF sources and the old planning notes (`phases.md`, `IMPLEMENT_PLAN.md`,
+`implement-alignment.md`, `accessible_map_editor.md`, `20_changes.md`) were removed from
+the root; the tracked notes are still on `legacy`.
 
 Earlier, 2026-11-22: **this file and the README table were brought up to date.** D1 is
 marked done, the stale "62-65 still to go" and the uncommitted-Python note are gone, and
