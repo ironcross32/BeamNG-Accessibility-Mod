@@ -1168,21 +1168,17 @@ fn toggle_modal_async() {
 static F11_INSTALLED: AtomicBool = AtomicBool::new(false);
 
 /// `keyboard.add_hotkey("f11", _toggle_modal_async, suppress=True)` and its log lines.
+/// A registered game hotkey rather than a hook hotkey: it is eaten only while the game is
+/// in front (the hook version ate F11 in every program) and needs no resident hook.
 #[doc(hidden)]
 pub fn install_f11_hotkey() {
     if !keyboard::keyboard_ok() {
         return;
     }
-    match keyboard::add_hotkey_suppressed(
-        "f11",
-        Arc::new(|| {
-            toggle_modal_async();
-            false
-        }),
-    ) {
+    match keyboard::register_game_hotkey("f11", Arc::new(toggle_modal_async)) {
         Ok(_) => {
             F11_INSTALLED.store(true, Ordering::SeqCst);
-            logi("Vehicle spawner F11 hotkey installed (suppress=True).");
+            logi("Vehicle spawner F11 hotkey installed.");
         }
         Err(e) => logw(&format!("vehicle_spawner: failed to add F11 hotkey: {e}")),
     }

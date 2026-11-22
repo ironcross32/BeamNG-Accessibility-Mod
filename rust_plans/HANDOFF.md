@@ -6,7 +6,20 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-21, latest: **the docs no longer say the app needs elevation.** `CLAUDE.md`,
+2026-11-21, latest: **no keyboard hook stays installed, which fixes NVDA in the app
+window.** The resident `WH_KEYBOARD_LL` hook (the Python `keyboard` package's model)
+fought NVDA's over chain order: beamtel started after NVDA left NVDA not interrupting and
+NVDA+Space dead in the beamtel window (quitting beamtel fixed it at once); restarting NVDA
+afterwards silenced F9. F9/F10/F11 are now `RegisterHotKey` hotkeys
+(`keyboard/hotkeys.rs`), registered only while the game window is foreground, and
+`hook::sync_os_hook` installs the hook when a layer or mode hooks its first key and removes
+it with the last. `is_beamng_focused` matches the window class or `beamng*` process, not
+"BeamNG" in the title, which matched this app's own window and opened F9 over the settings
+UI (a Python bug). F11 is no longer eaten in other programs. Checked live by the user:
+NVDA works in the app window, layers work, and both survive an NVDA restart. Reasoning in
+`docs/app-engine.md`.
+
+Earlier, 2026-11-21: **the docs no longer say the app needs elevation.** `CLAUDE.md`,
 `AGENTS.md`, `rust/README.md`, the user `README.md` and `docs/app-mcp.md` still described
 the Python-era rule, under which the shipped exe had to be built with `uac-admin`. They now
 match the decision in `01-scope-and-architecture.md`: the release build is plain
@@ -122,8 +135,8 @@ U2 has been run by the user (2026-11-21), un-elevated, debug build:
   cause. **Run beamtel from a release build** (`cargo build --release -p beam-app`,
   `target\release\beamtel.exe`); use debug only when debugging.
 - With the beamtel window focused, NVDA queued speech instead of interrupting. It
-  happened twice and cleared on an NVDA restart; the user judges it NVDA's issue.
-  Dropped (2026-11-21).
+  happened twice and cleared on an NVDA restart. First judged NVDA's issue; it was
+  ours, the resident keyboard hook, and is fixed (see Last updated).
 - Optional, discussed: warn when the game itself runs elevated, the one case an
   un-elevated hook cannot see.
 

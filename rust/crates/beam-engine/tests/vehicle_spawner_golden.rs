@@ -258,11 +258,13 @@ fn load_catalog() {
 fn modal_hooks_suppress_and_enqueue() {
     let _g = setup();
     load_catalog();
-    // F11 goes through the suppressing hotkey; the toggle runs on the spawner's worker.
+    // F11 is a registered game hotkey, not a hook: the low-level hook passes it, and the
+    // hotkey's toggle runs on the spawner's worker.
     F11.call_once(vs::install_f11_hotkey);
-    assert!(!keyboard::deliver_for_tests("f11", &KeyEvent::down("f11")));
-    assert!(!keyboard::deliver_for_tests("f11", &KeyEvent::up("f11")));
-    assert!(!vs::is_modal_open(), "the hook only enqueues");
+    assert!(keyboard::deliver_for_tests("f11", &KeyEvent::down("f11")));
+    assert!(keyboard::deliver_for_tests("f11", &KeyEvent::up("f11")));
+    assert!(keyboard::press_game_hotkey_for_tests("f11"));
+    assert!(!vs::is_modal_open(), "the hotkey only enqueues");
     assert_eq!(vs::run_pending_for_tests(), 1);
     assert!(vs::is_modal_open());
     assert_eq!(vs::snapshot_for_tests()["hooks"], 42);

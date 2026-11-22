@@ -403,6 +403,23 @@ impl Listener {
         let pressed = self.pressed.lock();
         codes.iter().any(|c| pressed.contains(c))
     }
+
+    /// Whether anything is registered that needs to see key events.
+    pub(crate) fn has_work(&self) -> bool {
+        let reg = self.reg.read();
+        !reg.blocking_hooks.is_empty()
+            || reg.blocking_keys.values().any(|l| !l.is_empty())
+            || !reg.handlers.is_empty()
+            || reg.nonblocking_hotkeys.values().any(|l| !l.is_empty())
+            || reg.blocking_hotkeys.values().any(|l| !l.is_empty())
+    }
+
+    /// Forget every key and modifier state: the hook is coming down, so it will miss the
+    /// key-ups that would have cleared them.
+    pub(crate) fn reset_tracking(&self) {
+        self.pressed.lock().clear();
+        *self.book.lock() = HotkeyBook::default();
+    }
 }
 
 /// The process-wide listener.
@@ -411,21 +428,24 @@ pub(crate) static LISTENER: LazyLock<Listener> = LazyLock::new(Listener::new);
 static QUEUE: LazyLock<(Sender<RawEvent>, Receiver<RawEvent>)> = LazyLock::new(unbounded);
 
 static LISTENING: Mutex<bool> = Mutex::new(false);
-/// Whether a real system-wide hook may be installed (set once the engine starts the
-/// command worker or installs the hotkeys; never in a test that only drives handlers).
+/// Whether real system-wide input hooks may be installed (set once the engine starts the
+/// command worker; never in a test that only drives handlers).
 static OS_HOOK_ALLOWED: AtomicBool = AtomicBool::new(false);
-static OS_HOOK_STARTED: AtomicBool = AtomicBool::new(false);
+/// The thread running the installed `WH_KEYBOARD_LL` hook, if one is installed.
+static HOOK_THREAD: Mutex<Option<u32>> = Mutex::new(None);
 
-/// Allow the OS hook and install it if the listener is already running.
+/// Allow the OS hooks, and install whatever is already registered.
 pub(crate) fn allow_os_hook() {
     OS_HOOK_ALLOWED.store(true, Ordering::SeqCst);
-    if *LISTENING.lock() {
-        start_os_hook();
-    }
+    sync_os_hook();
 }
 
-/// `_listener.start_if_necessary()`: build the name tables, start the processing thread,
-/// and the hook thread.
+pub(crate) fn os_hook_allowed() -> bool {
+    OS_HOOK_ALLOWED.load(Ordering::SeqCst)
+}
+
+/// `_listener.start_if_necessary()`: build the name tables and start the processing
+/// thread. The OS hook is [`sync_os_hook`]'s business.
 pub(crate) fn start_if_necessary() {
     let mut listening = LISTENING.lock();
     if !*listening {
@@ -433,9 +453,46 @@ pub(crate) fn start_if_necessary() {
         *listening = true;
         crate::timer::spawn_daemon("keyboard-process", process_loop);
     }
-    drop(listening);
-    if OS_HOOK_ALLOWED.load(Ordering::SeqCst) {
-        start_os_hook();
+}
+
+/// Install the low-level hook when something needs keys, and remove it when nothing does.
+/// Call after every registration change.
+///
+/// The hook is never left installed idle. NVDA has a low-level hook of its own, and the
+/// two fight over their order in the chain: with ours resident and installed after NVDA's,
+/// NVDA stopped interrupting itself and NVDA+Space did nothing in this app's window; with
+/// NVDA restarted afterwards, our F9 went silent. Installing at the moment a layer or mode
+/// takes the keyboard puts ours first in the chain exactly while it is needed, whatever
+/// NVDA did in the meantime, and the rest of the time there is nothing of ours to collide
+/// with. The always-available keys are `hotkeys`, which need no hook.
+///
+/// Installing waits (briefly) for the hook to be in, so a layer opened by a key press has
+/// its hook before the user's next key arrives.
+pub(crate) fn sync_os_hook() {
+    if !os_hook_allowed() {
+        return;
+    }
+    let want = LISTENER.has_work();
+    let mut thread = HOOK_THREAD.lock();
+    match (want, *thread) {
+        (true, None) => {
+            #[cfg(windows)]
+            {
+                *thread = win::install();
+            }
+        }
+        (false, Some(tid)) => {
+            *thread = None;
+            #[cfg(windows)]
+            win::uninstall(tid);
+            #[cfg(not(windows))]
+            let _ = tid;
+            LISTENER.reset_tracking();
+            SHIFT_IS_PRESSED.store(false, Ordering::Relaxed);
+            ALTGR_IS_PRESSED.store(false, Ordering::Relaxed);
+            IGNORE_NEXT_RIGHT_ALT.store(false, Ordering::Relaxed);
+        }
+        _ => {}
     }
 }
 
@@ -446,14 +503,6 @@ fn process_loop() {
             return;
         }
     }
-}
-
-fn start_os_hook() {
-    if OS_HOOK_STARTED.swap(true, Ordering::SeqCst) {
-        return;
-    }
-    #[cfg(windows)]
-    crate::timer::spawn_daemon("keyboard-hook", win::listen);
 }
 
 // ---- process_key: the hook thread's state ------------------------------------------------
@@ -510,13 +559,16 @@ pub(crate) fn process_key(
 #[cfg(windows)]
 mod win {
     use std::panic::{AssertUnwindSafe, catch_unwind};
+    use std::time::Duration;
 
     use windows::Win32::Foundation::{HINSTANCE, LPARAM, LRESULT, WPARAM};
     use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+    use windows::Win32::System::Threading::GetCurrentThreadId;
     use windows::Win32::UI::Input::KeyboardAndMouse::GetKeyState;
     use windows::Win32::UI::WindowsAndMessaging::{
-        CallNextHookEx, DispatchMessageW, GetMessageW, KBDLLHOOKSTRUCT, MSG, SetWindowsHookExW,
-        TranslateMessage, WH_KEYBOARD_LL,
+        CallNextHookEx, DispatchMessageW, GetMessageW, KBDLLHOOKSTRUCT, MSG, PM_NOREMOVE,
+        PeekMessageW, PostThreadMessageW, SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx,
+        WH_KEYBOARD_LL, WM_QUIT,
     };
 
     use super::super::KeyEventType;
@@ -586,28 +638,68 @@ mod win {
         unsafe { CallNextHookEx(None, code, wparam, lparam) }
     }
 
-    /// `_winkeyboard.listen`: install the hook on this thread and pump its messages.
-    pub(super) fn listen() {
+    /// How long [`install`] waits for the hook thread to report.
+    const INSTALL_WAIT: Duration = Duration::from_millis(500);
+
+    /// Start a thread that installs the hook and pumps its messages. Returns its id once
+    /// the hook is in, or None if it failed or did not report in time.
+    pub(super) fn install() -> Option<u32> {
+        let (tx, rx) = crossbeam_channel::bounded::<Option<u32>>(1);
+        crate::timer::spawn_daemon("keyboard-hook", move || listen(tx));
+        match rx.recv_timeout(INSTALL_WAIT) {
+            Ok(tid) => tid,
+            Err(_) => {
+                log::error!("The keyboard hook did not start in time.");
+                None
+            }
+        }
+    }
+
+    /// End the hook thread `tid`; it removes its hook on the way out.
+    pub(super) fn uninstall(tid: u32) {
+        // SAFETY: a plain message post; a thread that already exited just fails it.
+        if let Err(e) = unsafe { PostThreadMessageW(tid, WM_QUIT, WPARAM(0), LPARAM(0)) } {
+            log::warn!("Could not stop the keyboard hook thread: {e}");
+        }
+    }
+
+    /// `_winkeyboard.listen`: install the hook on this thread, report, and pump its
+    /// messages until WM_QUIT.
+    fn listen(ready: crossbeam_channel::Sender<Option<u32>>) {
+        let mut msg = MSG::default();
+        // Create the message queue before reporting, so a quit posted at once is kept.
+        // SAFETY: msg is a valid, owned MSG; PM_NOREMOVE leaves the queue as it is.
+        let _ = unsafe { PeekMessageW(&mut msg, None, 0, 0, PM_NOREMOVE) };
         // SAFETY: GetModuleHandleW(None) returns this process's module and cannot fault.
         let hmod = unsafe { GetModuleHandleW(None) }
             .ok()
             .map(|h| HINSTANCE(h.0));
         // SAFETY: ll_proc has the HOOKPROC signature and lives for the whole process.
-        if let Err(e) = unsafe { SetWindowsHookExW(WH_KEYBOARD_LL, Some(ll_proc), hmod, 0) } {
-            log::error!("Failed to install the keyboard hook: {e}");
-            return;
-        }
-        let mut msg = MSG::default();
-        // `while not GetMessage(msg, 0, 0, 0)`, as the package writes it: the hook is
-        // serviced inside the first, blocking GetMessage, and the loop would end the
-        // thread if a message were ever posted to it (nothing posts one).
+        let hook = match unsafe { SetWindowsHookExW(WH_KEYBOARD_LL, Some(ll_proc), hmod, 0) } {
+            Ok(h) => h,
+            Err(e) => {
+                log::error!("Failed to install the keyboard hook: {e}");
+                let _ = ready.send(None);
+                return;
+            }
+        };
+        // SAFETY: no arguments.
+        let tid = unsafe { GetCurrentThreadId() };
+        // Nobody waiting any more (install timed out): nothing tracks this thread, so it
+        // must not stay installed.
+        let abandoned = ready.send(Some(tid)).is_err();
+        // The hook is serviced inside the blocking GetMessage.
         // SAFETY: msg is a valid, owned MSG for each call.
-        while !unsafe { GetMessageW(&mut msg, None, 0, 0) }.as_bool() {
+        while !abandoned && unsafe { GetMessageW(&mut msg, None, 0, 0) }.0 > 0 {
             // SAFETY: as above.
             unsafe {
                 let _ = TranslateMessage(&msg);
                 DispatchMessageW(&msg);
             }
+        }
+        // SAFETY: the hook this thread installed.
+        if let Err(e) = unsafe { UnhookWindowsHookEx(hook) } {
+            log::warn!("Failed to remove the keyboard hook: {e}");
         }
     }
 }

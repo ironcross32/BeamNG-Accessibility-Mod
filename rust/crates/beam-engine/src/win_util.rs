@@ -189,14 +189,22 @@ mod imp {
         restore_thread_dpi(previous);
     }
 
+    /// The foreground window is the game's: its render window by class, or any window the
+    /// game process owns. Not a title match: this app's own window is "BeamNG
+    /// Accessibility", and matching it opened the F9/F10 layers over its settings UI.
     pub fn is_beamng_focused() -> bool {
-        // SAFETY: `buf` is live for the call.
-        unsafe {
-            let h = GetForegroundWindow();
-            let mut buf = [0u16; 256];
-            let n = GetWindowTextW(h, &mut buf).max(0) as usize;
-            String::from_utf16_lossy(&buf[..n.min(256)]).contains("BeamNG")
+        // SAFETY: `cls` is live for the call.
+        let h = unsafe { GetForegroundWindow() };
+        if h.0.is_null() {
+            return false;
         }
+        let mut cls = [0u16; 256];
+        // SAFETY: as above.
+        let n = unsafe { GetClassNameW(h, &mut cls) }.max(0) as usize;
+        if String::from_utf16_lossy(&cls[..n.min(256)]) == GAME_WINDOW_CLASS {
+            return true;
+        }
+        window_process_name(h.0 as isize).starts_with("beamng")
     }
 }
 
@@ -224,7 +232,8 @@ pub fn warp_cursor_to_viewport(view_x: i64, view_y: i64, view_w: i64, view_h: i6
     imp::warp_cursor_to_viewport(view_x, view_y, view_w, view_h);
 }
 
-/// `_is_beamng_focused()`: the foreground window's title contains "BeamNG".
+/// `_is_beamng_focused()`: the foreground window belongs to the game. The Python matched
+/// "BeamNG" in the title, which also matched this app's own window.
 pub fn is_beamng_focused() -> bool {
     imp::is_beamng_focused()
 }

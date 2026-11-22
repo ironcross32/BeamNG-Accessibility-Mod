@@ -12,6 +12,7 @@
 
 mod canonical_names;
 mod hook;
+mod hotkeys;
 mod names;
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -150,10 +151,11 @@ fn command_worker_loop() {
     }
 }
 
-/// `_start_command_worker()`. Also lets the system-wide hook be installed: this is the
-/// engine starting up, which is the only place a real hook belongs.
+/// `_start_command_worker()`. Also lets the system-wide hooks and hotkeys be installed:
+/// this is the engine starting up, which is the only place a real one belongs.
 pub fn start_command_worker() {
     hook::allow_os_hook();
+    hotkeys::resync();
     let mut started = WORKER_STARTED.lock();
     if *started {
         return;
@@ -194,6 +196,25 @@ pub fn deliver_for_tests(key: &str, event: &KeyEvent) -> bool {
         hook::LISTENER.process(&raw);
     }
     pass
+}
+
+/// Press a game hotkey ("f11") as Windows would deliver it while the game is in front:
+/// runs what [`register_game_hotkey`] registered for it. Returns whether anything was.
+/// For tests; no hotkey is registered with Windows.
+#[doc(hidden)]
+pub fn press_game_hotkey_for_tests(name: &str) -> bool {
+    hotkeys::fire_for_tests(name)
+}
+
+/// Run `callback` when the unmodified function key `name` ("f11") is pressed while the
+/// game's window is in front. The key is eaten in the game and untouched everywhere else,
+/// and no low-level hook is involved (see `hotkeys`). The callback runs on the hotkey
+/// thread: keep it short.
+pub fn register_game_hotkey(
+    name: &str,
+    callback: Arc<dyn Fn() + Send + Sync>,
+) -> Result<i32, String> {
+    hotkeys::register(name, callback)
 }
 
 // ---- Shared layer hook (F9 and F10) ------------------------------------------------------
@@ -402,6 +423,8 @@ pub fn kb_open_layer(which: Layer) {
         }),
     );
     *hooks = Some((press_id, release_id));
+    // Installed now, so it is first in the hook chain for as long as the layer is open.
+    hook::sync_os_hook();
 }
 
 /// `_kb_close_layer()`: release the keyboard back to the game. Never called from inside
@@ -413,6 +436,7 @@ pub fn kb_close_layer() {
         hook::LISTENER.remove(press);
         hook::LISTENER.remove(release);
     }
+    hook::sync_os_hook();
     reset_live_mods();
 }
 
@@ -477,6 +501,7 @@ pub fn try_hook_key_raw(key: &str, cb: RawHookCallback) -> Result<HookRecord, St
     let codes = names::key_to_scan_codes(key)?;
     let id = hook::next_id();
     hook::LISTENER.add_blocking_key(id, &codes, cb);
+    hook::sync_os_hook();
     Ok(HookRecord(id))
 }
 
@@ -492,6 +517,7 @@ pub fn unhook_suppressed(records: &mut Vec<HookRecord>) {
         hook::LISTENER.remove(rec.0);
     }
     records.clear();
+    hook::sync_os_hook();
 }
 
 static STEP_SPLIT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r",\s?").expect("static regex"));
@@ -516,8 +542,15 @@ fn parse_hotkey(hotkey: &str) -> Result<Vec<Vec<Vec<i32>>>, String> {
 
 /// `keyboard.is_pressed(name)` ("shift", "ctrl"). Where the package raises (an unmapped
 /// name, a multi-step hotkey) this answers false.
+///
+/// The hook is only installed while a mode needs it, so its pressed-key table misses a
+/// modifier that was already held when the mode opened. For Shift, Ctrl and Alt the
+/// keyboard's own state is consulted too (live only; tests see just the table).
 pub fn is_pressed(name: &str) -> bool {
     hook::start_if_necessary();
+    if hook::os_hook_allowed() && async_modifier_down(name) {
+        return true;
+    }
     let Ok(steps) = parse_hotkey(name) else {
         return false;
     };
@@ -527,6 +560,28 @@ pub fn is_pressed(name: &str) -> bool {
     steps[0]
         .iter()
         .all(|codes| hook::LISTENER.any_pressed(codes))
+}
+
+/// Whether the named modifier is physically down right now.
+fn async_modifier_down(name: &str) -> bool {
+    let vk = match mod_alias(name) {
+        Some(Modifier::Shift) => 0x10,
+        Some(Modifier::Ctrl) => 0x11,
+        Some(Modifier::Alt) => 0x12,
+        None => return false,
+    };
+    #[cfg(windows)]
+    {
+        // SAFETY: GetAsyncKeyState takes a plain integer and cannot fault.
+        (unsafe { windows::Win32::UI::Input::KeyboardAndMouse::GetAsyncKeyState(vk) } as u16
+            & 0x8000)
+            != 0
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = vk;
+        false
+    }
 }
 
 /// `parse_hotkey_combinations(hotkey)` for a single-step hotkey: every combination of the
@@ -572,6 +627,7 @@ pub fn add_hotkey_suppressed(
     let combos = hotkey_combinations(hotkey)?;
     let id = hook::next_id();
     hook::LISTENER.add_blocking_hotkey(id, &combos, callback);
+    hook::sync_os_hook();
     Ok(HookRecord(id))
 }
 
@@ -579,6 +635,7 @@ pub fn add_hotkey_suppressed(
 /// [`add_hotkey_suppressed`].
 pub fn remove_hotkey(record: HookRecord) {
     hook::LISTENER.remove(record.0);
+    hook::sync_os_hook();
 }
 
 /// `keyboard.add_hotkey(hotkey, callback, suppress=False)` for a single-step hotkey: the
@@ -600,6 +657,7 @@ pub fn add_hotkey(
             }
         }),
     );
+    hook::sync_os_hook();
     Ok(HookRecord(id))
 }
 
@@ -632,7 +690,7 @@ pub fn release_arrow_owners(reason: &str) {
     }
 }
 
-/// `install_hotkeys`' `on_f9`, run on the processing thread.
+/// `install_hotkeys`' `on_f9`, run on the hotkey thread.
 fn on_f9(audio_controller: &Arc<AudioController>) {
     if !crate::win_util::is_beamng_focused() {
         return;
@@ -665,18 +723,21 @@ pub fn install_hotkeys(audio_controller: Arc<AudioController>) {
     start_command_worker();
 
     // Force the speech library load now. on_f9/on_f10 speak the layer prompt before
-    // installing the layer hook, and they run on the key processing thread; if the first
-    // utterance of the session had to load the native library there, the hook would go in
-    // late and the user's next key would reach the game instead of the layer.
+    // installing the layer hook, and they run on the hotkey thread; if the first utterance
+    // of the session had to load the native library there, the hook would go in late and
+    // the user's next key would reach the game instead of the layer.
     if !beam_speech::speech::init(None) {
         log::warn!("Speech unavailable at hotkey install; speech may be degraded.");
     }
 
+    // Registered hotkeys, not hook hotkeys: no low-level hook stays installed between
+    // layers, which is what kept colliding with NVDA's (see `hotkeys`). They are live
+    // only while the game is in front, so F9 in this app's own window does nothing.
     let ac = Arc::clone(&audio_controller);
-    if let Err(e) = add_hotkey("f9", Arc::new(move || on_f9(&ac))) {
+    if let Err(e) = register_game_hotkey("f9", Arc::new(move || on_f9(&ac))) {
         log::error!("Failed to add F9 hotkey: {e}");
     }
-    if let Err(e) = add_hotkey("f10", Arc::new(on_f10)) {
+    if let Err(e) = register_game_hotkey("f10", Arc::new(on_f10)) {
         log::error!("Failed to add F10 hotkey: {e}");
     }
 }

@@ -176,7 +176,8 @@ Every listener lives in `rust/crates/beam-engine/src/listeners/`; ports are cons
 
 - **Telemetry thread**: the UDP loop in `telemetry.rs` (blocking socket with timeout).
 - **Audio**: the `cpal` output stream's callback (`beam-audio` `callback/`), high priority; a device watcher thread in `device.rs` follows default-device changes.
-- **Listener and worker threads**: one per UDP listener, the keyboard hook, the UI bridge (tokio/axum), started through `timer::spawn_supervised`, which logs a panic or unexpected exit and restarts the loop after a backoff.
+- **Listener and worker threads**: one per UDP listener, the UI bridge (tokio/axum), started through `timer::spawn_supervised`, which logs a panic or unexpected exit and restarts the loop after a backoff.
+- **Keyboard**: a hotkey thread owns F9/F10/F11 (`RegisterHotKey`, only while the game is foreground). The low-level hook gets a thread of its own only while a layer or mode has keys hooked, and must never stay installed otherwise: a resident hook collides with NVDA's (`docs/app-engine.md`).
 - **The window**: Tauri's main thread (`src-tauri`).
 
 Shared engine state is `state::state()`, a `parking_lot` mutex guard over `state::State` (grouped by feature: `st.tel`, `st.scanner`, ...). It is **not reentrant**: calling `state()` while a guard is alive on the same thread deadlocks, so take it once and pass `&mut State` down. `say()` never takes it. `rust_plans/engine-map.md` section 1 has the lock order and what lives outside `State`. The audio callback reads state snapshots and holds the controller's lock as briefly as possible.
