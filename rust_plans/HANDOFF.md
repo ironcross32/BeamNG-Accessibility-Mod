@@ -18,9 +18,12 @@ release`) bumps that line, runs `cargo update --workspace --offline`, commits bo
 tags and pushes. `.github/workflows/ci.yml` runs fmt, clippy `-D warnings` and the tests;
 `release.yml` checks the tag, runs `xtask dist`, publishes. To make clippy pass, three
 lints are allowed workspace-wide (`[workspace.lints.clippy]`, every crate opts in) and the
-rest were fixed or allowed locally where NaN behaviour depends on the form. **Neither
-workflow has run on GitHub yet** (nothing pushed): the open question is whether the
-runner's MSVC builds Prism's C++23. Three JS sims fail on master (`binding_readout`,
+rest were fixed or allowed locally where NaN behaviour depends on the form. Both
+workflows are green on GitHub: the runner's MSVC builds Prism, and the hand-started
+release run produced the same seven-file bundle. CI sets the runner to Eastern time
+first, because `challenge_results_fixtures.rs` formats timestamps in the local zone and
+the frozen fixtures were recorded in Eastern; a CI run takes about 16 minutes, a release
+about 10. `git release` has not been run yet. Three JS sims fail on master (`binding_readout`,
 `mod_details`, `parts_focus`: stale against `bnvdaRuntime.js`), so CI does not run them.
 
 Earlier, 2026-11-22: **the workspace moved out of `rust/` to the repository root.** The
@@ -185,9 +188,9 @@ were rewritten for the Rust when the Python was removed.
 
 **Next, with the user:**
 
-1. **R1, prove CI.** Push, then watch `ci.yml`; run `release.yml` by hand
-   (workflow_dispatch) to get a bundle without publishing. Then fix or retire the three
-   stale JS sims and add the JS sims to CI (`node diagnostic\<name>_sim.js`).
+1. **JS sims in CI.** Fix or retire the three stale JS sims (`binding_readout`,
+   `mod_details`, `parts_focus`), then add the JS sims to `ci.yml`
+   (`node diagnostic\<name>_sim.js`).
 2. **In-game checks of fixed bugs:**
    - 30: with obstacle mode on, a turn should move the detection toward the inside of
      the turn.
