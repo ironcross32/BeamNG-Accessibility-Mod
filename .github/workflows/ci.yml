@@ -43,8 +43,16 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
+      # The golden fixtures were recorded on a machine in US Eastern time, and the
+      # challenge results format timestamps in the local zone
+      # (beam-road challenge_results_fixtures.rs); the runner is UTC.
+      - name: Use the fixtures' timezone
+        run: tzutil /s "Eastern Standard Time"
+
+      # --no-fail-fast: cargo otherwise stops at the first failing test binary and hides
+      # the rest.
       - name: Test
-        run: cargo test --workspace --locked
+        run: cargo test --workspace --locked --no-fail-fast
 
       # Packages the mod and checks the bundle's inputs without the two-minute release
       # build; release.yml does the whole thing.

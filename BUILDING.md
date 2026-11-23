@@ -128,7 +128,9 @@ fails fast unless the tag equals the version (`cargo xtask check-tag`), then run
 same bundle as a workflow artifact without publishing anything.
 
 CI (`ci.yml`) runs `cargo fmt --check`, clippy with warnings as errors, the workspace
-tests and `cargo xtask mod` on Windows. The Lua sims are not run there: they need the
+tests and `cargo xtask mod` on Windows. The tests assume US Eastern time, where the
+fixtures were recorded (`challenge_results_fixtures.rs` formats timestamps in the local
+zone), so CI sets the runner's timezone first; elsewhere those three tests fail. The Lua sims are not run there: they need the
 game's `Bin64\console.x64.exe`.
 
 ## Golden fixtures
