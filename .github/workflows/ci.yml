@@ -1,0 +1,52 @@
+# Format, lint and test the workspace on every push to master and every pull request.
+#
+# Windows only: the app links the Win32 keyboard hooks, WASAPI through cpal and WebView2,
+# and the prismer crate compiles Prism from source, which needs MSVC with C++23 and
+# CMake 3.24+ (both on the windows-latest image).
+#
+# Not run here: the Lua sims (diagnostic/*_sim.lua) need the game's own
+# Bin64\console.x64.exe.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace --locked
+
+      # Packages the mod and checks the bundle's inputs without the two-minute release
+      # build; release.yml does the whole thing.
+      - name: Package the mod
+        run: cargo xtask mod

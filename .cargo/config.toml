@@ -1,0 +1,3 @@
+[alias]
+# `cargo xtask dist` builds and packages a release; `cargo xtask` lists the commands.
+xtask = "run --quiet --package xtask --"

@@ -394,7 +394,7 @@ fn every_key_and_modifier_matches_python() {
         // python-bugs.md 56, 57 (departure): a non-finite reading is spoken as unknown
         // where the Python raised (or read "100 percent"). These cases are pinned to
         // the Rust's own answer rather than the Python's.
-        let departed: Option<(&str, Value)> = match &*name {
+        let departed: Option<(&str, Value)> = match name {
             "r/nan" | "invoke/restores_after_raise" => Some(("RPM unknown", json!(false))),
             "f/nan" => Some(("Fuel level unknown", json!(false))),
             "speed/nan" => Some(("Speed unknown. Speed limit unknown", json!(false))),

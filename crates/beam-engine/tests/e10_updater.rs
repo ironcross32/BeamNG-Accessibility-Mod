@@ -361,7 +361,9 @@ fn headers_json(calls: &[Call]) -> Value {
 #[test]
 fn constants_match_python() {
     let c = &fixture()["constants"];
-    assert_eq!(fixture()["app_version"], updater::APP_VERSION);
+    // The fixture's app_version is the Python's at recording time; APP_VERSION moves
+    // with every release, so only its shape is checked.
+    assert!(updater::parse_version(updater::APP_VERSION).is_some());
     assert_eq!(c["REPO"], updater::REPO);
     assert_eq!(c["LATEST_URL"], updater::LATEST_URL);
     assert_eq!(c["ASSET_NAME"], updater::ASSET_NAME);

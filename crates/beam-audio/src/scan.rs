@@ -43,13 +43,8 @@ fn py_int(x: f64) -> Result<i64, ScanError> {
 /// Equal-power stereo gains for a pan position in [-1, 1]. Shared by the render path and
 /// the controller's `_pan_gains`, so the two cannot drift apart.
 pub fn equal_power_pan(p: f64) -> (f64, f64) {
-    let p = if p < -1.0 {
-        -1.0
-    } else if p > 1.0 {
-        1.0
-    } else {
-        p
-    };
+    // NaN passes through, as it did through the old if-chain.
+    let p = p.clamp(-1.0, 1.0);
     let ang = (p + 1.0) * (PI / 4.0);
     (ang.cos(), ang.sin())
 }
@@ -61,12 +56,8 @@ pub fn equal_power_pan(p: f64) -> (f64, f64) {
 /// elevation. Clamped rather than wrapped: a wrapped octave would report a peak as a pit.
 /// `Err` for NaN, where Python's `round` raises.
 pub fn try_scan_step_from_dz(dz_m: f64) -> Result<i64, ScanError> {
-    let mut oct_pos = dz_m / SCAN_M_PER_OCTAVE;
-    if oct_pos < -SCAN_OCTAVE_CLAMP {
-        oct_pos = -SCAN_OCTAVE_CLAMP;
-    } else if oct_pos > SCAN_OCTAVE_CLAMP {
-        oct_pos = SCAN_OCTAVE_CLAMP;
-    }
+    // NaN passes through to the check below.
+    let oct_pos = (dz_m / SCAN_M_PER_OCTAVE).clamp(-SCAN_OCTAVE_CLAMP, SCAN_OCTAVE_CLAMP);
     if oct_pos.is_nan() {
         return Err(ScanError("cannot convert float NaN to integer".into()));
     }

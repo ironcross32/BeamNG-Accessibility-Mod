@@ -394,6 +394,8 @@ impl AudioController {
         if let Some(h) = watcher {
             // join(timeout=_audio_poll_interval); a thread still busy after that is left
             // to finish on its own, like Python's daemon thread.
+            // Not clamp(): that passes NaN on, and from_secs_f64 panics on it; max() makes it 0.
+            #[allow(clippy::manual_clamp)]
             let deadline = Instant::now() + Duration::from_secs_f64(interval.max(0.0).min(3600.0));
             while !h.is_finished() && Instant::now() < deadline {
                 std::thread::sleep(Duration::from_millis(10));

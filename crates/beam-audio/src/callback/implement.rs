@@ -235,7 +235,7 @@ pub fn render(b: &mut Block<'_>, v: &mut Voice) {
 
         // Short notch on each step change, so a fast sweep is countable.
         let mut n_dip = 0usize;
-        let dip_gain = 10.0f64.powf(IMPL_TILT_STEP_DIP_DB * -1.0 / 20.0);
+        let dip_gain = 10.0f64.powf(-IMPL_TILT_STEP_DIP_DB / 20.0);
         let dipping = v._impl_tilt_dip_left > 0.0;
         if dipping {
             let n = (v._impl_tilt_dip_left * sr).trunc() as i64;

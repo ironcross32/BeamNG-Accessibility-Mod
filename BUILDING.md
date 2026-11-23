@@ -34,7 +34,9 @@ All commands below are PowerShell, run from the repository root unless stated.
 | `src-tauri` | the application crate `beam-app`, binary `beamtel.exe` |
 | `ui` | the frontend: plain HTML, CSS, ES modules, no build step |
 | `fixtures/data` | golden cases recorded from the Python application (committed, frozen) |
-| `xtask` | build and packaging (not written yet: there is no release pipeline) |
+| `xtask` | release packaging: `cargo xtask dist` (see "Releases") |
+| `scripts/release.ps1` | `git release`: bump the version, commit, tag, push |
+| `.github/workflows` | `ci.yml` (fmt, clippy, tests on every push and PR), `release.yml` (tags) |
 
 Every module the plan assigns already exists as a file with a one-line `//!` comment,
 declared in its crate's `lib.rs`; workstreams fill files, they do not edit `lib.rs`.
@@ -66,7 +68,7 @@ npx tauri build                    # release exe; bundling is off (bundle.active
 cargo build --release -p beam-app
 ```
 
-Either writes `target\release\beamtel.exe` (~9 MB, ~1m45s cold) with the frontend
+Either writes `target\release\beamtel.exe` (~24 MB, ~1m45s cold) with the frontend
 embedded; the exe runs on its own from any directory. Release builds have no console
 window (`windows_subsystem = "windows"` under `not(debug_assertions)`).
 
@@ -87,8 +89,47 @@ npx tauri build --features uac-admin
 
 `src-tauri/build.rs` picks `manifests/admin.xml` (Common Controls v6 plus
 `requireAdministrator`) when the feature is on, `manifests/default.xml` (Common
-Controls v6 only) otherwise. The release pipeline (`xtask`, workstream R1) builds
-without it. Running an admin build raises a UAC prompt.
+Controls v6 only) otherwise. `cargo xtask dist` builds without it. Running an admin
+build raises a UAC prompt.
+
+## Releases
+
+```powershell
+cargo xtask dist              # release build + mod zip + bundle
+cargo xtask dist --no-build   # package the exe already in target\release
+cargo xtask mod               # the mod zip alone: target\dist\bng_screenreader_mod.zip
+cargo xtask version           # print the version
+```
+
+`dist` writes `target\dist\BeamNG_accessibility_mod.zip`, the one release asset, and
+leaves its unzipped layout in `target\dist\BeamNG_accessibility_mod\`, runnable as it is:
+
+| File | Why |
+|---|---|
+| `beamtel.exe` | the app |
+| `bng_screenreader_mod.zip` | `bng_mod\` zipped, plus `bnvda_mod_version.json` stamped with the version and build time; the Install Mod button copies it into BeamNG |
+| `hrtf_*.npz` | the HRTF sets (`beam_base::hrtf_sets::BUNDLED_SETS`), read from beside the exe |
+| `HRTF_DATA_LICENSES.md` | the KU100 set's CC BY-SA licence requires the attribution to travel with it |
+| `README.md` | the user's instructions |
+
+The layout is a contract with `beam-engine`'s `updater.rs`, which refuses a bundle
+without `beamtel.exe` and the mod zip and robocopies the rest over the user's program
+directory; `dist` reopens the bundle and runs the same check before it finishes.
+
+**The version** is `[workspace.package] version` in the root `Cargo.toml`, and nowhere
+else: `updater::APP_VERSION` is `CARGO_PKG_VERSION`, and so are the exe's file version
+and the mod stamp. To cut a release, run `git release` (an alias for
+`scripts\release.ps1`; set it up with `git config alias.release "!powershell.exe
+-NoProfile -ExecutionPolicy Bypass -File scripts/release.ps1"`). It prompts for the new
+version, rewrites `Cargo.toml`, refreshes `Cargo.lock`, commits those two files, tags
+`v<version>` and pushes the branch then the tag. The tag push runs `release.yml`, which
+fails fast unless the tag equals the version (`cargo xtask check-tag`), then runs
+`cargo xtask dist` and publishes the bundle. Running that workflow by hand builds the
+same bundle as a workflow artifact without publishing anything.
+
+CI (`ci.yml`) runs `cargo fmt --check`, clippy with warnings as errors, the workspace
+tests and `cargo xtask mod` on Windows. The Lua sims are not run there: they need the
+game's `Bin64\console.x64.exe`.
 
 ## Golden fixtures
 

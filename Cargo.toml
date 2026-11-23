@@ -24,11 +24,24 @@ default-members = [
 ]
 
 [workspace.package]
-version = "0.0.0"
+# THE application version: the updater's APP_VERSION, the exe's file version, the mod
+# zip's stamp. A release tag must be "v" + this (release.yml checks); `git release`
+# (scripts/release.ps1) bumps it, refreshes Cargo.lock, commits and tags.
+version = "0.2.1"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
 publish = false
+
+# CI runs clippy with -D warnings. These are off because the code means them:
+[workspace.lints.clippy]
+# `!(x < y)` is how the port keeps Python's NaN behaviour; `x >= y` would flip it.
+neg_cmp_op_on_partial_ord = "allow"
+# The DSP loops index several buffers in step (tl[k], tr[k], mono[k]); zipping three
+# iterators reads worse and buys nothing.
+needless_range_loop = "allow"
+# Boxed callbacks and tuple-shaped Python values; an alias per site only renames them.
+type_complexity = "allow"
 
 [workspace.dependencies]
 # In-workspace crates

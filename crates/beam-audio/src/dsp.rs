@@ -460,9 +460,9 @@ impl SeedSequence {
             }
         }
         for &w in words.iter().skip(POOL_SIZE) {
-            for i_dst in 0..POOL_SIZE {
+            for slot in pool.iter_mut() {
                 let h = hashmix(w);
-                pool[i_dst] = mix(pool[i_dst], h);
+                *slot = mix(*slot, h);
             }
         }
         SeedSequence { pool }
@@ -607,6 +607,7 @@ impl Pcg64 {
     }
 
     /// `Generator.standard_normal()`: numpy's 256-layer ziggurat, with its own tables.
+    #[allow(clippy::excessive_precision)] // numpy's constants, digit for digit
     pub fn standard_normal(&mut self) -> f64 {
         const ZIGGURAT_NOR_R: f64 = 3.6541528853610087963519472518;
         const ZIGGURAT_NOR_INV_R: f64 = 0.27366123732975827203338247596;

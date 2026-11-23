@@ -6,7 +6,24 @@ The short version of where the port is, for a fresh session. Updated at every co
 
 ## Last updated
 
-2026-11-22, latest: **the workspace moved out of `rust/` to the repository root.** The
+2026-11-22, latest: **R1: xtask packages a release, and there is CI.** `cargo xtask dist`
+runs `cargo build --release --locked -p beam-app`, stages `target\dist\BeamNG_accessibility_mod\`
+(exe, the three `hrtf_*.npz`, `HRTF_DATA_LICENSES.md`, `README.md`, and
+`bng_screenreader_mod.zip` with its `bnvda_mod_version.json` stamp), zips it to
+`target\dist\BeamNG_accessibility_mod.zip` and reopens it with the updater's own checks.
+`xtask mod`, `version` and `check-tag` too. The version now lives only in
+`[workspace.package] version` (0.2.1): `updater::APP_VERSION` is `CARGO_PKG_VERSION`, which
+also gives the exe a real file version (it said 0.0.0). `scripts/release.ps1` (`git
+release`) bumps that line, runs `cargo update --workspace --offline`, commits both files,
+tags and pushes. `.github/workflows/ci.yml` runs fmt, clippy `-D warnings` and the tests;
+`release.yml` checks the tag, runs `xtask dist`, publishes. To make clippy pass, three
+lints are allowed workspace-wide (`[workspace.lints.clippy]`, every crate opts in) and the
+rest were fixed or allowed locally where NaN behaviour depends on the form. **Neither
+workflow has run on GitHub yet** (nothing pushed): the open question is whether the
+runner's MSVC builds Prism's C++23. Three JS sims fail on master (`binding_readout`,
+`mod_details`, `parts_focus`: stale against `bnvdaRuntime.js`), so CI does not run them.
+
+Earlier, 2026-11-22: **the workspace moved out of `rust/` to the repository root.** The
 Python-era master is kept as the `legacy` branch. `beam_base::paths::find_repo_root_from`
 now looks for `Cargo.toml` beside a `crates` directory, `beam_testutil::repo_root` is
 two levels above a crate, `rust/README.md` became `BUILDING.md`, and `rust/.gitignore`
@@ -168,10 +185,9 @@ were rewritten for the Rust when the Python was removed.
 
 **Next, with the user:**
 
-1. **R1, packaging.** `xtask` has no commands yet, and it is now the only way to
-   ship. It must put the HRTF `.npz` sets and their licence notice beside the exe and
-   build the mod zip. There is no speech DLL, since Prism is linked in. Update
-   `BUILDING.md` when it lands.
+1. **R1, prove CI.** Push, then watch `ci.yml`; run `release.yml` by hand
+   (workflow_dispatch) to get a bundle without publishing. Then fix or retire the three
+   stale JS sims and add the JS sims to CI (`node diagnostic\<name>_sim.js`).
 2. **In-game checks of fixed bugs:**
    - 30: with obstacle mode on, a turn should move the detection toward the inside of
      the turn.

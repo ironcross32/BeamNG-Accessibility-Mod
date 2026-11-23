@@ -1,0 +1,62 @@
+# Builds beamtel.exe, packages the Lua/JS mod, and publishes the release bundle.
+#
+# The asset name is fixed (xtask's BUNDLE_NAME, the updater's ASSET_NAME), so
+#   https://github.com/ironcross32/BeamNG-Accessibility-Mod/releases/latest/download/BeamNG_accessibility_mod.zip
+# is a permanent link to the newest tagged build.
+#
+# Cut a release with `git release` (scripts/release.ps1): it bumps the workspace version,
+# commits, tags and pushes, and that tag push runs this.
+name: Build and Release
+
+on:
+  push:
+    tags: ['v*']
+  # Manual runs build and upload the same bundle as a workflow artifact but publish no
+  # release, so the pipeline can be exercised without cutting a tag.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      # bng_mod/ is a junction locally but its files are tracked, so the checkout
+      # materialises it as a real directory and xtask packages it unchanged. The
+      # hrtf_*.npz sets are committed too.
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      # The workspace version is the only thing a shipped build compares against the
+      # release tag. Left to drift it does not fail loudly: every client concludes it is
+      # already up to date and the release reaches nobody. Checked first so a mismatch
+      # costs seconds, not a release build.
+      - name: Check the version matches the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: cargo xtask check-tag "${{ github.ref_name }}"
+
+      - name: Build and package
+        run: cargo xtask dist
+
+      - name: Upload bundle as workflow artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: BeamNG_accessibility_mod
+          path: target/dist/BeamNG_accessibility_mod.zip
+          if-no-files-found: error
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: target/dist/BeamNG_accessibility_mod.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true

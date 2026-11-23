@@ -14,7 +14,7 @@ Run from the repository root:
 - `cargo build --release -p beam-app` builds the shipped `beamtel.exe`. It needs no elevation: keyboard suppression works while the game is un-elevated. `--features uac-admin` is opt-in, only for someone who runs the game as administrator.
 - `cargo test --workspace` runs the unit, fixture and sim tests; `cargo clippy --workspace --all-targets` and `cargo fmt --all` before committing.
 
-There is no release pipeline yet: `xtask` is meant to package the exe and the mod, and has no commands.
+`cargo xtask dist` builds the release bundle (`target\dist\BeamNG_accessibility_mod.zip`: the exe, the stamped mod zip, the HRTF sets and their licence notice, the README). The version is `[workspace.package] version` in `Cargo.toml` and nowhere else; `git release` (`scripts/release.ps1`) bumps it, commits, tags and pushes. CI (`.github/workflows/ci.yml`) runs fmt, clippy with `-D warnings` and the tests on Windows; `release.yml` builds and publishes on a `v*` tag. Details: `BUILDING.md`, "Releases".
 
 ## Coding Style & Naming Conventions
 

@@ -124,7 +124,15 @@ pub fn render_road_correction_block(
     let pulse_time = |k: usize| pulse_phase + k as f64 / sr;
     let mut pulse_envelope = vec![0.0f64; frames];
     let cycle_s;
-    let frequency;
+    let frequency = if phase == "unwind" {
+        ROAD_CORRECTION_UNWIND_HZ
+    } else if amount >= 0.67 {
+        ROAD_CORRECTION_HIGH_HZ
+    } else if amount >= 0.34 {
+        ROAD_CORRECTION_MID_HZ
+    } else {
+        ROAD_CORRECTION_CARRIER_HZ
+    };
     if phase == "unwind" {
         cycle_s = ROAD_CORRECTION_UNWIND_REPEAT_S;
         let pip_s = ROAD_CORRECTION_UNWIND_PIP_MS as f64 / 1000.0;
@@ -133,12 +141,11 @@ pub fn render_road_correction_block(
             let local_time = py_mod(pulse_time(k), cycle_s);
             for start in [0.0, second_start] {
                 let progress = (local_time - start) / pip_s;
-                if progress >= 0.0 && progress < 1.0 {
+                if (0.0..1.0).contains(&progress) {
                     *pe = (PI * progress).sin();
                 }
             }
         }
-        frequency = ROAD_CORRECTION_UNWIND_HZ;
     } else {
         let rate_hz = road_correction_rate_hz(amount);
         cycle_s = 1.0 / rate_hz;
@@ -152,13 +159,6 @@ pub fn render_road_correction_block(
                 0.0
             };
         }
-        frequency = if amount >= 0.67 {
-            ROAD_CORRECTION_HIGH_HZ
-        } else if amount >= 0.34 {
-            ROAD_CORRECTION_MID_HZ
-        } else {
-            ROAD_CORRECTION_CARRIER_HZ
-        };
     }
 
     let carrier_inc = frequency / sr;

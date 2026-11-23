@@ -592,7 +592,7 @@ fn s09_pulse_rate_rises_monotonically_and_stays_in_band() {
         "within the configured band",
         rates
             .iter()
-            .all(|&r| DOCK_PULSE_MIN_HZ - 1e-6 <= r && r <= DOCK_PULSE_MAX_HZ + 1e-6),
+            .all(|r| (DOCK_PULSE_MIN_HZ - 1e-6..=DOCK_PULSE_MAX_HZ + 1e-6).contains(r)),
         "",
     );
     let mid = rates

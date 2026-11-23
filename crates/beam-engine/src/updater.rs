@@ -39,9 +39,10 @@ use regex::Regex;
 use crate::mod_install::{self, ModInstallEnv};
 use crate::ui_sink::{Answer, Buttons, MessageBox, MessageKind, Progress, UiSink};
 
-/// Bumped by hand when cutting a tag; must equal the tag with the "v" stripped, or every
+/// The workspace version (`[workspace.package] version` in the root Cargo.toml), bumped by
+/// `git release` when cutting a tag; it must equal the tag with the "v" stripped, or every
 /// client concludes it is already up to date. Also read by the window title.
-pub const APP_VERSION: &str = "0.2.1";
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub const REPO: &str = "ironcross32/BeamNG-Accessibility-Mod";
 pub const LATEST_URL: &str =

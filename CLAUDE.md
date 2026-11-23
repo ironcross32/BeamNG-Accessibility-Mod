@@ -19,7 +19,7 @@ cargo clippy --workspace --all-targets
 cargo fmt --all
 ```
 
-Run beamtel from a release build; a debug build's audio crackles. There is no release pipeline yet: `xtask` is meant to package the exe and the mod and has no commands.
+Run beamtel from a release build; a debug build's audio crackles. `cargo xtask dist` builds the release bundle (`target\dist\BeamNG_accessibility_mod.zip`); the version is `[workspace.package] version` in `Cargo.toml` and nowhere else, and `git release` (`scripts/release.ps1`) bumps it and tags. CI is `.github/workflows/ci.yml` (fmt, clippy `-D warnings`, tests) and `release.yml` (on a `v*` tag). See BUILDING.md, "Releases".
 
 The Python application this was ported from has been removed (it is in git history before "Remove the Python application", and the `legacy` branch is master as it stood with the Python app). Code comments and docs that cite a Python name, like `beamtel.py:5066` or `_dock_phrase`, refer to that history; the Rust keeps the name without the leading underscore, and `rust_plans/engine-map.md` maps every old `beamtel.py` name to its module. The only Python left is the level generators in `tools/` (`uv run --project tools python tools/...`).
 

@@ -17,3 +17,6 @@ parking_lot.workspace = true
 [dev-dependencies]
 beam-testutil.workspace = true
 regex.workspace = true
+
+[lints]
+workspace = true
