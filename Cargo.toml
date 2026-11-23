@@ -27,7 +27,7 @@ default-members = [
 # THE application version: the updater's APP_VERSION, the exe's file version, the mod
 # zip's stamp. A release tag must be "v" + this (release.yml checks); `git release`
 # (scripts/release.ps1) bumps it, refreshes Cargo.lock, commits and tags.
-version = "0.2.1"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
